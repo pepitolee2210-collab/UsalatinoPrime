@@ -1,15 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
+import { createClient } from '@/lib/supabase/client'
 import { getInstallmentCount } from '@/lib/contracts'
 import {
   FileText, PenLine, Download, Plus, X, ChevronDown,
-  User, Stamp, Calendar, Baby, PackagePlus, DollarSign, Hash, CalendarClock,
+  User, Stamp, Calendar, Baby, PackagePlus, DollarSign, Hash, CalendarClock, Save,
 } from 'lucide-react'
 
 interface MinorData {
@@ -45,9 +46,15 @@ const SERVICE_OPTIONS = [
   { slug: 'taxes', label: 'Declaraci\u00f3n de Impuestos' },
 ]
 
+interface QuickContractGeneratorProps {
+  editData?: any | null
+  onSaved?: () => void
+}
+
 const emptyMinor = (): MinorData => ({ fullName: '', dob: '', birthplace: '', passport: '' })
 
-export function QuickContractGenerator() {
+export function QuickContractGenerator({ editData, onSaved }: QuickContractGeneratorProps) {
+  const supabase = createClient()
   const [selectedSlug, setSelectedSlug] = useState('')
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0)
   const [contractForm, setContractForm] = useState<ContractForm>({
@@ -77,6 +84,52 @@ export function QuickContractGenerator() {
   )
   const [customMonthlyAmount, setCustomMonthlyAmount] = useState<string>('')
   const [useCustomMonthly, setUseCustomMonthly] = useState(false)
+
+  // Cargar datos cuando se edita un contrato existente
+  useEffect(() => {
+    if (!editData) return
+    async function loadEditData() {
+      const { getContractTemplate } = await import('@/lib/contracts/index')
+      const t = getContractTemplate(editData.service_slug)
+      setTemplate(t)
+      setSelectedSlug(editData.service_slug)
+      setSelectedVariantIndex(editData.variant_index || 0)
+      setContractForm({
+        clientFullName: editData.client_full_name || '',
+        clientPassport: editData.client_passport || '',
+        clientDOB: editData.client_dob || '',
+        clientSignature: editData.client_signature || '',
+      })
+      setMinors(
+        editData.minors?.length > 0
+          ? editData.minors.map((m: any) => ({
+              fullName: m.fullName || m.full_name || '',
+              dob: m.dob || '',
+              birthplace: m.birthplace || '',
+              passport: m.passport || '',
+            }))
+          : [emptyMinor()]
+      )
+      setAddons(
+        editData.addon_services?.length > 0
+          ? editData.addon_services.map((a: any) => ({
+              slug: a.slug || '',
+              label: a.name || a.label || '',
+              price: a.price || 0,
+            }))
+          : []
+      )
+      setUseCustomPrice(editData.use_custom_price || false)
+      setCustomPrice(editData.use_custom_price ? String(editData.total_price) : '')
+      setUseCustomInstallments(editData.use_custom_installments || false)
+      setCustomInstallments(editData.use_custom_installments ? String(editData.installment_count) : '')
+      setInitialPayment(editData.initial_payment > 0 ? String(editData.initial_payment) : '')
+      setContractStartDate(editData.contract_start_date || new Date().toISOString().split('T')[0])
+      setUseCustomMonthly(editData.use_custom_monthly || false)
+      setCustomMonthlyAmount(editData.use_custom_monthly ? String(editData.monthly_amount) : '')
+    }
+    loadEditData()
+  }, [editData])
 
   async function handleServiceChange(slug: string) {
     setSelectedSlug(slug)
@@ -240,8 +293,64 @@ export function QuickContractGenerator() {
       const addonServices = addons.map(a => ({
         name: a.label,
         price: a.price,
+        slug: a.slug,
         etapas: getServiceEtapas(a.slug),
       }))
+
+      // Guardar en Supabase
+      const contractData = {
+        service_slug: selectedSlug,
+        service_name: serviceLabel,
+        variant_index: selectedVariantIndex,
+        addon_services: addonServices,
+        client_full_name: contractForm.clientFullName.trim(),
+        client_passport: contractForm.clientPassport.trim(),
+        client_dob: contractForm.clientDOB,
+        client_signature: contractForm.clientSignature.trim(),
+        minors: template.requiresMinor
+          ? minors.map(m => ({
+              fullName: m.fullName.trim(),
+              dob: m.dob,
+              birthplace: m.birthplace.trim(),
+              passport: m.passport.trim(),
+            }))
+          : [],
+        total_price: finalPrice,
+        initial_payment: getInitialPayment(),
+        installment_count: getFinalInstallments(),
+        monthly_amount: getFinalMonthly(),
+        use_custom_monthly: useCustomMonthly,
+        contract_start_date: contractStartDate,
+        has_installments: hasInstallments,
+        use_custom_price: useCustomPrice,
+        use_custom_installments: useCustomInstallments,
+        payment_schedule: paymentSchedule || [],
+        objeto_del_contrato: template.objetoDelContrato,
+        etapas: template.etapas,
+      }
+
+      if (editData?.id) {
+        const { error } = await supabase
+          .from('contracts')
+          .update(contractData)
+          .eq('id', editData.id)
+        if (error) {
+          console.error('Error updating contract:', error)
+          toast.error('Error al actualizar el contrato')
+          return
+        }
+        toast.success('Contrato actualizado')
+      } else {
+        const { error } = await supabase
+          .from('contracts')
+          .insert(contractData)
+        if (error) {
+          console.error('Error saving contract:', error)
+          toast.error('Error al guardar el contrato')
+          return
+        }
+        toast.success('Contrato guardado')
+      }
 
       const pdf = generateContractPDF({
         serviceName: serviceLabel,
@@ -279,7 +388,7 @@ export function QuickContractGenerator() {
       document.body.removeChild(link)
       setTimeout(() => URL.revokeObjectURL(url), 1000)
 
-      toast.success('Contrato generado exitosamente')
+      onSaved?.()
     } catch (error: any) {
       console.error('PDF generation error:', error)
       toast.error(`Error al generar el PDF: ${error.message}`)
@@ -711,10 +820,10 @@ export function QuickContractGenerator() {
                 disabled={generating}
                 className="flex-1 bg-[#F2A900] hover:bg-[#D4940A] text-white font-semibold h-11 rounded-lg"
               >
-                {generating ? 'Generando...' : (
+                {generating ? 'Guardando...' : (
                   <>
-                    <Download className="w-4 h-4 mr-1.5" />
-                    Descargar Contrato PDF
+                    <Save className="w-4 h-4 mr-1.5" />
+                    {editData ? 'Guardar y Descargar PDF' : 'Guardar y Descargar PDF'}
                   </>
                 )}
               </Button>
