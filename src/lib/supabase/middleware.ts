@@ -33,7 +33,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Public routes (no auth required)
-  if (pathname.startsWith('/miedo-creible') || pathname.startsWith('/visa-juvenil-form') || pathname.startsWith('/asilo-form')) {
+  if (pathname.startsWith('/miedo-creible') || pathname.startsWith('/visa-juvenil-form') || pathname.startsWith('/asilo-form') || pathname.startsWith('/offline')) {
     return supabaseResponse
   }
 
@@ -47,7 +47,7 @@ export async function updateSession(request: NextRequest) {
         ? '/admin/dashboard'
         : role === 'employee'
           ? '/employee/contracts'
-          : '/portal/services'
+          : '/comunidad'
       return NextResponse.redirect(new URL(redirectUrl, request.url))
     }
     return supabaseResponse
@@ -61,17 +61,27 @@ export async function updateSession(request: NextRequest) {
   // Role-based routing
   const { data: role } = await supabase.rpc('get_user_role', { user_id: user.id })
 
+  // Root path - redirect based on role
+  if (pathname === '/') {
+    const dest = role === 'admin'
+      ? '/admin/dashboard'
+      : role === 'employee'
+        ? '/employee/contracts'
+        : '/comunidad'
+    return NextResponse.redirect(new URL(dest, request.url))
+  }
+
   if (pathname.startsWith('/admin') && role !== 'admin') {
-    const dest = role === 'employee' ? '/employee/contracts' : '/portal/dashboard'
+    const dest = role === 'employee' ? '/employee/contracts' : '/comunidad'
     return NextResponse.redirect(new URL(dest, request.url))
   }
 
   if (pathname.startsWith('/employee') && role !== 'employee') {
-    const dest = role === 'admin' ? '/admin/dashboard' : '/portal/dashboard'
+    const dest = role === 'admin' ? '/admin/dashboard' : '/comunidad'
     return NextResponse.redirect(new URL(dest, request.url))
   }
 
-  if (pathname.startsWith('/portal') && role !== 'client') {
+  if ((pathname.startsWith('/portal') || pathname.startsWith('/comunidad')) && role !== 'client') {
     const dest = role === 'admin' ? '/admin/dashboard' : '/employee/contracts'
     return NextResponse.redirect(new URL(dest, request.url))
   }

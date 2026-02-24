@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
 import { OnboardingTour } from '@/components/portal/OnboardingTour'
 import {
-  Home, FileText, CreditCard, Bell, LogOut, Menu, User
+  Home, FileText, CreditCard, Bell, LogOut, Menu, User, Users
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -18,6 +18,7 @@ const navItems = [
   { href: '/portal/services', label: 'Servicios', icon: FileText },
   { href: '/portal/payments', label: 'Pagos', icon: CreditCard },
   { href: '/portal/notifications', label: 'Notificaciones', icon: Bell },
+  { href: '/comunidad', label: 'Comunidad', icon: Users },
 ]
 
 export default function PortalLayout({ children }: { children: React.ReactNode }) {

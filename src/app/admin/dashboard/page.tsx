@@ -116,6 +116,12 @@ export default async function AdminDashboardPage() {
     .order('paid_at', { ascending: false })
     .limit(5)
 
+  // ── Zelle Pending Payments (Community) ──
+  const { count: zellePendingCount } = await supabase
+    .from('zelle_payments')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'pending')
+
   // ── Credible Fear Submissions ──
   const { data: credibleFearSubmissions, count: credibleFearCount } = await supabase
     .from('credible_fear_submissions')
@@ -258,6 +264,26 @@ export default async function AdminDashboardPage() {
 
       {/* ── Quick Contract Generator ── */}
       <QuickContractGenerator />
+
+      {/* ── Zelle Pending Quick Link ── */}
+      {(zellePendingCount ?? 0) > 0 && (
+        <Link href="/admin/comunidad/zelle">
+          <Card className="border-[#F2A900] hover:bg-[#F2A900]/5 transition-colors cursor-pointer">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <DollarSign className="w-5 h-5 text-[#F2A900]" />
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Pagos Zelle Comunidad</p>
+                    <p className="text-xs text-gray-500">{zellePendingCount} comprobante{zellePendingCount! > 1 ? 's' : ''} pendiente{zellePendingCount! > 1 ? 's' : ''} de aprobación</p>
+                  </div>
+                </div>
+                <Badge className="bg-[#F2A900] text-white">{zellePendingCount} &rarr;</Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
+      )}
 
       {/* ── Credible Fear Quick Link ── */}
       {(credibleFearCount ?? 0) > 0 && (

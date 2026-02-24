@@ -24,8 +24,97 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
   }
 
+  const supabase = createServiceClient()
+
+  // ===== COMMUNITY SUBSCRIPTION EVENTS =====
+
+  if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
+    const subscription = event.data.object as Stripe.Subscription
+    const userId = subscription.metadata?.user_id
+    const type = subscription.metadata?.type
+
+    if (userId && type === 'community_subscription') {
+      const status = subscription.status === 'active' ? 'active'
+        : subscription.status === 'past_due' ? 'past_due'
+        : subscription.status === 'canceled' ? 'cancelled'
+        : 'free'
+
+      await supabase
+        .from('community_memberships')
+        .upsert({
+          user_id: userId,
+          status,
+          payment_method: 'stripe',
+          stripe_subscription_id: subscription.id,
+          stripe_customer_id: subscription.customer as string,
+          current_period_start: new Date(((subscription as any).current_period_start ?? 0) * 1000).toISOString(),
+          current_period_end: new Date(((subscription as any).current_period_end ?? 0) * 1000).toISOString(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' })
+
+      if (event.type === 'customer.subscription.created') {
+        await supabase.from('notifications').insert({
+          user_id: userId,
+          title: '¡Bienvenido a la Comunidad!',
+          message: 'Su membresía ha sido activada. Ahora tiene acceso completo a las sesiones en vivo, videos y toda la comunidad.',
+          type: 'success',
+        })
+      }
+    }
+  }
+
+  if (event.type === 'customer.subscription.deleted') {
+    const subscription = event.data.object as Stripe.Subscription
+    const userId = subscription.metadata?.user_id
+
+    if (userId && subscription.metadata?.type === 'community_subscription') {
+      await supabase
+        .from('community_memberships')
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .eq('user_id', userId)
+
+      await supabase.from('notifications').insert({
+        user_id: userId,
+        title: 'Membresía Cancelada',
+        message: 'Su membresía de la comunidad ha sido cancelada. Puede reactivarla en cualquier momento.',
+        type: 'info',
+      })
+    }
+  }
+
+  if (event.type === 'invoice.payment_failed') {
+    const invoice = event.data.object as Stripe.Invoice
+    const subscriptionId = (invoice as any).subscription as string
+
+    if (subscriptionId) {
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+      const userId = subscription.metadata?.user_id
+
+      if (userId && subscription.metadata?.type === 'community_subscription') {
+        await supabase
+          .from('community_memberships')
+          .update({ status: 'past_due', updated_at: new Date().toISOString() })
+          .eq('user_id', userId)
+
+        await supabase.from('notifications').insert({
+          user_id: userId,
+          title: 'Problema con su Pago',
+          message: 'No pudimos procesar el pago de su membresía. Por favor actualice su método de pago para mantener el acceso.',
+          type: 'warning',
+        })
+      }
+    }
+  }
+
+  // ===== EXISTING SERVICE PAYMENT EVENTS =====
+
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object as Stripe.Checkout.Session
+
+    // Skip community subscriptions (handled above)
+    if (session.metadata?.type === 'community_subscription') {
+      return NextResponse.json({ received: true })
+    }
 
     const {
       case_id,
@@ -41,7 +130,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing metadata' }, { status: 400 })
     }
 
-    const supabase = createServiceClient()
     const numInstallments = Number(total_installments) || 1
     const numInstallment = Number(installment_number) || 1
     const totalPrice = Number(total_price) || 0

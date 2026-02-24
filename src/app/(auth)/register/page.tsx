@@ -19,7 +19,6 @@ function RegisterForm() {
     phone: '',
     email: '',
     password: '',
-    confirmPassword: '',
   })
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -35,11 +34,6 @@ function RegisterForm() {
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
-
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Las contraseñas no coinciden')
-      return
-    }
 
     if (formData.password.length < 6) {
       toast.error('La contraseña debe tener al menos 6 caracteres')
@@ -96,7 +90,7 @@ function RegisterForm() {
     }
 
     router.refresh()
-    router.push(promoConfig ? `/portal/services/${promoConfig.serviceSlug}` : '/portal/services')
+    router.push(promoConfig ? `/portal/services/${promoConfig.serviceSlug}` : '/comunidad')
   }
 
   return (
@@ -208,22 +202,6 @@ function RegisterForm() {
                   className="h-12 text-base pl-10"
                   placeholder="Mínimo 6 caracteres"
                   value={formData.password}
-                  onChange={handleChange}
-                  required
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <Input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  className="h-12 text-base pl-10"
-                  placeholder="Repita su contraseña"
-                  value={formData.confirmPassword}
                   onChange={handleChange}
                   required
                 />

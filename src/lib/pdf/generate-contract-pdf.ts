@@ -231,12 +231,17 @@ export function generateContractPDF(input: ContractPDFInput): jsPDF {
   doc.text('Metodo de pago: Zelle al 801-941-3479', margin + 2, y)
   y += 8
 
-  // === GASTOS NO INCLUIDOS ===
-  sectionTitle('GASTOS NO INCLUIDOS')
+  // === GASTOS INCLUIDOS Y NO INCLUIDOS ===
+  sectionTitle('GASTOS INCLUIDOS Y NO INCLUIDOS')
   paragraph(
-    'Los honorarios descritos no incluyen gastos gubernamentales (filing fees), tarifas de traduccion, ' +
-    'certificacion de documentos, envios postales, ni cualquier otro gasto de terceros que pudiera surgir ' +
-    'durante el proceso. Dichos gastos seran responsabilidad del CLIENTE.'
+    'Los honorarios descritos incluyen todos los costos de traduccion, certificacion de documentos, ' +
+    'envios postales y demas gastos operativos relacionados con la preparacion del caso. ' +
+    'Dichos gastos son cubiertos en su totalidad por EL CONSULTOR como parte del servicio contratado.'
+  )
+  paragraph(
+    'Los honorarios NO incluyen gastos gubernamentales (filing fees) que las agencias de gobierno ' +
+    'requieran para procesar la solicitud. Dichos gastos seran responsabilidad del CLIENTE y se ' +
+    'le informara oportunamente sobre los montos correspondientes.'
   )
 
   // === NATURALEZA DEL SERVICIO ===
