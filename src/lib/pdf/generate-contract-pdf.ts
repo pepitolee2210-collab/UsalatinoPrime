@@ -14,6 +14,12 @@ interface AddonService {
   etapas: string[]
 }
 
+interface PaymentScheduleItem {
+  number: number
+  date: string
+  amount: number
+}
+
 interface ContractPDFInput {
   serviceName: string
   totalPrice: number
@@ -27,6 +33,8 @@ interface ContractPDFInput {
   objetoDelContrato: string
   etapas: string[]
   addonServices?: AddonService[]
+  initialPayment?: number
+  paymentSchedule?: PaymentScheduleItem[]
 }
 
 function formatDateSpanish(dateStr: string): string {
@@ -60,6 +68,7 @@ export function generateContractPDF(input: ContractPDFInput): jsPDF {
     serviceName, totalPrice, installments, installmentCount = 10,
     clientFullName, clientPassport, clientDOB, clientSignature,
     minors, objetoDelContrato, etapas, addonServices,
+    initialPayment, paymentSchedule,
   } = input
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' })
@@ -246,11 +255,21 @@ export function generateContractPDF(input: ContractPDFInput): jsPDF {
   // === HONORARIOS ===
   sectionTitle('HONORARIOS Y FORMA DE PAGO')
   if (installments) {
-    const monthly = Math.round(totalPrice / installmentCount)
-    paragraph(
-      `Los honorarios por los servicios descritos en este contrato ascienden a un total de $${totalPrice.toLocaleString()} USD, ` +
-      `pagaderos en ${installmentCount} cuotas mensuales de $${monthly.toLocaleString()} USD cada una.`
-    )
+    const remaining = initialPayment ? totalPrice - initialPayment : totalPrice
+    const monthly = Math.round(remaining / installmentCount)
+
+    if (initialPayment && initialPayment > 0) {
+      paragraph(
+        `Los honorarios por los servicios descritos en este contrato ascienden a un total de $${totalPrice.toLocaleString()} USD. ` +
+        `El CLIENTE realizar\u00e1 un pago inicial de $${initialPayment.toLocaleString()} USD al momento de la firma del contrato, ` +
+        `y el saldo restante de $${remaining.toLocaleString()} USD ser\u00e1 pagadero en ${installmentCount} cuotas mensuales de $${monthly.toLocaleString()} USD cada una.`
+      )
+    } else {
+      paragraph(
+        `Los honorarios por los servicios descritos en este contrato ascienden a un total de $${totalPrice.toLocaleString()} USD, ` +
+        `pagaderos en ${installmentCount} cuotas mensuales de $${monthly.toLocaleString()} USD cada una.`
+      )
+    }
   } else {
     paragraph(
       `Los honorarios por los servicios descritos en este contrato ascienden a un total de $${totalPrice.toLocaleString()} USD, ` +
@@ -260,6 +279,57 @@ export function generateContractPDF(input: ContractPDFInput): jsPDF {
   bodyStyle()
   doc.text('M\u00e9todo de pago: Zelle al 801-941-3479', margin + 2, y)
   y += 8
+
+  // === CRONOGRAMA DE PAGOS ===
+  if (paymentSchedule && paymentSchedule.length > 0) {
+    sectionTitle('CRONOGRAMA DE PAGOS')
+    paragraph(
+      'Las fechas de pago de cada cuota ser\u00e1n las indicadas a continuaci\u00f3n. El CLIENTE se compromete a realizar cada pago en la fecha establecida o antes de la misma.'
+    )
+
+    // Table header
+    const col1X = margin + 2
+    const col2X = margin + 45
+    const col3X = margin + 115
+    checkPageBreak(12)
+    doc.setFont(FONT, 'bold')
+    doc.setFontSize(8.5)
+    doc.setTextColor(...NAVY)
+    doc.text('CUOTA', col1X, y)
+    doc.text('FECHA DE PAGO', col2X, y)
+    doc.text('MONTO', col3X, y)
+    y += 2
+    doc.setDrawColor(200, 200, 200)
+    doc.setLineWidth(0.2)
+    doc.line(col1X, y, pageWidth - margin, y)
+    y += 4
+
+    // Table rows
+    let runningTotal = 0
+    paymentSchedule.forEach((item) => {
+      checkPageBreak(7)
+      bodyStyle()
+      doc.setFontSize(8.5)
+      const label = item.number === 0 ? 'Cuota inicial' : `Cuota ${item.number}`
+      doc.text(label, col1X, y)
+      doc.text(formatDateSpanish(item.date), col2X, y)
+      doc.text(`$${item.amount.toLocaleString()} USD`, col3X, y)
+      runningTotal += item.amount
+      y += 5
+    })
+
+    // Total line
+    doc.setDrawColor(200, 200, 200)
+    doc.line(col1X, y, pageWidth - margin, y)
+    y += 4
+    doc.setFont(FONT, 'bold')
+    doc.setFontSize(8.5)
+    doc.setTextColor(...NAVY)
+    doc.text('TOTAL', col1X, y)
+    doc.text(`$${runningTotal.toLocaleString()} USD`, col3X, y)
+    y += 8
+    bodyStyle()
+  }
 
   // === GASTOS INCLUIDOS Y NO INCLUIDOS ===
   sectionTitle('GASTOS INCLUIDOS Y NO INCLUIDOS')

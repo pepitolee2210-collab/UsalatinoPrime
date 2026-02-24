@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import { getInstallmentCount } from '@/lib/contracts'
 import {
   FileText, PenLine, Download, Plus, X, ChevronDown,
-  User, Stamp, Calendar, Baby, PackagePlus, DollarSign, Hash,
+  User, Stamp, Calendar, Baby, PackagePlus, DollarSign, Hash, CalendarClock,
 } from 'lucide-react'
 
 interface MinorData {
@@ -42,7 +42,7 @@ const SERVICE_OPTIONS = [
   { slug: 'mociones', label: 'Mociones' },
   { slug: 'itin-number', label: 'ITIN Number' },
   { slug: 'licencia-de-conducir', label: 'Licencia de Conducir' },
-  { slug: 'taxes', label: 'Declaracion de Impuestos' },
+  { slug: 'taxes', label: 'Declaraci\u00f3n de Impuestos' },
 ]
 
 const emptyMinor = (): MinorData => ({ fullName: '', dob: '', birthplace: '', passport: '' })
@@ -70,6 +70,14 @@ export function QuickContractGenerator() {
   const [useCustomPrice, setUseCustomPrice] = useState(false)
   const [useCustomInstallments, setUseCustomInstallments] = useState(false)
 
+  // Cuota inicial y fecha de inicio
+  const [initialPayment, setInitialPayment] = useState<string>('')
+  const [contractStartDate, setContractStartDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  )
+  const [customMonthlyAmount, setCustomMonthlyAmount] = useState<string>('')
+  const [useCustomMonthly, setUseCustomMonthly] = useState(false)
+
   async function handleServiceChange(slug: string) {
     setSelectedSlug(slug)
     setSelectedVariantIndex(0)
@@ -77,6 +85,9 @@ export function QuickContractGenerator() {
     setCustomPrice('')
     setUseCustomInstallments(false)
     setCustomInstallments('')
+    setInitialPayment('')
+    setCustomMonthlyAmount('')
+    setUseCustomMonthly(false)
     if (!slug) {
       setTemplate(null)
       return
@@ -92,7 +103,6 @@ export function QuickContractGenerator() {
   function addAddon(slug: string) {
     const svc = SERVICE_OPTIONS.find(s => s.slug === slug)
     if (!svc) return
-    // Get default price from contract templates
     import('@/lib/contracts/index').then(({ getContractTemplate }) => {
       const t = getContractTemplate(slug)
       const price = t?.variants[0]?.totalPrice || 0
@@ -124,11 +134,33 @@ export function QuickContractGenerator() {
     return getCalculatedTotal()
   }
 
+  // Cuota inicial
+  function getInitialPayment(): number {
+    return parseFloat(initialPayment) || 0
+  }
+
+  // Saldo restante después de cuota inicial
+  function getRemainingBalance(): number {
+    return getFinalPrice() - getInitialPayment()
+  }
+
   // Cuotas finales
   function getFinalInstallments(): number {
+    if (useCustomMonthly && customMonthlyAmount) {
+      const monthly = parseFloat(customMonthlyAmount)
+      if (monthly > 0) return Math.ceil(getRemainingBalance() / monthly)
+    }
     if (useCustomInstallments && customInstallments) return parseInt(customInstallments)
     if (!template) return 10
     return getInstallmentCount(template.variants[selectedVariantIndex])
+  }
+
+  // Monto mensual final
+  function getFinalMonthly(): number {
+    if (useCustomMonthly && customMonthlyAmount) return parseFloat(customMonthlyAmount) || 0
+    const installments = getFinalInstallments()
+    if (installments <= 0) return 0
+    return Math.round(getRemainingBalance() / installments)
   }
 
   function updateMinor(index: number, field: keyof MinorData, value: string) {
@@ -141,6 +173,35 @@ export function QuickContractGenerator() {
 
   function removeMinor(index: number) {
     setMinors(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // Generar cronograma de pagos
+  function buildPaymentSchedule(): { number: number; date: string; amount: number }[] {
+    const schedule: { number: number; date: string; amount: number }[] = []
+    const startDate = new Date(contractStartDate + 'T12:00:00')
+    const numInstallments = getFinalInstallments()
+    const monthly = getFinalMonthly()
+    const remaining = getRemainingBalance()
+    const initial = getInitialPayment()
+
+    if (initial > 0) {
+      schedule.push({ number: 0, date: contractStartDate, amount: initial })
+    }
+
+    for (let i = 0; i < numInstallments; i++) {
+      const payDate = new Date(startDate)
+      payDate.setMonth(payDate.getMonth() + i + (initial > 0 ? 1 : 0))
+      const dateStr = `${payDate.getFullYear()}-${String(payDate.getMonth() + 1).padStart(2, '0')}-${String(payDate.getDate()).padStart(2, '0')}`
+
+      // La última cuota ajusta el saldo restante
+      const isLast = i === numInstallments - 1
+      const prevPaid = monthly * i
+      const thisAmount = isLast ? remaining - prevPaid : monthly
+
+      schedule.push({ number: i + 1, date: dateStr, amount: thisAmount })
+    }
+
+    return schedule
   }
 
   async function handleGenerate() {
@@ -172,8 +233,8 @@ export function QuickContractGenerator() {
       const serviceLabel = SERVICE_OPTIONS.find(s => s.slug === selectedSlug)?.label || selectedSlug
 
       const finalPrice = getFinalPrice()
-      const finalInstallments = getFinalInstallments()
-      const hasInstallments = template.installments || useCustomInstallments
+      const hasInstallments = template.installments || useCustomInstallments || useCustomMonthly
+      const paymentSchedule = hasInstallments ? buildPaymentSchedule() : undefined
 
       // Preparar servicios adicionales para el PDF
       const addonServices = addons.map(a => ({
@@ -186,7 +247,7 @@ export function QuickContractGenerator() {
         serviceName: serviceLabel,
         totalPrice: finalPrice,
         installments: hasInstallments,
-        installmentCount: finalInstallments,
+        installmentCount: getFinalInstallments(),
         clientFullName: contractForm.clientFullName.trim(),
         clientPassport: contractForm.clientPassport.trim(),
         clientDOB: contractForm.clientDOB,
@@ -194,6 +255,8 @@ export function QuickContractGenerator() {
         objetoDelContrato: template.objetoDelContrato,
         etapas: template.etapas,
         addonServices: addonServices.length > 0 ? addonServices : undefined,
+        initialPayment: getInitialPayment() > 0 ? getInitialPayment() : undefined,
+        paymentSchedule,
         ...(template.requiresMinor && {
           minors: minors.map(m => ({
             fullName: m.fullName.trim(),
@@ -237,7 +300,13 @@ export function QuickContractGenerator() {
     setCustomInstallments('')
     setUseCustomPrice(false)
     setUseCustomInstallments(false)
+    setInitialPayment('')
+    setContractStartDate(new Date().toISOString().split('T')[0])
+    setCustomMonthlyAmount('')
+    setUseCustomMonthly(false)
   }
+
+  const hasInstallments = template && (template.installments || useCustomInstallments || useCustomMonthly)
 
   return (
     <Card className="border-[#F2A900]/30 bg-gradient-to-br from-white to-[#FFFBF0]">
@@ -246,7 +315,7 @@ export function QuickContractGenerator() {
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#F2A900]/10">
             <FileText className="w-4 h-4 text-[#F2A900]" />
           </div>
-          Generar Contrato Rapido
+          Generar Contrato R&aacute;pido
         </CardTitle>
         <p className="text-sm text-gray-500">
           Genere un contrato PDF sin necesidad de crear una cuenta de cliente
@@ -329,7 +398,6 @@ export function QuickContractGenerator() {
               </div>
             )}
 
-            {/* Addon selector dropdown */}
             {showAddonSelector ? (
               <div className="space-y-1.5">
                 <div className="relative">
@@ -345,11 +413,7 @@ export function QuickContractGenerator() {
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowAddonSelector(false)}
-                  className="text-xs text-gray-400 hover:text-gray-600"
-                >
+                <button type="button" onClick={() => setShowAddonSelector(false)} className="text-xs text-gray-400 hover:text-gray-600">
                   Cancelar
                 </button>
               </div>
@@ -366,10 +430,12 @@ export function QuickContractGenerator() {
           </div>
         )}
 
-        {/* === RESUMEN DE PRECIO Y CUOTAS === */}
+        {/* === PLAN FINANCIERO === */}
         {template && (
           <div className="space-y-3 rounded-lg border border-[#002855]/10 bg-[#002855]/5 p-3">
-            {/* Desglose */}
+            <p className="text-xs font-bold text-[#002855] uppercase tracking-wide">Plan Financiero</p>
+
+            {/* Desglose de servicios */}
             <div className="space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="text-[#002855]/70">{SERVICE_OPTIONS.find(s => s.slug === selectedSlug)?.label}:</span>
@@ -381,12 +447,6 @@ export function QuickContractGenerator() {
                   <span className="font-medium text-[#002855]">${a.price.toLocaleString()}</span>
                 </div>
               ))}
-              {addons.length > 0 && (
-                <div className="border-t border-[#002855]/10 pt-1 flex justify-between text-sm">
-                  <span className="text-[#002855]/70 font-medium">Subtotal:</span>
-                  <span className="font-bold text-[#002855]">${getCalculatedTotal().toLocaleString()}</span>
-                </div>
-              )}
             </div>
 
             {/* Precio personalizado */}
@@ -400,7 +460,7 @@ export function QuickContractGenerator() {
               />
               <label htmlFor="customPrice" className="text-xs text-[#002855]/70 flex items-center gap-1">
                 <DollarSign className="w-3 h-3" />
-                Precio personalizado
+                Precio total personalizado
               </label>
               {useCustomPrice && (
                 <input
@@ -413,41 +473,129 @@ export function QuickContractGenerator() {
               )}
             </div>
 
-            {/* Cuotas personalizadas */}
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="customInstallments"
-                checked={useCustomInstallments}
-                onChange={(e) => { setUseCustomInstallments(e.target.checked); if (!e.target.checked) setCustomInstallments(''); }}
-                className="rounded border-gray-300"
-              />
-              <label htmlFor="customInstallments" className="text-xs text-[#002855]/70 flex items-center gap-1">
-                <Hash className="w-3 h-3" />
-                Cuotas personalizadas
-              </label>
-              {useCustomInstallments && (
-                <input
-                  type="number"
-                  value={customInstallments}
-                  onChange={(e) => setCustomInstallments(e.target.value)}
-                  placeholder="11"
-                  min="1"
-                  max="36"
-                  className="w-16 h-7 text-sm text-center rounded border border-[#002855]/20 px-2"
-                />
-              )}
-            </div>
-
-            {/* Total final */}
+            {/* Total */}
             <div className="border-t border-[#002855]/20 pt-2 flex justify-between items-center">
               <span className="text-sm font-bold text-[#002855]">Total del contrato:</span>
               <span className="text-lg font-bold text-[#002855]">${getFinalPrice().toLocaleString()} USD</span>
             </div>
-            {(template.installments || useCustomInstallments) && (
-              <div className="flex justify-between text-xs text-[#002855]/60">
-                <span>{getFinalInstallments()} cuotas mensuales</span>
-                <span>${Math.round(getFinalPrice() / getFinalInstallments()).toLocaleString()} USD/mes</span>
+
+            {/* Fecha de inicio */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs text-[#002855]/70 flex items-center gap-1">
+                  <CalendarClock className="w-3 h-3" />
+                  Fecha de inicio del contrato
+                </label>
+                <Input
+                  type="date"
+                  value={contractStartDate}
+                  onChange={(e) => setContractStartDate(e.target.value)}
+                  className="h-8 text-sm rounded-lg"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-[#002855]/70 flex items-center gap-1">
+                  <DollarSign className="w-3 h-3" />
+                  Cuota inicial (enganche)
+                </label>
+                <Input
+                  type="number"
+                  value={initialPayment}
+                  onChange={(e) => setInitialPayment(e.target.value)}
+                  placeholder="0"
+                  min="0"
+                  className="h-8 text-sm rounded-lg"
+                />
+              </div>
+            </div>
+
+            {/* Saldo restante */}
+            {getInitialPayment() > 0 && (
+              <div className="flex justify-between text-sm px-1">
+                <span className="text-[#002855]/70">Saldo restante:</span>
+                <span className="font-bold text-[#002855]">${getRemainingBalance().toLocaleString()} USD</span>
+              </div>
+            )}
+
+            {/* Opciones de cuotas */}
+            <div className="space-y-2 border-t border-[#002855]/10 pt-2">
+              <p className="text-xs font-semibold text-[#002855]/70">Configurar cuotas mensuales:</p>
+
+              {/* Opción 1: Número de cuotas */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  id="byInstallments"
+                  name="paymentMode"
+                  checked={!useCustomMonthly}
+                  onChange={() => { setUseCustomMonthly(false); setCustomMonthlyAmount(''); }}
+                  className="border-gray-300"
+                />
+                <label htmlFor="byInstallments" className="text-xs text-[#002855]/70 flex items-center gap-1">
+                  <Hash className="w-3 h-3" />
+                  Por n&uacute;mero de cuotas
+                </label>
+                {!useCustomMonthly && (
+                  <input
+                    type="number"
+                    value={useCustomInstallments ? customInstallments : (template ? getInstallmentCount(template.variants[selectedVariantIndex]).toString() : '10')}
+                    onChange={(e) => { setUseCustomInstallments(true); setCustomInstallments(e.target.value); }}
+                    min="1"
+                    max="36"
+                    className="w-16 h-7 text-sm text-center rounded border border-[#002855]/20 px-2"
+                  />
+                )}
+                {!useCustomMonthly && (
+                  <span className="text-xs text-gray-500">= ${getFinalMonthly().toLocaleString()}/mes</span>
+                )}
+              </div>
+
+              {/* Opción 2: Monto mensual fijo */}
+              <div className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  id="byMonthly"
+                  name="paymentMode"
+                  checked={useCustomMonthly}
+                  onChange={() => setUseCustomMonthly(true)}
+                  className="border-gray-300"
+                />
+                <label htmlFor="byMonthly" className="text-xs text-[#002855]/70 flex items-center gap-1">
+                  <DollarSign className="w-3 h-3" />
+                  Por monto mensual fijo
+                </label>
+                {useCustomMonthly && (
+                  <>
+                    <input
+                      type="number"
+                      value={customMonthlyAmount}
+                      onChange={(e) => setCustomMonthlyAmount(e.target.value)}
+                      placeholder="250"
+                      min="1"
+                      className="w-20 h-7 text-sm text-right rounded border border-[#002855]/20 px-2"
+                    />
+                    {customMonthlyAmount && parseFloat(customMonthlyAmount) > 0 && (
+                      <span className="text-xs text-gray-500">= {getFinalInstallments()} cuotas</span>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Preview cronograma */}
+            {hasInstallments && getFinalInstallments() > 0 && (
+              <div className="border-t border-[#002855]/10 pt-2">
+                <p className="text-xs font-semibold text-[#002855]/70 mb-1">Cronograma de pagos:</p>
+                <div className="max-h-40 overflow-y-auto space-y-0.5">
+                  {buildPaymentSchedule().map((p) => (
+                    <div key={p.number} className="flex justify-between text-xs px-1 py-0.5 rounded hover:bg-[#002855]/5">
+                      <span className="text-[#002855]/60">
+                        {p.number === 0 ? 'Cuota inicial' : `Cuota ${p.number}`} — {new Date(p.date + 'T12:00:00').toLocaleDateString('es-US', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                      <span className="font-medium text-[#002855]">${p.amount.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
@@ -537,31 +685,10 @@ export function QuickContractGenerator() {
                       )}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <Input
-                        placeholder="Nombre completo del menor *"
-                        value={minor.fullName}
-                        onChange={(e) => updateMinor(index, 'fullName', e.target.value)}
-                        className="h-9 rounded-lg text-sm bg-white"
-                      />
-                      <Input
-                        type="date"
-                        placeholder="Fecha de nacimiento"
-                        value={minor.dob}
-                        onChange={(e) => updateMinor(index, 'dob', e.target.value)}
-                        className="h-9 rounded-lg text-sm bg-white"
-                      />
-                      <Input
-                        placeholder="Lugar de nacimiento"
-                        value={minor.birthplace}
-                        onChange={(e) => updateMinor(index, 'birthplace', e.target.value)}
-                        className="h-9 rounded-lg text-sm bg-white"
-                      />
-                      <Input
-                        placeholder="Pasaporte del menor"
-                        value={minor.passport}
-                        onChange={(e) => updateMinor(index, 'passport', e.target.value)}
-                        className="h-9 rounded-lg text-sm bg-white"
-                      />
+                      <Input placeholder="Nombre completo del menor *" value={minor.fullName} onChange={(e) => updateMinor(index, 'fullName', e.target.value)} className="h-9 rounded-lg text-sm bg-white" />
+                      <Input type="date" placeholder="Fecha de nacimiento" value={minor.dob} onChange={(e) => updateMinor(index, 'dob', e.target.value)} className="h-9 rounded-lg text-sm bg-white" />
+                      <Input placeholder="Lugar de nacimiento" value={minor.birthplace} onChange={(e) => updateMinor(index, 'birthplace', e.target.value)} className="h-9 rounded-lg text-sm bg-white" />
+                      <Input placeholder="Pasaporte del menor" value={minor.passport} onChange={(e) => updateMinor(index, 'passport', e.target.value)} className="h-9 rounded-lg text-sm bg-white" />
                     </div>
                   </div>
                 ))}
