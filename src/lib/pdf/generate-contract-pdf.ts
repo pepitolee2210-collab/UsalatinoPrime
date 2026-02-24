@@ -319,7 +319,9 @@ export function generateContractPDF(input: ContractPDFInput): jsPDF {
   doc.setFontSize(22)
   doc.setTextColor(20, 20, 80)
   doc.text('Jimy Henry Orellana', leftX + 2, y)
-  doc.text(clientSignature, rightX + 2, y)
+  if (clientSignature.trim()) {
+    doc.text(clientSignature, rightX + 2, y)
+  }
   y += 8
 
   // Signature lines

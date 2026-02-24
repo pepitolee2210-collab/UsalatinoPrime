@@ -160,10 +160,6 @@ export function QuickContractGenerator() {
       toast.error('Ingrese la fecha de nacimiento')
       return
     }
-    if (!contractForm.clientSignature.trim()) {
-      toast.error('Ingrese la firma del cliente')
-      return
-    }
     if (template.requiresMinor && minors.some(m => !m.fullName.trim())) {
       toast.error('Ingrese el nombre de todos los menores')
       return
@@ -504,7 +500,7 @@ export function QuickContractGenerator() {
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium text-[#002855] flex items-center gap-1.5">
                   <PenLine className="w-3.5 h-3.5 text-gray-400" />
-                  Firma (nombre completo) <span className="text-[#F2A900]">*</span>
+                  Firma (nombre completo)
                 </Label>
                 <Input
                   placeholder="Escriba el nombre como firma"
