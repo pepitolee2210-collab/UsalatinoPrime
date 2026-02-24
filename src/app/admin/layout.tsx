@@ -18,7 +18,6 @@ const navItems = [
   { href: '/admin/cases', label: 'Casos', icon: FileText },
   { href: '/admin/clients', label: 'Clientes', icon: Users },
   { href: '/admin/payments', label: 'Pagos', icon: CreditCard },
-  { href: '/admin/miedo-creible', label: 'Miedo Creible', icon: Shield },
   { href: '/admin/visa-juvenil', label: 'Visa Juvenil', icon: Baby },
   { href: '/admin/asilo', label: 'Asilo I-589', icon: FileText },
   { href: '/admin/comunidad', label: 'Comunidad', icon: MessageSquare },

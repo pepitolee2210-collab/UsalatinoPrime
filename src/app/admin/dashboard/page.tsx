@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   FileText, Users, DollarSign, AlertCircle, Clock,
   MessageCircle, CalendarClock, CheckCircle, TrendingUp,
-  AlertTriangle, CreditCard, Shield, Baby,
+  AlertTriangle, CreditCard, Baby,
 } from 'lucide-react'
 import { format, addDays } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -120,14 +120,6 @@ export default async function AdminDashboardPage() {
     .from('zelle_payments')
     .select('*', { count: 'exact', head: true })
     .eq('status', 'pending')
-
-  // ── Credible Fear Submissions ──
-  const { data: credibleFearSubmissions, count: credibleFearCount } = await supabase
-    .from('credible_fear_submissions')
-    .select('*', { count: 'exact' })
-    .eq('status', 'pending')
-    .order('created_at', { ascending: false })
-    .limit(10)
 
   // ── Visa Juvenil Submissions ──
   const { count: visaJuvenilCount } = await supabase
@@ -275,26 +267,6 @@ export default async function AdminDashboardPage() {
                   </div>
                 </div>
                 <Badge className="bg-[#F2A900] text-white">{zellePendingCount} &rarr;</Badge>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-      )}
-
-      {/* ── Credible Fear Quick Link ── */}
-      {(credibleFearCount ?? 0) > 0 && (
-        <Link href="/admin/miedo-creible">
-          <Card className="border-amber-200 hover:bg-amber-50/50 transition-colors cursor-pointer">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Shield className="w-5 h-5 text-amber-600" />
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900">Formularios de Miedo Cre&iacute;ble</p>
-                    <p className="text-xs text-gray-500">{credibleFearCount} pendiente{credibleFearCount! > 1 ? 's' : ''} de revisi&oacute;n</p>
-                  </div>
-                </div>
-                <Badge className="bg-amber-100 text-amber-800">{credibleFearCount} &rarr;</Badge>
               </div>
             </CardContent>
           </Card>
