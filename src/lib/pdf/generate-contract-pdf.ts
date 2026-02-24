@@ -93,7 +93,7 @@ export function generateContractPDF(input: ContractPDFInput): jsPDF {
     doc.setFont(FONT, WEIGHT)
     doc.setFontSize(7)
     doc.setTextColor(160, 160, 160)
-    doc.text('UsaLatinoPrime - Contrato de Prestacion de Servicios', margin, pageHeight - 12)
+    doc.text('UsaLatinoPrime - Contrato de Prestaci\u00f3n de Servicios', margin, pageHeight - 12)
     const genDate = new Date().toLocaleString('es-US')
     doc.text(`Generado: ${genDate}`, pageWidth - margin, pageHeight - 12, { align: 'right' })
     doc.setDrawColor(230, 230, 230)
@@ -146,7 +146,7 @@ export function generateContractPDF(input: ContractPDFInput): jsPDF {
   doc.setFont(FONT, WEIGHT)
   doc.setFontSize(13)
   doc.setTextColor(...NAVY)
-  doc.text('CONTRATO DE PRESTACION DE SERVICIOS', pageWidth / 2, y, { align: 'center' })
+  doc.text('CONTRATO DE PRESTACI\u00d3N DE SERVICIOS', pageWidth / 2, y, { align: 'center' })
   y += 7
   doc.setFontSize(11)
   const allServiceNames = addonServices && addonServices.length > 0
@@ -169,8 +169,8 @@ export function generateContractPDF(input: ContractPDFInput): jsPDF {
   doc.text('EL CONSULTOR:', margin + 2, y)
   y += 6
   fieldLine('Empresa:', 'USA LATINO PRIME')
-  fieldLine('Representante:', 'Jimy Henry Orellana Dominguez')
-  fieldLine('Telefono:', '801-941-3479')
+  fieldLine('Representante:', 'Jimy Henry Orellana Dom\u00ednguez')
+  fieldLine('Tel\u00e9fono:', '801-941-3479')
   fieldLine('Zelle:', '801-941-3479')
   y += 4
 
@@ -254,42 +254,42 @@ export function generateContractPDF(input: ContractPDFInput): jsPDF {
   } else {
     paragraph(
       `Los honorarios por los servicios descritos en este contrato ascienden a un total de $${totalPrice.toLocaleString()} USD, ` +
-      `pagaderos en un pago unico al momento de la contratacion del servicio.`
+      `pagaderos en un pago \u00fanico al momento de la contrataci\u00f3n del servicio.`
     )
   }
   bodyStyle()
-  doc.text('Metodo de pago: Zelle al 801-941-3479', margin + 2, y)
+  doc.text('M\u00e9todo de pago: Zelle al 801-941-3479', margin + 2, y)
   y += 8
 
   // === GASTOS INCLUIDOS Y NO INCLUIDOS ===
   sectionTitle('GASTOS INCLUIDOS Y NO INCLUIDOS')
   paragraph(
-    'Los honorarios descritos incluyen todos los costos de traduccion, certificacion de documentos, ' +
-    'envios postales y demas gastos operativos relacionados con la preparacion del caso. ' +
+    'Los honorarios descritos incluyen todos los costos de traducci\u00f3n, certificaci\u00f3n de documentos, ' +
+    'env\u00edos postales y dem\u00e1s gastos operativos relacionados con la preparaci\u00f3n del caso. ' +
     'Dichos gastos son cubiertos en su totalidad por EL CONSULTOR como parte del servicio contratado.'
   )
   paragraph(
     'Los honorarios NO incluyen gastos gubernamentales (filing fees) que las agencias de gobierno ' +
-    'requieran para procesar la solicitud. Dichos gastos seran responsabilidad del CLIENTE y se ' +
-    'le informara oportunamente sobre los montos correspondientes.'
+    'requieran para procesar la solicitud. Dichos gastos ser\u00e1n responsabilidad del CLIENTE y se ' +
+    'le informar\u00e1 oportunamente sobre los montos correspondientes.'
   )
 
   // === NATURALEZA DEL SERVICIO ===
   sectionTitle('NATURALEZA DEL SERVICIO')
   paragraph(
-    'El CONSULTOR brinda servicios de asesoria y asistencia en la preparacion de documentos y tramites ' +
-    'migratorios. El CONSULTOR no es abogado y no ofrece representacion legal ante ninguna agencia gubernamental ' +
+    'El CONSULTOR brinda servicios de asesor\u00eda y asistencia en la preparaci\u00f3n de documentos y tr\u00e1mites ' +
+    'migratorios. El CONSULTOR no es abogado y no ofrece representaci\u00f3n legal ante ninguna agencia gubernamental ' +
     'ni tribunal. Los resultados del proceso dependen de las autoridades competentes y no pueden ser garantizados.'
   )
 
   // === OBLIGACIONES DEL CLIENTE ===
   sectionTitle('OBLIGACIONES DEL CLIENTE')
   const obligaciones = [
-    'Proporcionar informacion veraz y completa para la preparacion de su caso.',
-    'Entregar la documentacion solicitada en los plazos acordados.',
-    'Realizar los pagos segun el plan de cuotas establecido.',
+    'Proporcionar informaci\u00f3n veraz y completa para la preparaci\u00f3n de su caso.',
+    'Entregar la documentaci\u00f3n solicitada en los plazos acordados.',
+    'Realizar los pagos seg\u00fan el plan de cuotas establecido.',
     'Asistir puntualmente a todas las citas programadas.',
-    'Informar al CONSULTOR de cualquier cambio en su situacion personal o migratoria.',
+    'Informar al CONSULTOR de cualquier cambio en su situaci\u00f3n personal o migratoria.',
   ]
   obligaciones.forEach((obl) => {
     bodyStyle()
@@ -302,10 +302,10 @@ export function generateContractPDF(input: ContractPDFInput): jsPDF {
   y += 6
 
   // === ACEPTACION Y FIRMAS ===
-  sectionTitle('ACEPTACION')
+  sectionTitle('ACEPTACI\u00d3N')
   paragraph(
-    'Ambas partes declaran haber leido y comprendido el contenido de este contrato, y lo aceptan ' +
-    'en todas sus partes, firmando a continuacion en senal de conformidad.'
+    'Ambas partes declaran haber le\u00eddo y comprendido el contenido de este contrato, y lo aceptan ' +
+    'en todas sus partes, firmando a continuaci\u00f3n en se\u00f1al de conformidad.'
   )
   y += 8
 
@@ -336,7 +336,7 @@ export function generateContractPDF(input: ContractPDFInput): jsPDF {
   doc.text('EL CONSULTOR', leftX, y)
   doc.text('EL CLIENTE', rightX, y)
   y += 5
-  doc.text('Jimy Henry Orellana Dominguez', leftX, y)
+  doc.text('Jimy Henry Orellana Dom\u00ednguez', leftX, y)
   doc.text(clientFullName, rightX, y)
   y += 4
   doc.text('USA LATINO PRIME', leftX, y)
