@@ -21,6 +21,7 @@ const navItems = [
   { href: '/admin/visa-juvenil', label: 'Visa Juvenil', icon: Baby },
   { href: '/admin/asilo', label: 'Asilo I-589', icon: FileText },
   { href: '/admin/ajuste-estatus', label: 'Ajuste de Estatus', icon: FileText },
+  { href: '/admin/renuncia', label: 'Renuncia Custodia', icon: FileText },
   { href: '/admin/comunidad', label: 'Comunidad', icon: MessageSquare },
 ]
 
