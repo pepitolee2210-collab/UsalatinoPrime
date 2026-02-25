@@ -3,22 +3,30 @@ import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/service'
 
 const renunciaSchema = z.object({
-  // Datos de la madre
-  mother_full_name: z.string().min(2, 'Nombre completo de la madre requerido'),
-  mother_nationality: z.string().min(1, 'Nacionalidad de la madre requerida'),
-  mother_dni: z.string().min(1, 'DNI de la madre requerido'),
-  mother_address: z.string().min(1, 'Direccion de la madre requerida'),
+  // Datos del firmante (mapped to mother/father fields)
+  mother_full_name: z.string().min(2, 'Nombre completo requerido'),
+  mother_nationality: z.string().min(1, 'Nacionalidad requerida'),
+  mother_dni: z.string().min(1, 'DNI requerido'),
+  mother_address: z.string().min(1, 'Direccion requerida'),
 
-  // Datos de la hija
-  daughter_full_name: z.string().min(2, 'Nombre completo de la hija requerido'),
-  daughter_dob: z.string().min(1, 'Fecha de nacimiento de la hija requerida'),
-  daughter_birth_certificate_municipality: z.string().min(1, 'Municipalidad del acta de nacimiento requerida'),
+  // Datos del hijo/a
+  daughter_full_name: z.string().min(2, 'Nombre completo requerido'),
+  daughter_dob: z.string().min(1, 'Fecha de nacimiento requerida'),
+  daughter_birth_certificate_municipality: z.string().min(1, 'Municipalidad requerida'),
 
-  // Datos del padre
-  father_full_name: z.string().min(2, 'Nombre completo del padre requerido'),
-  father_passport: z.string().min(1, 'Pasaporte del padre requerido'),
-  father_country_state: z.string().min(1, 'Estado/pais del padre requerido'),
-  father_address_with_daughter: z.string().min(1, 'Direccion del padre con la hija requerida'),
+  // Datos del custodio
+  father_full_name: z.string().min(2, 'Nombre completo requerido'),
+  father_passport: z.string().min(1, 'Pasaporte requerido'),
+  father_country_state: z.string().min(1, 'Estado requerido'),
+  father_address_with_daughter: z.string().min(1, 'Direccion requerida'),
+
+  // New document config fields
+  guardianship_state: z.string().min(1, 'Estado de custodia requerido'),
+  signer_role: z.enum(['mother', 'father']),
+  child_gender: z.enum(['daughter', 'son']),
+  country_left: z.string().min(1, 'País requerido'),
+  caregiver_since_year: z.string().min(1, 'Año requerido'),
+  signing_city: z.string().min(1, 'Ciudad de firma requerida'),
 })
 
 export async function POST(request: Request) {
@@ -49,6 +57,12 @@ export async function POST(request: Request) {
         father_passport: parsed.data.father_passport,
         father_country_state: parsed.data.father_country_state,
         father_address_with_daughter: parsed.data.father_address_with_daughter,
+        guardianship_state: parsed.data.guardianship_state,
+        signer_role: parsed.data.signer_role,
+        child_gender: parsed.data.child_gender,
+        country_left: parsed.data.country_left,
+        caregiver_since_year: parsed.data.caregiver_since_year,
+        signing_city: parsed.data.signing_city,
       })
 
     if (error) {

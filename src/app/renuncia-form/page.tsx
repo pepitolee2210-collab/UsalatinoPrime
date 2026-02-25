@@ -4,34 +4,47 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { ChevronDown, ChevronUp, CheckCircle, Loader2 } from 'lucide-react'
 
-const sections = [
-  { id: 1, title: 'Datos de la Madre (quien firma)' },
-  { id: 2, title: 'Datos de la Hija' },
-  { id: 3, title: 'Datos del Padre' },
-]
-
 export default function RenunciaFormPage() {
-  // Section 1: Datos de la Madre
-  const [madreNombre, setMadreNombre] = useState('')
-  const [madreNacionalidad, setMadreNacionalidad] = useState('')
-  const [madreDni, setMadreDni] = useState('')
-  const [madreDireccion, setMadreDireccion] = useState('')
+  // Section 0: Datos del Documento
+  const [signerRole, setSignerRole] = useState<'mother' | 'father'>('mother')
+  const [childGender, setChildGender] = useState<'daughter' | 'son'>('daughter')
+  const [guardianshipState, setGuardianshipState] = useState('')
+  const [countryLeft, setCountryLeft] = useState('')
+  const [caregiverSinceYear, setCaregiverSinceYear] = useState('')
+  const [signingCity, setSigningCity] = useState('')
 
-  // Section 2: Datos de la Hija
-  const [hijaNombre, setHijaNombre] = useState('')
-  const [hijaFechaNacimiento, setHijaFechaNacimiento] = useState('')
-  const [hijaMunicipio, setHijaMunicipio] = useState('')
+  // Section 1: Datos del firmante (quien renuncia)
+  const [signerNombre, setSignerNombre] = useState('')
+  const [signerNacionalidad, setSignerNacionalidad] = useState('')
+  const [signerDni, setSignerDni] = useState('')
+  const [signerDireccion, setSignerDireccion] = useState('')
 
-  // Section 3: Datos del Padre
-  const [padreNombre, setPadreNombre] = useState('')
-  const [padrePasaporte, setPadrePasaporte] = useState('')
-  const [padreResidencia, setPadreResidencia] = useState('')
-  const [padreDireccionHija, setPadreDireccionHija] = useState('')
+  // Section 2: Datos del hijo/a
+  const [childNombre, setChildNombre] = useState('')
+  const [childFechaNacimiento, setChildFechaNacimiento] = useState('')
+  const [childMunicipio, setChildMunicipio] = useState('')
 
-  const [openSections, setOpenSections] = useState<Set<number>>(new Set([1]))
+  // Section 3: Datos del otro padre/madre (quien tiene custodia)
+  const [custodianNombre, setCustodianNombre] = useState('')
+  const [custodianPasaporte, setCustodianPasaporte] = useState('')
+  const [custodianResidencia, setCustodianResidencia] = useState('')
+  const [custodianDireccionChild, setCustodianDireccionChild] = useState('')
+
+  const [openSections, setOpenSections] = useState<Set<number>>(new Set([0]))
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  const signerLabel = signerRole === 'mother' ? 'Madre' : 'Padre'
+  const custodianLabel = signerRole === 'mother' ? 'Padre' : 'Madre'
+  const childLabel = childGender === 'daughter' ? 'Hija' : 'Hijo'
+
+  const sections = [
+    { id: 0, title: 'Configuración del Documento' },
+    { id: 1, title: `Datos de ${signerLabel === 'Madre' ? 'la' : 'el'} ${signerLabel} (quien firma)` },
+    { id: 2, title: `Datos de ${childLabel === 'Hija' ? 'la' : 'el'} ${childLabel}` },
+    { id: 3, title: `Datos de ${custodianLabel === 'Madre' ? 'la' : 'el'} ${custodianLabel} (quien tiene custodia)` },
+  ]
 
   function toggleSection(id: number) {
     setOpenSections(prev => {
@@ -44,25 +57,31 @@ export default function RenunciaFormPage() {
 
   function validate(): boolean {
     const e: Record<string, string> = {}
-    if (!madreNombre.trim()) e.madreNombre = 'Nombre completo requerido'
-    if (!madreNacionalidad.trim()) e.madreNacionalidad = 'Nacionalidad requerida'
-    if (!madreDni.trim()) e.madreDni = 'Numero de DNI requerido'
-    if (!madreDireccion.trim()) e.madreDireccion = 'Direccion requerida'
-    if (!hijaNombre.trim()) e.hijaNombre = 'Nombre completo requerido'
-    if (!hijaFechaNacimiento) e.hijaFechaNacimiento = 'Fecha de nacimiento requerida'
-    if (!hijaMunicipio.trim()) e.hijaMunicipio = 'Municipio requerido'
-    if (!padreNombre.trim()) e.padreNombre = 'Nombre completo requerido'
-    if (!padrePasaporte.trim()) e.padrePasaporte = 'Numero de pasaporte requerido'
-    if (!padreResidencia.trim()) e.padreResidencia = 'Pais/Estado de residencia requerido'
-    if (!padreDireccionHija.trim()) e.padreDireccionHija = 'Direccion requerida'
+    if (!guardianshipState.trim()) e.guardianshipState = 'Estado requerido'
+    if (!countryLeft.trim()) e.countryLeft = 'País requerido'
+    if (!caregiverSinceYear.trim()) e.caregiverSinceYear = 'Año requerido'
+    if (!signingCity.trim()) e.signingCity = 'Ciudad requerida'
+    if (!signerNombre.trim()) e.signerNombre = 'Nombre completo requerido'
+    if (!signerNacionalidad.trim()) e.signerNacionalidad = 'Nacionalidad requerida'
+    if (!signerDni.trim()) e.signerDni = 'Numero de DNI requerido'
+    if (!signerDireccion.trim()) e.signerDireccion = 'Direccion requerida'
+    if (!childNombre.trim()) e.childNombre = 'Nombre completo requerido'
+    if (!childFechaNacimiento) e.childFechaNacimiento = 'Fecha de nacimiento requerida'
+    if (!childMunicipio.trim()) e.childMunicipio = 'Municipio requerido'
+    if (!custodianNombre.trim()) e.custodianNombre = 'Nombre completo requerido'
+    if (!custodianPasaporte.trim()) e.custodianPasaporte = 'Numero de pasaporte requerido'
+    if (!custodianResidencia.trim()) e.custodianResidencia = 'Estado de residencia requerido'
+    if (!custodianDireccionChild.trim()) e.custodianDireccionChild = 'Direccion requerida'
 
     setErrors(e)
     if (Object.keys(e).length > 0) {
       const sectionErrors = new Set<number>()
-      const s1 = ['madreNombre', 'madreNacionalidad', 'madreDni', 'madreDireccion']
-      const s2 = ['hijaNombre', 'hijaFechaNacimiento', 'hijaMunicipio']
-      const s3 = ['padreNombre', 'padrePasaporte', 'padreResidencia', 'padreDireccionHija']
+      const s0 = ['guardianshipState', 'countryLeft', 'caregiverSinceYear', 'signingCity']
+      const s1 = ['signerNombre', 'signerNacionalidad', 'signerDni', 'signerDireccion']
+      const s2 = ['childNombre', 'childFechaNacimiento', 'childMunicipio']
+      const s3 = ['custodianNombre', 'custodianPasaporte', 'custodianResidencia', 'custodianDireccionChild']
       for (const key of Object.keys(e)) {
+        if (s0.includes(key)) sectionErrors.add(0)
         if (s1.includes(key)) sectionErrors.add(1)
         if (s2.includes(key)) sectionErrors.add(2)
         if (s3.includes(key)) sectionErrors.add(3)
@@ -78,17 +97,24 @@ export default function RenunciaFormPage() {
     if (!validate()) { toast.error('Por favor complete los campos requeridos'); return }
 
     const body = {
-      mother_full_name: madreNombre,
-      mother_nationality: madreNacionalidad,
-      mother_dni: madreDni,
-      mother_address: madreDireccion,
-      daughter_full_name: hijaNombre,
-      daughter_dob: hijaFechaNacimiento,
-      daughter_birth_certificate_municipality: hijaMunicipio,
-      father_full_name: padreNombre,
-      father_passport: padrePasaporte,
-      father_country_state: padreResidencia,
-      father_address_with_daughter: padreDireccionHija,
+      mother_full_name: signerRole === 'mother' ? signerNombre : custodianNombre,
+      mother_nationality: signerRole === 'mother' ? signerNacionalidad : '',
+      mother_dni: signerRole === 'mother' ? signerDni : '',
+      mother_address: signerRole === 'mother' ? signerDireccion : '',
+      daughter_full_name: childNombre,
+      daughter_dob: childFechaNacimiento,
+      daughter_birth_certificate_municipality: childMunicipio,
+      father_full_name: signerRole === 'father' ? signerNombre : custodianNombre,
+      father_passport: signerRole === 'father' ? signerDni : custodianPasaporte,
+      father_country_state: custodianResidencia,
+      father_address_with_daughter: custodianDireccionChild,
+      // New fields
+      guardianship_state: guardianshipState,
+      signer_role: signerRole,
+      child_gender: childGender,
+      country_left: countryLeft,
+      caregiver_since_year: caregiverSinceYear,
+      signing_city: signingCity,
     }
 
     setSubmitting(true)
@@ -111,7 +137,7 @@ export default function RenunciaFormPage() {
           <h2 className="text-2xl font-bold text-[#002855] mb-2">Formulario Enviado</h2>
           <p className="text-gray-600 mb-6">
             Su formulario de Renuncia Voluntaria de Custodia ha sido recibido exitosamente.
-            Un representante de UsaLatinoPrime lo contactara pronto para revisar su caso.
+            Un representante lo contactara pronto para revisar su caso.
           </p>
           <div className="bg-blue-50 rounded-lg p-4 text-sm text-[#002855]">
             <p className="font-medium">¿Tiene preguntas?</p>
@@ -146,56 +172,93 @@ export default function RenunciaFormPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* -- Section 1: Datos de la Madre -- */}
-          <SectionAccordion section={sections[0]} isOpen={openSections.has(1)} onToggle={() => toggleSection(1)}
-            hasErrors={['madreNombre','madreNacionalidad','madreDni','madreDireccion'].some(k => errors[k])}>
+          {/* -- Section 0: Configuración del Documento -- */}
+          <SectionAccordion section={sections[0]} isOpen={openSections.has(0)} onToggle={() => toggleSection(0)}
+            hasErrors={['guardianshipState','countryLeft','caregiverSinceYear','signingCity'].some(k => errors[k])}>
             <div className="space-y-4">
-              <Field label="Nombre completo de la madre" error={errors.madreNombre} required>
-                <input type="text" value={madreNombre} onChange={e => setMadreNombre(e.target.value)} placeholder="Nombre completo" className={inputClass(errors.madreNombre)} />
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="¿Quién firma la renuncia?" required>
+                  <select value={signerRole} onChange={e => setSignerRole(e.target.value as 'mother' | 'father')} className={inputClass()}>
+                    <option value="mother">La Madre</option>
+                    <option value="father">El Padre</option>
+                  </select>
+                </Field>
+                <Field label="Género del hijo/a" required>
+                  <select value={childGender} onChange={e => setChildGender(e.target.value as 'daughter' | 'son')} className={inputClass()}>
+                    <option value="daughter">Hija (femenino)</option>
+                    <option value="son">Hijo (masculino)</option>
+                  </select>
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Estado de EE.UU. (para custodia)" error={errors.guardianshipState} required>
+                  <input type="text" value={guardianshipState} onChange={e => setGuardianshipState(e.target.value)} placeholder="Ej: Utah" className={inputClass(errors.guardianshipState)} />
+                </Field>
+                <Field label="País que dejó el firmante" error={errors.countryLeft} required>
+                  <input type="text" value={countryLeft} onChange={e => setCountryLeft(e.target.value)} placeholder="Ej: Peru" className={inputClass(errors.countryLeft)} />
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Año desde que el cuidador tiene custodia" error={errors.caregiverSinceYear} required>
+                  <input type="text" value={caregiverSinceYear} onChange={e => setCaregiverSinceYear(e.target.value)} placeholder="Ej: 2026" className={inputClass(errors.caregiverSinceYear)} />
+                </Field>
+                <Field label="Ciudad y país donde se firma" error={errors.signingCity} required>
+                  <input type="text" value={signingCity} onChange={e => setSigningCity(e.target.value)} placeholder="Ej: Lima, Peru" className={inputClass(errors.signingCity)} />
+                </Field>
+              </div>
+            </div>
+          </SectionAccordion>
+
+          {/* -- Section 1: Datos del firmante -- */}
+          <SectionAccordion section={sections[1]} isOpen={openSections.has(1)} onToggle={() => toggleSection(1)}
+            hasErrors={['signerNombre','signerNacionalidad','signerDni','signerDireccion'].some(k => errors[k])}>
+            <div className="space-y-4">
+              <Field label={`Nombre completo de ${signerLabel === 'Madre' ? 'la' : 'el'} ${signerLabel.toLowerCase()}`} error={errors.signerNombre} required>
+                <input type="text" value={signerNombre} onChange={e => setSignerNombre(e.target.value)} placeholder="Nombre completo" className={inputClass(errors.signerNombre)} />
               </Field>
-              <Field label="Nacionalidad" error={errors.madreNacionalidad} required>
-                <input type="text" value={madreNacionalidad} onChange={e => setMadreNacionalidad(e.target.value)} placeholder="Ej: Hondurena" className={inputClass(errors.madreNacionalidad)} />
+              <Field label="Nacionalidad" error={errors.signerNacionalidad} required>
+                <input type="text" value={signerNacionalidad} onChange={e => setSignerNacionalidad(e.target.value)} placeholder="Ej: Peruana" className={inputClass(errors.signerNacionalidad)} />
               </Field>
-              <Field label="Numero de DNI" error={errors.madreDni} required>
-                <input type="text" value={madreDni} onChange={e => setMadreDni(e.target.value)} placeholder="Numero de documento de identidad" className={inputClass(errors.madreDni)} />
+              <Field label="Numero de DNI / documento de identidad" error={errors.signerDni} required>
+                <input type="text" value={signerDni} onChange={e => setSignerDni(e.target.value)} placeholder="Numero de documento" className={inputClass(errors.signerDni)} />
               </Field>
-              <Field label="Direccion completa de residencia actual" error={errors.madreDireccion} required>
-                <input type="text" value={madreDireccion} onChange={e => setMadreDireccion(e.target.value)} placeholder="Direccion completa" className={inputClass(errors.madreDireccion)} />
+              <Field label="Direccion completa de residencia actual" error={errors.signerDireccion} required>
+                <input type="text" value={signerDireccion} onChange={e => setSignerDireccion(e.target.value)} placeholder="Direccion completa" className={inputClass(errors.signerDireccion)} />
               </Field>
             </div>
           </SectionAccordion>
 
-          {/* -- Section 2: Datos de la Hija -- */}
-          <SectionAccordion section={sections[1]} isOpen={openSections.has(2)} onToggle={() => toggleSection(2)}
-            hasErrors={['hijaNombre','hijaFechaNacimiento','hijaMunicipio'].some(k => errors[k])}>
+          {/* -- Section 2: Datos del hijo/a -- */}
+          <SectionAccordion section={sections[2]} isOpen={openSections.has(2)} onToggle={() => toggleSection(2)}
+            hasErrors={['childNombre','childFechaNacimiento','childMunicipio'].some(k => errors[k])}>
             <div className="space-y-4">
-              <Field label="Nombre completo de la hija" error={errors.hijaNombre} required>
-                <input type="text" value={hijaNombre} onChange={e => setHijaNombre(e.target.value)} placeholder="Nombre completo" className={inputClass(errors.hijaNombre)} />
+              <Field label={`Nombre completo de ${childLabel === 'Hija' ? 'la' : 'el'} ${childLabel.toLowerCase()}`} error={errors.childNombre} required>
+                <input type="text" value={childNombre} onChange={e => setChildNombre(e.target.value)} placeholder="Nombre completo" className={inputClass(errors.childNombre)} />
               </Field>
-              <Field label="Fecha de nacimiento de la hija" error={errors.hijaFechaNacimiento} required>
-                <input type="date" value={hijaFechaNacimiento} onChange={e => setHijaFechaNacimiento(e.target.value)} className={inputClass(errors.hijaFechaNacimiento)} />
+              <Field label={`Fecha de nacimiento de ${childLabel === 'Hija' ? 'la' : 'el'} ${childLabel.toLowerCase()}`} error={errors.childFechaNacimiento} required>
+                <input type="date" value={childFechaNacimiento} onChange={e => setChildFechaNacimiento(e.target.value)} className={inputClass(errors.childFechaNacimiento)} />
               </Field>
-              <Field label="Municipio que emitio el acta de nacimiento" error={errors.hijaMunicipio} required>
-                <input type="text" value={hijaMunicipio} onChange={e => setHijaMunicipio(e.target.value)} placeholder="Ej: Municipio de Tegucigalpa" className={inputClass(errors.hijaMunicipio)} />
+              <Field label="Municipio / lugar que emitio el acta de nacimiento" error={errors.childMunicipio} required>
+                <input type="text" value={childMunicipio} onChange={e => setChildMunicipio(e.target.value)} placeholder="Ej: Neiva Huila Colombia" className={inputClass(errors.childMunicipio)} />
               </Field>
             </div>
           </SectionAccordion>
 
-          {/* -- Section 3: Datos del Padre -- */}
-          <SectionAccordion section={sections[2]} isOpen={openSections.has(3)} onToggle={() => toggleSection(3)}
-            hasErrors={['padreNombre','padrePasaporte','padreResidencia','padreDireccionHija'].some(k => errors[k])}>
+          {/* -- Section 3: Datos del otro padre/madre (custodio) -- */}
+          <SectionAccordion section={sections[3]} isOpen={openSections.has(3)} onToggle={() => toggleSection(3)}
+            hasErrors={['custodianNombre','custodianPasaporte','custodianResidencia','custodianDireccionChild'].some(k => errors[k])}>
             <div className="space-y-4">
-              <Field label="Nombre completo del padre" error={errors.padreNombre} required>
-                <input type="text" value={padreNombre} onChange={e => setPadreNombre(e.target.value)} placeholder="Nombre completo" className={inputClass(errors.padreNombre)} />
+              <Field label={`Nombre completo de ${custodianLabel === 'Madre' ? 'la' : 'el'} ${custodianLabel.toLowerCase()}`} error={errors.custodianNombre} required>
+                <input type="text" value={custodianNombre} onChange={e => setCustodianNombre(e.target.value)} placeholder="Nombre completo" className={inputClass(errors.custodianNombre)} />
               </Field>
-              <Field label="Numero de pasaporte del padre" error={errors.padrePasaporte} required>
-                <input type="text" value={padrePasaporte} onChange={e => setPadrePasaporte(e.target.value)} placeholder="Numero de pasaporte" className={inputClass(errors.padrePasaporte)} />
+              <Field label={`Numero de pasaporte de ${custodianLabel === 'Madre' ? 'la' : 'el'} ${custodianLabel.toLowerCase()}`} error={errors.custodianPasaporte} required>
+                <input type="text" value={custodianPasaporte} onChange={e => setCustodianPasaporte(e.target.value)} placeholder="Numero de pasaporte" className={inputClass(errors.custodianPasaporte)} />
               </Field>
-              <Field label="Pais/Estado de residencia del padre" error={errors.padreResidencia} required>
-                <input type="text" value={padreResidencia} onChange={e => setPadreResidencia(e.target.value)} placeholder="Ej: Estados Unidos, Utah" className={inputClass(errors.padreResidencia)} />
+              <Field label={`Estado de residencia en EE.UU. de ${custodianLabel === 'Madre' ? 'la' : 'el'} ${custodianLabel.toLowerCase()}`} error={errors.custodianResidencia} required>
+                <input type="text" value={custodianResidencia} onChange={e => setCustodianResidencia(e.target.value)} placeholder="Ej: Kansas" className={inputClass(errors.custodianResidencia)} />
               </Field>
-              <Field label="Direccion completa donde reside la hija con el padre" error={errors.padreDireccionHija} required>
-                <input type="text" value={padreDireccionHija} onChange={e => setPadreDireccionHija(e.target.value)} placeholder="Direccion completa" className={inputClass(errors.padreDireccionHija)} />
+              <Field label={`Direccion completa donde reside ${childLabel === 'Hija' ? 'la' : 'el'} ${childLabel.toLowerCase()} con ${custodianLabel === 'Madre' ? 'la' : 'el'} ${custodianLabel.toLowerCase()}`} error={errors.custodianDireccionChild} required>
+                <input type="text" value={custodianDireccionChild} onChange={e => setCustodianDireccionChild(e.target.value)} placeholder="Direccion completa" className={inputClass(errors.custodianDireccionChild)} />
               </Field>
             </div>
           </SectionAccordion>
@@ -238,7 +301,7 @@ function SectionAccordion({ section, isOpen, onToggle, hasErrors, children }: {
     <div className={`bg-white rounded-xl shadow-sm border ${hasErrors ? 'border-red-300' : 'border-gray-200'} overflow-hidden`}>
       <button type="button" onClick={onToggle} className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors">
         <div className="flex items-center gap-3">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${hasErrors ? 'bg-red-100 text-red-700' : 'bg-[#002855] text-white'}`}>{section.id}</div>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${hasErrors ? 'bg-red-100 text-red-700' : 'bg-[#002855] text-white'}`}>{section.id + 1}</div>
           <span className="font-semibold text-[#002855]">{section.title}</span>
           {hasErrors && <span className="text-xs text-red-600 font-medium">Campos pendientes</span>}
         </div>

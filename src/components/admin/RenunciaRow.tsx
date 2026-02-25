@@ -30,6 +30,13 @@ interface Submission {
   father_passport: string
   father_country_state: string
   father_address_with_daughter: string
+  // New fields
+  guardianship_state: string | null
+  signer_role: string | null
+  child_gender: string | null
+  country_left: string | null
+  caregiver_since_year: string | null
+  signing_city: string | null
 }
 
 const statusConfig: Record<string, { label: string; class: string }> = {
@@ -63,6 +70,46 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
   const [deleting, setDeleting] = useState(false)
 
   const statusInfo = statusConfig[status] || statusConfig.nuevo
+
+  // Determine roles from new fields (with fallback for old submissions)
+  const signerRole = submission.signer_role || 'mother'
+  const childGender = submission.child_gender || 'daughter'
+  const guardState = submission.guardianship_state || 'Utah'
+  const countryLeft = submission.country_left || 'Peru'
+  const sinceYear = submission.caregiver_since_year || String(new Date().getFullYear())
+  const signCity = submission.signing_city || 'Lima, Peru'
+
+  // Signer is the person relinquishing custody
+  const signerName = signerRole === 'mother' ? submission.mother_full_name : submission.father_full_name
+  const signerDni = signerRole === 'mother' ? submission.mother_dni : submission.father_passport
+  const signerNationality = submission.mother_nationality
+  const signerAddress = signerRole === 'mother' ? submission.mother_address : ''
+
+  // Custodian is the person keeping custody
+  const custodianName = signerRole === 'mother' ? submission.father_full_name : submission.mother_full_name
+  const custodianPassport = submission.father_passport
+  const custodianState = submission.father_country_state
+
+  // Child
+  const childName = submission.daughter_full_name
+
+  // English gendered terms
+  const signerRoleEn = signerRole === 'mother' ? 'mother' : 'father'
+  const custodianRoleEn = signerRole === 'mother' ? 'father' : 'mother'
+  const childTermEn = childGender === 'daughter' ? 'daughter' : 'son'
+  const myChildEn = `my ${childTermEn}`
+  const ourChildEn = `our ${childTermEn}`
+  const herHisChild = childGender === 'daughter' ? 'her' : 'his'
+  const sheHe = childGender === 'daughter' ? 'She' : 'He'
+  const herHim = childGender === 'daughter' ? 'him' : 'her'
+  const custodianTitle = custodianRoleEn === 'father' ? 'Mr.' : 'Mrs.'
+  const herHisCustodian = custodianRoleEn === 'father' ? 'her' : 'his'
+  const nationalityAdj = signerNationality || 'Peruvian'
+
+  // Display labels
+  const signerLabel = signerRole === 'mother' ? 'Firmante (Madre)' : 'Firmante (Padre)'
+  const custodianLabel = signerRole === 'mother' ? 'Custodio (Padre)' : 'Custodia (Madre)'
+  const childLabel = childGender === 'daughter' ? 'Hija' : 'Hijo'
 
   function handleDownloadPDF() {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' })
@@ -122,7 +169,7 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
     doc.setFontSize(10)
     doc.setFont(FONT, 'normal')
     doc.setTextColor(100, 100, 100)
-    doc.text('(For guardianship proceedings in the State of Utah, United States)', pageWidth / 2, y, { align: 'center' })
+    doc.text(`(For guardianship proceedings in the State of ${guardState}, United States)`, pageWidth / 2, y, { align: 'center' })
     y += 12
 
     // Date info
@@ -134,8 +181,8 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
 
     // Main declaration paragraph
     paragraph(
-      `I, ${submission.mother_full_name}, identified with Peruvian National Identity Document (DNI) No. ${submission.mother_dni}, ` +
-      `born in ${submission.mother_nationality}, currently residing at ${submission.mother_address}, ` +
+      `I, ${signerName}, identified with ${nationalityAdj} National Identity Document (DNI) No. ${signerDni}, ` +
+      `born in ${signerNationality}, currently residing at ${signerAddress || submission.mother_address}, ` +
       `being of sound mind and acting voluntarily, knowingly, and without coercion, hereby state and affirm the following:`
     )
 
@@ -151,42 +198,42 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
 
     // Point 1
     paragraph(
-      `1. That I am the biological mother of ${submission.daughter_full_name}, born on ${dobFormatted}, ` +
-      `in ${submission.daughter_birth_certificate_municipality}, as recorded in her birth certificate issued by the ` +
+      `1. That I am the biological ${signerRoleEn} of ${childName}, born on ${dobFormatted}, ` +
+      `in ${submission.daughter_birth_certificate_municipality}, as recorded in ${herHisChild} birth certificate issued by the ` +
       `${submission.daughter_birth_certificate_municipality}.`
     )
 
     // Point 2
     paragraph(
-      `2. That the biological father of my daughter is ${submission.father_full_name}, holder of Peruvian passport no. ` +
-      `${submission.father_passport}, currently residing in the State of ${submission.father_country_state}.`
+      `2. That the biological ${custodianRoleEn} of ${myChildEn} is ${custodianName}, holder of ${nationalityAdj} passport no. ` +
+      `${custodianPassport}, currently residing in the State of ${custodianState}.`
     )
 
     // Point 3
     paragraph(
-      `3. That due to personal and family circumstances, I made the decision to leave Peru, leaving my daughter ` +
-      `${submission.daughter_full_name} in the care and custody of her father, who has been her primary caregiver since ` +
-      `${currentYear}. She currently resides with him at ${submission.father_address_with_daughter}.`
+      `3. That due to personal and family circumstances, I made the decision to leave ${countryLeft}, leaving ${myChildEn} ` +
+      `${childName} in the care and custody of ${herHisCustodian} ${custodianRoleEn}, who has been ${herHisChild} primary caregiver since ` +
+      `${sinceYear}. ${sheHe} currently resides with ${herHim} at ${submission.father_address_with_daughter}.`
     )
 
     // Point 4
     paragraph(
-      `4. I acknowledge that Mr. ${submission.father_full_name} has assumed exclusive legal guardianship and primary ` +
-      `caregiver responsibilities for our daughter. I currently do not exercise, nor am I able to exercise, parental ` +
+      `4. I acknowledge that ${custodianTitle} ${custodianName} has assumed exclusive legal guardianship and primary ` +
+      `caregiver responsibilities for ${ourChildEn}. I currently do not exercise, nor am I able to exercise, parental ` +
       `custody or responsibilities, as I reside outside the country and our family relationship has been irreparably severed.`
     )
 
     // Point 5
     paragraph(
-      `5. I voluntarily and permanently relinquish all physical and legal custody rights over my daughter, ` +
-      `${submission.daughter_full_name}, and do not object to her father petitioning the juvenile court of the State of Utah ` +
+      `5. I voluntarily and permanently relinquish all physical and legal custody rights over ${myChildEn}, ` +
+      `${childName}, and do not object to ${herHisCustodian} ${custodianRoleEn} petitioning the juvenile court of the State of ${guardState} ` +
       `for exclusive legal guardianship, as part of a request for Special Immigrant Juvenile Status (SIJS).`
     )
 
     // Point 6
     paragraph(
-      `6. That this decision is made in the best interest of my daughter, ensuring her protection, emotional stability, ` +
-      `and continuity in her academic and personal development.`
+      `6. That this decision is made in the best interest of ${myChildEn}, ensuring ${herHisChild} protection, emotional stability, ` +
+      `and continuity in ${herHisChild} academic and personal development.`
     )
 
     y += 6
@@ -204,7 +251,7 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
     y += 4
     bodyStyle()
     checkPageBreak(8)
-    doc.text(`In the city of Lima, Peru, on the ${currentDay} of ${currentMonth}, ${currentYear}.`, margin + 2, y)
+    doc.text(`In the city of ${signCity}, on the ${currentDay} of ${currentMonth}, ${currentYear}.`, margin + 2, y)
     y += 16
 
     // Signature area
@@ -212,15 +259,15 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
     doc.text('Signature: _________________________', margin + 2, y)
     y += 8
     doc.setFont(FONT, 'bold')
-    doc.text(submission.mother_full_name, margin + 2, y)
+    doc.text(signerName, margin + 2, y)
     y += 6
     bodyStyle()
-    doc.text(`DNI: ${submission.mother_dni}`, margin + 2, y)
+    doc.text(`DNI: ${signerDni}`, margin + 2, y)
 
     // Footer
     addFooter()
 
-    const safeName = submission.mother_full_name.replace(/[^a-zA-Z0-9]/g, '_')
+    const safeName = signerName.replace(/[^a-zA-Z0-9]/g, '_')
     doc.save(`renuncia_custodia_${safeName}.pdf`)
     toast.success('PDF de renuncia descargado')
   }
@@ -304,11 +351,11 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
               <FileText className="w-5 h-5 text-purple-600" />
             </div>
             <div className="min-w-0">
-              <p className="font-semibold text-gray-900 truncate">{submission.mother_full_name}</p>
+              <p className="font-semibold text-gray-900 truncate">{signerName}</p>
               <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
                 <span className="flex items-center gap-1">
                   <User className="w-3 h-3" />
-                  Hija: {submission.daughter_full_name}
+                  {childLabel}: {childName}
                 </span>
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
@@ -384,48 +431,60 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
               </button>
             </div>
 
+            {/* Document config */}
+            {submission.signer_role && (
+              <div className="bg-purple-50 rounded-lg p-3 mb-4 flex flex-wrap gap-x-6 gap-y-1 text-xs">
+                <span><strong>Firma:</strong> {signerRole === 'mother' ? 'Madre' : 'Padre'}</span>
+                <span><strong>{childLabel}:</strong> {childGender === 'daughter' ? 'Femenino' : 'Masculino'}</span>
+                <span><strong>Estado:</strong> {guardState}</span>
+                <span><strong>País dejado:</strong> {countryLeft}</span>
+                <span><strong>Desde:</strong> {sinceYear}</span>
+                <span><strong>Ciudad firma:</strong> {signCity}</span>
+              </div>
+            )}
+
             <div className="grid gap-4 md:grid-cols-2">
-              {/* Datos de la Madre */}
+              {/* Datos del firmante */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-[#002855] mb-3 flex items-center gap-1.5">
                   <User className="w-4 h-4" />
-                  Datos de la Madre
+                  {signerLabel}
                 </h3>
                 <dl className="space-y-2 text-sm">
-                  <InfoField label="Nombre completo" value={submission.mother_full_name} />
-                  <InfoField label="Nacionalidad" value={submission.mother_nationality} />
-                  <InfoField label="DNI" value={submission.mother_dni} />
-                  <InfoField label="Direccion" value={submission.mother_address} />
+                  <InfoField label="Nombre completo" value={signerName} />
+                  <InfoField label="Nacionalidad" value={signerNationality} />
+                  <InfoField label="DNI / Documento" value={signerDni} />
+                  <InfoField label="Direccion" value={signerAddress || submission.mother_address} />
                 </dl>
               </div>
 
-              {/* Datos de la Hija */}
+              {/* Datos del hijo/a */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-[#002855] mb-3 flex items-center gap-1.5">
                   <User className="w-4 h-4" />
-                  Datos de la Hija
+                  Datos {childGender === 'daughter' ? 'de la' : 'del'} {childLabel}
                 </h3>
                 <dl className="space-y-2 text-sm">
-                  <InfoField label="Nombre completo" value={submission.daughter_full_name} />
+                  <InfoField label="Nombre completo" value={childName} />
                   <InfoField label="Fecha de nacimiento" value={formatDate(submission.daughter_dob)} />
-                  <InfoField label="Municipalidad acta de nacimiento" value={submission.daughter_birth_certificate_municipality} />
+                  <InfoField label="Lugar acta de nacimiento" value={submission.daughter_birth_certificate_municipality} />
                 </dl>
               </div>
 
-              {/* Datos del Padre */}
+              {/* Datos del custodio */}
               <div className="bg-gray-50 rounded-lg p-4 md:col-span-2">
                 <h3 className="text-sm font-semibold text-[#002855] mb-3 flex items-center gap-1.5">
                   <User className="w-4 h-4" />
-                  Datos del Padre
+                  {custodianLabel}
                 </h3>
                 <div className="grid gap-4 md:grid-cols-2">
                   <dl className="space-y-2 text-sm">
-                    <InfoField label="Nombre completo" value={submission.father_full_name} />
-                    <InfoField label="Pasaporte" value={submission.father_passport} />
+                    <InfoField label="Nombre completo" value={custodianName} />
+                    <InfoField label="Pasaporte" value={custodianPassport} />
                   </dl>
                   <dl className="space-y-2 text-sm">
-                    <InfoField label="Estado/Pais" value={submission.father_country_state} />
-                    <InfoField label="Direccion con la hija" value={submission.father_address_with_daughter} />
+                    <InfoField label="Estado de residencia" value={custodianState} />
+                    <InfoField label={`Direccion con ${childGender === 'daughter' ? 'la' : 'el'} ${childLabel.toLowerCase()}`} value={submission.father_address_with_daughter} />
                   </dl>
                 </div>
               </div>
