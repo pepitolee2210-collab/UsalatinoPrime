@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { ChevronDown, ChevronUp, Play, CheckCircle, Loader2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, CheckCircle, Loader2 } from 'lucide-react'
 
 const sections = [
   { id: 1, title: 'Datos de la Madre (quien firma)' },
@@ -135,17 +135,6 @@ export default function RenunciaFormPage() {
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-6">
-        {/* Video Placeholder */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
-          <div className="aspect-video bg-gradient-to-br from-[#002855] to-[#003d7a] flex flex-col items-center justify-center text-white">
-            <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-3 backdrop-blur-sm">
-              <Play className="w-8 h-8 text-white ml-1" />
-            </div>
-            <p className="text-sm font-medium">Video de instrucciones</p>
-            <p className="text-xs text-blue-200 mt-1">Proximamente</p>
-          </div>
-        </div>
-
         <div className="bg-[#F2A900]/10 border border-[#F2A900]/30 rounded-xl p-4 mb-6">
           <p className="text-sm text-[#002855] font-medium mb-1">Instrucciones:</p>
           <p className="text-sm text-gray-700">
