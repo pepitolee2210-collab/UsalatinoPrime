@@ -172,6 +172,23 @@ const contracts: Record<string, ContractTemplate> = {
       'Presentaci\u00f3n electr\u00f3nica (e-file) ante el IRS y autoridad estatal',
     ],
   },
+  'adelantos': {
+    installments: false,
+    requiresMinor: false,
+    variants: [
+      { label: 'Adelantos (Advance Parole)', totalPrice: 500 },
+    ],
+    objetoDelContrato:
+      'El CONSULTOR se compromete a brindar asesor\u00eda y asistencia en la preparaci\u00f3n y presentaci\u00f3n de la solicitud de Advance Parole (Permiso de Viaje Anticipado) mediante el Formulario I-131 ante el Servicio de Ciudadan\u00eda e Inmigraci\u00f3n de los Estados Unidos (USCIS), permitiendo al CLIENTE viajar fuera de los Estados Unidos y regresar mientras su caso est\u00e1 pendiente.',
+    etapas: [
+      'Evaluaci\u00f3n de elegibilidad y revisi\u00f3n del caso pendiente ante USCIS',
+      'Recopilaci\u00f3n de documentaci\u00f3n requerida (pasaporte, I-94, evidencia del caso pendiente)',
+      'Preparaci\u00f3n del Formulario I-131 (Application for Travel Document)',
+      'Preparaci\u00f3n de carta de justificaci\u00f3n del viaje y documentos de soporte',
+      'Presentaci\u00f3n de la solicitud ante USCIS',
+      'Seguimiento del caso hasta la emisi\u00f3n del documento de Advance Parole',
+    ],
+  },
   'cambio-de-estatus': {
     installments: true,
     requiresMinor: false,

@@ -42,6 +42,7 @@ const SERVICE_OPTIONS = [
   { slug: 'cambio-de-corte', label: 'Cambio de Corte' },
   { slug: 'mociones', label: 'Mociones' },
   { slug: 'itin-number', label: 'ITIN Number' },
+  { slug: 'adelantos', label: 'Adelantos (Advance Parole)' },
   { slug: 'licencia-de-conducir', label: 'Licencia de Conducir' },
   { slug: 'taxes', label: 'Declaraci\u00f3n de Impuestos' },
 ]
