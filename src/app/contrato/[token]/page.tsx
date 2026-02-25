@@ -87,6 +87,7 @@ export default async function ContractSigningPage({ params }: { params: Promise<
           <SigningForm
             token={token}
             clientName={contract.client_full_name}
+            contractData={contract}
           />
         </div>
       </div>

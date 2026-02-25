@@ -2,19 +2,21 @@
 
 import { useState } from 'react'
 import { SignatureCanvas } from '@/components/shared/SignatureCanvas'
-import { CheckCircle, Loader2, PenLine } from 'lucide-react'
+import { CheckCircle, Download, Loader2, PenLine } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface SigningFormProps {
   token: string
   clientName: string
+  contractData: any
 }
 
-export function SigningForm({ token, clientName }: SigningFormProps) {
+export function SigningForm({ token, clientName, contractData }: SigningFormProps) {
   const [signatureImage, setSignatureImage] = useState<string | null>(null)
   const [accepted, setAccepted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [signed, setSigned] = useState(false)
+  const [downloading, setDownloading] = useState(false)
 
   async function handleSign() {
     if (!signatureImage) {
@@ -50,6 +52,49 @@ export function SigningForm({ token, clientName }: SigningFormProps) {
     }
   }
 
+  async function handleDownloadPDF() {
+    setDownloading(true)
+    try {
+      const { generateContractPDF } = await import('@/lib/pdf/generate-contract-pdf')
+
+      const pdf = generateContractPDF({
+        serviceName: contractData.service_name,
+        totalPrice: contractData.total_price,
+        installments: contractData.has_installments,
+        installmentCount: contractData.installment_count,
+        clientFullName: contractData.client_full_name,
+        clientPassport: contractData.client_passport,
+        clientDOB: contractData.client_dob,
+        clientSignature: contractData.client_signature || contractData.client_full_name,
+        objetoDelContrato: contractData.objeto_del_contrato,
+        etapas: contractData.etapas || [],
+        addonServices: contractData.addon_services?.length > 0 ? contractData.addon_services : undefined,
+        initialPayment: contractData.initial_payment > 0 ? contractData.initial_payment : undefined,
+        paymentSchedule: contractData.payment_schedule?.length > 0 ? contractData.payment_schedule : undefined,
+        minors: contractData.minors?.length > 0 ? contractData.minors : undefined,
+        clientSignatureImage: signatureImage || undefined,
+      })
+
+      const arrayBuffer = pdf.output('arraybuffer')
+      const blob = new Blob([arrayBuffer], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `Contrato-${contractData.client_full_name.replace(/\s+/g, '_')}.pdf`
+      link.type = 'application/pdf'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+
+      toast.success('PDF descargado')
+    } catch (error: any) {
+      toast.error(`Error al generar PDF: ${error.message}`)
+    } finally {
+      setDownloading(false)
+    }
+  }
+
   if (signed) {
     return (
       <div className="text-center py-8">
@@ -62,9 +107,28 @@ export function SigningForm({ token, clientName }: SigningFormProps) {
         <p className="text-gray-500 mb-1">
           Su contrato ha sido firmado exitosamente.
         </p>
-        <p className="text-gray-500 text-sm">
+        <p className="text-gray-500 text-sm mb-6">
           Un consultor de UsaLatinoPrime se comunicar&aacute; con usted para los siguientes pasos.
         </p>
+
+        <button
+          onClick={handleDownloadPDF}
+          disabled={downloading}
+          className="w-full py-3.5 rounded-xl font-semibold text-white transition-all disabled:opacity-50 bg-[#002855] hover:bg-[#001d3d] active:scale-[0.98] flex items-center justify-center gap-2"
+        >
+          {downloading ? (
+            <>
+              <Loader2 className="w-5 h-5 animate-spin" />
+              Generando PDF...
+            </>
+          ) : (
+            <>
+              <Download className="w-5 h-5" />
+              Descargar Contrato Firmado (PDF)
+            </>
+          )}
+        </button>
+
         <div className="mt-6 p-4 bg-[#002855]/5 rounded-xl">
           <p className="text-sm font-semibold text-[#002855]">UsaLatinoPrime</p>
           <p className="text-sm text-gray-500">Tel&eacute;fono / Zelle: 801-941-3479</p>
