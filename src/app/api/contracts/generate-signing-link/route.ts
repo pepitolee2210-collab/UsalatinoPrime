@@ -5,12 +5,15 @@ import { createServiceClient } from '@/lib/supabase/service'
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError || !user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const { data: profile } = await supabase
+    const service = createServiceClient()
+
+    const { data: profile } = await service
       .from('profiles')
       .select('role')
       .eq('id', user.id)
@@ -26,7 +29,6 @@ export async function POST(request: Request) {
     }
 
     const token = crypto.randomUUID()
-    const service = createServiceClient()
 
     const { error } = await service
       .from('contracts')

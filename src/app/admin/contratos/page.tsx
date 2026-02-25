@@ -108,6 +108,7 @@ export default function ContratosPage() {
       const res = await fetch('/api/contracts/generate-signing-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ contract_id: contract.id }),
       })
       const data = await res.json()
