@@ -37,6 +37,7 @@ interface Submission {
   country_left: string | null
   caregiver_since_year: string | null
   signing_city: string | null
+  additional_children: { full_name: string; dob: string; birth_certificate_municipality: string }[] | null
 }
 
 const statusConfig: Record<string, { label: string; class: string }> = {
@@ -90,8 +91,13 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
   const custodianPassport = submission.father_passport
   const custodianState = submission.father_country_state
 
-  // Child
+  // All children (first + additional)
   const childName = submission.daughter_full_name
+  const allChildren = [
+    { full_name: submission.daughter_full_name, dob: submission.daughter_dob, birth_certificate_municipality: submission.daughter_birth_certificate_municipality },
+    ...(submission.additional_children || []),
+  ]
+  const hasMultipleChildren = allChildren.length > 1
 
   // English gendered terms
   const signerRoleEn = signerRole === 'mother' ? 'mother' : 'father'
@@ -197,11 +203,21 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
     y += 8
 
     // Point 1
-    paragraph(
-      `1. That I am the biological ${signerRoleEn} of ${childName}, born on ${dobFormatted}, ` +
-      `in ${submission.daughter_birth_certificate_municipality}, as recorded in ${herHisChild} birth certificate issued by the ` +
-      `${submission.daughter_birth_certificate_municipality}.`
-    )
+    if (hasMultipleChildren) {
+      const childrenList = allChildren.map(c =>
+        `${c.full_name}, born on ${formatDateEnglish(c.dob)}, in ${c.birth_certificate_municipality}`
+      ).join('; ')
+      paragraph(
+        `1. That I am the biological ${signerRoleEn} of the following children: ${childrenList}; ` +
+        `as recorded in their birth certificates issued by their respective municipalities.`
+      )
+    } else {
+      paragraph(
+        `1. That I am the biological ${signerRoleEn} of ${childName}, born on ${dobFormatted}, ` +
+        `in ${submission.daughter_birth_certificate_municipality}, as recorded in ${herHisChild} birth certificate issued by the ` +
+        `${submission.daughter_birth_certificate_municipality}.`
+      )
+    }
 
     // Point 2
     paragraph(
@@ -210,30 +226,37 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
     )
 
     // Point 3
+    const childNamesAll = allChildren.map(c => c.full_name).join(' and ')
+    const myChildrenRef = hasMultipleChildren ? `my children` : myChildEn
+    const theyRef = hasMultipleChildren ? 'They currently reside' : `${sheHe} currently resides`
     paragraph(
-      `3. That due to personal and family circumstances, I made the decision to leave ${countryLeft}, leaving ${myChildEn} ` +
-      `${childName} in the care and custody of ${herHisCustodian} ${custodianRoleEn}, who has been ${herHisChild} primary caregiver since ` +
-      `${sinceYear}. ${sheHe} currently resides with ${herHim} at ${submission.father_address_with_daughter}.`
+      `3. That due to personal and family circumstances, I made the decision to leave ${countryLeft}, leaving ${myChildrenRef} ` +
+      `${childNamesAll} in the care and custody of ${herHisCustodian} ${custodianRoleEn}, who has been their primary caregiver since ` +
+      `${sinceYear}. ${theyRef} with ${herHim} at ${submission.father_address_with_daughter}.`
     )
 
     // Point 4
+    const ourChildrenRef = hasMultipleChildren ? 'our children' : ourChildEn
     paragraph(
       `4. I acknowledge that ${custodianTitle} ${custodianName} has assumed exclusive legal guardianship and primary ` +
-      `caregiver responsibilities for ${ourChildEn}. I currently do not exercise, nor am I able to exercise, parental ` +
+      `caregiver responsibilities for ${ourChildrenRef}. I currently do not exercise, nor am I able to exercise, parental ` +
       `custody or responsibilities, as I reside outside the country and our family relationship has been irreparably severed.`
     )
 
     // Point 5
+    const myChildrenRef5 = hasMultipleChildren ? `my children, ${childNamesAll},` : `${myChildEn}, ${childName},`
     paragraph(
-      `5. I voluntarily and permanently relinquish all physical and legal custody rights over ${myChildEn}, ` +
-      `${childName}, and do not object to ${herHisCustodian} ${custodianRoleEn} petitioning the juvenile court of the State of ${guardState} ` +
+      `5. I voluntarily and permanently relinquish all physical and legal custody rights over ${myChildrenRef5} ` +
+      `and do not object to ${herHisCustodian} ${custodianRoleEn} petitioning the juvenile court of the State of ${guardState} ` +
       `for exclusive legal guardianship, as part of a request for Special Immigrant Juvenile Status (SIJS).`
     )
 
     // Point 6
+    const myChildRef6 = hasMultipleChildren ? 'my children' : myChildEn
+    const theirRef = hasMultipleChildren ? 'their' : herHisChild
     paragraph(
-      `6. That this decision is made in the best interest of ${myChildEn}, ensuring ${herHisChild} protection, emotional stability, ` +
-      `and continuity in ${herHisChild} academic and personal development.`
+      `6. That this decision is made in the best interest of ${myChildRef6}, ensuring ${theirRef} protection, emotional stability, ` +
+      `and continuity in ${theirRef} academic and personal development.`
     )
 
     y += 6
@@ -355,7 +378,7 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
               <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
                 <span className="flex items-center gap-1">
                   <User className="w-3 h-3" />
-                  {childLabel}: {childName}
+                  {hasMultipleChildren ? `${allChildren.length} hijos` : `${childLabel}: ${childName}`}
                 </span>
                 <span className="flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
@@ -458,17 +481,26 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
                 </dl>
               </div>
 
-              {/* Datos del hijo/a */}
+              {/* Datos de los hijos */}
               <div className="bg-gray-50 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-[#002855] mb-3 flex items-center gap-1.5">
                   <User className="w-4 h-4" />
-                  Datos {childGender === 'daughter' ? 'de la' : 'del'} {childLabel}
+                  {hasMultipleChildren
+                    ? `Hijos/as (${allChildren.length})`
+                    : `Datos ${childGender === 'daughter' ? 'de la' : 'del'} ${childLabel}`}
                 </h3>
-                <dl className="space-y-2 text-sm">
-                  <InfoField label="Nombre completo" value={childName} />
-                  <InfoField label="Fecha de nacimiento" value={formatDate(submission.daughter_dob)} />
-                  <InfoField label="Lugar acta de nacimiento" value={submission.daughter_birth_certificate_municipality} />
-                </dl>
+                {allChildren.map((child, idx) => (
+                  <div key={idx} className={idx > 0 ? 'mt-3 pt-3 border-t border-gray-200' : ''}>
+                    {hasMultipleChildren && (
+                      <p className="text-xs font-medium text-purple-600 mb-1">{childLabel} {idx + 1}</p>
+                    )}
+                    <dl className="space-y-2 text-sm">
+                      <InfoField label="Nombre completo" value={child.full_name} />
+                      <InfoField label="Fecha de nacimiento" value={formatDate(child.dob)} />
+                      <InfoField label="Lugar acta de nacimiento" value={child.birth_certificate_municipality} />
+                    </dl>
+                  </div>
+                ))}
               </div>
 
               {/* Datos del custodio */}

@@ -27,6 +27,11 @@ const renunciaSchema = z.object({
   country_left: z.string().min(1, 'País requerido'),
   caregiver_since_year: z.string().min(1, 'Año requerido'),
   signing_city: z.string().min(1, 'Ciudad de firma requerida'),
+  additional_children: z.array(z.object({
+    full_name: z.string(),
+    dob: z.string(),
+    birth_certificate_municipality: z.string(),
+  })).optional().default([]),
 })
 
 export async function POST(request: Request) {
@@ -63,6 +68,7 @@ export async function POST(request: Request) {
         country_left: parsed.data.country_left,
         caregiver_since_year: parsed.data.caregiver_since_year,
         signing_city: parsed.data.signing_city,
+        additional_children: parsed.data.additional_children,
       })
 
     if (error) {
