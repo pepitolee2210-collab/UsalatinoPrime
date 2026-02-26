@@ -18,6 +18,7 @@ export default function RenunciaFormPage() {
   const [countryLeft, setCountryLeft] = useState('')
   const [caregiverSinceYear, setCaregiverSinceYear] = useState('')
   const [signingCity, setSigningCity] = useState('')
+  const [customArgument, setCustomArgument] = useState('as I reside outside the country and our family relationship has been irreparably severed')
 
   // Section 1: Datos del firmante (quien renuncia)
   const [signerNombre, setSignerNombre] = useState('')
@@ -125,14 +126,14 @@ export default function RenunciaFormPage() {
 
     const body = {
       mother_full_name: signerRole === 'mother' ? signerNombre : custodianNombre,
-      mother_nationality: signerRole === 'mother' ? signerNacionalidad : '',
-      mother_dni: signerRole === 'mother' ? signerDni : '',
-      mother_address: signerRole === 'mother' ? signerDireccion : '',
+      mother_nationality: signerNacionalidad,
+      mother_dni: signerDni,
+      mother_address: signerDireccion,
       daughter_full_name: firstChild.nombre,
       daughter_dob: firstChild.fechaNacimiento,
       daughter_birth_certificate_municipality: firstChild.municipio,
       father_full_name: signerRole === 'father' ? signerNombre : custodianNombre,
-      father_passport: signerRole === 'father' ? signerDni : custodianPasaporte,
+      father_passport: custodianPasaporte,
       father_country_state: custodianResidencia,
       father_address_with_daughter: custodianDireccionChild,
       guardianship_state: guardianshipState,
@@ -142,6 +143,7 @@ export default function RenunciaFormPage() {
       caregiver_since_year: caregiverSinceYear,
       signing_city: signingCity,
       additional_children: additionalChildren,
+      custom_argument: customArgument,
     }
 
     setSubmitting(true)
@@ -233,6 +235,16 @@ export default function RenunciaFormPage() {
                   <input type="text" value={signingCity} onChange={e => setSigningCity(e.target.value)} placeholder="Ej: Lima, Peru" className={inputClass(errors.signingCity)} />
                 </Field>
               </div>
+              <Field label="Argumento / razon de la renuncia (punto 4 del documento)">
+                <textarea
+                  value={customArgument}
+                  onChange={e => setCustomArgument(e.target.value)}
+                  rows={3}
+                  className={inputClass()}
+                  placeholder="Ej: as I reside outside the country and our family relationship has been irreparably severed"
+                />
+                <p className="text-[10px] text-gray-400 mt-1">Este texto aparece en el punto 4 del documento. Puede editarlo segun el caso.</p>
+              </Field>
             </div>
           </SectionAccordion>
 

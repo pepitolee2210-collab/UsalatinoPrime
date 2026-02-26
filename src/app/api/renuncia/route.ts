@@ -32,6 +32,7 @@ const renunciaSchema = z.object({
     dob: z.string(),
     birth_certificate_municipality: z.string(),
   })).optional().default([]),
+  custom_argument: z.string().optional().default(''),
 })
 
 export async function POST(request: Request) {
@@ -69,6 +70,7 @@ export async function POST(request: Request) {
         caregiver_since_year: parsed.data.caregiver_since_year,
         signing_city: parsed.data.signing_city,
         additional_children: parsed.data.additional_children,
+        custom_argument: parsed.data.custom_argument,
       })
 
     if (error) {

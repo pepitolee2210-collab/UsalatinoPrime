@@ -38,6 +38,7 @@ interface Submission {
   caregiver_since_year: string | null
   signing_city: string | null
   additional_children: { full_name: string; dob: string; birth_certificate_municipality: string }[] | null
+  custom_argument: string | null
 }
 
 const statusConfig: Record<string, { label: string; class: string }> = {
@@ -82,14 +83,15 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
 
   // Signer is the person relinquishing custody
   const signerName = signerRole === 'mother' ? submission.mother_full_name : submission.father_full_name
-  const signerDni = signerRole === 'mother' ? submission.mother_dni : submission.father_passport
+  const signerDni = submission.mother_dni
   const signerNationality = submission.mother_nationality
-  const signerAddress = signerRole === 'mother' ? submission.mother_address : ''
+  const signerAddress = submission.mother_address
 
   // Custodian is the person keeping custody
   const custodianName = signerRole === 'mother' ? submission.father_full_name : submission.mother_full_name
   const custodianPassport = submission.father_passport
   const custodianState = submission.father_country_state
+  const customArgument = submission.custom_argument || 'as I reside outside the country and our family relationship has been irreparably severed'
 
   // All children (first + additional)
   const childName = submission.daughter_full_name
@@ -188,7 +190,7 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
     // Main declaration paragraph
     paragraph(
       `I, ${signerName}, identified with ${nationalityAdj} National Identity Document (DNI) No. ${signerDni}, ` +
-      `born in ${signerNationality}, currently residing at ${signerAddress || submission.mother_address}, ` +
+      `born in ${signerNationality}, currently residing at ${signerAddress}, ` +
       `being of sound mind and acting voluntarily, knowingly, and without coercion, hereby state and affirm the following:`
     )
 
@@ -240,7 +242,7 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
     paragraph(
       `4. I acknowledge that ${custodianTitle} ${custodianName} has assumed exclusive legal guardianship and primary ` +
       `caregiver responsibilities for ${ourChildrenRef}. I currently do not exercise, nor am I able to exercise, parental ` +
-      `custody or responsibilities, as I reside outside the country and our family relationship has been irreparably severed.`
+      `custody or responsibilities, ${customArgument}.`
     )
 
     // Point 5
@@ -477,7 +479,7 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
                   <InfoField label="Nombre completo" value={signerName} />
                   <InfoField label="Nacionalidad" value={signerNationality} />
                   <InfoField label="DNI / Documento" value={signerDni} />
-                  <InfoField label="Direccion" value={signerAddress || submission.mother_address} />
+                  <InfoField label="Direccion" value={signerAddress} />
                 </dl>
               </div>
 
