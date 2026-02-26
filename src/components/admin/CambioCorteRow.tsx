@@ -195,36 +195,19 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
 
     bold(12); center('OFFICE OF THE IMMIGRATION JUDGE'); y += 16
 
-    // Case block with dashed border
-    const boxX = ml
-    const boxY = y - 2
-    const boxW = cw * 0.65
-    const boxH = 54
+    // Case block
+    normal(12); left('In the Matter of:'); y += 7
+    bold(12); left(s.client_full_name.toUpperCase())
 
-    // Draw dashed border rectangle
-    doc.setDrawColor(180, 120, 0); doc.setLineWidth(0.4)
-    // Top
-    let cx = boxX; while (cx < boxX + boxW) { const end = Math.min(cx + 3, boxX + boxW); doc.line(cx, boxY, end, boxY); cx = end + 2 }
-    // Bottom
-    cx = boxX; while (cx < boxX + boxW) { const end = Math.min(cx + 3, boxX + boxW); doc.line(cx, boxY + boxH, end, boxY + boxH); cx = end + 2 }
-    // Left
-    let cy = boxY; while (cy < boxY + boxH) { const end = Math.min(cy + 3, boxY + boxH); doc.line(boxX, cy, boxX, end); cy = end + 2 }
-    // Right
-    cy = boxY; while (cy < boxY + boxH) { const end = Math.min(cy + 3, boxY + boxH); doc.line(boxX + boxW, cy, boxX + boxW, end); cy = end + 2 }
-
-    // Content inside box
-    normal(12); left('In the Matter of:', ml + 4); y += 7
-    bold(12); left(s.client_full_name.toUpperCase(), ml + 4)
-
-    // File No on the right (outside the box, at same height)
+    // File No on the right
     normal(12)
     doc.text('File No: ', pw - mr - doc.getTextWidth(`File No: ${s.file_number}`), y)
     bold(12)
     doc.text(s.file_number, pw - mr - doc.getTextWidth(s.file_number), y)
     y += 10
 
-    normal(12); left('Respondent(s)', ml + 4); y += 5
-    italic(12); left('In removal proceedings.', ml + 4); y += 10
+    normal(12); left('Respondent(s)'); y += 5
+    italic(12); left('In removal proceedings.'); y += 10
 
     // Judge and hearing
     bold(12); left('Immigration Judge:')
