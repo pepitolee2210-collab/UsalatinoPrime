@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
 import {
-  LayoutDashboard, FileText, Users, CreditCard, LogOut, Menu, Shield, Baby, MessageSquare, PenLine
+  LayoutDashboard, FileText, Users, CreditCard, LogOut, Menu, Shield, Baby, MessageSquare, PenLine, ArrowRightLeft
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -22,6 +22,7 @@ const navItems = [
   { href: '/admin/asilo', label: 'Asilo I-589', icon: FileText },
   { href: '/admin/ajuste-estatus', label: 'Ajuste de Estatus', icon: FileText },
   { href: '/admin/renuncia', label: 'Renuncia Custodia', icon: FileText },
+  { href: '/admin/cambio-corte', label: 'Cambio de Corte', icon: ArrowRightLeft },
   { href: '/admin/comunidad', label: 'Comunidad', icon: MessageSquare },
 ]
 
