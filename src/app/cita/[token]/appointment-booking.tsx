@@ -359,6 +359,18 @@ function BookingView({ token }: { token: string }) {
             </div>
             <Badge className="bg-[#002855]/10 text-[#002855]">Seleccionado</Badge>
           </div>
+
+          {/* Aviso importante de penalización */}
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl flex gap-3">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-900">Aviso Importante</p>
+              <p className="text-xs text-amber-700 mt-1">
+                Si cancela esta cita, no podrá agendar una nueva hasta después de <span className="font-bold">7 días</span>. Por favor, asegúrese de que puede asistir antes de confirmar.
+              </p>
+            </div>
+          </div>
+
           <Button
             className="w-full bg-[#002855] hover:bg-[#002855]/90"
             onClick={handleBook}

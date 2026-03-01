@@ -3,7 +3,7 @@ import { FormulariosView } from './formularios-view'
 
 export default async function FormulariosPage() {
   const supabase = await createClient()
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://usa-latino-prime-gamma.vercel.app'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://usalatino-prime-ofew.vercel.app'
 
   const [visaRes, asiloRes, ajusteRes, renunciaRes, cambioRes] = await Promise.all([
     supabase.from('visa_juvenil_submissions').select('*').order('created_at', { ascending: false }),

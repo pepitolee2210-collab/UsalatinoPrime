@@ -72,7 +72,7 @@ export default async function AdminDashboardPage() {
   const formsPending = (visaJuvenilRes.count || 0) + (asiloRes.count || 0) + (ajusteRes.count || 0) + (renunciaRes.count || 0) + (cambioRes.count || 0)
   const upcomingPayCount = upcomingPayRes.count || 0
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://usalatinoprime.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://usalatino-prime-ofew.vercel.app'
   const citaLink = `${baseUrl}/cita`
 
   return (
