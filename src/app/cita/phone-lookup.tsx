@@ -70,11 +70,7 @@ export function PhoneLookup() {
       },
       no_cases: {
         title: 'Sin casos activos',
-        desc: 'Tu cuenta no tiene casos registrados.',
-      },
-      no_payment: {
-        title: 'Pago pendiente',
-        desc: 'Debes completar tu pago antes de agendar una cita.',
+        desc: 'Tu cuenta no tiene casos registrados. Contacta a Henry para más información.',
       },
     }
 

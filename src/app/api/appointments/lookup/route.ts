@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ found: false, reason: 'not_found' })
   }
 
-  // Get cases with at least 1 completed payment
+  // Get all cases for this client (no payment check — open access)
   const { data: cases } = await supabase
     .from('cases')
     .select('id, case_number, service:service_catalog(name)')
@@ -47,24 +47,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ found: false, reason: 'no_cases' })
   }
 
-  // Check which cases have completed payments
-  const caseIds = cases.map(c => c.id)
-  const { data: payments } = await supabase
-    .from('payments')
-    .select('case_id')
-    .in('case_id', caseIds)
-    .eq('status', 'completed')
-
-  const paidCaseIds = new Set((payments || []).map(p => p.case_id))
-  const paidCases = cases.filter(c => paidCaseIds.has(c.id))
-
-  if (paidCases.length === 0) {
-    return NextResponse.json({ found: false, reason: 'no_payment' })
-  }
-
-  // For each paid case, generate or reuse active token
+  // For each case, generate or reuse active token
   const casesWithTokens = await Promise.all(
-    paidCases.map(async (c) => {
+    cases.map(async (c) => {
       // Check for existing active token
       const { data: existingToken } = await supabase
         .from('appointment_tokens')
