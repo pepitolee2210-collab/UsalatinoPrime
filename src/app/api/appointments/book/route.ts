@@ -23,18 +23,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Token inválido o inactivo' }, { status: 403 })
   }
 
-  // Verificar que tiene al menos un pago completado
-  const { data: payments } = await supabase
-    .from('payments')
-    .select('id')
-    .eq('case_id', tokenData.case_id)
-    .eq('status', 'completed')
-    .limit(1)
-
-  if (!payments || payments.length === 0) {
-    return NextResponse.json({ error: 'Debe completar su pago primero' }, { status: 400 })
-  }
-
   // Verificar penalty
   const { data: clientAppointments } = await supabase
     .from('appointments')
