@@ -528,10 +528,29 @@ export function AdminCaseView({ caseData, documents, activities, payments }: Adm
                     <FileText className="w-5 h-5 text-gray-400" />
                     <div>
                       <p className="font-medium text-sm">{doc.name}</p>
-                      <p className="text-xs text-gray-500">{doc.document_key} &mdash; {doc.file_type}</p>
+                      <p className="text-xs text-gray-500">{doc.document_key} &mdash; {(doc.file_size / 1024).toFixed(0)} KB</p>
                     </div>
                   </div>
-                  <Badge>{doc.status}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge>{doc.status}</Badge>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        const { data } = await supabase.storage
+                          .from('case-documents')
+                          .createSignedUrl(doc.file_path, 300)
+                        if (data?.signedUrl) {
+                          window.open(data.signedUrl, '_blank')
+                        } else {
+                          toast.error('Error al generar link de descarga')
+                        }
+                      }}
+                    >
+                      <Download className="w-3.5 h-3.5 mr-1" />
+                      Descargar
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             )) : (
