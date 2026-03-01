@@ -1,5 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/service'
-import { CalendarClock, XCircle, AlertCircle } from 'lucide-react'
+import { CalendarClock, XCircle } from 'lucide-react'
 import { AppointmentBooking } from './appointment-booking'
 import { DocumentUploadSection } from './document-upload-section'
 import type { Appointment } from '@/types/database'
@@ -37,10 +37,9 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
   }
 
   // Fetch datos del cliente y caso
-  const [profileRes, caseRes, paymentsRes, appointmentsRes, documentsRes, settingsRes] = await Promise.all([
+  const [profileRes, caseRes, appointmentsRes, documentsRes, settingsRes] = await Promise.all([
     supabase.from('profiles').select('first_name, last_name, email').eq('id', tokenData.client_id).single(),
     supabase.from('cases').select('id, case_number, service:service_catalog(name)').eq('id', tokenData.case_id).single(),
-    supabase.from('payments').select('id, status').eq('case_id', tokenData.case_id).eq('status', 'completed').limit(1),
     supabase.from('appointments').select('*').eq('client_id', tokenData.client_id).order('scheduled_at', { ascending: false }),
     supabase.from('documents').select('id, document_key, name, file_size, status').eq('case_id', tokenData.case_id),
     supabase.from('scheduling_settings').select('*').single(),
@@ -48,32 +47,9 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
 
   const profile = profileRes.data
   const caseData = caseRes.data
-  const hasPaid = (paymentsRes.data?.length || 0) > 0
   const appointments = (appointmentsRes.data || []) as Appointment[]
   const documents = documentsRes.data || []
   const zoomLink = settingsRes.data?.zoom_link || ''
-
-  // Si no ha pagado
-  if (!hasPaid) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#002855] via-[#003366] to-[#001d3d] flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center">
-          <div className="w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-8 h-8 text-yellow-600" />
-          </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Pago requerido</h1>
-          <p className="text-sm text-gray-500">
-            Para agendar su cita, primero debe completar su pago.
-            Contacte a su consultor para m&aacute;s informaci&oacute;n.
-          </p>
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm text-gray-600 font-medium">UsaLatinoPrime</p>
-            <p className="text-sm text-gray-500">Tel&eacute;fono: 801-941-3479</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   const serviceRaw = caseData?.service as unknown
   const service = Array.isArray(serviceRaw)
