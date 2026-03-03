@@ -110,8 +110,10 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
   const currentCourtFull = `${s.current_court_street}\n${s.current_court_city_state_zip}`
   const newCourtFull = `${s.new_court_street}\n${s.new_court_city_state_zip}`
 
-  // Extract current court city from city_state_zip (e.g. "Seattle, WA 98174" -> "Seattle")
-  const currentCourtCity = s.current_court_city_state_zip.split(',')[0].trim()
+  // Extract current court city — fallback to court name if city_state_zip has no comma
+  const currentCourtCity = s.current_court_city_state_zip.includes(',')
+    ? s.current_court_city_state_zip.split(',')[0].trim()
+    : s.current_court_name.replace(/Immigration Court\s*[-\u2013]\s*/i, '').trim()
   const newCourtCityState = `${s.new_address_city}, ${s.new_address_state}`
 
   function handleDownloadPDF() {
@@ -168,9 +170,19 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
       y += lines.length * 4.5 + 2
     }
 
-    // Short names for courts
-    const newCourtShort = s.new_court_name.replace(/Immigration Court\s*[-\u2013]\s*/i, '') + ' Immigration Court'
+    // Court name formatted as "Immigration Court – [City]"
+    const currentCourtFormatted = s.current_court_name.match(/immigration court/i)
+      ? s.current_court_name.replace(/-/g, '\u2013')
+      : `Immigration Court \u2013 ${s.current_court_name}`
+    const newCourtFormatted = s.new_court_name.match(/immigration court/i)
+      ? s.new_court_name.replace(/-/g, '\u2013')
+      : `Immigration Court \u2013 ${s.new_court_name}`
+
+    // Short names for body text (e.g. "Seattle Immigration Court")
     const currentCourtShort = currentCourtCity + ' Immigration Court'
+    const newCourtShort = s.new_court_name.replace(/Immigration Court\s*[-\u2013]\s*/i, '').trim()
+      ? s.new_court_name.replace(/Immigration Court\s*[-\u2013]\s*/i, '').trim() + ' Immigration Court'
+      : s.new_court_name + ' Immigration Court'
 
     // ============================================
     // PAGE 1 - COVER PAGE (matches 1.png exactly)
@@ -230,7 +242,7 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
     // Date & court info
     normal(11)
     left(`Date: ${formatDateEnglish(s.document_date)}`); y += 5
-    left(`${s.current_court_name.replace(/-/g, '\u2013')}`); y += 4
+    left(currentCourtFormatted); y += 4
     bold(11)
     left(s.current_court_street); y += 4
     left(s.current_court_city_state_zip); y += 6
@@ -271,7 +283,7 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
 
     y += 1
     bold(11)
-    left(s.new_court_name.replace(/-/g, '\u2013'), ml + 6); y += 5
+    left(newCourtFormatted, ml + 6); y += 5
     normal(11)
     left(s.new_court_street, ml + 6); y += 4
     left(s.new_court_city_state_zip, ml + 6); y += 8
@@ -340,6 +352,151 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
     y += 6
     bold(12); left(s.judge_name.toUpperCase(), ml + 6)
     doc.text(formatHearingDateShort(s.next_hearing_date, s.next_hearing_time), pw - mr, y, { align: 'right' })
+
+    // Helpers for pages 4-6
+    const drawCb = (xPos: number) => {
+      doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.3)
+      doc.rect(xPos, y - 3, 3.5, 3.5)
+    }
+    const certDateStr = (() => {
+      try {
+        const d = new Date(s.document_date + 'T12:00:00')
+        if (isNaN(d.getTime())) return s.document_date
+        return `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getDate().toString().padStart(2, '0')}/${d.getFullYear()}`
+      } catch { return s.document_date }
+    })()
+
+    // ============================================
+    // PAGE 4 - RESPONDENT'S MOTION (formal legal body)
+    // ============================================
+    doc.addPage()
+    resetY()
+
+    // Title
+    bold(14); center("RESPONDENT\u2019S MOTION TO"); y += 6
+    bold(14); center('CHANGE VENUE'); y += 12
+
+    // Body
+    paragraph(
+      `Respondent, ${s.client_full_name.toUpperCase()}, moves this Honorable Court to change the venue of the removal proceedings from ${s.current_court_street}, ${s.current_court_city_state_zip} to ${s.new_court_city_state_zip}. I seek this change of venue pursuant to 8 CFR \u00A7 1003.20.`, 11
+    )
+
+    paragraph('In support of this motion, I state as follows:', 11)
+
+    // Large empty space for handwritten notes
+    y += 80
+
+    // Signature block
+    normal(11); left('Respectfully submitted,'); y += 15
+    left('-'.repeat(35)); y += 6
+    bold(11); left(s.client_full_name.toUpperCase())
+
+    // ============================================
+    // PAGE 5 - ORDER OF THE IMMIGRATION JUDGE
+    // ============================================
+    doc.addPage()
+    resetY()
+
+    // PRO-SE / NOT DETAINED header
+    bold(12); left('PRO-SE'); right('NOT DETAINED'); y += 7
+
+    // Client info
+    bold(12); left(s.client_full_name.toUpperCase()); y += 6
+    normal(12)
+    left(s.client_address_street.toUpperCase()); y += 5
+    left(`${s.client_address_city.toUpperCase()} ${s.client_address_state.toUpperCase()} -${s.client_address_zip}`); y += 5
+    left(s.client_phone); y += 10
+
+    // DOJ header
+    bold(13); center('UNITED STATES DEPARTMENT OF JUSTICE'); y += 5
+    bold(12); center('EXECUTIVE OFFICE FOR IMMIGRATION REVIEW'); y += 8
+
+    // Court address
+    bold(12)
+    underlineCenter(s.current_court_street, 12); y += 5
+    center(s.current_court_city_state_zip); y += 5
+    bold(13); center('IMMIGRATION COURTS'); y += 10
+
+    // Title
+    bold(13); underlineCenter('ORDER OF THE IMMIGRATION JUDGE', 13); y += 10
+
+    // Body text
+    normal(11)
+    const orderText = doc.splitTextToSize(
+      'Upon consideration of the respondent\u2019s Motion to Change Venue, it is HEREBY ORDERED that the motion be:', cw
+    )
+    doc.text(orderText, ml, y); y += orderText.length * 4.5 + 4
+
+    // GRANTED / DENIED checkboxes
+    bold(11)
+    drawCb(ml); left('GRANTED', ml + 5)
+    drawCb(ml + 40); left('DENIED because:', ml + 45)
+    y += 8
+
+    // Checkbox items
+    normal(11)
+    const checkItems = [
+      'DHS does not oppose the motion.',
+      'The respondent does not oppose the motion.',
+      'A response to the motion has not been filed with the court.',
+      'Good cause has been established for the motion.',
+      'The court agrees with the reasons stated in the opposition to the motion.',
+      'The motion is untimely per ____________',
+      'Other',
+    ]
+    for (const item of checkItems) {
+      drawCb(ml + 4)
+      const itemLines = doc.splitTextToSize(item, pw - mr - (ml + 10))
+      doc.text(itemLines, ml + 10, y)
+      y += itemLines.length * 4.5 + 1.5
+    }
+
+    y += 4
+    bold(11); left('Deadlines:'); y += 6
+    normal(11)
+    drawCb(ml + 4)
+    const dl1 = doc.splitTextToSize('The application(s) for relief must be filed by ____________', pw - mr - (ml + 10))
+    doc.text(dl1, ml + 10, y); y += dl1.length * 4.5 + 1.5
+    drawCb(ml + 4)
+    const dl2 = doc.splitTextToSize('The respondent must comply with DHS biometrics instructions by ____________', pw - mr - (ml + 10))
+    doc.text(dl2, ml + 10, y); y += dl2.length * 4.5 + 4
+
+    // Date and Judge signature lines
+    normal(11)
+    left('Date: ____________')
+    doc.text('Immigration Judge: ____________', pw / 2 + 10, y)
+
+    // ============================================
+    // PAGE 6 - CERTIFICATE OF SERVICE
+    // ============================================
+    doc.addPage()
+    resetY()
+
+    // Title
+    bold(14); center('CERTIFICATE OF SERVICE'); y += 12
+
+    // Body
+    paragraph(
+      `On ${certDateStr}, I ${s.client_full_name.toUpperCase()}, hereby certify that a true and correct copy of this RESPONDENT\u2019S MOTION TO CHANGE VENUE was delivered to the Office of Chief Counsel by USPS at:`, 11
+    )
+
+    y += 2
+    normal(11)
+    left('Office of the Principal Legal Advisor,', ml + 10); y += 5
+    const ccParts = s.chief_counsel_address.split('\n')
+    for (const part of ccParts) {
+      if (part.trim()) { left(part.trim(), ml + 10); y += 5 }
+    }
+
+    y += 20
+
+    // Signature block
+    left('________________________', ml + 10); y += 6
+    bold(11); center(s.client_full_name.toUpperCase()); y += 8
+    normal(11)
+    center(s.client_address_street); y += 5
+    center(`${s.client_address_city}, ${s.client_address_state} -${s.client_address_zip}`); y += 5
+    center(s.client_phone)
 
     // Save
     const safeName = s.client_full_name.replace(/[^a-zA-Z0-9]/g, '_')
@@ -459,7 +616,7 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#002855] text-white rounded-lg hover:bg-[#001d3d] transition-colors"
               >
                 <Download className="w-3.5 h-3.5" />
-                Descargar PDF (3 pags)
+                Descargar PDF (6 págs)
               </button>
               {status !== 'en_revision' && (
                 <button
