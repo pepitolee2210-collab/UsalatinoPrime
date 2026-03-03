@@ -43,18 +43,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Token inválido o inactivo' }, { status: 403 })
   }
 
-  // Verificar si ya existe este documento para este caso
-  const { data: existing } = await supabase
-    .from('documents')
-    .select('id')
-    .eq('case_id', tokenData.case_id)
-    .eq('document_key', documentKey)
-    .limit(1)
-
-  if (existing && existing.length > 0) {
-    return NextResponse.json({ error: 'Este documento ya fue subido' }, { status: 409 })
-  }
-
   // Subir archivo al storage
   const timestamp = Date.now()
   const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')

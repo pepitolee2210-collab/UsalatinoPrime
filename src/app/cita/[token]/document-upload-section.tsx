@@ -24,6 +24,8 @@ export function DocumentUploadSection({ token, uploadedDocuments }: DocumentUplo
   const [uploaded, setUploaded] = useState<UploadedDoc[]>(uploadedDocuments)
   const [uploading, setUploading] = useState<string | null>(null)
 
+  const categoriesWithDocs = new Set(uploaded.map(u => u.document_key)).size
+
   return (
     <div>
       <div className="flex items-center gap-2 mb-4">
@@ -36,14 +38,14 @@ export function DocumentUploadSection({ token, uploadedDocuments }: DocumentUplo
 
       <div className="space-y-3">
         {APPOINTMENT_DOCUMENT_KEYS.map(doc => {
-          const existing = uploaded.find(u => u.document_key === doc.key)
+          const existingDocs = uploaded.filter(u => u.document_key === doc.key)
 
           return (
             <DocumentCard
               key={doc.key}
               docKey={doc.key}
               label={doc.label}
-              uploaded={existing}
+              uploadedDocs={existingDocs}
               isUploading={uploading === doc.key}
               token={token}
               onUploadStart={() => setUploading(doc.key)}
@@ -62,9 +64,9 @@ export function DocumentUploadSection({ token, uploadedDocuments }: DocumentUplo
       <div className="mt-4 pt-4 border-t">
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-500">
-            {uploaded.length} de {APPOINTMENT_DOCUMENT_KEYS.length} documentos subidos
+            {categoriesWithDocs} de {APPOINTMENT_DOCUMENT_KEYS.length} categorías con documentos
           </span>
-          {uploaded.length === APPOINTMENT_DOCUMENT_KEYS.length && (
+          {categoriesWithDocs === APPOINTMENT_DOCUMENT_KEYS.length && (
             <Badge className="bg-green-100 text-green-800">Completo</Badge>
           )}
         </div>
@@ -76,7 +78,7 @@ export function DocumentUploadSection({ token, uploadedDocuments }: DocumentUplo
 function DocumentCard({
   docKey,
   label,
-  uploaded,
+  uploadedDocs,
   isUploading,
   token,
   onUploadStart,
@@ -84,13 +86,14 @@ function DocumentCard({
 }: {
   docKey: string
   label: string
-  uploaded?: UploadedDoc
+  uploadedDocs: UploadedDoc[]
   isUploading: boolean
   token: string
   onUploadStart: () => void
   onUploadEnd: (doc: UploadedDoc | null) => void
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
+  const hasUploads = uploadedDocs.length > 0
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -138,30 +141,22 @@ function DocumentCard({
   }
 
   return (
-    <div className={`flex items-center justify-between p-4 rounded-xl border ${
-      uploaded ? 'border-green-200 bg-green-50/50' : 'border-gray-200'
+    <div className={`p-4 rounded-xl border ${
+      hasUploads ? 'border-green-200 bg-green-50/50' : 'border-gray-200'
     }`}>
-      <div className="flex items-center gap-3 min-w-0">
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-          uploaded ? 'bg-green-100' : 'bg-gray-100'
-        }`}>
-          {uploaded
-            ? <CheckCircle className="w-5 h-5 text-green-600" />
-            : <FileText className="w-5 h-5 text-gray-400" />
-          }
-        </div>
-        <div className="min-w-0">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+            hasUploads ? 'bg-green-100' : 'bg-gray-100'
+          }`}>
+            {hasUploads
+              ? <CheckCircle className="w-5 h-5 text-green-600" />
+              : <FileText className="w-5 h-5 text-gray-400" />
+            }
+          </div>
           <p className="text-sm font-medium text-gray-900">{label}</p>
-          {uploaded && (
-            <p className="text-xs text-gray-500 truncate">
-              {uploaded.name}
-              {uploaded.file_size && ` (${(uploaded.file_size / 1024).toFixed(0)} KB)`}
-            </p>
-          )}
         </div>
-      </div>
 
-      {!uploaded && (
         <>
           <input
             ref={fileRef}
@@ -187,6 +182,18 @@ function DocumentCard({
             )}
           </Button>
         </>
+      </div>
+
+      {/* Lista de archivos subidos */}
+      {hasUploads && (
+        <div className="mt-3 ml-13 space-y-1">
+          {uploadedDocs.map(doc => (
+            <p key={doc.id} className="text-xs text-gray-500 truncate">
+              {doc.name}
+              {doc.file_size && ` (${(doc.file_size / 1024).toFixed(0)} KB)`}
+            </p>
+          ))}
+        </div>
       )}
     </div>
   )
