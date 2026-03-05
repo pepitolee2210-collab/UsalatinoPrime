@@ -14,13 +14,14 @@ import { CaseFormViewer } from '@/components/admin/CaseFormViewer'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { CheckCircle, AlertCircle, FileText, Download, ArrowLeft, Loader2, DollarSign, CreditCard, Plus, ShieldCheck, ShieldOff } from 'lucide-react'
+import { CheckCircle, AlertCircle, FileText, Download, ArrowLeft, Loader2, DollarSign, CreditCard, Plus, ShieldCheck, ShieldOff, Upload } from 'lucide-react'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { APPOINTMENT_DOCUMENT_KEYS } from '@/lib/appointments/constants'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
@@ -42,6 +43,7 @@ export function AdminCaseView({ caseData, documents, activities, payments }: Adm
   const [planDialogOpen, setPlanDialogOpen] = useState(false)
   const [planLoading, setPlanLoading] = useState(false)
   const [accessLoading, setAccessLoading] = useState(false)
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null)
   const [planForm, setPlanForm] = useState({
     total_amount: String(caseData.total_cost || ''),
     num_installments: '10',
@@ -520,7 +522,78 @@ export function AdminCaseView({ caseData, documents, activities, payments }: Adm
         </TabsContent>
 
         <TabsContent value="documents" className="mt-4">
-          <div className="space-y-3">
+          <div className="space-y-6">
+            {/* Upload Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Upload className="w-4 h-4" />
+                  Subir Documentos
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {APPOINTMENT_DOCUMENT_KEYS.map((docType) => {
+                    const existing = documents.filter(d => d.document_key === docType.key)
+                    return (
+                      <div key={docType.key} className="border rounded-lg p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium">{docType.label}</p>
+                          {existing.length > 0 && (
+                            <Badge variant="outline" className="text-green-700 border-green-300">
+                              {existing.length} subido{existing.length > 1 ? 's' : ''}
+                            </Badge>
+                          )}
+                        </div>
+                        <label className="flex items-center justify-center gap-2 px-3 py-2 border-2 border-dashed rounded-md cursor-pointer text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
+                          {uploadingKey === docType.key ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Upload className="w-4 h-4" />
+                          )}
+                          {uploadingKey === docType.key ? 'Subiendo...' : 'Seleccionar PDF'}
+                          <input
+                            type="file"
+                            accept="application/pdf"
+                            className="hidden"
+                            disabled={uploadingKey !== null}
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0]
+                              if (!file) return
+                              setUploadingKey(docType.key)
+                              try {
+                                const formData = new FormData()
+                                formData.append('case_id', caseData.id)
+                                formData.append('client_id', caseData.client_id)
+                                formData.append('document_key', docType.key)
+                                formData.append('file', file)
+                                const res = await fetch('/api/admin/upload-document', {
+                                  method: 'POST',
+                                  body: formData,
+                                })
+                                if (!res.ok) {
+                                  const data = await res.json()
+                                  throw new Error(data.error)
+                                }
+                                toast.success(`${docType.label} subido correctamente`)
+                                router.refresh()
+                              } catch (err: any) {
+                                toast.error(err.message || 'Error al subir documento')
+                              } finally {
+                                setUploadingKey(null)
+                                e.target.value = ''
+                              }
+                            }}
+                          />
+                        </label>
+                      </div>
+                    )
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Existing Documents */}
             {documents.length > 0 ? documents.map((doc) => (
               <Card key={doc.id}>
                 <CardContent className="p-4 flex items-center justify-between">
@@ -554,7 +627,7 @@ export function AdminCaseView({ caseData, documents, activities, payments }: Adm
                 </CardContent>
               </Card>
             )) : (
-              <p className="text-sm text-gray-500">No hay documentos subidos.</p>
+              <p className="text-sm text-gray-500">No hay documentos subidos aun.</p>
             )}
           </div>
         </TabsContent>
