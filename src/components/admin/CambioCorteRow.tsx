@@ -7,9 +7,10 @@ import { Card, CardContent } from '@/components/ui/card'
 import {
   Download, CheckCircle, ChevronDown, ChevronUp,
   Loader2, User, Calendar, MessageSquare, FileText,
-  Trash2, Search, XCircle, Building2, MapPin,
+  Trash2, Search, XCircle, Building2, MapPin, Pencil,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import Link from 'next/link'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import jsPDF from 'jspdf'
@@ -627,6 +628,13 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
           <div className="border-t px-4 pb-4">
             {/* Action buttons */}
             <div className="flex items-center gap-2 py-3 border-b mb-4 flex-wrap">
+              <Link
+                href={`/admin/cambio-corte/${submission.id}`}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#F2A900] text-white rounded-lg hover:bg-[#D4940A] transition-colors"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Editar
+              </Link>
               <button
                 onClick={handleDownloadPDF}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#002855] text-white rounded-lg hover:bg-[#001d3d] transition-colors"

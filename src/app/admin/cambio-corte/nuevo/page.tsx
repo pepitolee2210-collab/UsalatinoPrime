@@ -21,7 +21,34 @@ const sections: Section[] = [
   { id: 'counsel', title: 'Fiscal Principal (Chief Counsel)', icon: FileText, num: 5 },
 ]
 
-export default function NuevoCambioCortePage() {
+export interface CambioCorteInitialData {
+  id?: string
+  client_full_name?: string
+  client_phone?: string
+  client_address_street?: string
+  client_address_city?: string
+  client_address_state?: string
+  client_address_zip?: string
+  file_number?: string
+  judge_name?: string
+  next_hearing_date?: string
+  next_hearing_time?: string
+  current_court_name?: string
+  current_court_street?: string
+  current_court_city_state_zip?: string
+  new_address_street?: string
+  new_address_city?: string
+  new_address_state?: string
+  new_address_zip?: string
+  new_court_name?: string
+  new_court_street?: string
+  new_court_city_state_zip?: string
+  chief_counsel_address?: string
+  document_date?: string
+  residence_proof_docs?: string[]
+}
+
+export function CambioCorteForm({ initialData, mode = 'create' }: { initialData?: CambioCorteInitialData; mode?: 'create' | 'edit' }) {
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -32,43 +59,45 @@ export default function NuevoCambioCortePage() {
     counsel: false,
   })
 
+  const d = initialData
+
   // Client info
-  const [clientFullName, setClientFullName] = useState('')
-  const [clientPhone, setClientPhone] = useState('')
-  const [clientStreet, setClientStreet] = useState('')
-  const [clientCity, setClientCity] = useState('')
-  const [clientState, setClientState] = useState('')
-  const [clientZip, setClientZip] = useState('')
+  const [clientFullName, setClientFullName] = useState(d?.client_full_name || '')
+  const [clientPhone, setClientPhone] = useState(d?.client_phone || '')
+  const [clientStreet, setClientStreet] = useState(d?.client_address_street || '')
+  const [clientCity, setClientCity] = useState(d?.client_address_city || '')
+  const [clientState, setClientState] = useState(d?.client_address_state || '')
+  const [clientZip, setClientZip] = useState(d?.client_address_zip || '')
 
   // Case info
-  const [fileNumber, setFileNumber] = useState('')
-  const [judgeName, setJudgeName] = useState('')
-  const [nextHearingDate, setNextHearingDate] = useState('')
-  const [nextHearingTime, setNextHearingTime] = useState('')
+  const [fileNumber, setFileNumber] = useState(d?.file_number || '')
+  const [judgeName, setJudgeName] = useState(d?.judge_name || '')
+  const [nextHearingDate, setNextHearingDate] = useState(d?.next_hearing_date || '')
+  const [nextHearingTime, setNextHearingTime] = useState(d?.next_hearing_time || '')
 
   // Current court
-  const [currentCourtName, setCurrentCourtName] = useState('')
-  const [currentCourtStreet, setCurrentCourtStreet] = useState('')
-  const [currentCourtCityStateZip, setCurrentCourtCityStateZip] = useState('')
+  const [currentCourtName, setCurrentCourtName] = useState(d?.current_court_name || '')
+  const [currentCourtStreet, setCurrentCourtStreet] = useState(d?.current_court_street || '')
+  const [currentCourtCityStateZip, setCurrentCourtCityStateZip] = useState(d?.current_court_city_state_zip || '')
 
   // New location
-  const [newStreet, setNewStreet] = useState('')
-  const [newCity, setNewCity] = useState('')
-  const [newState, setNewState] = useState('')
-  const [newZip, setNewZip] = useState('')
-  const [newCourtName, setNewCourtName] = useState('')
-  const [newCourtStreet, setNewCourtStreet] = useState('')
-  const [newCourtCityStateZip, setNewCourtCityStateZip] = useState('')
+  const [newStreet, setNewStreet] = useState(d?.new_address_street || '')
+  const [newCity, setNewCity] = useState(d?.new_address_city || '')
+  const [newState, setNewState] = useState(d?.new_address_state || '')
+  const [newZip, setNewZip] = useState(d?.new_address_zip || '')
+  const [newCourtName, setNewCourtName] = useState(d?.new_court_name || '')
+  const [newCourtStreet, setNewCourtStreet] = useState(d?.new_court_street || '')
+  const [newCourtCityStateZip, setNewCourtCityStateZip] = useState(d?.new_court_city_state_zip || '')
 
   // Residence proof documents
-  const [residenceProofDocs, setResidenceProofDocs] = useState<string[]>([])
+  const [residenceProofDocs, setResidenceProofDocs] = useState<string[]>(d?.residence_proof_docs || [])
 
   // Chief counsel
-  const [chiefCounselAddress, setChiefCounselAddress] = useState('')
+  const [chiefCounselAddress, setChiefCounselAddress] = useState(d?.chief_counsel_address || '')
 
   // Document date
   const [documentDate, setDocumentDate] = useState(
-    new Date().toISOString().split('T')[0]
+    d?.document_date || new Date().toISOString().split('T')[0]
   )
 
   function toggleSection(id: string) {
@@ -80,35 +109,41 @@ export default function NuevoCambioCortePage() {
     setSubmitting(true)
 
     try {
-      const res = await fetch('/api/cambio-corte', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_full_name: clientFullName,
-          client_phone: clientPhone,
-          client_address_street: clientStreet,
-          client_address_city: clientCity,
-          client_address_state: clientState,
-          client_address_zip: clientZip,
-          file_number: fileNumber,
-          judge_name: judgeName,
-          next_hearing_date: nextHearingDate,
-          next_hearing_time: nextHearingTime,
-          current_court_name: currentCourtName,
-          current_court_street: currentCourtStreet,
-          current_court_city_state_zip: currentCourtCityStateZip,
-          new_address_street: newStreet,
-          new_address_city: newCity,
-          new_address_state: newState,
-          new_address_zip: newZip,
-          new_court_name: newCourtName,
-          new_court_street: newCourtStreet,
-          new_court_city_state_zip: newCourtCityStateZip,
-          chief_counsel_address: chiefCounselAddress,
-          document_date: documentDate,
-          residence_proof_docs: residenceProofDocs,
-        }),
-      })
+      const payload = {
+        client_full_name: clientFullName,
+        client_phone: clientPhone,
+        client_address_street: clientStreet,
+        client_address_city: clientCity,
+        client_address_state: clientState,
+        client_address_zip: clientZip,
+        file_number: fileNumber,
+        judge_name: judgeName,
+        next_hearing_date: nextHearingDate,
+        next_hearing_time: nextHearingTime,
+        current_court_name: currentCourtName,
+        current_court_street: currentCourtStreet,
+        current_court_city_state_zip: currentCourtCityStateZip,
+        new_address_street: newStreet,
+        new_address_city: newCity,
+        new_address_state: newState,
+        new_address_zip: newZip,
+        new_court_name: newCourtName,
+        new_court_street: newCourtStreet,
+        new_court_city_state_zip: newCourtCityStateZip,
+        chief_counsel_address: chiefCounselAddress,
+        document_date: documentDate,
+        residence_proof_docs: residenceProofDocs,
+      }
+
+      const isEdit = mode === 'edit' && d?.id
+      const res = await fetch(
+        isEdit ? `/api/cambio-corte?id=${d.id}` : '/api/cambio-corte',
+        {
+          method: isEdit ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        },
+      )
 
       if (!res.ok) {
         const data = await res.json()
@@ -116,8 +151,8 @@ export default function NuevoCambioCortePage() {
         return
       }
 
-      toast.success('Formulario de cambio de corte guardado')
-      router.push('/admin/cambio-corte')
+      toast.success(isEdit ? 'Formulario actualizado' : 'Formulario de cambio de corte guardado')
+      router.push('/admin/formularios?tab=cambio-corte')
     } catch {
       toast.error('Error de conexion')
     } finally {
@@ -140,8 +175,8 @@ export default function NuevoCambioCortePage() {
           Volver
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Nuevo Cambio de Corte</h1>
-          <p className="text-sm text-gray-500">Complete los datos del cliente para generar el documento</p>
+          <h1 className="text-2xl font-bold text-gray-900">{mode === 'edit' ? 'Editar Cambio de Corte' : 'Nuevo Cambio de Corte'}</h1>
+          <p className="text-sm text-gray-500">{mode === 'edit' ? 'Modifique los datos y guarde los cambios' : 'Complete los datos del cliente para generar el documento'}</p>
         </div>
       </div>
 
@@ -346,11 +381,15 @@ export default function NuevoCambioCortePage() {
           ) : (
             <>
               <Save className="w-5 h-5" />
-              Guardar Formulario
+              {mode === 'edit' ? 'Guardar Cambios' : 'Guardar Formulario'}
             </>
           )}
         </button>
       </form>
     </div>
   )
+}
+
+export default function NuevoCambioCortePage() {
+  return <CambioCorteForm />
 }

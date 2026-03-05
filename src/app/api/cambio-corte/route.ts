@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServiceClient } from '@/lib/supabase/service'
 
@@ -31,6 +31,44 @@ const cambioCorteSchema = z.object({
   document_date: z.string().min(1, 'Fecha del documento requerida'),
   residence_proof_docs: z.array(z.string()).default([]),
 })
+
+export async function PUT(request: NextRequest) {
+  try {
+    const id = request.nextUrl.searchParams.get('id')
+    if (!id) {
+      return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+    }
+
+    const body = await request.json()
+    const parsed = cambioCorteSchema.safeParse(body)
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Datos invalidos', details: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      )
+    }
+
+    const supabase = createServiceClient()
+
+    const { error } = await supabase
+      .from('cambio_corte_submissions')
+      .update({ ...parsed.data, updated_at: new Date().toISOString() })
+      .eq('id', id)
+
+    if (error) {
+      console.error('Supabase update error:', error)
+      return NextResponse.json(
+        { error: 'Error al actualizar el formulario' },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({ message: 'Formulario actualizado exitosamente' })
+  } catch {
+    return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+  }
+}
 
 export async function POST(request: Request) {
   try {
