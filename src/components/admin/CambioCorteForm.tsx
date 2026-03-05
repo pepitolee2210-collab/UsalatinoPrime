@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, Loader2, Save, ChevronDown, ChevronUp, User, Building2, MapPin, Gavel, FileText } from 'lucide-react'
+import { ArrowLeft, Loader2, Save, ChevronDown, ChevronUp, User, Building2, MapPin, Gavel, FileText, Plus, X, Users } from 'lucide-react'
 import Link from 'next/link'
 
 interface Section {
@@ -15,10 +15,11 @@ interface Section {
 
 const sections: Section[] = [
   { id: 'client', title: 'Datos del Cliente', icon: User, num: 1 },
-  { id: 'case', title: 'Datos del Caso', icon: Gavel, num: 2 },
-  { id: 'current_court', title: 'Corte Actual', icon: Building2, num: 3 },
-  { id: 'new_location', title: 'Nueva Ubicacion / Corte', icon: MapPin, num: 4 },
-  { id: 'counsel', title: 'Fiscal Principal (Chief Counsel)', icon: FileText, num: 5 },
+  { id: 'beneficiaries', title: 'Beneficiarios (Esposa/Hijos)', icon: Users, num: 2 },
+  { id: 'case', title: 'Datos del Caso', icon: Gavel, num: 3 },
+  { id: 'current_court', title: 'Corte Actual', icon: Building2, num: 4 },
+  { id: 'new_location', title: 'Nueva Ubicacion / Corte', icon: MapPin, num: 5 },
+  { id: 'counsel', title: 'Fiscal Principal (Chief Counsel)', icon: FileText, num: 6 },
 ]
 
 export interface CambioCorteInitialData {
@@ -46,6 +47,7 @@ export interface CambioCorteInitialData {
   chief_counsel_address?: string
   document_date?: string
   residence_proof_docs?: string[]
+  beneficiaries?: { full_name: string; file_number: string }[]
 }
 
 export function CambioCorteForm({ initialData, mode = 'create' }: { initialData?: CambioCorteInitialData; mode?: 'create' | 'edit' }) {
@@ -53,6 +55,7 @@ export function CambioCorteForm({ initialData, mode = 'create' }: { initialData?
   const [submitting, setSubmitting] = useState(false)
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     client: true,
+    beneficiaries: false,
     case: false,
     current_court: false,
     new_location: false,
@@ -68,6 +71,11 @@ export function CambioCorteForm({ initialData, mode = 'create' }: { initialData?
   const [clientCity, setClientCity] = useState(d?.client_address_city || '')
   const [clientState, setClientState] = useState(d?.client_address_state || '')
   const [clientZip, setClientZip] = useState(d?.client_address_zip || '')
+
+  // Beneficiaries
+  const [beneficiaries, setBeneficiaries] = useState<{ full_name: string; file_number: string }[]>(
+    d?.beneficiaries || []
+  )
 
   // Case info
   const [fileNumber, setFileNumber] = useState(d?.file_number || '')
@@ -133,6 +141,7 @@ export function CambioCorteForm({ initialData, mode = 'create' }: { initialData?
         chief_counsel_address: chiefCounselAddress,
         document_date: documentDate,
         residence_proof_docs: residenceProofDocs,
+        beneficiaries: beneficiaries.filter(b => b.full_name.trim()),
       }
 
       const isEdit = mode === 'edit' && d?.id
@@ -231,6 +240,65 @@ export function CambioCorteForm({ initialData, mode = 'create' }: { initialData?
                         <input type="text" required value={clientZip} onChange={e => setClientZip(e.target.value)} placeholder="98031" className={inputClass} />
                       </div>
                     </div>
+                  </>
+                )}
+
+                {section.id === 'beneficiaries' && (
+                  <>
+                    <p className="text-xs text-gray-500 bg-blue-50 p-2 rounded">
+                      Agregue esposa/esposo e hijos incluidos en la solicitud de asilo (máximo 4)
+                    </p>
+                    {beneficiaries.map((b, i) => (
+                      <div key={i} className="flex items-start gap-2 p-3 rounded-lg border border-gray-200 bg-gray-50">
+                        <div className="flex-1 grid grid-cols-2 gap-3">
+                          <div>
+                            <label className={labelClass}>Nombre completo *</label>
+                            <input
+                              type="text"
+                              value={b.full_name}
+                              onChange={e => {
+                                const updated = [...beneficiaries]
+                                updated[i] = { ...updated[i], full_name: e.target.value }
+                                setBeneficiaries(updated)
+                              }}
+                              placeholder="Ej: MARIA LOPEZ GARCIA"
+                              className={inputClass}
+                            />
+                          </div>
+                          <div>
+                            <label className={labelClass}>File No. (A#) *</label>
+                            <input
+                              type="text"
+                              value={b.file_number}
+                              onChange={e => {
+                                const updated = [...beneficiaries]
+                                updated[i] = { ...updated[i], file_number: e.target.value }
+                                setBeneficiaries(updated)
+                              }}
+                              placeholder="Ej: 245-205120"
+                              className={inputClass}
+                            />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setBeneficiaries(prev => prev.filter((_, idx) => idx !== i))}
+                          className="mt-6 flex items-center justify-center w-8 h-8 rounded border border-red-200 bg-white text-red-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    {beneficiaries.length < 4 && (
+                      <button
+                        type="button"
+                        onClick={() => setBeneficiaries(prev => [...prev, { full_name: '', file_number: '' }])}
+                        className="w-full flex items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-[#002855]/20 hover:border-[#002855] bg-white hover:bg-gray-50 px-3 py-2.5 text-xs font-medium text-[#002855]/60 hover:text-[#002855] transition-all"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Agregar beneficiario ({beneficiaries.length}/4)
+                      </button>
+                    )}
                   </>
                 )}
 

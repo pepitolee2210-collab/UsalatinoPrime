@@ -43,6 +43,7 @@ interface Submission {
   chief_counsel_address: string
   document_date: string
   residence_proof_docs: string[] | null
+  beneficiaries: { full_name: string; file_number: string }[] | null
 }
 
 const statusConfig: Record<string, { label: string; class: string }> = {
@@ -210,6 +211,7 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
     bold(12); center('OFFICE OF THE IMMIGRATION JUDGE'); y += 16
 
     // Case block
+    const bens = s.beneficiaries || []
     normal(12); left('In the Matter of:'); y += 7
     bold(12); left(s.client_full_name.toUpperCase())
 
@@ -218,7 +220,19 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
     doc.text('File No: ', pw - mr - doc.getTextWidth(`File No: ${s.file_number}`), y)
     bold(12)
     doc.text(s.file_number, pw - mr - doc.getTextWidth(s.file_number), y)
-    y += 10
+    y += 6
+
+    // Beneficiaries
+    for (const ben of bens) {
+      if (!ben.full_name.trim()) continue
+      bold(12); left(ben.full_name.toUpperCase())
+      normal(12)
+      doc.text('File No: ', pw - mr - doc.getTextWidth(`File No: ${ben.file_number}`), y)
+      bold(12)
+      doc.text(ben.file_number, pw - mr - doc.getTextWidth(ben.file_number), y)
+      y += 6
+    }
+    y += 4
 
     normal(12); left('Respondent(s)'); y += 5
     italic(12); left('In removal proceedings.'); y += 10
@@ -356,6 +370,16 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
     normal(12)
     doc.text(`File No.: `, pw / 2 + 5, y); bold(12); doc.text(s.file_number, pw / 2 + 5 + doc.getTextWidth('File No.: '), y)
     y += 6
+
+    // Beneficiaries on page 3
+    for (const ben of bens) {
+      if (!ben.full_name.trim()) continue
+      bold(12); left(ben.full_name.toUpperCase())
+      normal(12)
+      doc.text(`File No.: `, pw / 2 + 5, y); bold(12); doc.text(ben.file_number, pw / 2 + 5 + doc.getTextWidth('File No.: '), y)
+      y += 6
+    }
+
     normal(12); left('Respondent'); y += 5
     italic(12); left('In Removal Proceedings'); y += 16
 
