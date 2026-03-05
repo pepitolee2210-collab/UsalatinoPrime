@@ -41,6 +41,7 @@ interface Submission {
   new_court_city_state_zip: string
   chief_counsel_address: string
   document_date: string
+  residence_proof_docs: string[] | null
 }
 
 const statusConfig: Record<string, { label: string; class: string }> = {
@@ -272,6 +273,21 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
     paragraph(
       `I have permanently relocated to ${s.new_address_state} for employment and stability reasons. My residence is now established in ${s.new_address_city}, ${s.new_address_state}, and traveling to ${currentCourtCity}, ${s.current_court_city_state_zip.split(',')[1]?.trim().split(' ')[0] || ''} for future hearings would create significant financial and logistical hardship.`, 11
     )
+
+    // Residence proof documents paragraph
+    const proofDocs = s.residence_proof_docs || []
+    if (proofDocs.length > 0) {
+      const docLabels: Record<string, string> = {
+        pay_stub: 'Pay Stub',
+        lease_agreement: 'Lease Agreement',
+        tax_return: 'Tax Return',
+        utility_bills: 'Utility Bills proving my new address',
+      }
+      const docList = proofDocs.map(k => docLabels[k] || k).join(', ')
+      paragraph(
+        `To accredit my new residence, I attach the following: ${docList}.`, 11
+      )
+    }
 
     paragraph(
       `Because my current residence falls within the jurisdiction of the ${newCourtShort}, transferring venue will allow me to fully comply with all court hearings and continue participating properly in these proceedings.`, 11

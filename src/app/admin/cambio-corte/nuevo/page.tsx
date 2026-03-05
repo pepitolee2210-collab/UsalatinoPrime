@@ -60,6 +60,9 @@ export default function NuevoCambioCortePage() {
   const [newCourtStreet, setNewCourtStreet] = useState('')
   const [newCourtCityStateZip, setNewCourtCityStateZip] = useState('')
 
+  // Residence proof documents
+  const [residenceProofDocs, setResidenceProofDocs] = useState<string[]>([])
+
   // Chief counsel
   const [chiefCounselAddress, setChiefCounselAddress] = useState('')
 
@@ -103,6 +106,7 @@ export default function NuevoCambioCortePage() {
           new_court_city_state_zip: newCourtCityStateZip,
           chief_counsel_address: chiefCounselAddress,
           document_date: documentDate,
+          residence_proof_docs: residenceProofDocs,
         }),
       })
 
@@ -258,6 +262,34 @@ export default function NuevoCambioCortePage() {
                       <div>
                         <label className={labelClass}>ZIP *</label>
                         <input type="text" required value={newZip} onChange={e => setNewZip(e.target.value)} placeholder="84043" className={inputClass} />
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-4 mt-2">
+                      <p className="text-xs text-gray-500 bg-blue-50 p-2 rounded mb-3">Documentos que acreditan nueva residencia (aparecerán en el PDF)</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+                        {[
+                          { key: 'pay_stub', label: 'Boleta de Pago' },
+                          { key: 'lease_agreement', label: 'Contrato de Alquiler' },
+                          { key: 'tax_return', label: 'Declaración de Taxes' },
+                          { key: 'utility_bills', label: 'Recibo de Servicios' },
+                        ].map(opt => (
+                          <label key={opt.key} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={residenceProofDocs.includes(opt.key)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setResidenceProofDocs(prev => [...prev, opt.key])
+                                } else {
+                                  setResidenceProofDocs(prev => prev.filter(k => k !== opt.key))
+                                }
+                              }}
+                              className="rounded border-gray-300 text-[#002855] focus:ring-[#002855]"
+                            />
+                            <span className="text-sm text-gray-700">{opt.label}</span>
+                          </label>
+                        ))}
                       </div>
                     </div>
 

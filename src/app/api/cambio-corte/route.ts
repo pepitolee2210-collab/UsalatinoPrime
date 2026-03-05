@@ -29,6 +29,7 @@ const cambioCorteSchema = z.object({
 
   chief_counsel_address: z.string().min(1, 'Direccion del fiscal requerida'),
   document_date: z.string().min(1, 'Fecha del documento requerida'),
+  residence_proof_docs: z.array(z.string()).default([]),
 })
 
 export async function POST(request: Request) {
