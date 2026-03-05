@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getInstallmentCount } from '@/lib/contracts'
 import {
   FileText, PenLine, Download, Plus, X, ChevronDown,
-  User, Stamp, Calendar, Baby, PackagePlus, DollarSign, Hash, CalendarClock, Save,
+  User, Stamp, Calendar, Baby, PackagePlus, DollarSign, Hash, CalendarClock, Save, Phone,
 } from 'lucide-react'
 
 interface MinorData {
@@ -31,6 +31,7 @@ interface ContractForm {
   clientPassport: string
   clientDOB: string
   clientSignature: string
+  clientPhone: string
 }
 
 const SERVICE_OPTIONS = [
@@ -63,6 +64,7 @@ export function QuickContractGenerator({ editData, onSaved }: QuickContractGener
     clientPassport: '',
     clientDOB: '',
     clientSignature: '',
+    clientPhone: '',
   })
   const [minors, setMinors] = useState<MinorData[]>([emptyMinor()])
   const [generating, setGenerating] = useState(false)
@@ -100,6 +102,7 @@ export function QuickContractGenerator({ editData, onSaved }: QuickContractGener
         clientPassport: editData.client_passport || '',
         clientDOB: editData.client_dob || '',
         clientSignature: editData.client_signature || '',
+        clientPhone: editData.client_phone || '',
       })
       setMinors(
         editData.minors?.length > 0
@@ -275,6 +278,10 @@ export function QuickContractGenerator({ editData, onSaved }: QuickContractGener
       toast.error('Ingrese la fecha de nacimiento')
       return
     }
+    if (!contractForm.clientPhone.trim() || contractForm.clientPhone.replace(/\D/g, '').length < 7) {
+      toast.error('Ingrese un teléfono válido del cliente')
+      return
+    }
     if (template.requiresMinor && minors.some(m => !m.fullName.trim())) {
       toast.error('Ingrese el nombre de todos los menores')
       return
@@ -308,6 +315,7 @@ export function QuickContractGenerator({ editData, onSaved }: QuickContractGener
         client_passport: contractForm.clientPassport.trim(),
         client_dob: contractForm.clientDOB,
         client_signature: contractForm.clientSignature.trim(),
+        client_phone: contractForm.clientPhone.trim(),
         minors: template.requiresMinor
           ? minors.map(m => ({
               fullName: m.fullName.trim(),
@@ -330,6 +338,8 @@ export function QuickContractGenerator({ editData, onSaved }: QuickContractGener
         etapas: template.etapas,
       }
 
+      let contractId: string | null = editData?.id || null
+
       if (editData?.id) {
         const { error } = await supabase
           .from('contracts')
@@ -342,15 +352,45 @@ export function QuickContractGenerator({ editData, onSaved }: QuickContractGener
         }
         toast.success('Contrato actualizado')
       } else {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from('contracts')
           .insert(contractData)
+          .select('id')
+          .single()
         if (error) {
           console.error('Error saving contract:', error)
           toast.error('Error al guardar el contrato')
           return
         }
+        contractId = inserted.id
         toast.success('Contrato guardado')
+      }
+
+      // Auto-register client and create case
+      try {
+        const regRes = await fetch('/api/contracts/register-client', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({
+            contract_id: contractId,
+            client_full_name: contractForm.clientFullName.trim(),
+            client_passport: contractForm.clientPassport.trim(),
+            client_phone: contractForm.clientPhone.trim(),
+            service_slug: selectedSlug,
+            total_price: finalPrice,
+          }),
+        })
+        const regData = await regRes.json()
+        if (regRes.ok && regData.case_number) {
+          toast.success(`Cliente registrado — Caso ${regData.case_number}`)
+        } else if (regRes.ok && regData.warning) {
+          toast.warning(regData.warning)
+        } else if (!regRes.ok) {
+          toast.error(`Error al registrar cliente: ${regData.error}`)
+        }
+      } catch {
+        toast.error('Error de conexión al registrar cliente')
       }
 
       const pdf = generateContractPDF({
@@ -402,7 +442,7 @@ export function QuickContractGenerator({ editData, onSaved }: QuickContractGener
     setSelectedSlug('')
     setSelectedVariantIndex(0)
     setTemplate(null)
-    setContractForm({ clientFullName: '', clientPassport: '', clientDOB: '', clientSignature: '' })
+    setContractForm({ clientFullName: '', clientPassport: '', clientDOB: '', clientSignature: '', clientPhone: '' })
     setMinors([emptyMinor()])
     setAddons([])
     setShowAddonSelector(false)
@@ -715,7 +755,7 @@ export function QuickContractGenerator({ editData, onSaved }: QuickContractGener
         {template && (
           <>
             {/* Client info */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-sm font-medium text-[#002855] flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-gray-400" />
@@ -737,6 +777,18 @@ export function QuickContractGenerator({ editData, onSaved }: QuickContractGener
                   placeholder="Ej: A12345678"
                   value={contractForm.clientPassport}
                   onChange={(e) => setContractForm({ ...contractForm, clientPassport: e.target.value })}
+                  className="h-10 rounded-lg"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium text-[#002855] flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5 text-gray-400" />
+                  Teléfono <span className="text-[#F2A900]">*</span>
+                </Label>
+                <Input
+                  placeholder="Ej: (786) 555-1234"
+                  value={contractForm.clientPhone}
+                  onChange={(e) => setContractForm({ ...contractForm, clientPhone: e.target.value })}
                   className="h-10 rounded-lg"
                 />
               </div>
