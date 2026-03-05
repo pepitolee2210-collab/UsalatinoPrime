@@ -90,3 +90,77 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
   }
 }
+
+async function verifyAdmin() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const service = createServiceClient()
+  const { data: profile } = await service
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') return null
+  return service
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const service = await verifyAdmin()
+    if (!service) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
+    const { document_id } = await request.json()
+    if (!document_id) {
+      return NextResponse.json({ error: 'document_id requerido' }, { status: 400 })
+    }
+
+    const { data: doc } = await service
+      .from('documents')
+      .select('id, file_path')
+      .eq('id', document_id)
+      .single()
+
+    if (!doc) {
+      return NextResponse.json({ error: 'Documento no encontrado' }, { status: 404 })
+    }
+
+    await service.storage.from('case-documents').remove([doc.file_path])
+    await service.from('documents').delete().eq('id', document_id)
+
+    return NextResponse.json({ message: 'Documento eliminado' })
+  } catch {
+    return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const service = await verifyAdmin()
+    if (!service) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
+    const { document_id, name } = await request.json()
+    if (!document_id || !name) {
+      return NextResponse.json({ error: 'document_id y name requeridos' }, { status: 400 })
+    }
+
+    const { error } = await service
+      .from('documents')
+      .update({ name })
+      .eq('id', document_id)
+
+    if (error) {
+      return NextResponse.json({ error: 'Error al renombrar' }, { status: 500 })
+    }
+
+    return NextResponse.json({ message: 'Documento renombrado' })
+  } catch {
+    return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+  }
+}

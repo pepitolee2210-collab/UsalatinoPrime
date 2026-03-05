@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { FileText, Upload, CheckCircle } from 'lucide-react'
+import { FileText, Upload, CheckCircle, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
@@ -55,6 +55,9 @@ export function DocumentUploadSection({ token, uploadedDocuments }: DocumentUplo
                   setUploaded(prev => [...prev, newDoc])
                 }
               }}
+              onDelete={(docId) => {
+                setUploaded(prev => prev.filter(d => d.id !== docId))
+              }}
             />
           )
         })}
@@ -83,6 +86,7 @@ function DocumentCard({
   token,
   onUploadStart,
   onUploadEnd,
+  onDelete,
 }: {
   docKey: string
   label: string
@@ -91,8 +95,10 @@ function DocumentCard({
   token: string
   onUploadStart: () => void
   onUploadEnd: (doc: UploadedDoc | null) => void
+  onDelete: (docId: string) => void
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const hasUploads = uploadedDocs.length > 0
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -186,12 +192,46 @@ function DocumentCard({
 
       {/* Lista de archivos subidos */}
       {hasUploads && (
-        <div className="mt-3 ml-13 space-y-1">
+        <div className="mt-3 ml-13 space-y-2">
           {uploadedDocs.map(doc => (
-            <p key={doc.id} className="text-xs text-gray-500 truncate">
-              {doc.name}
-              {doc.file_size && ` (${(doc.file_size / 1024).toFixed(0)} KB)`}
-            </p>
+            <div key={doc.id} className="flex items-center justify-between gap-2">
+              <p className="text-xs text-gray-500 truncate">
+                {doc.name}
+                {doc.file_size && ` (${(doc.file_size / 1024).toFixed(0)} KB)`}
+              </p>
+              <button
+                type="button"
+                disabled={deleting === doc.id}
+                onClick={async () => {
+                  if (!confirm('¿Eliminar este documento?')) return
+                  setDeleting(doc.id)
+                  try {
+                    const res = await fetch('/api/appointments/upload-document', {
+                      method: 'DELETE',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ token, document_id: doc.id }),
+                    })
+                    if (!res.ok) {
+                      const data = await res.json()
+                      throw new Error(data.error)
+                    }
+                    toast.success('Documento eliminado')
+                    onDelete(doc.id)
+                  } catch (err: any) {
+                    toast.error(err.message || 'Error al eliminar')
+                  } finally {
+                    setDeleting(null)
+                  }
+                }}
+                className="text-red-400 hover:text-red-600 flex-shrink-0 p-1"
+              >
+                {deleting === doc.id ? (
+                  <div className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
+              </button>
+            </div>
           ))}
         </div>
       )}

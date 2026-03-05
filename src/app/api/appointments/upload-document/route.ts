@@ -82,3 +82,42 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ document })
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { token, document_id } = await request.json()
+
+    if (!token || !document_id) {
+      return NextResponse.json({ error: 'Token y document_id requeridos' }, { status: 400 })
+    }
+
+    const supabase = createServiceClient()
+
+    const { data: tokenData } = await supabase
+      .from('appointment_tokens')
+      .select('client_id, case_id, is_active')
+      .eq('token', token)
+      .single()
+
+    if (!tokenData || !tokenData.is_active) {
+      return NextResponse.json({ error: 'Token invalido o inactivo' }, { status: 403 })
+    }
+
+    const { data: doc } = await supabase
+      .from('documents')
+      .select('id, file_path, client_id, case_id')
+      .eq('id', document_id)
+      .single()
+
+    if (!doc || doc.client_id !== tokenData.client_id || doc.case_id !== tokenData.case_id) {
+      return NextResponse.json({ error: 'Documento no encontrado' }, { status: 404 })
+    }
+
+    await supabase.storage.from('case-documents').remove([doc.file_path])
+    await supabase.from('documents').delete().eq('id', document_id)
+
+    return NextResponse.json({ message: 'Documento eliminado' })
+  } catch {
+    return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+  }
+}

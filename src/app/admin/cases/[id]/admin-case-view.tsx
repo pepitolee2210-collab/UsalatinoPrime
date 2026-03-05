@@ -14,7 +14,7 @@ import { CaseFormViewer } from '@/components/admin/CaseFormViewer'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { CheckCircle, AlertCircle, FileText, Download, ArrowLeft, Loader2, DollarSign, CreditCard, Plus, ShieldCheck, ShieldOff, Upload } from 'lucide-react'
+import { CheckCircle, AlertCircle, FileText, Download, ArrowLeft, Loader2, DollarSign, CreditCard, Plus, ShieldCheck, ShieldOff, Upload, Eye, Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -44,6 +44,10 @@ export function AdminCaseView({ caseData, documents, activities, payments }: Adm
   const [planLoading, setPlanLoading] = useState(false)
   const [accessLoading, setAccessLoading] = useState(false)
   const [uploadingKey, setUploadingKey] = useState<string | null>(null)
+  const [deletingDocId, setDeletingDocId] = useState<string | null>(null)
+  const [renamingDoc, setRenamingDoc] = useState<{ id: string; name: string } | null>(null)
+  const [renameLoading, setRenameLoading] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [planForm, setPlanForm] = useState({
     total_amount: String(caseData.total_cost || ''),
     num_installments: '10',
@@ -523,113 +527,265 @@ export function AdminCaseView({ caseData, documents, activities, payments }: Adm
 
         <TabsContent value="documents" className="mt-4">
           <div className="space-y-6">
-            {/* Upload Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Upload className="w-4 h-4" />
-                  Subir Documentos
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {APPOINTMENT_DOCUMENT_KEYS.map((docType) => {
-                    const existing = documents.filter(d => d.document_key === docType.key)
-                    return (
-                      <div key={docType.key} className="border rounded-lg p-3 space-y-2">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-medium">{docType.label}</p>
-                          {existing.length > 0 && (
-                            <Badge variant="outline" className="text-green-700 border-green-300">
-                              {existing.length} subido{existing.length > 1 ? 's' : ''}
-                            </Badge>
-                          )}
-                        </div>
-                        <label className="flex items-center justify-center gap-2 px-3 py-2 border-2 border-dashed rounded-md cursor-pointer text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
-                          {uploadingKey === docType.key ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Upload className="w-4 h-4" />
-                          )}
-                          {uploadingKey === docType.key ? 'Subiendo...' : 'Seleccionar PDF'}
-                          <input
-                            type="file"
-                            accept="application/pdf"
-                            className="hidden"
-                            disabled={uploadingKey !== null}
-                            onChange={async (e) => {
-                              const file = e.target.files?.[0]
-                              if (!file) return
-                              setUploadingKey(docType.key)
-                              try {
-                                const formData = new FormData()
-                                formData.append('case_id', caseData.id)
-                                formData.append('client_id', caseData.client_id)
-                                formData.append('document_key', docType.key)
-                                formData.append('file', file)
-                                const res = await fetch('/api/admin/upload-document', {
-                                  method: 'POST',
-                                  body: formData,
-                                })
-                                if (!res.ok) {
-                                  const data = await res.json()
-                                  throw new Error(data.error)
-                                }
-                                toast.success(`${docType.label} subido correctamente`)
-                                router.refresh()
-                              } catch (err: any) {
-                                toast.error(err.message || 'Error al subir documento')
-                              } finally {
-                                setUploadingKey(null)
-                                e.target.value = ''
+            {/* Documents grouped by category */}
+            {APPOINTMENT_DOCUMENT_KEYS.map((docType) => {
+              const categoryDocs = documents.filter(d => d.document_key === docType.key)
+              return (
+                <Card key={docType.key}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-gray-500" />
+                        {docType.label}
+                        {categoryDocs.length > 0 && (
+                          <Badge variant="outline" className="text-green-700 border-green-300 ml-1">
+                            {categoryDocs.length}
+                          </Badge>
+                        )}
+                      </CardTitle>
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-dashed rounded-md cursor-pointer text-xs text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
+                        {uploadingKey === docType.key ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Upload className="w-3.5 h-3.5" />
+                        )}
+                        {uploadingKey === docType.key ? 'Subiendo...' : 'Subir PDF'}
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          className="hidden"
+                          disabled={uploadingKey !== null}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            setUploadingKey(docType.key)
+                            try {
+                              const formData = new FormData()
+                              formData.append('case_id', caseData.id)
+                              formData.append('client_id', caseData.client_id)
+                              formData.append('document_key', docType.key)
+                              formData.append('file', file)
+                              const res = await fetch('/api/admin/upload-document', {
+                                method: 'POST',
+                                body: formData,
+                              })
+                              if (!res.ok) {
+                                const data = await res.json()
+                                throw new Error(data.error)
                               }
-                            }}
-                          />
-                        </label>
-                      </div>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Existing Documents */}
-            {documents.length > 0 ? documents.map((doc) => (
-              <Card key={doc.id}>
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <FileText className="w-5 h-5 text-gray-400" />
-                    <div>
-                      <p className="font-medium text-sm">{doc.name}</p>
-                      <p className="text-xs text-gray-500">{doc.document_key} &mdash; {(doc.file_size / 1024).toFixed(0)} KB</p>
+                              toast.success(`${docType.label} subido correctamente`)
+                              router.refresh()
+                            } catch (err: any) {
+                              toast.error(err.message || 'Error al subir documento')
+                            } finally {
+                              setUploadingKey(null)
+                              e.target.value = ''
+                            }
+                          }}
+                        />
+                      </label>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge>{doc.status}</Badge>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        const { data } = await supabase.storage
-                          .from('case-documents')
-                          .createSignedUrl(doc.file_path, 300)
-                        if (data?.signedUrl) {
-                          window.open(data.signedUrl, '_blank')
-                        } else {
-                          toast.error('Error al generar link de descarga')
-                        }
-                      }}
-                    >
-                      <Download className="w-3.5 h-3.5 mr-1" />
-                      Descargar
-                    </Button>
+                  </CardHeader>
+                  {categoryDocs.length > 0 && (
+                    <CardContent className="pt-0">
+                      <div className="space-y-2">
+                        {categoryDocs.map((doc: any) => (
+                          <div key={doc.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">{doc.name}</p>
+                                <p className="text-xs text-gray-400">{(doc.file_size / 1024).toFixed(0)} KB</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                title="Previsualizar"
+                                onClick={async () => {
+                                  const { data } = await supabase.storage
+                                    .from('case-documents')
+                                    .createSignedUrl(doc.file_path, 300)
+                                  if (data?.signedUrl) {
+                                    setPreviewUrl(data.signedUrl)
+                                  } else {
+                                    toast.error('Error al generar preview')
+                                  }
+                                }}
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                title="Renombrar"
+                                onClick={() => setRenamingDoc({ id: doc.id, name: doc.name })}
+                              >
+                                <Pencil className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                title="Descargar"
+                                onClick={async () => {
+                                  const { data } = await supabase.storage
+                                    .from('case-documents')
+                                    .createSignedUrl(doc.file_path, 300)
+                                  if (data?.signedUrl) {
+                                    const link = document.createElement('a')
+                                    link.href = data.signedUrl
+                                    link.download = doc.name
+                                    link.click()
+                                  } else {
+                                    toast.error('Error al generar link de descarga')
+                                  }
+                                }}
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                title="Eliminar"
+                                disabled={deletingDocId === doc.id}
+                                onClick={async () => {
+                                  if (!confirm('¿Eliminar este documento?')) return
+                                  setDeletingDocId(doc.id)
+                                  try {
+                                    const res = await fetch('/api/admin/upload-document', {
+                                      method: 'DELETE',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ document_id: doc.id }),
+                                    })
+                                    if (!res.ok) {
+                                      const data = await res.json()
+                                      throw new Error(data.error)
+                                    }
+                                    toast.success('Documento eliminado')
+                                    router.refresh()
+                                  } catch (err: any) {
+                                    toast.error(err.message || 'Error al eliminar')
+                                  } finally {
+                                    setDeletingDocId(null)
+                                  }
+                                }}
+                              >
+                                {deletingDocId === doc.id ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  )}
+                </Card>
+              )
+            })}
+
+            {/* Uncategorized documents */}
+            {documents.filter(d => !APPOINTMENT_DOCUMENT_KEYS.some(k => k.key === d.document_key)).length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold">Otros Documentos</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="space-y-2">
+                    {documents.filter(d => !APPOINTMENT_DOCUMENT_KEYS.some(k => k.key === d.document_key)).map((doc: any) => (
+                      <div key={doc.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{doc.name}</p>
+                            <p className="text-xs text-gray-400">{doc.document_key} &mdash; {(doc.file_size / 1024).toFixed(0)} KB</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Descargar"
+                            onClick={async () => {
+                              const { data } = await supabase.storage.from('case-documents').createSignedUrl(doc.file_path, 300)
+                              if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+                            }}
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </CardContent>
               </Card>
-            )) : (
-              <p className="text-sm text-gray-500">No hay documentos subidos aun.</p>
             )}
           </div>
+
+          {/* Rename Dialog */}
+          <Dialog open={renamingDoc !== null} onOpenChange={(open) => { if (!open) setRenamingDoc(null) }}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Renombrar Documento</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Input
+                  value={renamingDoc?.name || ''}
+                  onChange={(e) => setRenamingDoc(prev => prev ? { ...prev, name: e.target.value } : null)}
+                  placeholder="Nombre del documento"
+                />
+                <Button
+                  className="w-full"
+                  disabled={renameLoading || !renamingDoc?.name.trim()}
+                  onClick={async () => {
+                    if (!renamingDoc) return
+                    setRenameLoading(true)
+                    try {
+                      const res = await fetch('/api/admin/upload-document', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ document_id: renamingDoc.id, name: renamingDoc.name }),
+                      })
+                      if (!res.ok) {
+                        const data = await res.json()
+                        throw new Error(data.error)
+                      }
+                      toast.success('Documento renombrado')
+                      setRenamingDoc(null)
+                      router.refresh()
+                    } catch (err: any) {
+                      toast.error(err.message || 'Error al renombrar')
+                    } finally {
+                      setRenameLoading(false)
+                    }
+                  }}
+                >
+                  {renameLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+                  Guardar
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Preview Dialog */}
+          <Dialog open={previewUrl !== null} onOpenChange={(open) => { if (!open) setPreviewUrl(null) }}>
+            <DialogContent className="max-w-4xl h-[80vh]">
+              <DialogHeader>
+                <DialogTitle>Previsualizar Documento</DialogTitle>
+              </DialogHeader>
+              {previewUrl && (
+                <iframe
+                  src={previewUrl}
+                  className="w-full flex-1 rounded-md border"
+                  style={{ minHeight: 'calc(80vh - 80px)' }}
+                />
+              )}
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-4">
