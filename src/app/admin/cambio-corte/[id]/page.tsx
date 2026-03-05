@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { CambioCorteForm } from '../nuevo/page'
-import type { CambioCorteInitialData } from '../nuevo/page'
+import { CambioCorteForm } from '@/components/admin/CambioCorteForm'
+import type { CambioCorteInitialData } from '@/components/admin/CambioCorteForm'
 import { Loader2 } from 'lucide-react'
 
 export default function EditarCambioCortePage() {
