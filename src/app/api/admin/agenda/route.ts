@@ -1,0 +1,149 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
+
+const VALID_STATUSES = ['pending', 'called', 'follow_up', 'converted', 'no_answer', 'not_interested']
+
+async function verifyAdmin() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  const service = createServiceClient()
+  const { data: profile } = await service
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (profile?.role !== 'admin') return null
+  return service
+}
+
+export async function GET() {
+  try {
+    const service = await verifyAdmin()
+    if (!service) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
+    const { data, error } = await service
+      .from('callback_requests')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      return NextResponse.json({ error: 'Error al obtener agenda' }, { status: 500 })
+    }
+
+    return NextResponse.json(data)
+  } catch {
+    return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const service = await verifyAdmin()
+    if (!service) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { prospect_name, phone, service_interest, notes } = body
+
+    if (!prospect_name?.trim() || !phone?.trim()) {
+      return NextResponse.json({ error: 'Nombre y telefono requeridos' }, { status: 400 })
+    }
+
+    const { data, error } = await service
+      .from('callback_requests')
+      .insert({
+        prospect_name: prospect_name.trim(),
+        phone: phone.trim(),
+        service_interest: service_interest?.trim() || null,
+        notes: notes?.trim() || null,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      return NextResponse.json({ error: 'Error al crear registro' }, { status: 500 })
+    }
+
+    return NextResponse.json(data, { status: 201 })
+  } catch {
+    return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const service = await verifyAdmin()
+    if (!service) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { id, status, notes, follow_up_date } = body
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+    }
+
+    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() }
+
+    if (status) {
+      if (!VALID_STATUSES.includes(status)) {
+        return NextResponse.json({ error: 'Estado invalido' }, { status: 400 })
+      }
+      updateData.status = status
+      if (status === 'called' || status === 'converted' || status === 'no_answer' || status === 'not_interested') {
+        updateData.called_at = new Date().toISOString()
+      }
+    }
+
+    if (notes !== undefined) updateData.notes = notes
+    if (follow_up_date !== undefined) updateData.follow_up_date = follow_up_date
+
+    const { error } = await service
+      .from('callback_requests')
+      .update(updateData)
+      .eq('id', id)
+
+    if (error) {
+      return NextResponse.json({ error: 'Error al actualizar' }, { status: 500 })
+    }
+
+    return NextResponse.json({ message: 'Actualizado' })
+  } catch {
+    return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const service = await verifyAdmin()
+    if (!service) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+    }
+
+    const { id } = await request.json()
+    if (!id) {
+      return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
+    }
+
+    const { error } = await service
+      .from('callback_requests')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      return NextResponse.json({ error: 'Error al eliminar' }, { status: 500 })
+    }
+
+    return NextResponse.json({ message: 'Eliminado' })
+  } catch {
+    return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+  }
+}

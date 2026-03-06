@@ -21,7 +21,7 @@ export async function GET() {
   const todayEnd = new Date()
   todayEnd.setHours(23, 59, 59, 999)
 
-  const [citasRes, visaRes, asiloRes, ajusteRes, renunciaRes, cambioRes] = await Promise.all([
+  const [citasRes, visaRes, asiloRes, ajusteRes, renunciaRes, cambioRes, agendaRes] = await Promise.all([
     supabase
       .from('appointments')
       .select('*', { count: 'exact', head: true })
@@ -48,6 +48,10 @@ export async function GET() {
       .from('cambio_corte_submissions')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'nuevo'),
+    supabase
+      .from('callback_requests')
+      .select('*', { count: 'exact', head: true })
+      .in('status', ['pending', 'follow_up']),
   ])
 
   const formsPending = (visaRes.count || 0) + (asiloRes.count || 0) + (ajusteRes.count || 0) + (renunciaRes.count || 0) + (cambioRes.count || 0)
@@ -55,5 +59,6 @@ export async function GET() {
   return NextResponse.json({
     citasToday: citasRes.count || 0,
     formsPending,
+    agendaPending: agendaRes.count || 0,
   })
 }

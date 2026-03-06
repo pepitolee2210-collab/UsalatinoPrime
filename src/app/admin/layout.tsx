@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import {
   LayoutDashboard, FileText, Users, CreditCard, LogOut, Menu, Shield,
-  MessageSquare, PenLine, CalendarClock, ClipboardList,
+  MessageSquare, PenLine, CalendarClock, ClipboardList, PhoneCall,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ClientSearch } from '@/components/admin/ClientSearch'
@@ -23,14 +23,15 @@ const navItems = [
   { href: '/admin/payments', label: 'Pagos', icon: CreditCard, badgeKey: null },
   { href: '/admin/formularios', label: 'Formularios', icon: ClipboardList, badgeKey: 'formsPending' as const },
   { href: '/admin/contratos', label: 'Contratos', icon: PenLine, badgeKey: null },
+  { href: '/admin/agenda', label: 'Agenda', icon: PhoneCall, badgeKey: 'agendaPending' as const },
   { href: '/admin/comunidad', label: 'Comunidad', icon: MessageSquare, badgeKey: null },
 ]
 
-type BadgeCounts = { citasToday: number; formsPending: number }
+type BadgeCounts = { citasToday: number; formsPending: number; agendaPending: number }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [counts, setCounts] = useState<BadgeCounts>({ citasToday: 0, formsPending: 0 })
+  const [counts, setCounts] = useState<BadgeCounts>({ citasToday: 0, formsPending: 0, agendaPending: 0 })
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
