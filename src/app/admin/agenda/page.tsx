@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import {
-  Phone, Plus, Loader2, Clock, CheckCircle, PhoneOff, UserX, UserCheck, CalendarClock, Trash2,
+  Phone, Plus, Loader2, Clock, CheckCircle, PhoneOff, UserX, UserCheck, CalendarClock, Trash2, AlertTriangle, Save,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -56,6 +56,13 @@ interface CallbackRequest {
   follow_up_date: string | null
   created_at: string
   called_at: string | null
+}
+
+function getPriority(createdAt: string): { label: string; color: string; sort: number } {
+  const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24))
+  if (days >= 7) return { label: 'Alta', color: 'bg-red-100 text-red-800', sort: 0 }
+  if (days >= 3) return { label: 'Media', color: 'bg-yellow-100 text-yellow-800', sort: 1 }
+  return { label: 'Baja', color: 'bg-green-100 text-green-800', sort: 2 }
 }
 
 type FilterTab = 'pending' | 'follow_up' | 'all' | 'closed'
@@ -176,7 +183,7 @@ export default function AgendaPage() {
     if (activeTab === 'follow_up') return item.status === 'follow_up'
     if (activeTab === 'closed') return ['converted', 'no_answer', 'not_interested'].includes(item.status)
     return true
-  })
+  }).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
 
   const pendingCount = items.filter(i => i.status === 'pending').length
   const followUpCount = items.filter(i => i.status === 'follow_up').length
@@ -257,112 +264,16 @@ export default function AgendaPage() {
       <div className="space-y-3">
         {filtered.length === 0 ? (
           <p className="text-sm text-gray-500 text-center py-8">No hay registros en esta categoria.</p>
-        ) : filtered.map(item => {
-          const config = STATUS_CONFIG[item.status]
-          const StatusIcon = config.icon
-          const serviceLabel = SERVICE_OPTIONS.find(s => s.slug === item.service_interest)?.label || item.service_interest
-
-          return (
-            <Card key={item.id} className="hover:shadow-sm transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-gray-900">{item.prospect_name}</h3>
-                      <Badge className={config.color}>
-                        <StatusIcon className="w-3 h-3 mr-1" />
-                        {config.label}
-                      </Badge>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
-                      <a href={`tel:${item.phone}`} className="flex items-center gap-1 text-blue-600 hover:underline">
-                        <Phone className="w-3.5 h-3.5" />
-                        {item.phone}
-                      </a>
-                      {serviceLabel && (
-                        <span className="text-gray-600">{serviceLabel}</span>
-                      )}
-                      <span>{format(new Date(item.created_at), "d MMM yyyy, h:mm a", { locale: es })}</span>
-                    </div>
-                    {item.notes && (
-                      <p className="text-sm text-gray-600 mt-2 bg-gray-50 rounded-md p-2">{item.notes}</p>
-                    )}
-                    {item.follow_up_date && (
-                      <p className="text-xs text-purple-600 mt-1 flex items-center gap-1">
-                        <CalendarClock className="w-3 h-3" />
-                        Seguimiento: {format(new Date(item.follow_up_date + 'T12:00:00'), "d 'de' MMMM yyyy", { locale: es })}
-                      </p>
-                    )}
-                    {item.called_at && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        Llamado: {format(new Date(item.called_at), "d MMM yyyy, h:mm a", { locale: es })}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-1 flex-shrink-0">
-                    {item.status === 'pending' && (
-                      <>
-                        <Button size="sm" variant="outline" onClick={() => updateStatus(item.id, 'called')}>
-                          <Phone className="w-3 h-3 mr-1" /> Llamado
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setEditingItem(item)}>
-                          Seguimiento
-                        </Button>
-                      </>
-                    )}
-                    {item.status === 'called' && (
-                      <>
-                        <Button size="sm" variant="outline" className="text-green-700" onClick={() => updateStatus(item.id, 'converted')}>
-                          <UserCheck className="w-3 h-3 mr-1" /> Convertido
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => setEditingItem(item)}>
-                          Seguimiento
-                        </Button>
-                        <Button size="sm" variant="outline" className="text-gray-500" onClick={() => updateStatus(item.id, 'not_interested')}>
-                          No Interesado
-                        </Button>
-                      </>
-                    )}
-                    {item.status === 'follow_up' && (
-                      <>
-                        <Button size="sm" variant="outline" onClick={() => updateStatus(item.id, 'called')}>
-                          <Phone className="w-3 h-3 mr-1" /> Llamado
-                        </Button>
-                        <Button size="sm" variant="outline" className="text-green-700" onClick={() => updateStatus(item.id, 'converted')}>
-                          <UserCheck className="w-3 h-3 mr-1" /> Convertido
-                        </Button>
-                        <Button size="sm" variant="outline" className="text-orange-600" onClick={() => updateStatus(item.id, 'no_answer')}>
-                          Sin Respuesta
-                        </Button>
-                      </>
-                    )}
-                    {item.status === 'no_answer' && (
-                      <Button size="sm" variant="outline" onClick={() => setEditingItem(item)}>
-                        Reintentar
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-gray-400 hover:text-gray-600"
-                      onClick={() => setEditingItem(item)}
-                    >
-                      Editar Notas
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="text-red-400 hover:text-red-600"
-                      onClick={() => deleteItem(item.id)}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
+        ) : filtered.map(item => (
+          <AgendaCard
+            key={item.id}
+            item={item}
+            onUpdateStatus={updateStatus}
+            onUpdateNotes={updateNotes}
+            onDelete={deleteItem}
+            onEdit={setEditingItem}
+          />
+        ))}
       </div>
 
       {/* New callback form dialog */}
@@ -437,6 +348,165 @@ export default function AgendaPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+function AgendaCard({
+  item,
+  onUpdateStatus,
+  onUpdateNotes,
+  onDelete,
+  onEdit,
+}: {
+  item: CallbackRequest
+  onUpdateStatus: (id: string, status: CallbackStatus, followUpDate?: string) => Promise<void>
+  onUpdateNotes: (id: string, notes: string) => Promise<void>
+  onDelete: (id: string) => void
+  onEdit: (item: CallbackRequest) => void
+}) {
+  const config = STATUS_CONFIG[item.status]
+  const StatusIcon = config.icon
+  const serviceLabel = SERVICE_OPTIONS.find(s => s.slug === item.service_interest)?.label || item.service_interest
+  const priority = getPriority(item.created_at)
+  const [inlineNotes, setInlineNotes] = useState(item.notes || '')
+  const [savingNotes, setSavingNotes] = useState(false)
+  const notesChanged = inlineNotes !== (item.notes || '')
+
+  async function handleSaveNotes() {
+    setSavingNotes(true)
+    await onUpdateNotes(item.id, inlineNotes)
+    setSavingNotes(false)
+  }
+
+  return (
+    <Card className="hover:shadow-sm transition-shadow">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            {/* Name + badges */}
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <h3 className="font-semibold text-gray-900">{item.prospect_name}</h3>
+              <Badge className={config.color}>
+                <StatusIcon className="w-3 h-3 mr-1" />
+                {config.label}
+              </Badge>
+              <Badge className={priority.color}>
+                <AlertTriangle className="w-3 h-3 mr-1" />
+                {priority.label}
+              </Badge>
+            </div>
+
+            {/* Info row */}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+              <a href={`tel:${item.phone}`} className="flex items-center gap-1 text-blue-600 hover:underline">
+                <Phone className="w-3.5 h-3.5" />
+                {item.phone}
+              </a>
+              {serviceLabel && (
+                <span className="text-gray-600">{serviceLabel}</span>
+              )}
+              <span className="text-gray-500">
+                Recibido: {format(new Date(item.created_at), "d MMM yyyy, h:mm a", { locale: es })}
+              </span>
+              {item.called_at && (
+                <span className="text-blue-600">
+                  Llamado: {format(new Date(item.called_at), "d MMM yyyy, h:mm a", { locale: es })}
+                </span>
+              )}
+            </div>
+
+            {/* Notes display (context from prospect) */}
+            {item.notes && item.notes !== inlineNotes && (
+              <p className="text-sm text-gray-600 mt-2 bg-gray-50 rounded-md p-2">{item.notes}</p>
+            )}
+
+            {/* Follow-up date */}
+            {item.follow_up_date && (
+              <p className="text-xs text-purple-600 mt-1 flex items-center gap-1">
+                <CalendarClock className="w-3 h-3" />
+                Seguimiento: {format(new Date(item.follow_up_date + 'T12:00:00'), "d 'de' MMMM yyyy", { locale: es })}
+              </p>
+            )}
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-col gap-1 flex-shrink-0">
+            {item.status === 'pending' && (
+              <>
+                <Button size="sm" variant="outline" onClick={() => onUpdateStatus(item.id, 'called')}>
+                  <Phone className="w-3 h-3 mr-1" /> Llamado
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => onEdit(item)}>
+                  Seguimiento
+                </Button>
+              </>
+            )}
+            {item.status === 'called' && (
+              <>
+                <Button size="sm" variant="outline" className="text-green-700" onClick={() => onUpdateStatus(item.id, 'converted')}>
+                  <UserCheck className="w-3 h-3 mr-1" /> Convertido
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => onEdit(item)}>
+                  Seguimiento
+                </Button>
+                <Button size="sm" variant="outline" className="text-gray-500" onClick={() => onUpdateStatus(item.id, 'not_interested')}>
+                  No Interesado
+                </Button>
+              </>
+            )}
+            {item.status === 'follow_up' && (
+              <>
+                <Button size="sm" variant="outline" onClick={() => onUpdateStatus(item.id, 'called')}>
+                  <Phone className="w-3 h-3 mr-1" /> Llamado
+                </Button>
+                <Button size="sm" variant="outline" className="text-green-700" onClick={() => onUpdateStatus(item.id, 'converted')}>
+                  <UserCheck className="w-3 h-3 mr-1" /> Convertido
+                </Button>
+                <Button size="sm" variant="outline" className="text-orange-600" onClick={() => onUpdateStatus(item.id, 'no_answer')}>
+                  Sin Respuesta
+                </Button>
+              </>
+            )}
+            {item.status === 'no_answer' && (
+              <Button size="sm" variant="outline" onClick={() => onEdit(item)}>
+                Reintentar
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-red-400 hover:text-red-600"
+              onClick={() => onDelete(item.id)}
+            >
+              <Trash2 className="w-3 h-3" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Inline notes - Henry's notes */}
+        <div className="flex items-start gap-2 border-t pt-3">
+          <div className="flex-1">
+            <label className="text-xs font-medium text-[#F2A900] mb-1 block">Notas Henry</label>
+            <Input
+              value={inlineNotes}
+              onChange={e => setInlineNotes(e.target.value)}
+              placeholder="Agregar notas..."
+              className="text-sm h-9"
+            />
+          </div>
+          {notesChanged && (
+            <Button
+              size="sm"
+              className="mt-5 bg-[#F2A900] hover:bg-[#D4940A] text-white"
+              disabled={savingNotes}
+              onClick={handleSaveNotes}
+            >
+              {savingNotes ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
