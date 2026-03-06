@@ -211,20 +211,22 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
     bold(12); center('OFFICE OF THE IMMIGRATION JUDGE'); y += 16
 
     // Case block
-    const bens = s.beneficiaries || []
+    const bens = (s.beneficiaries || []).filter(b => b.full_name.trim())
     normal(12); left('In the Matter of:'); y += 7
-    bold(12); left(s.client_full_name.toUpperCase())
 
-    // File No on the right
+    // Main respondent (parent)
+    bold(12); left(s.client_full_name.toUpperCase())
     normal(12)
     doc.text('File No: ', pw - mr - doc.getTextWidth(`File No: ${s.file_number}`), y)
     bold(12)
     doc.text(s.file_number, pw - mr - doc.getTextWidth(s.file_number), y)
-    y += 6
+    y += 8
 
-    // Beneficiaries
+    normal(12); left('Respondent(s)'); y += 5
+    italic(12); left('In removal proceedings.'); y += 8
+
+    // Beneficiaries (children/spouse) after Respondent(s)
     for (const ben of bens) {
-      if (!ben.full_name.trim()) continue
       bold(12); left(ben.full_name.toUpperCase())
       normal(12)
       doc.text('File No: ', pw - mr - doc.getTextWidth(`File No: ${ben.file_number}`), y)
@@ -233,9 +235,6 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
       y += 6
     }
     y += 4
-
-    normal(12); left('Respondent(s)'); y += 5
-    italic(12); left('In removal proceedings.'); y += 10
 
     // Judge and hearing
     bold(12); left('Immigration Judge:')
@@ -366,22 +365,27 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
 
     // Case block
     normal(12); left('In Matter (s) of:'); y += 7
+
+    // Main respondent
     bold(12); left(s.client_full_name.toUpperCase())
     normal(12)
-    doc.text(`File No.: `, pw / 2 + 5, y); bold(12); doc.text(s.file_number, pw / 2 + 5 + doc.getTextWidth('File No.: '), y)
-    y += 6
-
-    // Beneficiaries on page 3
-    for (const ben of bens) {
-      if (!ben.full_name.trim()) continue
-      bold(12); left(ben.full_name.toUpperCase())
-      normal(12)
-      doc.text(`File No.: `, pw / 2 + 5, y); bold(12); doc.text(ben.file_number, pw / 2 + 5 + doc.getTextWidth('File No.: '), y)
-      y += 6
-    }
+    const fnLabel3 = 'File No.: '
+    doc.text(fnLabel3, pw - mr - doc.getTextWidth(fnLabel3 + s.file_number), y)
+    bold(12); doc.text(s.file_number, pw - mr - doc.getTextWidth(s.file_number), y)
+    y += 8
 
     normal(12); left('Respondent'); y += 5
-    italic(12); left('In Removal Proceedings'); y += 16
+    italic(12); left('In Removal Proceedings'); y += 8
+
+    // Beneficiaries (children/spouse) after Respondent
+    for (const ben of bens) {
+      bold(12); left(ben.full_name.toUpperCase())
+      normal(12)
+      doc.text(fnLabel3, pw - mr - doc.getTextWidth(fnLabel3 + ben.file_number), y)
+      bold(12); doc.text(ben.file_number, pw - mr - doc.getTextWidth(ben.file_number), y)
+      y += 6
+    }
+    y += 8
 
     // Dashed separator line
     dashedLine(ml, ml + cw * 0.65); y += 8
@@ -532,7 +536,7 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
     y += 20
 
     // Signature block
-    left('________________________', ml + 10); y += 6
+    center('________________________'); y += 6
     bold(11); center(s.client_full_name.toUpperCase()); y += 8
     normal(11)
     center(s.client_address_street); y += 5
