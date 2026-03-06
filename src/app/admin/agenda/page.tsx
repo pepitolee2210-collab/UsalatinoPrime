@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import {
-  Phone, Plus, Loader2, Clock, CheckCircle, PhoneOff, UserX, UserCheck, CalendarClock, Trash2, AlertTriangle, Save,
+  Phone, Plus, Loader2, Clock, CheckCircle, PhoneOff, UserX, UserCheck, CalendarClock, Trash2, AlertTriangle, Save, XCircle,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -42,6 +42,7 @@ const STATUS_CONFIG = {
   converted: { label: 'Convertido', color: 'bg-green-100 text-green-800', icon: UserCheck },
   no_answer: { label: 'Sin Respuesta', color: 'bg-orange-100 text-orange-800', icon: PhoneOff },
   not_interested: { label: 'No Interesado', color: 'bg-gray-100 text-gray-800', icon: UserX },
+  closed: { label: 'Cerrado', color: 'bg-slate-100 text-slate-800', icon: XCircle },
 } as const
 
 type CallbackStatus = keyof typeof STATUS_CONFIG
@@ -181,7 +182,7 @@ export default function AgendaPage() {
   const filtered = items.filter(item => {
     if (activeTab === 'pending') return item.status === 'pending'
     if (activeTab === 'follow_up') return item.status === 'follow_up'
-    if (activeTab === 'closed') return ['converted', 'no_answer', 'not_interested'].includes(item.status)
+    if (activeTab === 'closed') return ['converted', 'no_answer', 'not_interested', 'closed'].includes(item.status)
     return true
   }).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
 
@@ -226,7 +227,7 @@ export default function AgendaPage() {
           <CardContent className="p-4 text-center">
             <p className="text-xs text-gray-500">Cerrados</p>
             <p className="text-2xl font-bold text-gray-600">
-              {items.filter(i => ['converted', 'no_answer', 'not_interested'].includes(i.status)).length}
+              {items.filter(i => ['converted', 'no_answer', 'not_interested', 'closed'].includes(i.status)).length}
             </p>
           </CardContent>
         </Card>
@@ -472,6 +473,16 @@ function AgendaCard({
                 Reintentar
               </Button>
             )}
+            {!['converted', 'not_interested', 'closed'].includes(item.status) && (
+              <Button size="sm" variant="outline" className="text-slate-500" onClick={() => onUpdateStatus(item.id, 'closed')}>
+                <XCircle className="w-3 h-3 mr-1" /> Cerrar
+              </Button>
+            )}
+            {item.status === 'closed' && (
+              <Button size="sm" variant="outline" onClick={() => onUpdateStatus(item.id, 'pending')}>
+                Reabrir
+              </Button>
+            )}
             <Button
               size="sm"
               variant="ghost"
@@ -566,6 +577,24 @@ function EditForm({
           Guardar
         </Button>
         <Button variant="outline" onClick={onClose}>Cancelar</Button>
+        {!['converted', 'not_interested', 'closed'].includes(item.status) && (
+          <Button
+            variant="outline"
+            className="text-slate-500"
+            disabled={saving}
+            onClick={async () => {
+              setSaving(true)
+              if (notes !== (item.notes || '')) {
+                await onUpdateNotes(item.id, notes)
+              }
+              await onUpdateStatus(item.id, 'closed')
+              setSaving(false)
+            }}
+          >
+            <XCircle className="w-4 h-4 mr-1" />
+            Cerrar
+          </Button>
+        )}
       </div>
     </div>
   )
