@@ -53,12 +53,14 @@ export async function PUT(request: NextRequest) {
   // Actualizar config de horarios por día
   if (config && Array.isArray(config)) {
     for (const day of config) {
+      const blocks = day.time_blocks || []
       await supabase
         .from('scheduling_config')
         .update({
-          start_hour: day.start_hour,
-          end_hour: day.end_hour,
+          start_hour: blocks.length > 0 ? blocks[0].start_hour : day.start_hour,
+          end_hour: blocks.length > 0 ? blocks[blocks.length - 1].end_hour : day.end_hour,
           is_available: day.is_available,
+          time_blocks: blocks,
         })
         .eq('day_of_week', day.day_of_week)
     }

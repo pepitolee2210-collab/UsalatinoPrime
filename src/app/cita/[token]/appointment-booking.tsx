@@ -257,7 +257,7 @@ function BookingView({ token }: { token: string }) {
     )
   }
 
-  // Deshabilitar días pasados
+  // Deshabilitar días pasados y días no disponibles (mostrar como "llenos")
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
@@ -297,9 +297,12 @@ function BookingView({ token }: { token: string }) {
               Este d&iacute;a no est&aacute; disponible para citas.
             </p>
           ) : slots.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-4">
-              No hay horarios disponibles para esta fecha. Seleccione otro d&iacute;a.
-            </p>
+            <div className="text-center py-4">
+              <Badge className="bg-red-100 text-red-700 mb-2">Agenda Llena</Badge>
+              <p className="text-sm text-gray-500">
+                Todos los horarios de este d&iacute;a est&aacute;n ocupados. Seleccione otro d&iacute;a.
+              </p>
+            </div>
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {slots.map(slot => (

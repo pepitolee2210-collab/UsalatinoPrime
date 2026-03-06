@@ -222,12 +222,18 @@ export interface AppointmentToken {
   created_at: string
 }
 
+export interface TimeBlock {
+  start_hour: number
+  end_hour: number
+}
+
 export interface SchedulingConfig {
   id: string
   day_of_week: number
   start_hour: number
   end_hour: number
   is_available: boolean
+  time_blocks: TimeBlock[]
 }
 
 export interface SchedulingSettings {

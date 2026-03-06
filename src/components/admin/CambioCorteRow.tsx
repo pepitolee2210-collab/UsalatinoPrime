@@ -196,23 +196,23 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
     bold(12); left(s.client_full_name.toUpperCase()); y += 6
     normal(12); left(`${s.client_address_street.toUpperCase()} ${s.client_address_city.toUpperCase()}, ${s.client_address_state.toUpperCase()} -${s.client_address_zip}`); y += 5
     left(s.client_phone); y += 6
-    bold(12); left('NOT DETAINED'); y += 10
+    bold(12); left('NOT DETAINED'); y += 18
 
     // UNITED STATES DEPARTMENT OF JUSTICE
-    bold(13); center('UNITED STATES DEPARTMENT OF JUSTICE'); y += 6
-    bold(12); center('EXECUTIVE OFFICE FOR IMMIGRATION REVIEW'); y += 8
+    bold(13); center('UNITED STATES DEPARTMENT OF JUSTICE'); y += 7
+    bold(12); center('EXECUTIVE OFFICE FOR IMMIGRATION REVIEW'); y += 12
 
     // Court address - centered, bold, underlined
     bold(12)
-    underlineCenter(s.current_court_street, 12); y += 5
-    center(s.current_court_city_state_zip); y += 5
-    bold(13); center('IMMIGRATION COURTS'); y += 8
+    underlineCenter(s.current_court_street, 12); y += 6
+    center(s.current_court_city_state_zip); y += 7
+    bold(13); center('IMMIGRATION COURTS'); y += 12
 
-    bold(12); center('OFFICE OF THE IMMIGRATION JUDGE'); y += 16
+    bold(12); center('OFFICE OF THE IMMIGRATION JUDGE'); y += 28
 
     // Case block
     const bens = (s.beneficiaries || []).filter(b => b.full_name.trim())
-    normal(12); left('In the Matter of:'); y += 7
+    normal(12); left('In the Matter of:'); y += 9
 
     // Main respondent (parent)
     bold(12); left(s.client_full_name.toUpperCase())
@@ -220,10 +220,10 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
     doc.text('File No: ', pw - mr - doc.getTextWidth(`File No: ${s.file_number}`), y)
     bold(12)
     doc.text(s.file_number, pw - mr - doc.getTextWidth(s.file_number), y)
-    y += 8
+    y += 9
 
     normal(12); left('Respondent(s)'); y += 5
-    italic(12); left('In removal proceedings.'); y += 8
+    italic(12); left('In removal proceedings.'); y += 9
 
     // Beneficiaries (children/spouse) after Respondent(s)
     for (const ben of bens) {
@@ -232,14 +232,14 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
       doc.text('File No: ', pw - mr - doc.getTextWidth(`File No: ${ben.file_number}`), y)
       bold(12)
       doc.text(ben.file_number, pw - mr - doc.getTextWidth(ben.file_number), y)
-      y += 6
+      y += 7
     }
-    y += 4
+    y += 6
 
     // Judge and hearing
     bold(12); left('Immigration Judge:')
     normal(12); doc.text(`Next Hearing: ${formatHearingDateLong(s.next_hearing_date, s.next_hearing_time)}`, pw / 2, y); y += 6
-    bold(12); left(`Hon. ${s.judge_name}`); y += 16
+    bold(12); left(`Hon. ${s.judge_name}`); y += 12
 
     // Title - centered, bold, underlined
     bold(13)

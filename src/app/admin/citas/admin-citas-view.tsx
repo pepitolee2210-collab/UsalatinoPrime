@@ -15,7 +15,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatToMT, formatDateMT } from '@/lib/appointments/slots'
-import type { SchedulingConfig, SchedulingSettings, BlockedDate } from '@/types/database'
+import type { SchedulingConfig, SchedulingSettings, BlockedDate, TimeBlock } from '@/types/database'
 
 const statusColors: Record<string, string> = {
   scheduled: 'bg-blue-100 text-blue-800',
@@ -224,6 +224,13 @@ function AppointmentRow({ appointment }: { appointment: AdminCitasViewProps['app
 }
 
 // ── Panel de configuración de horarios ──
+function formatHour(h: number): string {
+  if (h === 0) return '12 AM'
+  if (h < 12) return `${h} AM`
+  if (h === 12) return '12 PM'
+  return `${h - 12} PM`
+}
+
 function ScheduleConfigPanel({
   config: initialConfig,
   settings: initialSettings,
@@ -231,16 +238,66 @@ function ScheduleConfigPanel({
   config: SchedulingConfig[]
   settings: SchedulingSettings | null
 }) {
-  const [config, setConfig] = useState(initialConfig)
+  const [config, setConfig] = useState(() =>
+    initialConfig.map(c => ({
+      ...c,
+      time_blocks: c.time_blocks && c.time_blocks.length > 0
+        ? c.time_blocks
+        : c.is_available ? [{ start_hour: c.start_hour, end_hour: c.end_hour }] : [],
+    }))
+  )
   const [zoomLink, setZoomLink] = useState(initialSettings?.zoom_link || '')
   const [slotDuration, setSlotDuration] = useState(initialSettings?.slot_duration_minutes || 60)
   const [saving, setSaving] = useState(false)
 
-  function updateDay(dayOfWeek: number, field: string, value: boolean | number) {
+  function toggleDay(dayOfWeek: number, enabled: boolean) {
     setConfig(prev =>
       prev.map(c =>
-        c.day_of_week === dayOfWeek ? { ...c, [field]: value } : c
+        c.day_of_week === dayOfWeek
+          ? {
+              ...c,
+              is_available: enabled,
+              time_blocks: enabled && c.time_blocks.length === 0
+                ? [{ start_hour: 9, end_hour: 17 }]
+                : c.time_blocks,
+            }
+          : c
       )
+    )
+  }
+
+  function updateBlock(dayOfWeek: number, blockIndex: number, field: 'start_hour' | 'end_hour', value: number) {
+    setConfig(prev =>
+      prev.map(c => {
+        if (c.day_of_week !== dayOfWeek) return c
+        const blocks = [...c.time_blocks]
+        blocks[blockIndex] = { ...blocks[blockIndex], [field]: value }
+        return { ...c, time_blocks: blocks }
+      })
+    )
+  }
+
+  function addBlock(dayOfWeek: number) {
+    setConfig(prev =>
+      prev.map(c => {
+        if (c.day_of_week !== dayOfWeek) return c
+        const lastBlock = c.time_blocks[c.time_blocks.length - 1]
+        const newStart = lastBlock ? lastBlock.end_hour + 1 : 9
+        return {
+          ...c,
+          time_blocks: [...c.time_blocks, { start_hour: Math.min(newStart, 22), end_hour: Math.min(newStart + 3, 23) }],
+        }
+      })
+    )
+  }
+
+  function removeBlock(dayOfWeek: number, blockIndex: number) {
+    setConfig(prev =>
+      prev.map(c => {
+        if (c.day_of_week !== dayOfWeek) return c
+        const blocks = c.time_blocks.filter((_, i) => i !== blockIndex)
+        return { ...c, time_blocks: blocks, is_available: blocks.length > 0 }
+      })
     )
   }
 
@@ -256,6 +313,7 @@ function ScheduleConfigPanel({
             start_hour: c.start_hour,
             end_hour: c.end_hour,
             is_available: c.is_available,
+            time_blocks: c.time_blocks,
           })),
           settings: {
             id: initialSettings?.id,
@@ -265,9 +323,9 @@ function ScheduleConfigPanel({
         }),
       })
       if (!res.ok) throw new Error()
-      toast.success('Configuración guardada')
+      toast.success('Configuracion guardada')
     } catch {
-      toast.error('Error al guardar configuración')
+      toast.error('Error al guardar configuracion')
     } finally {
       setSaving(false)
     }
@@ -276,38 +334,69 @@ function ScheduleConfigPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Horarios por Día</CardTitle>
+        <CardTitle className="text-base">Horarios por Dia</CardTitle>
+        <p className="text-xs text-gray-500">Puede agregar multiples bloques horarios por dia (ej: manana y tarde)</p>
       </CardHeader>
       <CardContent className="space-y-4">
         {config.map(day => (
-          <div key={day.day_of_week} className="flex items-center gap-4 flex-wrap">
-            <div className="w-24">
-              <span className="text-sm font-medium">{DAY_NAMES[day.day_of_week]}</span>
+          <div key={day.day_of_week} className="border rounded-lg p-3">
+            <div className="flex items-center gap-3 mb-2">
+              <Switch
+                checked={day.is_available}
+                onCheckedChange={v => toggleDay(day.day_of_week, v)}
+              />
+              <span className={`text-sm font-medium ${day.is_available ? 'text-gray-900' : 'text-gray-400'}`}>
+                {DAY_NAMES[day.day_of_week]}
+              </span>
+              {day.is_available && (
+                <span className="text-xs text-gray-400">
+                  {day.time_blocks.map(b => `${formatHour(b.start_hour)}-${formatHour(b.end_hour)}`).join(' | ')}
+                </span>
+              )}
             </div>
-            <Switch
-              checked={day.is_available}
-              onCheckedChange={v => updateDay(day.day_of_week, 'is_available', v)}
-            />
             {day.is_available && (
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min={0}
-                  max={23}
-                  value={day.start_hour}
-                  onChange={e => updateDay(day.day_of_week, 'start_hour', Number(e.target.value))}
-                  className="w-16 text-center"
-                />
-                <span className="text-sm text-gray-500">a</span>
-                <Input
-                  type="number"
-                  min={0}
-                  max={23}
-                  value={day.end_hour}
-                  onChange={e => updateDay(day.day_of_week, 'end_hour', Number(e.target.value))}
-                  className="w-16 text-center"
-                />
-                <span className="text-xs text-gray-400">hrs</span>
+              <div className="ml-10 space-y-2">
+                {day.time_blocks.map((block, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 w-16">Bloque {idx + 1}</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={23}
+                      value={block.start_hour}
+                      onChange={e => updateBlock(day.day_of_week, idx, 'start_hour', Number(e.target.value))}
+                      className="w-16 text-center h-8 text-sm"
+                    />
+                    <span className="text-xs text-gray-500">a</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={23}
+                      value={block.end_hour}
+                      onChange={e => updateBlock(day.day_of_week, idx, 'end_hour', Number(e.target.value))}
+                      className="w-16 text-center h-8 text-sm"
+                    />
+                    <span className="text-xs text-gray-400">hrs</span>
+                    {day.time_blocks.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-red-400 hover:text-red-600"
+                        onClick={() => removeBlock(day.day_of_week, idx)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs text-blue-600 hover:text-blue-800 h-7"
+                  onClick={() => addBlock(day.day_of_week)}
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Agregar bloque
+                </Button>
               </div>
             )}
           </div>
@@ -324,7 +413,7 @@ function ScheduleConfigPanel({
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700">Duración de slot (minutos)</label>
+            <label className="text-sm font-medium text-gray-700">Duracion de slot (minutos)</label>
             <Input
               type="number"
               min={15}
@@ -337,7 +426,7 @@ function ScheduleConfigPanel({
         </div>
 
         <Button onClick={handleSave} disabled={saving} className="bg-[#002855]">
-          {saving ? 'Guardando...' : 'Guardar Configuración'}
+          {saving ? 'Guardando...' : 'Guardar Configuracion'}
         </Button>
       </CardContent>
     </Card>

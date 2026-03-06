@@ -19,29 +19,31 @@ export function getAvailableSlots(
   const dayConfig = config.find(c => c.day_of_week === dayOfWeek)
   if (!dayConfig || !dayConfig.is_available) return []
 
+  // Use time_blocks if available, otherwise fall back to start_hour/end_hour
+  const blocks = dayConfig.time_blocks && dayConfig.time_blocks.length > 0
+    ? dayConfig.time_blocks
+    : [{ start_hour: dayConfig.start_hour, end_hour: dayConfig.end_hour }]
+
   const slots: string[] = []
   const now = new Date()
 
-  for (let hour = dayConfig.start_hour; hour < dayConfig.end_hour; hour++) {
-    // Crear el timestamp en MT
-    // Usamos un approach que funciona: crear la hora como si fuera MT
-    const slotDateStr = `${date}T${hour.toString().padStart(2, '0')}:00:00`
+  for (const block of blocks) {
+    for (let hour = block.start_hour; hour < block.end_hour; hour++) {
+      const slotDateStr = `${date}T${hour.toString().padStart(2, '0')}:00:00`
 
-    // Convertir a UTC para comparación
-    const slotInUTC = mtToUTC(slotDateStr)
-    if (!slotInUTC) continue
+      const slotInUTC = mtToUTC(slotDateStr)
+      if (!slotInUTC) continue
 
-    // Filtrar slots ya pasados
-    if (slotInUTC <= now) continue
+      if (slotInUTC <= now) continue
 
-    // Filtrar slots ocupados
-    const isOccupied = existingAppointments.some(apt => {
-      const aptTime = new Date(apt.scheduled_at)
-      return Math.abs(aptTime.getTime() - slotInUTC.getTime()) < slotDurationMinutes * 60 * 1000
-    })
+      const isOccupied = existingAppointments.some(apt => {
+        const aptTime = new Date(apt.scheduled_at)
+        return Math.abs(aptTime.getTime() - slotInUTC.getTime()) < slotDurationMinutes * 60 * 1000
+      })
 
-    if (!isOccupied) {
-      slots.push(slotInUTC.toISOString())
+      if (!isOccupied) {
+        slots.push(slotInUTC.toISOString())
+      }
     }
   }
 
