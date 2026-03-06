@@ -237,8 +237,11 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
     y += 12
 
     // Judge and hearing
-    bold(12); left('Immigration Judge:')
-    normal(12); doc.text(`Next Hearing: ${formatHearingDateLong(s.next_hearing_date, s.next_hearing_time)}`, pw / 2, y); y += 6
+    normal(12); left('Immigration Judge:')
+    const nhLabel = 'Next Hearing: '
+    const nhDate = formatHearingDateLong(s.next_hearing_date, s.next_hearing_time)
+    normal(12); doc.text(nhLabel, pw / 2, y)
+    bold(12); doc.text(nhDate, pw / 2 + doc.getTextWidth(nhLabel), y); y += 6
     bold(12); left(`Hon. ${s.judge_name}`); y += 20
 
     // Title - centered, bold, underlined
