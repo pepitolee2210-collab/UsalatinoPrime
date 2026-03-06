@@ -103,20 +103,30 @@ export default function AgendaPage() {
     setShowForm(false)
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(force = false) {
     if (!form.prospect_name.trim() || !form.phone.trim()) {
       toast.error('Nombre y telefono son requeridos')
       return
     }
     setSaving(true)
     try {
+      const body = force ? { ...form, force_duplicate: true } : form
       const res = await fetch('/api/admin/agenda', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(body),
       })
+      const data = await res.json()
       if (!res.ok) {
-        const data = await res.json()
+        if (data.duplicate) {
+          const createAnyway = confirm(`${data.error}\n\n¿Desea crear el registro de todas formas?`)
+          if (createAnyway) {
+            setSaving(false)
+            return handleSubmit(true)
+          }
+          setSaving(false)
+          return
+        }
         throw new Error(data.error)
       }
       toast.success('Prospecto registrado')
@@ -322,7 +332,7 @@ export default function AgendaPage() {
                 rows={3}
               />
             </div>
-            <Button className="w-full" onClick={handleSubmit} disabled={saving}>
+            <Button className="w-full" onClick={() => handleSubmit()} disabled={saving}>
               {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Plus className="w-4 h-4 mr-1" />}
               Registrar Prospecto
             </Button>

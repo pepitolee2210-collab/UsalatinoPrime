@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
-const VALID_STATUSES = ['pending', 'called', 'follow_up', 'converted', 'no_answer', 'not_interested']
+const VALID_STATUSES = ['pending', 'called', 'follow_up', 'converted', 'no_answer', 'not_interested', 'closed']
 
 async function verifyAdmin() {
   const supabase = await createClient()
@@ -50,10 +50,30 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { prospect_name, phone, service_interest, notes } = body
+    const { prospect_name, phone, service_interest, notes, force_duplicate } = body
 
     if (!prospect_name?.trim() || !phone?.trim()) {
       return NextResponse.json({ error: 'Nombre y telefono requeridos' }, { status: 400 })
+    }
+
+    // Check for existing record with same phone (skip if forced)
+    if (!force_duplicate) {
+    const cleanPhone = phone.trim().replace(/\D/g, '')
+    const { data: existing } = await service
+      .from('callback_requests')
+      .select('id, prospect_name, status')
+      .or(`phone.eq.${phone.trim()},phone.ilike.%${cleanPhone.slice(-10)}%`)
+      .not('status', 'in', '("not_interested","closed")')
+      .limit(1)
+
+    if (existing && existing.length > 0) {
+      const ex = existing[0]
+      return NextResponse.json({
+        error: `Este telefono ya esta registrado para "${ex.prospect_name}" (${ex.status})`,
+        duplicate: true,
+        existing_id: ex.id,
+      }, { status: 409 })
+    }
     }
 
     const { data, error } = await service
