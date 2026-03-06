@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { prospect_name, phone, service_interest, notes, force_duplicate } = body
+    const { prospect_name, phone, service_interest, notes, message_date, force_duplicate } = body
 
     if (!prospect_name?.trim() || !phone?.trim()) {
       return NextResponse.json({ error: 'Nombre y telefono requeridos' }, { status: 400 })
@@ -83,6 +83,7 @@ export async function POST(request: NextRequest) {
         phone: phone.trim(),
         service_interest: service_interest?.trim() || null,
         notes: notes?.trim() || null,
+        message_date: message_date || null,
       })
       .select()
       .single()
@@ -105,7 +106,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, status, notes, follow_up_date } = body
+    const { id, status, notes, henry_notes, follow_up_date } = body
 
     if (!id) {
       return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
@@ -124,6 +125,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (notes !== undefined) updateData.notes = notes
+    if (henry_notes !== undefined) updateData.henry_notes = henry_notes
     if (follow_up_date !== undefined) updateData.follow_up_date = follow_up_date
 
     const { error } = await service

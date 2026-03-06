@@ -53,14 +53,17 @@ interface CallbackRequest {
   phone: string
   service_interest: string | null
   notes: string | null
+  henry_notes: string | null
+  message_date: string | null
   status: CallbackStatus
   follow_up_date: string | null
   created_at: string
   called_at: string | null
 }
 
-function getPriority(createdAt: string): { label: string; color: string; sort: number } {
-  const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60 * 24))
+function getPriority(messageDate: string | null, createdAt: string): { label: string; color: string; sort: number } {
+  const refDate = messageDate ? new Date(messageDate + 'T12:00:00') : new Date(createdAt)
+  const days = Math.floor((Date.now() - refDate.getTime()) / (1000 * 60 * 60 * 24))
   if (days >= 7) return { label: 'Alta', color: 'bg-red-100 text-red-800', sort: 0 }
   if (days >= 3) return { label: 'Media', color: 'bg-yellow-100 text-yellow-800', sort: 1 }
   return { label: 'Baja', color: 'bg-green-100 text-green-800', sort: 2 }
@@ -80,6 +83,7 @@ export default function AgendaPage() {
     phone: '',
     service_interest: '',
     notes: '',
+    message_date: '',
   })
 
   const loadData = useCallback(async () => {
@@ -99,7 +103,7 @@ export default function AgendaPage() {
   useEffect(() => { loadData() }, [loadData])
 
   function resetForm() {
-    setForm({ prospect_name: '', phone: '', service_interest: '', notes: '' })
+    setForm({ prospect_name: '', phone: '', service_interest: '', notes: '', message_date: '' })
     setShowForm(false)
   }
 
@@ -157,12 +161,12 @@ export default function AgendaPage() {
     }
   }
 
-  async function updateNotes(id: string, notes: string) {
+  async function updateHenryNotes(id: string, henry_notes: string) {
     try {
       const res = await fetch('/api/admin/agenda', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, notes }),
+        body: JSON.stringify({ id, henry_notes }),
       })
       if (!res.ok) throw new Error()
       toast.success('Notas actualizadas')
@@ -194,7 +198,11 @@ export default function AgendaPage() {
     if (activeTab === 'follow_up') return item.status === 'follow_up'
     if (activeTab === 'closed') return ['converted', 'no_answer', 'not_interested', 'closed'].includes(item.status)
     return true
-  }).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+  }).sort((a, b) => {
+    const dateA = a.message_date ? new Date(a.message_date + 'T12:00:00') : new Date(a.created_at)
+    const dateB = b.message_date ? new Date(b.message_date + 'T12:00:00') : new Date(b.created_at)
+    return dateA.getTime() - dateB.getTime()
+  })
 
   const pendingCount = items.filter(i => i.status === 'pending').length
   const followUpCount = items.filter(i => i.status === 'follow_up').length
@@ -280,7 +288,7 @@ export default function AgendaPage() {
             key={item.id}
             item={item}
             onUpdateStatus={updateStatus}
-            onUpdateNotes={updateNotes}
+            onUpdateHenryNotes={updateHenryNotes}
             onDelete={deleteItem}
             onEdit={setEditingItem}
           />
@@ -324,7 +332,15 @@ export default function AgendaPage() {
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Notas</Label>
+              <Label>Fecha del Mensaje (WhatsApp)</Label>
+              <Input
+                type="date"
+                value={form.message_date}
+                onChange={e => setForm({ ...form, message_date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Notas / Contexto del Prospecto</Label>
               <Textarea
                 value={form.notes}
                 onChange={e => setForm({ ...form, notes: e.target.value })}
@@ -352,7 +368,7 @@ export default function AgendaPage() {
             <EditForm
               item={editingItem}
               onUpdateStatus={updateStatus}
-              onUpdateNotes={updateNotes}
+              onUpdateHenryNotes={updateHenryNotes}
               onClose={() => setEditingItem(null)}
             />
           )}
@@ -365,27 +381,27 @@ export default function AgendaPage() {
 function AgendaCard({
   item,
   onUpdateStatus,
-  onUpdateNotes,
+  onUpdateHenryNotes,
   onDelete,
   onEdit,
 }: {
   item: CallbackRequest
   onUpdateStatus: (id: string, status: CallbackStatus, followUpDate?: string) => Promise<void>
-  onUpdateNotes: (id: string, notes: string) => Promise<void>
+  onUpdateHenryNotes: (id: string, henryNotes: string) => Promise<void>
   onDelete: (id: string) => void
   onEdit: (item: CallbackRequest) => void
 }) {
   const config = STATUS_CONFIG[item.status]
   const StatusIcon = config.icon
   const serviceLabel = SERVICE_OPTIONS.find(s => s.slug === item.service_interest)?.label || item.service_interest
-  const priority = getPriority(item.created_at)
-  const [inlineNotes, setInlineNotes] = useState(item.notes || '')
+  const priority = getPriority(item.message_date, item.created_at)
+  const [inlineNotes, setInlineNotes] = useState(item.henry_notes || '')
   const [savingNotes, setSavingNotes] = useState(false)
-  const notesChanged = inlineNotes !== (item.notes || '')
+  const notesChanged = inlineNotes !== (item.henry_notes || '')
 
   async function handleSaveNotes() {
     setSavingNotes(true)
-    await onUpdateNotes(item.id, inlineNotes)
+    await onUpdateHenryNotes(item.id, inlineNotes)
     setSavingNotes(false)
   }
 
@@ -416,8 +432,13 @@ function AgendaCard({
               {serviceLabel && (
                 <span className="text-gray-600">{serviceLabel}</span>
               )}
-              <span className="text-gray-500">
-                Recibido: {format(new Date(item.created_at), "d MMM yyyy, h:mm a", { locale: es })}
+              {item.message_date && (
+                <span className="text-amber-600 font-medium">
+                  Mensaje: {format(new Date(item.message_date + 'T12:00:00'), "d MMM yyyy", { locale: es })}
+                </span>
+              )}
+              <span className="text-gray-400">
+                Registro: {format(new Date(item.created_at), "d MMM yyyy, h:mm a", { locale: es })}
               </span>
               {item.called_at && (
                 <span className="text-blue-600">
@@ -426,8 +447,8 @@ function AgendaCard({
               )}
             </div>
 
-            {/* Notes display (context from prospect) */}
-            {item.notes && item.notes !== inlineNotes && (
+            {/* Notes display (context from prospect - read only) */}
+            {item.notes && (
               <p className="text-sm text-gray-600 mt-2 bg-gray-50 rounded-md p-2">{item.notes}</p>
             )}
 
@@ -534,27 +555,34 @@ function AgendaCard({
 function EditForm({
   item,
   onUpdateStatus,
-  onUpdateNotes,
+  onUpdateHenryNotes,
   onClose,
 }: {
   item: CallbackRequest
   onUpdateStatus: (id: string, status: CallbackStatus, followUpDate?: string) => Promise<void>
-  onUpdateNotes: (id: string, notes: string) => Promise<void>
+  onUpdateHenryNotes: (id: string, henryNotes: string) => Promise<void>
   onClose: () => void
 }) {
-  const [notes, setNotes] = useState(item.notes || '')
+  const [henryNotes, setHenryNotes] = useState(item.henry_notes || '')
   const [followUpDate, setFollowUpDate] = useState(item.follow_up_date || '')
   const [saving, setSaving] = useState(false)
 
   return (
     <div className="space-y-4">
+      {/* Original prospect notes - read only */}
+      {item.notes && (
+        <div className="space-y-1.5">
+          <Label className="text-gray-500">Notas del Prospecto</Label>
+          <p className="text-sm bg-gray-50 rounded-md p-3 text-gray-600">{item.notes}</p>
+        </div>
+      )}
       <div className="space-y-1.5">
-        <Label>Notas</Label>
+        <Label>Notas de Henry</Label>
         <Textarea
-          value={notes}
-          onChange={e => setNotes(e.target.value)}
+          value={henryNotes}
+          onChange={e => setHenryNotes(e.target.value)}
           rows={3}
-          placeholder="Agregar notas..."
+          placeholder="Tus notas personales..."
         />
       </div>
       <div className="space-y-1.5">
@@ -574,10 +602,10 @@ function EditForm({
             if (followUpDate) {
               await onUpdateStatus(item.id, 'follow_up', followUpDate)
             }
-            if (notes !== (item.notes || '')) {
-              await onUpdateNotes(item.id, notes)
+            if (henryNotes !== (item.henry_notes || '')) {
+              await onUpdateHenryNotes(item.id, henryNotes)
             }
-            if (!followUpDate && notes === (item.notes || '')) {
+            if (!followUpDate && henryNotes === (item.henry_notes || '')) {
               onClose()
             }
             setSaving(false)
@@ -594,8 +622,8 @@ function EditForm({
             disabled={saving}
             onClick={async () => {
               setSaving(true)
-              if (notes !== (item.notes || '')) {
-                await onUpdateNotes(item.id, notes)
+              if (henryNotes !== (item.henry_notes || '')) {
+                await onUpdateHenryNotes(item.id, henryNotes)
               }
               await onUpdateStatus(item.id, 'closed')
               setSaving(false)
