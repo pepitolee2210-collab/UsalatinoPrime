@@ -16,7 +16,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { document_key, file_name, file_size, mode } = body
-
     if (!document_key || !file_name) {
       return NextResponse.json({ error: 'document_key y file_name requeridos' }, { status: 400 })
     }
@@ -26,8 +25,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tipo de documento invalido' }, { status: 400 })
     }
 
-    if (file_size && file_size > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: 'El archivo excede el limite de 10MB' }, { status: 400 })
+    if (file_size && file_size > 40 * 1024 * 1024) {
+      return NextResponse.json({ error: 'El archivo excede el limite de 40MB' }, { status: 400 })
     }
 
     const service = createServiceClient()

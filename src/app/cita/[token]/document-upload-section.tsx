@@ -34,7 +34,7 @@ export function DocumentUploadSection({ token, uploadedDocuments }: DocumentUplo
         <h2 className="text-lg font-bold text-gray-900">Documentos Requeridos</h2>
       </div>
       <p className="text-sm text-gray-500 mb-4">
-        Suba los siguientes documentos en formato PDF (m&aacute;ximo 10MB cada uno).
+        Suba los siguientes documentos en formato PDF (m&aacute;ximo 40MB cada uno).
       </p>
 
       <div className="space-y-3">
@@ -111,8 +111,8 @@ function DocumentCard({
       return
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('El archivo excede el límite de 10MB')
+    if (file.size > 40 * 1024 * 1024) {
+      toast.error('El archivo excede el límite de 40MB')
       return
     }
 
