@@ -37,7 +37,7 @@ interface ContractForm {
 const SERVICE_OPTIONS = [
   { slug: 'asilo-afirmativo', label: 'Asilo Afirmativo' },
   { slug: 'asilo-defensivo', label: 'Asilo Defensivo' },
-  { slug: 'ajuste-de-estatus', label: 'Ajuste de Estatus' },
+  { slug: 'ajuste-de-estatus', label: 'Ajuste de Estatus (I-485)' },
   { slug: 'visa-juvenil', label: 'Visa Juvenil (SIJS)' },
   { slug: 'cambio-de-estatus', label: 'Cambio de Estatus' },
   { slug: 'cambio-de-corte', label: 'Cambio de Corte' },
