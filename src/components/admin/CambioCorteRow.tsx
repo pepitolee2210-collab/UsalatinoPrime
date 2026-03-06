@@ -223,7 +223,7 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
     y += 9
 
     normal(12); left('Respondent(s)'); y += 5
-    italic(12); left('In removal proceedings.'); y += 9
+    italic(12); left('In removal proceedings.'); y += 16
 
     // Beneficiaries (children/spouse) after Respondent(s)
     for (const ben of bens) {
@@ -234,12 +234,12 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
       doc.text(ben.file_number, pw - mr - doc.getTextWidth(ben.file_number), y)
       y += 7
     }
-    y += 6
+    y += 12
 
     // Judge and hearing
     bold(12); left('Immigration Judge:')
     normal(12); doc.text(`Next Hearing: ${formatHearingDateLong(s.next_hearing_date, s.next_hearing_time)}`, pw / 2, y); y += 6
-    bold(12); left(`Hon. ${s.judge_name}`); y += 12
+    bold(12); left(`Hon. ${s.judge_name}`); y += 20
 
     // Title - centered, bold, underlined
     bold(13)
