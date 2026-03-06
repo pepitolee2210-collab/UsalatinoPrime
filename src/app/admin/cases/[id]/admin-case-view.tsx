@@ -22,6 +22,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { APPOINTMENT_DOCUMENT_KEYS } from '@/lib/appointments/constants'
+import { uploadDirect } from '@/lib/upload-direct'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
@@ -560,19 +561,13 @@ export function AdminCaseView({ caseData, documents, activities, payments }: Adm
                             if (!file) return
                             setUploadingKey(docType.key)
                             try {
-                              const formData = new FormData()
-                              formData.append('case_id', caseData.id)
-                              formData.append('client_id', caseData.client_id)
-                              formData.append('document_key', docType.key)
-                              formData.append('file', file)
-                              const res = await fetch('/api/admin/upload-document', {
-                                method: 'POST',
-                                body: formData,
+                              await uploadDirect({
+                                file,
+                                documentKey: docType.key,
+                                mode: 'admin',
+                                caseId: caseData.id,
+                                clientId: caseData.client_id,
                               })
-                              if (!res.ok) {
-                                const data = await res.json()
-                                throw new Error(data.error)
-                              }
                               toast.success(`${docType.label} subido correctamente`)
                               router.refresh()
                             } catch (err: any) {

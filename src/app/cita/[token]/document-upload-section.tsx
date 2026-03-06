@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { APPOINTMENT_DOCUMENT_KEYS } from '@/lib/appointments/constants'
+import { uploadDirect } from '@/lib/upload-direct'
 
 interface UploadedDoc {
   id: string
@@ -117,28 +118,18 @@ function DocumentCard({
 
     onUploadStart()
 
-    const formData = new FormData()
-    formData.append('token', token)
-    formData.append('document_key', docKey)
-    formData.append('file', file)
-
     try {
-      const res = await fetch('/api/appointments/upload-document', {
-        method: 'POST',
-        body: formData,
+      const { document } = await uploadDirect({
+        file,
+        documentKey: docKey,
+        mode: 'client',
+        token,
       })
-      const data = await res.json()
-
-      if (!res.ok) {
-        toast.error(data.error || 'Error al subir documento')
-        onUploadEnd(null)
-        return
-      }
 
       toast.success(`${label} subido correctamente`)
-      onUploadEnd(data.document)
-    } catch {
-      toast.error('Error de conexión')
+      onUploadEnd(document)
+    } catch (err: any) {
+      toast.error(err.message || 'Error al subir documento')
       onUploadEnd(null)
     }
 
