@@ -14,7 +14,7 @@ import { CaseFormViewer } from '@/components/admin/CaseFormViewer'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { CheckCircle, AlertCircle, FileText, Download, ArrowLeft, Loader2, DollarSign, CreditCard, Plus, ShieldCheck, ShieldOff, Upload, Eye, Pencil, Trash2 } from 'lucide-react'
+import { CheckCircle, AlertCircle, FileText, Download, ArrowLeft, Loader2, DollarSign, CreditCard, Plus, ShieldCheck, ShieldOff, Upload, Eye, Pencil, Trash2, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,6 +22,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { APPOINTMENT_DOCUMENT_KEYS } from '@/lib/appointments/constants'
+import { AdminAiForms } from './admin-ai-forms'
 import { uploadDirect } from '@/lib/upload-direct'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -32,9 +33,10 @@ interface AdminCaseViewProps {
   documents: any[]
   activities: any[]
   payments: any[]
+  aiSubmissions: any[]
 }
 
-export function AdminCaseView({ caseData, documents, activities, payments }: AdminCaseViewProps) {
+export function AdminCaseView({ caseData, documents, activities, payments, aiSubmissions }: AdminCaseViewProps) {
   const [correctionNotes, setCorrectionNotes] = useState('')
   const [henryNotes, setHenryNotes] = useState(caseData.henry_notes || '')
   const [loading, setLoading] = useState(false)
@@ -62,6 +64,7 @@ export function AdminCaseView({ caseData, documents, activities, payments }: Adm
 
   const serviceSlug = caseData.service?.slug || ''
   const isAsylumService = serviceSlug === 'asilo-afirmativo' || serviceSlug === 'asilo-defensivo'
+  const isVisaJuvenil = serviceSlug === 'visa-juvenil'
 
   async function updateStatus(newStatus: string, notes?: string) {
     setLoading(true)
@@ -355,6 +358,15 @@ export function AdminCaseView({ caseData, documents, activities, payments }: Adm
           <TabsTrigger value="documents">Documentos ({documents.length})</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="notes">Notas</TabsTrigger>
+          {isVisaJuvenil && (
+            <TabsTrigger value="docs-ia" className="flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-[#F2A900]" />
+              Docs IA
+              {aiSubmissions.length > 0 && (
+                <Badge className="ml-1 bg-amber-100 text-amber-800 text-[10px] h-5 px-1.5">{aiSubmissions.length}</Badge>
+              )}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="form" className="mt-4">
@@ -958,6 +970,22 @@ export function AdminCaseView({ caseData, documents, activities, payments }: Adm
             </CardContent>
           </Card>
         </TabsContent>
+
+        {isVisaJuvenil && (
+          <TabsContent value="docs-ia" className="mt-4">
+            <AdminAiForms
+              caseId={caseData.id}
+              clientName={`${caseData.client?.first_name || ''} ${caseData.client?.last_name || ''}`.trim()}
+              submissions={aiSubmissions}
+              minorData={{
+                minor_full_name: caseData.form_data?.minor_full_name || caseData.form_data?.nombre_menor || '',
+                minor_dob: caseData.form_data?.minor_dob || caseData.form_data?.fecha_nacimiento_menor || '',
+                minor_country_of_birth: caseData.form_data?.minor_country_of_birth || caseData.form_data?.pais_nacimiento_menor || '',
+                mother_full_name: caseData.form_data?.mother_full_name || caseData.form_data?.nombre_madre || '',
+              }}
+            />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )

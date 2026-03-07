@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getGeminiClient, GEMINI_MODEL } from '@/lib/ai/gemini'
 import { SIJ_SYSTEM_PROMPT, buildSijPrompt, SIJ_DOCUMENT_TYPES } from '@/lib/ai/prompts/sij-affidavit'
@@ -53,17 +54,63 @@ const AGENTS: Record<AgentType, {
   },
 }
 
+async function resolveAuth(body: { token?: string; case_id?: string }): Promise<{ case_id: string; client_id: string } | NextResponse> {
+  const service = createServiceClient()
+
+  // Admin path: case_id + session auth
+  if (body.case_id) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    // Verify user is admin or employee
+    const { data: profile } = await service
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    if (!profile || (profile.role !== 'admin' && profile.role !== 'employee')) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    // Get client_id from case
+    const { data: caseRow } = await service
+      .from('cases')
+      .select('client_id')
+      .eq('id', body.case_id)
+      .single()
+    if (!caseRow) {
+      return NextResponse.json({ error: 'Case not found' }, { status: 404 })
+    }
+    return { case_id: body.case_id, client_id: caseRow.client_id }
+  }
+
+  // Client path: token auth
+  if (body.token) {
+    const { data: tokenData, error: tokenError } = await service
+      .from('appointment_tokens')
+      .select('client_id, case_id, is_active')
+      .eq('token', body.token)
+      .single()
+    if (tokenError || !tokenData || !tokenData.is_active) {
+      return NextResponse.json({ error: 'Invalid or inactive token' }, { status: 403 })
+    }
+    return { case_id: tokenData.case_id, client_id: tokenData.client_id }
+  }
+
+  return NextResponse.json({ error: 'Token or case_id is required' }, { status: 400 })
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { token, agent, input } = body as {
-      token?: string
+    const { agent, input } = body as {
       agent?: AgentType
       input?: any
     }
 
-    if (!token || !agent || !input) {
-      return NextResponse.json({ error: 'Token, agent, and input are required' }, { status: 400 })
+    if (!agent || !input) {
+      return NextResponse.json({ error: 'Agent and input are required' }, { status: 400 })
     }
 
     const agentConfig = AGENTS[agent]
@@ -83,17 +130,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: validationError }, { status: 400 })
     }
 
-    // Validate token → get case
-    const supabase = createServiceClient()
-    const { data: tokenData, error: tokenError } = await supabase
-      .from('appointment_tokens')
-      .select('client_id, case_id, is_active')
-      .eq('token', token)
-      .single()
-
-    if (tokenError || !tokenData || !tokenData.is_active) {
-      return NextResponse.json({ error: 'Invalid or inactive token' }, { status: 403 })
-    }
+    // Resolve auth (admin via session or client via token)
+    const authResult = await resolveAuth(body)
+    if (authResult instanceof NextResponse) return authResult
+    const { case_id, client_id } = authResult
 
     // Build prompt and call Gemini
     const userPrompt = agentConfig.buildPrompt(input)
@@ -114,12 +154,13 @@ export async function POST(req: NextRequest) {
     }
 
     // Save to case_form_submissions
+    const supabase = createServiceClient()
     const docLabel = agentConfig.documentTypes.find(d => d.id === input.document_type)?.label || input.document_type
     const { data: submission, error: saveError } = await supabase
       .from('case_form_submissions')
       .upsert({
-        case_id: tokenData.case_id,
-        client_id: tokenData.client_id,
+        case_id,
+        client_id,
         form_type: `${agent}_${input.document_type}`,
         form_data: {
           agent,

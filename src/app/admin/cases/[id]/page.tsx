@@ -18,18 +18,24 @@ export default async function AdminCaseDetailPage({
 
   if (!caseData) notFound()
 
-  const { data: documents } = await supabase.from('documents').select('*').eq('case_id', id)
-  const { data: activities } = await supabase
-    .from('case_activity')
-    .select('*, actor:profiles(first_name, last_name)')
-    .eq('case_id', id)
-    .order('created_at', { ascending: false })
-
-  const { data: payments } = await supabase
-    .from('payments')
-    .select('*')
-    .eq('case_id', id)
-    .order('installment_number', { ascending: true })
+  const [{ data: documents }, { data: activities }, { data: payments }, { data: aiSubmissions }] = await Promise.all([
+    supabase.from('documents').select('*').eq('case_id', id),
+    supabase
+      .from('case_activity')
+      .select('*, actor:profiles(first_name, last_name)')
+      .eq('case_id', id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('payments')
+      .select('*')
+      .eq('case_id', id)
+      .order('installment_number', { ascending: true }),
+    supabase
+      .from('case_form_submissions')
+      .select('*')
+      .eq('case_id', id)
+      .order('updated_at', { ascending: false }),
+  ])
 
   return (
     <AdminCaseView
@@ -37,6 +43,7 @@ export default async function AdminCaseDetailPage({
       documents={documents || []}
       activities={activities || []}
       payments={payments || []}
+      aiSubmissions={aiSubmissions || []}
     />
   )
 }
