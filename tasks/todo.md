@@ -1,186 +1,182 @@
-# Plan XL: Sistema de Agendamiento de Citas + Upload de Documentos
+# Plan XL: Portal Cliente Unificado + Flujo Automatizado Visa Juvenil
 
 ## Resumen
-Sistema donde clientes que ya pagaron pueden: (1) agendar cita de 1 hora con Henry por Zoom, (2) subir 5 documentos PDF requeridos. Acceso via token unico por cliente (sin login). Henry controla todo desde su dashboard admin.
+
+Transformar `/cita/[token]` de una simple pagina de citas+upload en un **portal completo para clientes** con:
+1. Documentos bidireccionales (Henry sube → cliente descarga, cliente sube → Henry revisa)
+2. Formularios integrados de Visa Juvenil (3 documentos clave) para autoservicio
+3. Automatizacion del flujo de trabajo actual de Henry (de 1.5h Zoom → 30min explicando el sistema)
+
+**Problema actual:** Henry entra a Zoom 1.5h con cada cliente de Visa Juvenil, llenando manualmente 3 formularios con 3 agentes de ChatGPT. Quiere que los clientes lo hagan solos desde la plataforma.
+
+---
+
+## Arquitectura: Lo que existe vs lo que se necesita
+
+### YA EXISTE:
+- `/cita/[token]` — citas + upload de documentos del cliente
+- `/visa-juvenil-form` — formulario publico (info menor, padres, abuso) → `visa_juvenil_submissions`
+- `/miedo-creible` — formulario publico (miedo creible) → `credible_fear_submissions`
+- `/portal` — dashboard con auth (Supabase) — casos, pagos, notificaciones
+- Tabla `documents` con storage en Supabase bucket `case-documents`
+- Upload directo via signed URLs (sin limite de 4.5MB)
+
+### SE NECESITA:
+- **Documentos de Henry → Cliente** en `/cita/[token]` (download section)
+- **3 formularios integrados** en `/cita/[token]` para Visa Juvenil:
+  1. Declaracion Jurada del Padre/Madre
+  2. Miedo Creible (relato — ya existe el form, integrar al token)
+  3. Testimonio/Testigos
+- **Guardado parcial** (draft) para que clientes puedan pausar y continuar
+- **Flujo guiado** paso a paso dentro del portal del cliente
+- **Admin: subir documentos PARA el cliente** con visibilidad en su portal
 
 ---
 
 ## Decisiones de Diseno
 
-| Decisión | Elección | Razón |
+| Decision | Eleccion | Razon |
 |----------|----------|-------|
-| Acceso cliente | Token UUID por cliente (patron `/cita/[token]`) | Reutiliza patron probado de `/contrato/[token]`, no requiere login |
-| Duración cita | 1 hora fija | Requerimiento de Henry |
-| Días disponibles | Lunes a Sábado | Requerimiento de Henry |
-| Horario | 8:00 AM - 8:00 PM Mountain Time | 12 slots de 1 hora por día |
-| Modalidad | Zoom | Henry provee su link de Zoom |
-| Recordatorios | Email via Resend (1h antes, 1 día antes) | Sistema de email ya existe |
-| Penalización no-show | 7 días sin poder agendar | Si no cancela 24h antes |
-| Calendar UI | react-day-picker (ya instalado) | No agregar dependencia nueva |
-| Storage documentos | Bucket `case-documents` existente | Ya tiene RLS configurado |
+| Portal base | `/cita/[token]` (expandir, no crear nuevo) | Ya funciona, clientes lo conocen, no requiere login |
+| Formularios | Embebidos como tabs/secciones en `/cita/[token]` | 1 sola URL para todo, mas simple para el cliente |
+| Guardado parcial | JSONB `form_drafts` en tabla nueva `case_form_submissions` | Permite pausar/continuar sin perder datos |
+| Docs de Henry→Cliente | Nuevo `document_key` prefix: `henry_*` | Reutiliza tabla `documents` existente |
+| Formularios VJ | 3 steps tipo wizard dentro de cada tab | Menos abrumador que un form gigante |
+| Agente IA | NO en esta fase | Primero los formularios, luego se puede agregar IA como mejora |
 
 ---
 
-## Nuevas Tablas (1 migración SQL)
+## Nuevas Tablas (1 migracion)
 
-### `appointments`
+### `case_form_submissions`
 ```
 id              UUID PK DEFAULT gen_random_uuid()
 case_id         UUID FK → cases(id)
-client_id       UUID FK → profiles(id) -- auth.users
-scheduled_at    TIMESTAMPTZ NOT NULL -- fecha+hora de la cita
-duration_minutes INT DEFAULT 60
-zoom_link       TEXT -- link de Zoom de Henry
-status          TEXT CHECK (scheduled, completed, cancelled, no_show) DEFAULT 'scheduled'
-reminder_1h     BOOLEAN DEFAULT false -- ya se envió?
-reminder_24h    BOOLEAN DEFAULT false -- ya se envió?
-cancelled_at    TIMESTAMPTZ
-cancellation_reason TEXT
-notes           TEXT -- notas de Henry post-cita
-created_at      TIMESTAMPTZ DEFAULT now()
-updated_at      TIMESTAMPTZ DEFAULT now()
-```
-
-### `appointment_tokens`
-```
-id              UUID PK DEFAULT gen_random_uuid()
 client_id       UUID FK → profiles(id)
-case_id         UUID FK → cases(id)
-token           UUID UNIQUE DEFAULT gen_random_uuid()
-expires_at      TIMESTAMPTZ -- opcional, puede no expirar
+form_type       TEXT NOT NULL CHECK (declaracion_jurada, miedo_creible, testimonio_testigos)
+form_data       JSONB NOT NULL DEFAULT '{}'
+status          TEXT CHECK (draft, submitted, reviewed, needs_correction, approved) DEFAULT 'draft'
+admin_notes     TEXT
+submitted_at    TIMESTAMPTZ
+reviewed_at     TIMESTAMPTZ
 created_at      TIMESTAMPTZ DEFAULT now()
-```
-
-### `scheduling_config`
-```
-id              UUID PK DEFAULT gen_random_uuid()
-day_of_week     INT NOT NULL (0=domingo...6=sábado)
-start_hour      INT NOT NULL -- 8 (8AM)
-end_hour        INT NOT NULL -- 20 (8PM)
-is_available    BOOLEAN DEFAULT true
-zoom_link       TEXT -- link default de Henry
 updated_at      TIMESTAMPTZ DEFAULT now()
 ```
 
-### `blocked_dates`
-```
-id              UUID PK DEFAULT gen_random_uuid()
-blocked_date    DATE NOT NULL -- día completo bloqueado
-reason          TEXT
-created_at      TIMESTAMPTZ DEFAULT now()
-```
-
-No necesitamos tabla nueva para documentos — ya existe `documents` con `document_key`.
+### Cambios en `documents`
+- Agregar columna `direction` TEXT DEFAULT 'client_to_admin' CHECK (client_to_admin, admin_to_client)
+- Los documentos subidos por Henry para el cliente tendran direction = 'admin_to_client'
 
 ---
 
-## Subtareas (en orden de ejecución)
+## Subtareas (en orden de ejecucion)
 
-### Fase 1: Base de Datos (L)
-- [ ] **1.1** Crear migración SQL: tablas `appointments`, `appointment_tokens`, `scheduling_config`, `blocked_dates`
-- [ ] **1.2** RLS policies: clientes ven solo sus citas, admin ve todo
-- [ ] **1.3** Seed data: scheduling_config con Lun-Sáb 8AM-8PM, link Zoom de Henry
-- [ ] **1.4** Actualizar `src/types/database.ts` con nuevas interfaces
+### Fase 1: Documentos Bidireccionales (L) — Henry sube, cliente descarga
+- [ ] **1.1** Migracion: agregar `direction` a tabla `documents` (default 'client_to_admin')
+- [ ] **1.2** API: `POST /api/admin/client-documents` — Henry sube documento PARA un cliente (direction='admin_to_client')
+- [ ] **1.3** API: `GET /api/client-documents?token=X` — cliente obtiene docs subidos por Henry
+- [ ] **1.4** API: download signed URL para que cliente descargue
+- [ ] **1.5** Admin UI: seccion "Subir documento para el cliente" en `/admin/cases/[id]`
+- [ ] **1.6** Cliente UI: seccion "Documentos de su Consultor" en `/cita/[token]` con botones de descarga
 
-### Fase 2: API Routes (L)
-- [ ] **2.1** `POST /api/admin/appointments/generate-link` — genera token para un cliente+caso
-- [ ] **2.2** `GET /api/appointments/available?token=X&date=YYYY-MM-DD` — slots disponibles para una fecha
-- [ ] **2.3** `POST /api/appointments/book` — agendar cita (valida: tiene pago completado, no tiene penalización, slot libre)
-- [ ] **2.4** `POST /api/appointments/cancel` — cancelar (valida: >24h antes, sino marca penalización)
-- [ ] **2.5** `POST /api/appointments/upload-document` — subir PDF con token (sin auth, usa service client)
-- [ ] **2.6** `POST /api/admin/appointments/update-status` — Henry marca completado/no-show
-- [ ] **2.7** `GET /api/admin/appointments/config` + `PUT` — Henry configura disponibilidad
+### Fase 2: Base de Datos para Formularios (M)
+- [ ] **2.1** Migracion: crear tabla `case_form_submissions`
+- [ ] **2.2** RLS: cliente ve solo sus formularios, admin ve todos
+- [ ] **2.3** API: `POST /api/case-forms/save` — guardar borrador (upsert)
+- [ ] **2.4** API: `POST /api/case-forms/submit` — marcar como submitted
+- [ ] **2.5** API: `GET /api/case-forms?token=X` — obtener formularios del caso
 
-### Fase 3: Página del Cliente `/cita/[token]` (L)
-- [ ] **3.1** Server component: valida token, muestra perfil del cliente y caso
-- [ ] **3.2** Calendario: react-day-picker mostrando días con slots disponibles
-- [ ] **3.3** Selector de hora: grid de slots disponibles para el día seleccionado
-- [ ] **3.4** Opciones de recordatorio: checkboxes "1 hora antes" y "1 día antes"
-- [ ] **3.5** Confirmación: resumen de cita + botón confirmar
-- [ ] **3.6** Vista post-agendamiento: detalles de la cita, link Zoom, botón cancelar
-- [ ] **3.7** Upload de documentos: 5 slots de PDF con labels, preview, progreso
-- [ ] **3.8** Estado de penalización: si tiene no-show, mostrar mensaje "puede agendar desde [fecha]"
+### Fase 3: Formulario Declaracion Jurada (L)
+- [ ] **3.1** Definir campos del formulario (basado en el documento legal real)
+- [ ] **3.2** Componente `DeclaracionJuradaForm` — wizard multi-step
+- [ ] **3.3** Auto-guardado cada 30s o al cambiar de step
+- [ ] **3.4** Integracion en `/cita/[token]` como tab/seccion
+- [ ] **3.5** Preview/resumen antes de enviar
 
-### Fase 4: Admin Dashboard — Vista Citas (L)
-- [ ] **4.1** Nueva página `/admin/citas` con tabla de citas (fecha, cliente, caso, estado)
-- [ ] **4.2** Agregar "Citas" al sidebar del admin layout
-- [ ] **4.3** Vista calendario semanal/mensual: slots ocupados vs libres
-- [ ] **4.4** Botón "Generar Link" desde la vista de detalle de cliente (`/admin/clients/[id]`)
-- [ ] **4.5** Configuración: editar horarios, bloquear días, cambiar link Zoom
-- [ ] **4.6** Acciones: marcar completado, marcar no-show, ver documentos subidos
+### Fase 4: Formulario Miedo Creible Integrado (M)
+- [ ] **4.1** Adaptar formulario existente `/miedo-creible` como componente reutilizable
+- [ ] **4.2** Integrarlo en `/cita/[token]` vinculado al caso
+- [ ] **4.3** Soporte draft/guardado parcial via `case_form_submissions`
+- [ ] **4.4** Pre-llenar datos del cliente (nombre, DOB, etc.) desde el caso
 
-### Fase 5: Recordatorios (M)
-- [ ] **5.1** API route `/api/cron/appointment-reminders` — envía emails pendientes
-- [ ] **5.2** Template de email: "Tu cita con UsaLatinoPrime es en X" con link Zoom y detalles
-- [ ] **5.3** Vercel Cron Job o Edge Function para ejecutar cada 30 min
+### Fase 5: Formulario Testimonio y Testigos (L)
+- [ ] **5.1** Definir campos (basado en flujo de Henry con ChatGPT)
+- [ ] **5.2** Componente `TestimonioForm` — seccion relato + seccion testigos
+- [ ] **5.3** Auto-guardado + draft
+- [ ] **5.4** Integracion en `/cita/[token]`
 
-### Fase 6: Integración Dashboard (M)
-- [ ] **6.1** Widget en `/admin/dashboard`: "Citas de Hoy" con lista de próximas
-- [ ] **6.2** Widget: "Documentos Pendientes" — clientes que no han subido todos los PDFs
-- [ ] **6.3** Badge en sidebar "Citas" con conteo de citas del día
+### Fase 6: Reestructurar `/cita/[token]` como Portal (L)
+- [ ] **6.1** Layout con navegacion por tabs: Cita | Documentos | Formularios | Docs Henry
+- [ ] **6.2** Indicadores de progreso: checkmarks verdes en tabs completados
+- [ ] **6.3** Barra de progreso general: "3 de 6 pasos completados"
+- [ ] **6.4** Responsive: funcionar bien en movil (clientes usan WhatsApp → abren link en celular)
+- [ ] **6.5** Seccion de estado: "Tu caso esta en: [status]"
 
----
-
-## Los 5 Documentos Requeridos
-
-| # | document_key | Label |
-|---|-------------|-------|
-| 1 | `tutor_id` | Pasaporte o ID del Tutor |
-| 2 | `minor_id` | Pasaporte o ID de Menores |
-| 3 | `birth_certificates` | Actas de Nacimiento de Menores |
-| 4 | `lease_or_utility` | Contrato de Arrendamiento o Factura de Servicio |
-| 5 | `supporting_docs` | Documentos Sustentatorios |
-
-Se guardan en bucket `case-documents` con path: `{clientId}/{caseId}/{docKey}/{timestamp}-{filename}`
+### Fase 7: Admin — Revision de Formularios (L)
+- [ ] **7.1** Pagina `/admin/formularios-caso` — lista de formularios enviados por clientes
+- [ ] **7.2** Vista detalle: ver respuestas del formulario formateadas
+- [ ] **7.3** Acciones: aprobar, pedir correccion (con notas), archivar
+- [ ] **7.4** Notificacion al cliente cuando Henry aprueba o pide correccion
+- [ ] **7.5** Dashboard widget: "Formularios pendientes de revision"
 
 ---
 
-## Flujo del Usuario
+## Flujo del Usuario (Visa Juvenil)
 
 ```
-Henry genera link → Cliente recibe link por WhatsApp
-→ Cliente abre /cita/[token]
-→ Ve calendario con días disponibles
-→ Selecciona día → ve slots de hora disponibles
-→ Selecciona hora + opciones de recordatorio
-→ Confirma cita → ve resumen + link Zoom
-→ Sube sus 5 documentos PDF
-→ Recibe recordatorio por email (1 día / 1 hora antes)
-→ Asiste a cita por Zoom
-→ Henry marca "Completado" en dashboard
+Henry genera link /cita/[token] → Cliente recibe por WhatsApp
+→ Cliente abre portal unificado
+→ Tab "Cita": agenda su cita de Zoom (30 min ahora, no 1.5h)
+→ Tab "Formularios":
+    → Paso 1: Declaracion Jurada (puede pausar y continuar)
+    → Paso 2: Miedo Creible (relato completo)
+    → Paso 3: Testimonio y Testigos
+→ Tab "Documentos": sube sus 5 PDFs requeridos
+→ Tab "Docs Henry": descarga documentos que Henry le envio
+→ Henry revisa formularios en admin → aprueba o pide correcciones
+→ Zoom de 30 min: Henry revisa lo que el cliente ya lleno, ajusta detalles
+→ Proceso completado en 1 sesion
 ```
 
-## Flujo de Penalización
+## Flujo de Henry (Admin)
 
 ```
-Cita agendada → Cliente NO cancela 24h antes Y no asiste
-→ Henry marca "No Show" en dashboard
-→ Sistema calcula: no puede agendar hasta [fecha_noshow + 7 días]
-→ Si cliente intenta agendar antes → ve mensaje de penalización
+Henry abre caso del cliente en admin
+→ Sube documentos para el cliente (aparecen en su portal)
+→ Revisa formularios enviados por el cliente
+→ Aprueba o pide correcciones (cliente recibe notificacion)
+→ Zoom de 30 min para finalizar detalles
+→ Marca caso como completado
 ```
+
+---
+
+## Orden de Implementacion Recomendado
+
+1. **Fase 1** (Docs bidireccionales) → impacto inmediato, Henry puede empezar a subir docs para clientes
+2. **Fase 6** (Reestructurar portal) → el contenedor para todo lo demas
+3. **Fase 2** (DB formularios) → base para los 3 formularios
+4. **Fase 4** (Miedo Creible) → mas facil, ya existe el form
+5. **Fase 3** (Declaracion Jurada) → formulario nuevo, mas complejo
+6. **Fase 5** (Testimonio) → necesita definir campos con Henry
+7. **Fase 7** (Admin revision) → Henry revisa lo enviado
+
+**Nota:** Las Fases 3, 4 y 5 necesitan que Henry defina exactamente que campos/preguntas van en cada formulario. Los formularios existentes (`/visa-juvenil-form` y `/miedo-creible`) son un buen punto de partida pero Henry puede querer ajustar las preguntas.
 
 ---
 
 ## Riesgos y Mitigaciones
 
-| Riesgo | Mitigación |
+| Riesgo | Mitigacion |
 |--------|-----------|
-| Zona horaria confusa | Todo en Mountain Time, mostrar "Hora de Utah (MT)" claramente |
-| Cliente agenda y no sube documentos | Widget en dashboard "Docs pendientes", Henry puede recordar via WhatsApp |
-| Dos clientes agendan mismo slot | Lock optimista: verificar slot libre al momento de INSERT |
-| Token se filtra | Token UUID es cripto-random, difícil de adivinar. Opcional: agregar expiración |
-| Cron de recordatorios falla | Flags `reminder_1h`/`reminder_24h` previenen duplicados |
-| Henry quiere bloquear un día específico | Tabla `blocked_dates` para vacaciones/emergencias |
+| Formularios muy largos asustan al cliente | Wizard multi-step + guardado parcial + barra de progreso |
+| Cliente pierde progreso | Auto-guardado cada 30s + status "draft" |
+| Henry no sabe que documentos tiene cada cliente | Dashboard con indicadores claros de completitud |
+| Formularios necesitan campos diferentes segun caso | form_data es JSONB flexible |
+| Clientes en celular | Design mobile-first, formularios adaptados a pantalla chica |
+| Henry quiere cambiar preguntas despues | Formularios renderizados desde config, facil de modificar |
 
 ---
 
-## Orden de Implementación Recomendado
-
-1. **Fase 1** (DB) → sin esto nada funciona
-2. **Fase 2** (APIs) → lógica de negocio central
-3. **Fase 3** (Página cliente) → el producto visible para el cliente
-4. **Fase 4** (Admin) → Henry controla el sistema
-5. **Fase 5** (Recordatorios) → mejora la experiencia
-6. **Fase 6** (Dashboard widgets) → pulido final
-
-Estimación: 5 fases de desarrollo secuencial. Cada fase es testeable independientemente.
+## Status: PENDIENTE APROBACION
+Esperando aprobacion del plan antes de empezar a codear.

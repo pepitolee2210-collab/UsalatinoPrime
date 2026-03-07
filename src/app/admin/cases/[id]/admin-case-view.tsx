@@ -45,6 +45,7 @@ export function AdminCaseView({ caseData, documents, activities, payments }: Adm
   const [planLoading, setPlanLoading] = useState(false)
   const [accessLoading, setAccessLoading] = useState(false)
   const [uploadingKey, setUploadingKey] = useState<string | null>(null)
+  const [uploadingForClient, setUploadingForClient] = useState(false)
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null)
   const [renamingDoc, setRenamingDoc] = useState<{ id: string; name: string } | null>(null)
   const [renameLoading, setRenameLoading] = useState(false)
@@ -719,6 +720,130 @@ export function AdminCaseView({ caseData, documents, activities, payments }: Adm
                 </CardContent>
               </Card>
             )}
+
+            {/* Documents FOR the client (admin_to_client) */}
+            <Card className="border-blue-200 bg-blue-50/30">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-blue-800">
+                    <Download className="w-4 h-4" />
+                    Documentos para el Cliente
+                    {documents.filter(d => d.direction === 'admin_to_client').length > 0 && (
+                      <Badge variant="outline" className="text-blue-700 border-blue-300 ml-1">
+                        {documents.filter(d => d.direction === 'admin_to_client').length}
+                      </Badge>
+                    )}
+                  </CardTitle>
+                  <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-md cursor-pointer text-xs hover:bg-blue-700 transition-colors">
+                    {uploadingForClient ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5" />
+                    )}
+                    {uploadingForClient ? 'Subiendo...' : 'Subir para el cliente'}
+                    <input
+                      type="file"
+                      accept="application/pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      className="hidden"
+                      disabled={uploadingForClient}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+                        setUploadingForClient(true)
+                        try {
+                          const res = await fetch('/api/admin/client-documents', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              case_id: caseData.id,
+                              client_id: caseData.client_id,
+                              file_name: file.name,
+                              file_size: file.size,
+                            }),
+                          })
+                          if (!res.ok) throw new Error((await res.json()).error)
+                          const { signedUrl, token: uploadToken, filePath } = await res.json()
+
+                          const supabase = createClient()
+                          const { error: uploadErr } = await supabase.storage
+                            .from('case-documents')
+                            .uploadToSignedUrl(filePath, uploadToken, file)
+                          if (uploadErr) throw uploadErr
+
+                          await fetch('/api/admin/client-documents', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              case_id: caseData.id,
+                              client_id: caseData.client_id,
+                              file_path: filePath,
+                              file_name: file.name,
+                              file_size: file.size,
+                            }),
+                          })
+
+                          toast.success('Documento subido para el cliente')
+                          router.refresh()
+                        } catch (err: any) {
+                          toast.error(err.message || 'Error al subir')
+                        } finally {
+                          setUploadingForClient(false)
+                          e.target.value = ''
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </CardHeader>
+              {documents.filter(d => d.direction === 'admin_to_client').length > 0 && (
+                <CardContent className="pt-0">
+                  <div className="space-y-2">
+                    {documents.filter(d => d.direction === 'admin_to_client').map((doc: any) => (
+                      <div key={doc.id} className="flex items-center justify-between p-2 rounded-lg bg-white border">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{doc.name}</p>
+                            <p className="text-xs text-gray-400">{(doc.file_size / 1024).toFixed(0)} KB</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Descargar"
+                            onClick={async () => {
+                              const { data } = await supabase.storage.from('case-documents').createSignedUrl(doc.file_path, 300)
+                              if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+                            }}
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-400 hover:text-red-600" title="Eliminar"
+                            onClick={async () => {
+                              if (!confirm('Eliminar este documento?')) return
+                              const res = await fetch('/api/admin/upload-document', {
+                                method: 'DELETE',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ document_id: doc.id }),
+                              })
+                              if (res.ok) { toast.success('Eliminado'); router.refresh() }
+                              else toast.error('Error al eliminar')
+                            }}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              )}
+              {documents.filter(d => d.direction === 'admin_to_client').length === 0 && (
+                <CardContent className="pt-0">
+                  <p className="text-xs text-blue-600/60 text-center py-3">
+                    Los documentos que subas aqui apareceran en el portal del cliente para que los descargue.
+                  </p>
+                </CardContent>
+              )}
+            </Card>
           </div>
 
           {/* Rename Dialog */}

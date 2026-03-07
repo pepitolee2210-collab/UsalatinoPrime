@@ -11,6 +11,7 @@
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
     "@fontsource/dancing-script": "^5.2.8",
+    "@google/genai": "^1.44.0",
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^5.2.2",
     "@stripe/stripe-js": "^8.7.0",
