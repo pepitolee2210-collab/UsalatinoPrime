@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ClipboardList, Baby, FileText, Clock, CheckCircle, Archive, Search, XCircle, Plus, Copy, Check, ExternalLink, Link2, AlertTriangle } from 'lucide-react'
+import { ClipboardList, Baby, FileText, Clock, CheckCircle, Archive, Search, XCircle, Plus, Copy, Check, ExternalLink, Link2, AlertTriangle, Sparkles, Eye } from 'lucide-react'
 import { VisaJuvenilRow } from '@/components/admin/VisaJuvenilRow'
 import { AsiloRow } from '@/components/admin/AsiloRow'
 import { AjusteRow } from '@/components/admin/AjusteRow'
@@ -19,6 +19,7 @@ const TABS = [
   { key: 'ajuste', label: 'Ajuste I-485', icon: FileText },
   { key: 'renuncia', label: 'Renuncia', icon: FileText },
   { key: 'cambio-corte', label: 'Cambio Corte', icon: FileText },
+  { key: 'docs-ia', label: 'Docs IA', icon: Sparkles },
 ] as const
 
 type TabKey = typeof TABS[number]['key']
@@ -32,6 +33,7 @@ interface FormulariosViewProps {
   ajuste: any[]
   renuncia: any[]
   cambioCorte: any[]
+  aiDocuments: any[]
   baseUrl: string
 }
 
@@ -43,7 +45,7 @@ const FORM_LINKS = [
   { key: 'miedo-creible', label: 'Miedo Creíble', path: '/miedo-creible' },
 ] as const
 
-export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCorte, baseUrl }: FormulariosViewProps) {
+export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCorte, aiDocuments, baseUrl }: FormulariosViewProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
   const initialTab = (searchParams.get('tab') as TabKey) || 'visa-juvenil'
@@ -71,6 +73,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
       case 'ajuste': return ajuste
       case 'renuncia': return renuncia
       case 'cambio-corte': return cambioCorte
+      case 'docs-ia': return aiDocuments
     }
   }
 
@@ -183,8 +186,11 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
             : tab.key === 'asilo' ? asilo
             : tab.key === 'ajuste' ? ajuste
             : tab.key === 'renuncia' ? renuncia
+            : tab.key === 'docs-ia' ? aiDocuments
             : cambioCorte
-          const pendingCount = getPendingCount(subs, tab.key)
+          const pendingCount = tab.key === 'docs-ia'
+            ? subs.filter((s: any) => s.status === 'draft').length
+            : getPendingCount(subs, tab.key)
           const Icon = tab.icon
           return (
             <button
@@ -245,6 +251,8 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
                 return <RenunciaRow key={sub.id} submission={sub} />
               case 'cambio-corte':
                 return <CambioCorteRow key={sub.id} submission={sub} />
+              case 'docs-ia':
+                return <AiDocRow key={sub.id} submission={sub} />
             }
           })}
         </div>
@@ -256,5 +264,86 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
         </Card>
       )}
     </div>
+  )
+}
+
+// === AI Document Row ===
+const AI_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  draft: { label: 'Borrador', color: 'bg-gray-100 text-gray-600' },
+  submitted: { label: 'Enviado', color: 'bg-blue-100 text-blue-700' },
+  reviewed: { label: 'Revisado', color: 'bg-purple-100 text-purple-700' },
+  needs_correction: { label: 'Correcciones', color: 'bg-orange-100 text-orange-700' },
+  approved: { label: 'Aprobado', color: 'bg-green-100 text-green-700' },
+}
+
+function AiDocRow({ submission }: { submission: any }) {
+  const [expanded, setExpanded] = useState(false)
+  const caseInfo = submission.case
+  const clientInfo = Array.isArray(caseInfo?.client) ? caseInfo.client[0] : caseInfo?.client
+  const formData = submission.form_data || {}
+  const agentLabel = formData.agent === 'sij' ? 'Declaracion SIJ'
+    : formData.agent === 'credible_fear' ? 'Miedo Creible'
+    : formData.agent === 'witness' ? 'Testimonio'
+    : submission.form_type
+  const statusConfig = AI_STATUS_CONFIG[submission.status] || AI_STATUS_CONFIG.draft
+  const generatedDoc = formData.generated_document || ''
+
+  return (
+    <Card className="border-l-4 border-l-[#F2A900]">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <Sparkles className="w-4 h-4 text-[#F2A900]" />
+              <span className="font-semibold text-gray-900 text-sm">{agentLabel}</span>
+              <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
+              {caseInfo?.case_number && (
+                <span className="text-xs text-gray-400">Caso #{caseInfo.case_number}</span>
+              )}
+            </div>
+            <p className="text-sm text-gray-600">
+              {clientInfo ? `${clientInfo.first_name} ${clientInfo.last_name}` : 'Cliente'}
+              {' — '}
+              <span className="text-xs text-gray-400">
+                {new Date(submission.updated_at).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            </p>
+            {formData.input?.minor_full_name && (
+              <p className="text-xs text-gray-400 mt-0.5">Menor: {formData.input.minor_full_name}</p>
+            )}
+            {formData.input?.applicant_full_name && formData.agent === 'credible_fear' && (
+              <p className="text-xs text-gray-400 mt-0.5">Solicitante: {formData.input.applicant_full_name}</p>
+            )}
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setExpanded(!expanded)}
+          >
+            <Eye className="w-3.5 h-3.5 mr-1" />
+            {expanded ? 'Cerrar' : 'Ver'}
+          </Button>
+        </div>
+
+        {expanded && generatedDoc && (
+          <div className="mt-4 border rounded-lg overflow-hidden">
+            <div className="bg-gray-50 px-3 py-2 border-b flex justify-between items-center">
+              <span className="text-xs font-medium text-gray-600">Documento generado con {formData.model || 'IA'}</span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs"
+                onClick={() => { navigator.clipboard.writeText(generatedDoc); }}
+              >
+                <Copy className="w-3 h-3 mr-1" /> Copiar
+              </Button>
+            </div>
+            <div className="p-4 max-h-96 overflow-y-auto bg-white">
+              <pre className="text-sm text-gray-800 whitespace-pre-wrap font-serif leading-relaxed">{generatedDoc}</pre>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
