@@ -125,8 +125,20 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (notes !== undefined) updateData.notes = notes
-    if (henry_notes !== undefined) updateData.henry_notes = henry_notes
     if (follow_up_date !== undefined) updateData.follow_up_date = follow_up_date
+
+    // henry_notes: append new entry to JSONB array
+    if (henry_notes !== undefined) {
+      const { data: current } = await service
+        .from('callback_requests')
+        .select('henry_notes')
+        .eq('id', id)
+        .single()
+
+      const existing = Array.isArray(current?.henry_notes) ? current.henry_notes : []
+      const newEntry = { text: henry_notes, date: new Date().toISOString() }
+      updateData.henry_notes = [newEntry, ...existing]
+    }
 
     const { error } = await service
       .from('callback_requests')

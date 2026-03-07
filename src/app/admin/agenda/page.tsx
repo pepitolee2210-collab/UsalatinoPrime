@@ -53,7 +53,7 @@ interface CallbackRequest {
   phone: string
   service_interest: string | null
   notes: string | null
-  henry_notes: string | null
+  henry_notes: { text: string; date: string }[] | null
   message_date: string | null
   status: CallbackStatus
   follow_up_date: string | null
@@ -395,13 +395,15 @@ function AgendaCard({
   const StatusIcon = config.icon
   const serviceLabel = SERVICE_OPTIONS.find(s => s.slug === item.service_interest)?.label || item.service_interest
   const priority = getPriority(item.message_date, item.created_at)
-  const [inlineNotes, setInlineNotes] = useState(item.henry_notes || '')
+  const henryLog = Array.isArray(item.henry_notes) ? item.henry_notes : []
+  const [newNote, setNewNote] = useState('')
   const [savingNotes, setSavingNotes] = useState(false)
-  const notesChanged = inlineNotes !== (item.henry_notes || '')
 
   async function handleSaveNotes() {
+    if (!newNote.trim()) return
     setSavingNotes(true)
-    await onUpdateHenryNotes(item.id, inlineNotes)
+    await onUpdateHenryNotes(item.id, newNote.trim())
+    setNewNote('')
     setSavingNotes(false)
   }
 
@@ -525,27 +527,38 @@ function AgendaCard({
           </div>
         </div>
 
-        {/* Inline notes - Henry's notes */}
-        <div className="flex items-start gap-2 border-t pt-3">
-          <div className="flex-1">
-            <label className="text-xs font-medium text-[#F2A900] mb-1 block">Notas Henry</label>
+        {/* Henry's notes - history log */}
+        <div className="border-t pt-3 space-y-2">
+          <label className="text-xs font-medium text-[#F2A900] block">Notas Henry</label>
+          {henryLog.length > 0 && (
+            <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+              {henryLog.map((entry, i) => (
+                <div key={i} className="bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                  <p className="text-sm text-gray-800">{entry.text}</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    {format(new Date(entry.date), "d MMM yyyy, h:mm a", { locale: es })}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2">
             <Input
-              value={inlineNotes}
-              onChange={e => setInlineNotes(e.target.value)}
-              placeholder="Agregar notas..."
-              className="text-sm h-9"
+              value={newNote}
+              onChange={e => setNewNote(e.target.value)}
+              placeholder="Agregar nota..."
+              className="text-sm h-9 flex-1"
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSaveNotes() } }}
             />
-          </div>
-          {notesChanged && (
             <Button
               size="sm"
-              className="mt-5 bg-[#F2A900] hover:bg-[#D4940A] text-white"
-              disabled={savingNotes}
+              className="bg-[#F2A900] hover:bg-[#D4940A] text-white"
+              disabled={savingNotes || !newNote.trim()}
               onClick={handleSaveNotes}
             >
               {savingNotes ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
             </Button>
-          )}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -563,7 +576,8 @@ function EditForm({
   onUpdateHenryNotes: (id: string, henryNotes: string) => Promise<void>
   onClose: () => void
 }) {
-  const [henryNotes, setHenryNotes] = useState(item.henry_notes || '')
+  const henryLog = Array.isArray(item.henry_notes) ? item.henry_notes : []
+  const [newHenryNote, setNewHenryNote] = useState('')
   const [followUpDate, setFollowUpDate] = useState(item.follow_up_date || '')
   const [saving, setSaving] = useState(false)
 
@@ -578,11 +592,23 @@ function EditForm({
       )}
       <div className="space-y-1.5">
         <Label>Notas de Henry</Label>
+        {henryLog.length > 0 && (
+          <div className="max-h-48 overflow-y-auto space-y-1.5">
+            {henryLog.map((entry, i) => (
+              <div key={i} className="bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+                <p className="text-sm text-gray-800">{entry.text}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">
+                  {format(new Date(entry.date), "d MMM yyyy, h:mm a", { locale: es })}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
         <Textarea
-          value={henryNotes}
-          onChange={e => setHenryNotes(e.target.value)}
-          rows={3}
-          placeholder="Tus notas personales..."
+          value={newHenryNote}
+          onChange={e => setNewHenryNote(e.target.value)}
+          rows={2}
+          placeholder="Agregar nueva nota..."
         />
       </div>
       <div className="space-y-1.5">
@@ -602,10 +628,11 @@ function EditForm({
             if (followUpDate) {
               await onUpdateStatus(item.id, 'follow_up', followUpDate)
             }
-            if (henryNotes !== (item.henry_notes || '')) {
-              await onUpdateHenryNotes(item.id, henryNotes)
+            if (newHenryNote.trim()) {
+              await onUpdateHenryNotes(item.id, newHenryNote.trim())
+              setNewHenryNote('')
             }
-            if (!followUpDate && henryNotes === (item.henry_notes || '')) {
+            if (!followUpDate && !newHenryNote.trim()) {
               onClose()
             }
             setSaving(false)
@@ -622,8 +649,8 @@ function EditForm({
             disabled={saving}
             onClick={async () => {
               setSaving(true)
-              if (henryNotes !== (item.henry_notes || '')) {
-                await onUpdateHenryNotes(item.id, henryNotes)
+              if (newHenryNote.trim()) {
+                await onUpdateHenryNotes(item.id, newHenryNote.trim())
               }
               await onUpdateStatus(item.id, 'closed')
               setSaving(false)
