@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { gemini, GEMINI_MODEL } from '@/lib/ai/gemini'
+import { getGeminiClient, GEMINI_MODEL } from '@/lib/ai/gemini'
 import { SIJ_SYSTEM_PROMPT, buildSijPrompt, SIJ_DOCUMENT_TYPES } from '@/lib/ai/prompts/sij-affidavit'
 import type { SijGenerationInput } from '@/lib/ai/prompts/sij-affidavit'
 
@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
     const userPrompt = buildSijPrompt(input)
 
     // Call Gemini
+    const gemini = getGeminiClient()
     const response = await gemini.models.generateContent({
       model: GEMINI_MODEL,
       config: {
