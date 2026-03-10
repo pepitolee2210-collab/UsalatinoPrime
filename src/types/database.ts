@@ -205,6 +205,7 @@ export interface Appointment {
   reminder_24h_sent: boolean
   cancelled_at?: string
   cancellation_reason?: string
+  penalty_waived?: boolean
   notes?: string
   created_at: string
   updated_at: string

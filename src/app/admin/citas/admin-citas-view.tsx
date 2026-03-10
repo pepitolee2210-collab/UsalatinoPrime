@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/table'
 import {
   CalendarClock, Settings, ChevronDown, ChevronUp,
-  CheckCircle, XCircle, AlertTriangle, Trash2, Plus,
+  CheckCircle, XCircle, AlertTriangle, Trash2, Plus, RefreshCw,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatToMT, formatDateMT } from '@/lib/appointments/slots'
@@ -40,6 +40,9 @@ interface AdminCitasViewProps {
     status: string
     duration_minutes: number
     notes?: string
+    cancelled_at?: string
+    cancellation_reason?: string
+    penalty_waived?: boolean
     client?: { first_name: string; last_name: string; email: string; phone?: string } | null
     case?: { case_number: string; service?: { name: string } | null } | null
   }>
@@ -133,6 +136,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates }:
 // ── Fila de cita ──
 function AppointmentRow({ appointment }: { appointment: AdminCitasViewProps['appointments'][0] }) {
   const [updating, setUpdating] = useState(false)
+  const [waiving, setWaiving] = useState(false)
 
   const clientRaw = appointment.client as unknown
   const client = Array.isArray(clientRaw)
@@ -168,6 +172,28 @@ function AppointmentRow({ appointment }: { appointment: AdminCitasViewProps['app
       toast.error('Error de conexión')
     } finally {
       setUpdating(false)
+    }
+  }
+
+  async function handleWaivePenalty() {
+    setWaiving(true)
+    try {
+      const res = await fetch('/api/admin/appointments/waive-penalty', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointment_id: appointment.id }),
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        toast.error(data.error || 'Error')
+        return
+      }
+      toast.success('Penalizacion levantada. El cliente puede reagendar.')
+      window.location.reload()
+    } catch {
+      toast.error('Error de conexion')
+    } finally {
+      setWaiving(false)
     }
   }
 
@@ -216,6 +242,27 @@ function AppointmentRow({ appointment }: { appointment: AdminCitasViewProps['app
               <XCircle className="w-3 h-3 mr-1" />
               No Show
             </Button>
+          </div>
+        )}
+        {(appointment.status === 'cancelled' || appointment.status === 'no_show') && (
+          <div className="space-y-1">
+            {appointment.cancellation_reason && (
+              <p className="text-[11px] text-gray-500 italic">{appointment.cancellation_reason}</p>
+            )}
+            {appointment.penalty_waived ? (
+              <Badge className="bg-green-100 text-green-700 text-[10px]">Reagendamiento habilitado</Badge>
+            ) : (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => handleWaivePenalty()}
+                disabled={waiving}
+                className="text-amber-700 border-amber-200 hover:bg-amber-50"
+              >
+                <RefreshCw className={`w-3 h-3 mr-1 ${waiving ? 'animate-spin' : ''}`} />
+                Permitir Reagendar
+              </Button>
+            )}
           </div>
         )}
       </TableCell>

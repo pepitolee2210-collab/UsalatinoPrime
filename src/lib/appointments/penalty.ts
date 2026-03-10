@@ -28,6 +28,11 @@ export function checkPenalty(appointments: Appointment[]): PenaltyResult {
   const latest = sorted[0]
   const now = new Date()
 
+  // Si Henry levanto la penalizacion, no penalizar
+  if (latest.penalty_waived) {
+    return { isPenalized: false, canScheduleAfter: null, reason: null }
+  }
+
   // Caso 1: No show
   if (latest.status === 'no_show') {
     const penaltyEnd = new Date(latest.scheduled_at)
