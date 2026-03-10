@@ -171,6 +171,13 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
 function AppointmentRow({ appointment }: { appointment: AdminCitasViewProps['appointments'][0] }) {
   const [updating, setUpdating] = useState(false)
   const [waiving, setWaiving] = useState(false)
+  const [showReschedule, setShowReschedule] = useState(false)
+  const [rescheduleDate, setRescheduleDate] = useState('')
+  const [rescheduleSlot, setRescheduleSlot] = useState('')
+  const [rescheduleSlots, setRescheduleSlots] = useState<string[]>([])
+  const [loadingRescheduleSlots, setLoadingRescheduleSlots] = useState(false)
+  const [rescheduling, setRescheduling] = useState(false)
+  const [rescheduleBlocked, setRescheduleBlocked] = useState(false)
 
   const clientRaw = appointment.client as unknown
   const client = Array.isArray(clientRaw)
@@ -231,7 +238,51 @@ function AppointmentRow({ appointment }: { appointment: AdminCitasViewProps['app
     }
   }
 
+  async function loadRescheduleSlots(date: string) {
+    setRescheduleSlot('')
+    setRescheduleBlocked(false)
+    setLoadingRescheduleSlots(true)
+    try {
+      const res = await fetch(`/api/admin/appointments/available-slots?date=${date}`)
+      const data = await res.json()
+      if (data.blocked) {
+        setRescheduleBlocked(true)
+        setRescheduleSlots([])
+      } else {
+        setRescheduleSlots(data.slots || [])
+      }
+    } catch {
+      toast.error('Error al cargar horarios')
+      setRescheduleSlots([])
+    } finally {
+      setLoadingRescheduleSlots(false)
+    }
+  }
+
+  async function handleReschedule() {
+    if (!rescheduleSlot) return
+    setRescheduling(true)
+    try {
+      const res = await fetch('/api/admin/appointments/reschedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointment_id: appointment.id, scheduled_at: rescheduleSlot }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error')
+      toast.success('Cita reprogramada')
+      window.location.reload()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al reprogramar')
+    } finally {
+      setRescheduling(false)
+    }
+  }
+
+  const today = new Date().toISOString().split('T')[0]
+
   return (
+    <>
     <TableRow>
       <TableCell>
         <div>
@@ -255,7 +306,16 @@ function AppointmentRow({ appointment }: { appointment: AdminCitasViewProps['app
       </TableCell>
       <TableCell>
         {appointment.status === 'scheduled' && (
-          <div className="flex gap-1">
+          <div className="flex gap-1 flex-wrap">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowReschedule(!showReschedule)}
+              className="text-blue-600 border-blue-200 hover:bg-blue-50"
+            >
+              <CalendarClock className="w-3 h-3 mr-1" />
+              Reprogramar
+            </Button>
             <Button
               size="sm"
               variant="outline"
@@ -301,6 +361,73 @@ function AppointmentRow({ appointment }: { appointment: AdminCitasViewProps['app
         )}
       </TableCell>
     </TableRow>
+    {showReschedule && appointment.status === 'scheduled' && (
+      <TableRow>
+        <TableCell colSpan={5} className="bg-blue-50/50 border-l-4 border-l-blue-400">
+          <div className="p-3 space-y-3">
+            <p className="text-sm font-medium text-[#002855]">Reprogramar cita de {client?.first_name} {client?.last_name}</p>
+            <div className="flex items-end gap-3 flex-wrap">
+              <div className="space-y-1">
+                <Label className="text-xs">Nueva fecha</Label>
+                <Input
+                  type="date"
+                  min={today}
+                  value={rescheduleDate}
+                  onChange={e => {
+                    setRescheduleDate(e.target.value)
+                    if (e.target.value) loadRescheduleSlots(e.target.value)
+                  }}
+                  className="w-44 h-9"
+                />
+              </div>
+              {rescheduleDate && (
+                loadingRescheduleSlots ? (
+                  <div className="flex items-center gap-2 text-sm text-gray-500 pb-1">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Cargando...
+                  </div>
+                ) : rescheduleBlocked ? (
+                  <p className="text-sm text-red-600 pb-1">Fecha bloqueada</p>
+                ) : rescheduleSlots.length === 0 ? (
+                  <p className="text-sm text-gray-500 pb-1">Sin horarios disponibles</p>
+                ) : (
+                  <div className="flex gap-1.5 flex-wrap">
+                    {rescheduleSlots.map(slot => (
+                      <Button
+                        key={slot}
+                        variant={rescheduleSlot === slot ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setRescheduleSlot(slot)}
+                        className={`h-9 ${rescheduleSlot === slot ? 'bg-[#002855]' : ''}`}
+                      >
+                        <Clock className="w-3 h-3 mr-1" />
+                        {formatToMT(slot)}
+                      </Button>
+                    ))}
+                  </div>
+                )
+              )}
+            </div>
+            {rescheduleSlot && (
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="bg-[#002855] hover:bg-[#003570]"
+                  disabled={rescheduling}
+                  onClick={handleReschedule}
+                >
+                  {rescheduling ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5 mr-1" />}
+                  Confirmar nueva fecha
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => { setShowReschedule(false); setRescheduleDate(''); setRescheduleSlot('') }}>
+                  Cancelar
+                </Button>
+              </div>
+            )}
+          </div>
+        </TableCell>
+      </TableRow>
+    )}
+    </>
   )
 }
 
