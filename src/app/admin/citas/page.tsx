@@ -4,7 +4,7 @@ import { AdminCitasView } from './admin-citas-view'
 export default async function AdminCitasPage() {
   const supabase = await createClient()
 
-  const [appointmentsRes, configRes, settingsRes, blockedDatesRes] = await Promise.all([
+  const [appointmentsRes, configRes, settingsRes, blockedDatesRes, casesRes] = await Promise.all([
     supabase
       .from('appointments')
       .select('*, client:profiles(first_name, last_name, email, phone), case:cases(case_number, service:service_catalog(name))')
@@ -21,6 +21,11 @@ export default async function AdminCitasPage() {
       .from('blocked_dates')
       .select('*')
       .order('blocked_date', { ascending: true }),
+    supabase
+      .from('cases')
+      .select('id, case_number, client_id, client:profiles(first_name, last_name, phone), service:service_catalog(name)')
+      .not('intake_status', 'eq', 'archived')
+      .order('created_at', { ascending: false }),
   ])
 
   return (
@@ -31,6 +36,7 @@ export default async function AdminCitasPage() {
         config={configRes.data || []}
         settings={settingsRes.data}
         blockedDates={blockedDatesRes.data || []}
+        activeCases={casesRes.data || []}
       />
     </div>
   )
