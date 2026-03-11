@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
 import { CHATBOT_VOICE_SYSTEM_PROMPT, CHATBOT_TOOLS } from '@/lib/ai/prompts/chatbot-system'
 
-export const VOICE_MODEL = 'gemini-live-2.5-flash-preview'
+const VOICE_MODEL = 'gemini-live-2.5-flash-preview'
 
 // Rate limit: max 5 voice sessions per IP per hour
 const voiceRateLimits = new Map<string, { count: number; resetAt: number }>()
