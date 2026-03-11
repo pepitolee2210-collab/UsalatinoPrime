@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { CalendarClock, FileText, FileUp, Download, Sparkles, CheckCircle } from 'lucide-react'
+import { CalendarClock, FileText, FileUp, Download, CheckCircle, BookOpen } from 'lucide-react'
 import { AppointmentBooking } from './appointment-booking'
 import { DocumentUploadSection } from './document-upload-section'
 import { HenryDocuments } from './henry-documents'
-import { SijFormSection } from './sij-form-section'
+import { ClientStoryWizard } from './client-story-wizard'
+
 import type { Appointment } from '@/types/database'
 
 interface UploadedDoc {
@@ -42,14 +43,15 @@ interface ClientPortalProps {
   }
 }
 
-const TABS = [
+const BASE_TABS = [
   { id: 'cita', label: 'Cita', icon: CalendarClock },
   { id: 'documentos', label: 'Mis Documentos', icon: FileUp },
   { id: 'henry-docs', label: 'Docs del Consultor', icon: Download },
-  { id: 'formularios', label: 'Formularios SIJ', icon: Sparkles },
 ] as const
 
-type TabId = typeof TABS[number]['id']
+const STORY_TAB = { id: 'mi-historia', label: 'Mi Historia', icon: BookOpen } as const
+
+type TabId = typeof BASE_TABS[number]['id'] | 'mi-historia'
 
 export function ClientPortal({
   token,
@@ -72,13 +74,18 @@ export function ClientPortal({
   const clientDocsCount = uploadedDocuments.filter(d => !d.direction || d.direction === 'client_to_admin').length
   const hasClientDocs = clientDocsCount >= 3
   const hasHenryDocs = henryDocuments.length > 0
-  const hasSubmittedForms = formSubmissions.some(f => f.status !== 'draft')
+  const hasSubmittedStory = formSubmissions.some(f =>
+    f.form_type === 'client_story' && (f.status === 'submitted' || f.status === 'approved')
+  )
+  const stepsArray = isVisaJuvenil
+    ? [hasAppointment, hasClientDocs, hasSubmittedStory, hasHenryDocs]
+    : [hasAppointment, hasClientDocs, hasHenryDocs]
+  const completedSteps = stepsArray.filter(Boolean).length
+  const totalSteps = stepsArray.length
 
-  const completedSteps = [hasAppointment, hasClientDocs, hasHenryDocs, ...(isVisaJuvenil ? [hasSubmittedForms] : [])].filter(Boolean).length
-  const totalSteps = isVisaJuvenil ? 4 : 3
-
-  // Filter tabs: only show SIJ forms for visa juvenil cases
-  const visibleTabs = isVisaJuvenil ? TABS : TABS.filter(t => t.id !== 'formularios')
+  const visibleTabs = isVisaJuvenil
+    ? [...BASE_TABS.slice(0, 2), STORY_TAB, BASE_TABS[2]]
+    : [...BASE_TABS]
 
   return (
     <div className="space-y-4">
@@ -97,7 +104,7 @@ export function ClientPortal({
         <div className="flex justify-between mt-2">
           <StepIndicator done={hasAppointment} label="Cita" />
           <StepIndicator done={hasClientDocs} label="Documentos" />
-          {isVisaJuvenil && <StepIndicator done={hasSubmittedForms} label="Formularios" />}
+          {isVisaJuvenil && <StepIndicator done={hasSubmittedStory} label="Mi Historia" />}
           <StepIndicator done={hasHenryDocs} label="Docs Consultor" />
         </div>
       </div>
@@ -144,18 +151,13 @@ export function ClientPortal({
               uploadedDocuments={uploadedDocuments.filter(d => !d.direction || d.direction === 'client_to_admin')}
             />
           )}
+          {activeTab === 'mi-historia' && isVisaJuvenil && (
+            <ClientStoryWizard token={token} clientName={clientName} />
+          )}
           {activeTab === 'henry-docs' && (
             <HenryDocuments
               token={token}
               documents={henryDocuments}
-            />
-          )}
-          {activeTab === 'formularios' && isVisaJuvenil && (
-            <SijFormSection
-              token={token}
-              submissions={formSubmissions}
-              clientName={clientName}
-              minorData={minorData}
             />
           )}
         </div>

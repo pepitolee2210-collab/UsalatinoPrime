@@ -14,7 +14,7 @@ import { CaseFormViewer } from '@/components/admin/CaseFormViewer'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { CheckCircle, AlertCircle, FileText, Download, ArrowLeft, Loader2, DollarSign, CreditCard, Plus, ShieldCheck, ShieldOff, Upload, Eye, Pencil, Trash2, Sparkles } from 'lucide-react'
+import { CheckCircle, AlertCircle, FileText, Download, ArrowLeft, Loader2, DollarSign, CreditCard, Plus, ShieldCheck, ShieldOff, Upload, Eye, Pencil, Trash2, MessageSquare } from 'lucide-react'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,7 +22,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { APPOINTMENT_DOCUMENT_KEYS } from '@/lib/appointments/constants'
-import { AdminAiForms } from './admin-ai-forms'
+import { CaseChat } from './case-chat'
+import { ClientStoryReview } from './client-story-review'
 import { uploadDirect } from '@/lib/upload-direct'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -33,7 +34,7 @@ interface AdminCaseViewProps {
   documents: any[]
   activities: any[]
   payments: any[]
-  aiSubmissions: any[]
+  aiSubmissions?: any[]
 }
 
 export function AdminCaseView({ caseData, documents, activities, payments, aiSubmissions }: AdminCaseViewProps) {
@@ -359,12 +360,18 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="notes">Notas</TabsTrigger>
           {isVisaJuvenil && (
-            <TabsTrigger value="docs-ia" className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#F2A900]" />
-              Docs IA
-              {aiSubmissions.length > 0 && (
-                <Badge className="ml-1 bg-amber-100 text-amber-800 text-[10px] h-5 px-1.5">{aiSubmissions.length}</Badge>
+            <TabsTrigger value="client-story" className="flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-[#F2A900]" />
+              Historia
+              {(aiSubmissions || []).some((s: { form_type: string; status: string }) => s.form_type === 'client_story' && s.status === 'submitted') && (
+                <span className="w-2 h-2 rounded-full bg-yellow-500" />
               )}
+            </TabsTrigger>
+          )}
+          {isVisaJuvenil && (
+            <TabsTrigger value="chat-ia" className="flex items-center gap-1.5">
+              <MessageSquare className="w-3.5 h-3.5 text-[#F2A900]" />
+              Chat IA
             </TabsTrigger>
           )}
         </TabsList>
@@ -972,17 +979,23 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
         </TabsContent>
 
         {isVisaJuvenil && (
-          <TabsContent value="docs-ia" className="mt-4">
-            <AdminAiForms
+          <TabsContent value="client-story" className="mt-4">
+            <ClientStoryReview
+              caseId={caseData.id}
+              submissions={(aiSubmissions || []).filter((s: { form_type: string }) =>
+                ['client_story', 'client_witnesses', 'client_absent_parent'].includes(s.form_type)
+              )}
+            />
+          </TabsContent>
+        )}
+
+        {isVisaJuvenil && (
+          <TabsContent value="chat-ia" className="mt-4">
+            <CaseChat
               caseId={caseData.id}
               clientName={`${caseData.client?.first_name || ''} ${caseData.client?.last_name || ''}`.trim()}
-              submissions={aiSubmissions}
-              minorData={{
-                minor_full_name: caseData.form_data?.minor_full_name || caseData.form_data?.nombre_menor || '',
-                minor_dob: caseData.form_data?.minor_dob || caseData.form_data?.fecha_nacimiento_menor || '',
-                minor_country_of_birth: caseData.form_data?.minor_country_of_birth || caseData.form_data?.pais_nacimiento_menor || '',
-                mother_full_name: caseData.form_data?.mother_full_name || caseData.form_data?.nombre_madre || '',
-              }}
+              serviceName={caseData.service?.name || ''}
+              documentCount={documents.length}
             />
           </TabsContent>
         )}

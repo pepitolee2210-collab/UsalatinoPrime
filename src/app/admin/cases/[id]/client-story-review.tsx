@@ -1,0 +1,337 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
+import { toast } from 'sonner'
+import { Loader2, CheckCircle, AlertTriangle, Clock, BookOpen, Users, UserX, Pencil, Save, X } from 'lucide-react'
+
+interface FormSubmission {
+  id: string
+  form_type: string
+  form_data: Record<string, unknown>
+  status: string
+  admin_notes?: string
+  updated_at: string
+}
+
+interface ClientStoryReviewProps {
+  caseId: string
+  submissions: FormSubmission[]
+}
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
+  submitted: { label: 'Pendiente de revisión', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
+  approved: { label: 'Aprobado', color: 'bg-green-100 text-green-800', icon: CheckCircle },
+  needs_correction: { label: 'Correcciones solicitadas', color: 'bg-red-100 text-red-800', icon: AlertTriangle },
+  draft: { label: 'Borrador (no enviado)', color: 'bg-gray-100 text-gray-600', icon: Clock },
+}
+
+const PARENT_SITUATIONS: Record<string, string> = {
+  cooperates: 'Coopera — dispuesto/a a firmar',
+  absent: 'Ausente — sin contacto',
+  deceased: 'Fallecido/a',
+  unknown: 'Desconocido',
+  never_known: 'Nunca lo/la conoció',
+}
+
+export function ClientStoryReview({ caseId, submissions }: ClientStoryReviewProps) {
+  const [subs, setSubs] = useState(submissions)
+  const [loading, setLoading] = useState(false)
+  const [editingNotes, setEditingNotes] = useState<string | null>(null)
+  const [notes, setNotes] = useState('')
+
+  const storySubmission = subs.find(s => s.form_type === 'client_story')
+  const parentSubmission = subs.find(s => s.form_type === 'client_absent_parent')
+  const witnessSubmission = subs.find(s => s.form_type === 'client_witnesses')
+
+  const hasAnySubmission = storySubmission || parentSubmission || witnessSubmission
+  const allApproved = [storySubmission, parentSubmission, witnessSubmission]
+    .filter(Boolean)
+    .every(s => s!.status === 'approved')
+
+  async function updateStatus(submissionId: string, newStatus: string, adminNotes?: string) {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/admin/client-story-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submission_id: submissionId, status: newStatus, admin_notes: adminNotes }),
+      })
+      if (!res.ok) throw new Error('Error al actualizar')
+      setSubs(prev => prev.map(s =>
+        s.id === submissionId ? { ...s, status: newStatus, admin_notes: adminNotes || s.admin_notes } : s
+      ))
+      toast.success(newStatus === 'approved' ? 'Aprobado' : 'Correcciones solicitadas')
+      setEditingNotes(null)
+    } catch {
+      toast.error('Error al actualizar estado')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!hasAnySubmission) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+          <BookOpen className="w-8 h-8 text-gray-400" />
+        </div>
+        <h4 className="font-semibold text-gray-700 mb-1">Sin historia del cliente</h4>
+        <p className="text-sm text-gray-500">El cliente aún no ha llenado el formulario de su historia.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {allApproved && (
+        <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
+          <CheckCircle className="w-5 h-5 text-green-500" />
+          <span className="text-sm text-green-700 font-medium">Toda la historia del cliente ha sido aprobada</span>
+        </div>
+      )}
+
+      {/* Story Section */}
+      {storySubmission && (
+        <ReviewCard
+          title="Historia del Cliente"
+          icon={<BookOpen className="w-4 h-4" />}
+          submission={storySubmission}
+          loading={loading}
+          editingNotes={editingNotes}
+          notes={notes}
+          onEditNotes={(id) => { setEditingNotes(id); setNotes(storySubmission.admin_notes || '') }}
+          onCancelNotes={() => setEditingNotes(null)}
+          onNotesChange={setNotes}
+          onApprove={(id) => updateStatus(id, 'approved')}
+          onRequestCorrections={(id) => updateStatus(id, 'needs_correction', notes)}
+        >
+          <StoryDetails data={storySubmission.form_data} />
+        </ReviewCard>
+      )}
+
+      {/* Parent Section */}
+      {parentSubmission && (
+        <ReviewCard
+          title="Padre/Madre Ausente"
+          icon={<UserX className="w-4 h-4" />}
+          submission={parentSubmission}
+          loading={loading}
+          editingNotes={editingNotes}
+          notes={notes}
+          onEditNotes={(id) => { setEditingNotes(id); setNotes(parentSubmission.admin_notes || '') }}
+          onCancelNotes={() => setEditingNotes(null)}
+          onNotesChange={setNotes}
+          onApprove={(id) => updateStatus(id, 'approved')}
+          onRequestCorrections={(id) => updateStatus(id, 'needs_correction', notes)}
+        >
+          <ParentDetails data={parentSubmission.form_data} />
+        </ReviewCard>
+      )}
+
+      {/* Witnesses Section */}
+      {witnessSubmission && (
+        <ReviewCard
+          title="Testigos"
+          icon={<Users className="w-4 h-4" />}
+          submission={witnessSubmission}
+          loading={loading}
+          editingNotes={editingNotes}
+          notes={notes}
+          onEditNotes={(id) => { setEditingNotes(id); setNotes(witnessSubmission.admin_notes || '') }}
+          onCancelNotes={() => setEditingNotes(null)}
+          onNotesChange={setNotes}
+          onApprove={(id) => updateStatus(id, 'approved')}
+          onRequestCorrections={(id) => updateStatus(id, 'needs_correction', notes)}
+        >
+          <WitnessDetails data={witnessSubmission.form_data} />
+        </ReviewCard>
+      )}
+    </div>
+  )
+}
+
+// -- Subcomponents --
+
+function ReviewCard({
+  title, icon, submission, loading, editingNotes, notes, children,
+  onEditNotes, onCancelNotes, onNotesChange, onApprove, onRequestCorrections,
+}: {
+  title: string
+  icon: React.ReactNode
+  submission: FormSubmission
+  loading: boolean
+  editingNotes: string | null
+  notes: string
+  children: React.ReactNode
+  onEditNotes: (id: string) => void
+  onCancelNotes: () => void
+  onNotesChange: (v: string) => void
+  onApprove: (id: string) => void
+  onRequestCorrections: (id: string) => void
+}) {
+  const config = STATUS_CONFIG[submission.status] || STATUS_CONFIG.draft
+  const StatusIcon = config.icon
+  const isEditing = editingNotes === submission.id
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            {icon} {title}
+          </CardTitle>
+          <Badge className={config.color}>
+            <StatusIcon className="w-3 h-3 mr-1" />
+            {config.label}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {children}
+
+        {/* Admin notes */}
+        {submission.admin_notes && !isEditing && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-xs font-medium text-amber-700 mb-1">Notas del consultor:</p>
+            <p className="text-sm text-amber-800">{submission.admin_notes}</p>
+          </div>
+        )}
+
+        {/* Actions */}
+        {submission.status !== 'draft' && (
+          <div className="flex items-center gap-2 pt-2 border-t">
+            {isEditing ? (
+              <div className="flex-1 space-y-2">
+                <Textarea
+                  value={notes}
+                  onChange={e => onNotesChange(e.target.value)}
+                  placeholder="Escribe las correcciones necesarias..."
+                  rows={3}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => onRequestCorrections(submission.id)}
+                    disabled={loading || !notes.trim()}
+                  >
+                    {loading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <AlertTriangle className="w-3 h-3 mr-1" />}
+                    Enviar correcciones
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={onCancelNotes}>
+                    <X className="w-3 h-3 mr-1" /> Cancelar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {submission.status !== 'approved' && (
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={() => onApprove(submission.id)}
+                    disabled={loading}
+                  >
+                    {loading ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
+                    Aprobar
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onEditNotes(submission.id)}
+                  disabled={loading}
+                >
+                  <Pencil className="w-3 h-3 mr-1" />
+                  {submission.status === 'approved' ? 'Agregar notas' : 'Pedir correcciones'}
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function DataRow({ label, value }: { label: string; value?: string | null }) {
+  if (!value) return null
+  return (
+    <div>
+      <span className="text-xs font-medium text-gray-500">{label}</span>
+      <p className="text-sm text-gray-800 whitespace-pre-wrap">{value}</p>
+    </div>
+  )
+}
+
+function StoryDetails({ data }: { data: Record<string, unknown> }) {
+  return (
+    <div className="grid gap-3">
+      <DataRow label="Año de llegada" value={data.arrival_year as string} />
+      <DataRow label="Quién lo/la trajo" value={data.who_brought as string} />
+      <DataRow label="Vive con" value={data.current_guardian as string} />
+      <DataRow label="Vida antes de EE.UU." value={data.life_before as string} />
+      <DataRow label="Razón de venir" value={data.why_came as string} />
+      <DataRow label="Abandono/negligencia" value={data.abandonment_description as string} />
+      <DataRow label="Detalles adicionales" value={data.additional_details as string} />
+    </div>
+  )
+}
+
+function ParentDetails({ data }: { data: Record<string, unknown> }) {
+  const situation = data.situation as string
+  return (
+    <div className="grid gap-3">
+      <DataRow label="Relación" value={data.parent_relationship === 'padre' ? 'Padre' : 'Madre'} />
+      <DataRow label="Situación" value={PARENT_SITUATIONS[situation] || situation} />
+      <DataRow label="Nombre" value={data.parent_name as string} />
+      {situation === 'cooperates' && (
+        <>
+          <DataRow label="Teléfono" value={data.parent_phone as string} />
+          <DataRow label="Email" value={data.parent_email as string} />
+          <DataRow label="Dispuesto a firmar" value={data.willing_to_sign as string} />
+        </>
+      )}
+      {situation === 'absent' && (
+        <>
+          <DataRow label="Último contacto" value={data.last_contact_date as string} />
+          <DataRow label="Descripción último contacto" value={data.last_contact_description as string} />
+          <DataRow label="Razón de ausencia" value={data.reason_absent as string} />
+          <DataRow label="Intentos de localizar" value={data.efforts_to_find as string} />
+        </>
+      )}
+      {situation === 'deceased' && (
+        <>
+          <DataRow label="Fecha de fallecimiento" value={data.death_date as string} />
+          <DataRow label="Lugar" value={data.death_place as string} />
+          <DataRow label="Certificado de defunción" value={data.has_death_certificate as string} />
+        </>
+      )}
+      {(situation === 'unknown' || situation === 'never_known') && (
+        <DataRow label="Información conocida" value={data.what_is_known as string} />
+      )}
+    </div>
+  )
+}
+
+function WitnessDetails({ data }: { data: Record<string, unknown> }) {
+  const witnesses = (data.witnesses as Array<Record<string, string>>) || []
+  return (
+    <div className="space-y-3">
+      {witnesses.filter(w => w.name).map((w, i) => (
+        <div key={i} className="p-3 bg-gray-50 rounded-lg">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm font-medium text-gray-800">{w.name}</span>
+            <Badge variant="secondary" className="text-[10px]">{w.relationship}</Badge>
+          </div>
+          {w.phone && <p className="text-xs text-gray-500">Tel: {w.phone}</p>}
+          <p className="text-sm text-gray-700 mt-1">{w.can_testify}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
