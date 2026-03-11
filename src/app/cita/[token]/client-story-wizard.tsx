@@ -11,9 +11,14 @@ interface StoryData {
   arrival_year: string
   who_brought: string
   current_guardian: string
-  life_before: string
-  why_came: string
-  abandonment_description: string
+  separation_date: string
+  how_was_abandonment: string
+  father_economic_support: string
+  father_contact_with_child: string
+  who_took_care: string
+  has_complaints: string
+  complaints_detail: string
+  why_no_reunification: string
   additional_details: string
 }
 
@@ -77,7 +82,9 @@ export function ClientStoryWizard({ token, clientName }: ClientStoryWizardProps)
 
   const [story, setStory] = useState<StoryData>({
     arrival_year: '', who_brought: '', current_guardian: '',
-    life_before: '', why_came: '', abandonment_description: '', additional_details: '',
+    separation_date: '', how_was_abandonment: '', father_economic_support: '',
+    father_contact_with_child: '', who_took_care: '', has_complaints: '',
+    complaints_detail: '', why_no_reunification: '', additional_details: '',
   })
 
   const [parent, setParent] = useState<ParentData>({
@@ -147,9 +154,6 @@ export function ClientStoryWizard({ token, clientName }: ClientStoryWizardProps)
   }, [step, story, parent, witnesses, saveDraft])
 
   function goNext() {
-    if (step === 0 && !validateStory()) return
-    if (step === 1 && !validateParent()) return
-    if (step === 2 && !validateWitnesses()) return
     saveCurrentStep()
     setStep(s => Math.min(s + 1, 3))
   }
@@ -160,8 +164,8 @@ export function ClientStoryWizard({ token, clientName }: ClientStoryWizardProps)
   }
 
   function validateStory(): boolean {
-    if (!story.arrival_year || !story.who_brought || !story.current_guardian || !story.abandonment_description) {
-      toast.error('Completa los campos obligatorios marcados con *')
+    if (!story.arrival_year || !story.who_brought || !story.current_guardian || !story.how_was_abandonment) {
+      toast.error('Completa los campos obligatorios de "Mi Historia" (marcados con *)')
       return false
     }
     return true
@@ -199,6 +203,11 @@ export function ClientStoryWizard({ token, clientName }: ClientStoryWizardProps)
   }
 
   async function handleSubmit() {
+    // Validate only at final submission
+    if (!validateStory()) return
+    if (!validateParent()) return
+    if (!validateWitnesses()) return
+
     setSubmitting(true)
     try {
       const submissions = [
@@ -362,27 +371,60 @@ function StoryStep({ story, onChange }: { story: StoryData; onChange: (s: StoryD
       </div>
       <div>
         <FieldLabel required>¿Quién te trajo a los Estados Unidos?</FieldLabel>
-        <TextInput value={story.who_brought} onChange={v => set('who_brought', v)} placeholder="Ej: Mi madre, un familiar, etc." />
+        <TextInput value={story.who_brought} onChange={v => set('who_brought', v)} placeholder="Ej: Mi madre, mi tía, un familiar, etc." />
       </div>
       <div>
-        <FieldLabel required>¿Con quién vives actualmente?</FieldLabel>
-        <TextInput value={story.current_guardian} onChange={v => set('current_guardian', v)} placeholder="Ej: Con mi madre y mi padrastro" />
+        <FieldLabel required>¿Con quién vives actualmente en EE.UU.?</FieldLabel>
+        <TextInput value={story.current_guardian} onChange={v => set('current_guardian', v)} placeholder="Nombre completo de la persona y su relación contigo (ej: Mi madre María López)" />
       </div>
       <div>
-        <FieldLabel>¿Cómo era tu vida antes de venir a los EE.UU.?</FieldLabel>
-        <TextArea value={story.life_before} onChange={v => set('life_before', v)} placeholder="Describe tu situación en tu país de origen..." rows={4} />
+        <FieldLabel>¿Cuándo se separaron tus padres? (fecha aproximada)</FieldLabel>
+        <TextInput value={story.separation_date} onChange={v => set('separation_date', v)} placeholder="Ej: En 2015, cuando yo tenía 5 años / Nunca vivieron juntos" />
       </div>
       <div>
-        <FieldLabel>¿Por qué viniste a los Estados Unidos?</FieldLabel>
-        <TextArea value={story.why_came} onChange={v => set('why_came', v)} placeholder="Explica las razones por las que viniste..." rows={4} />
+        <FieldLabel required>¿Cómo fue el abandono? Describe con el mayor detalle posible.</FieldLabel>
+        <TextArea value={story.how_was_abandonment} onChange={v => set('how_was_abandonment', v)} placeholder="Cuenta desde el inicio: ¿vivías con ambos padres? ¿qué pasó? ¿se fue, nunca lo/la conociste, tenía otra familia? Incluye nombres, fechas y lugares que recuerdes. Sé lo más detallista posible." rows={6} />
       </div>
       <div>
-        <FieldLabel required>¿Has sufrido abandono, negligencia o abuso por parte de uno o ambos padres? Describe tu situación.</FieldLabel>
-        <TextArea value={story.abandonment_description} onChange={v => set('abandonment_description', v)} placeholder="Es importante que describas con detalle la situación de abandono o negligencia..." rows={5} />
+        <FieldLabel>¿El padre/madre que te abandonó dio apoyo económico alguna vez?</FieldLabel>
+        <TextArea value={story.father_economic_support} onChange={v => set('father_economic_support', v)} placeholder="Ej: Nunca dio dinero / Daba algo al principio y luego dejó de dar / Hubo demanda de alimentos..." rows={3} />
+      </div>
+      <div>
+        <FieldLabel>¿El padre/madre ausente tuvo contacto contigo después de la separación? (llamadas, visitas, cumpleaños, etc.)</FieldLabel>
+        <TextArea value={story.father_contact_with_child} onChange={v => set('father_contact_with_child', v)} placeholder="Ej: Nunca me llamó / Una vez prometió venir a mi cumpleaños y nunca llegó / No sé nada de él/ella desde 2016..." rows={3} />
+      </div>
+      <div>
+        <FieldLabel>¿Quién se hizo cargo de ti cuando te abandonaron? (nombre completo y relación)</FieldLabel>
+        <TextArea value={story.who_took_care} onChange={v => set('who_took_care', v)} placeholder="Ej: Mi madre María López se hizo cargo sola / Mi abuela Juana Pérez me cuidó los primeros años..." rows={3} />
+      </div>
+      <div>
+        <FieldLabel>¿Tienes denuncias o documentos que prueben el abandono?</FieldLabel>
+        <div className="flex gap-3 mb-2">
+          {['Sí', 'No'].map(opt => (
+            <button
+              key={opt}
+              onClick={() => set('has_complaints', opt)}
+              className={`px-4 py-2 rounded-lg border text-sm transition-colors ${
+                story.has_complaints === opt
+                  ? 'border-[#F2A900] bg-[#F2A900]/10 text-[#F2A900]'
+                  : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+        {story.has_complaints === 'Sí' && (
+          <TextArea value={story.complaints_detail} onChange={v => set('complaints_detail', v)} placeholder="Describe qué documentos tienes: demanda de alimentos, denuncia por maltrato, denuncia por violencia, acta policial, etc." rows={3} />
+        )}
+      </div>
+      <div>
+        <FieldLabel>¿Por qué no puedes volver a vivir con el padre/madre que te abandonó?</FieldLabel>
+        <TextArea value={story.why_no_reunification} onChange={v => set('why_no_reunification', v)} placeholder="Ej: Tiene otra familia, está preso, tiene denuncias por violencia, no sé dónde vive, nunca se hizo responsable..." rows={4} />
       </div>
       <div>
         <FieldLabel>¿Hay algo más que quieras agregar?</FieldLabel>
-        <TextArea value={story.additional_details} onChange={v => set('additional_details', v)} placeholder="Cualquier detalle adicional que creas importante..." rows={3} />
+        <TextArea value={story.additional_details} onChange={v => set('additional_details', v)} placeholder="Cualquier detalle adicional que creas importante para tu caso..." rows={3} />
       </div>
     </div>
   )
@@ -647,8 +689,13 @@ function ReviewStep({
           <p><span className="font-medium">Año de llegada:</span> {story.arrival_year || '—'}</p>
           <p><span className="font-medium">Quién te trajo:</span> {story.who_brought || '—'}</p>
           <p><span className="font-medium">Vive con:</span> {story.current_guardian || '—'}</p>
-          {story.abandonment_description && (
-            <p><span className="font-medium">Situación:</span> {story.abandonment_description.slice(0, 200)}{story.abandonment_description.length > 200 ? '...' : ''}</p>
+          {story.separation_date && <p><span className="font-medium">Separación:</span> {story.separation_date}</p>}
+          {story.how_was_abandonment && (
+            <p><span className="font-medium">Abandono:</span> {story.how_was_abandonment.slice(0, 200)}{story.how_was_abandonment.length > 200 ? '...' : ''}</p>
+          )}
+          {story.has_complaints === 'Sí' && <p><span className="font-medium">Denuncias:</span> Sí{story.complaints_detail ? ` — ${story.complaints_detail.slice(0, 100)}` : ''}</p>}
+          {story.why_no_reunification && (
+            <p><span className="font-medium">No reunificación:</span> {story.why_no_reunification.slice(0, 150)}{story.why_no_reunification.length > 150 ? '...' : ''}</p>
           )}
         </div>
       </div>
