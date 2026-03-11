@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import {
-  Phone, Plus, Loader2, Clock, CheckCircle, PhoneOff, UserX, UserCheck, CalendarClock, Trash2, AlertTriangle, Save, XCircle,
+  Phone, Plus, Loader2, Clock, CheckCircle, PhoneOff, UserX, UserCheck, CalendarClock, Trash2, AlertTriangle, Save, XCircle, Bot,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -59,6 +59,7 @@ interface CallbackRequest {
   follow_up_date: string | null
   created_at: string
   called_at: string | null
+  source?: string
 }
 
 function getPriority(messageDate: string | null, createdAt: string): { label: string; color: string; sort: number } {
@@ -206,6 +207,7 @@ export default function AgendaPage() {
 
   const pendingCount = items.filter(i => i.status === 'pending').length
   const followUpCount = items.filter(i => i.status === 'follow_up').length
+  const chatbotCount = items.filter(i => i.source === 'chatbot' && i.status === 'pending').length
 
   if (loading) {
     return (
@@ -220,7 +222,15 @@ export default function AgendaPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Agenda de Llamadas</h1>
-          <p className="text-sm text-gray-500">Registro de prospectos y seguimiento de llamadas</p>
+          <p className="text-sm text-gray-500">
+            Registro de prospectos y seguimiento de llamadas
+            {chatbotCount > 0 && (
+              <span className="ml-2 inline-flex items-center gap-1 text-indigo-600 font-medium">
+                <Bot className="w-3.5 h-3.5" />
+                {chatbotCount} del chatbot
+              </span>
+            )}
+          </p>
         </div>
         <Button onClick={() => setShowForm(true)}>
           <Plus className="w-4 h-4 mr-1" /> Nueva Llamada
@@ -423,6 +433,12 @@ function AgendaCard({
                 <AlertTriangle className="w-3 h-3 mr-1" />
                 {priority.label}
               </Badge>
+              {item.source === 'chatbot' && (
+                <Badge className="bg-indigo-100 text-indigo-800">
+                  <Bot className="w-3 h-3 mr-1" />
+                  Chatbot
+                </Badge>
+              )}
             </div>
 
             {/* Info row */}
