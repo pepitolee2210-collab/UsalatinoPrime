@@ -61,14 +61,14 @@ interface ClientStoryWizardProps {
 
 const EMPTY_WITNESS: Witness = { name: '', relationship: '', phone: '', can_testify: '' }
 
-const STEPS = ['Mi Historia', 'Padre/Madre Ausente', 'Testigos', 'Revisión']
+const STEPS = ['Mi Declaración', 'Padre/Madre Ausente', 'Testigos', 'Revisión']
 
 const PARENT_SITUATIONS: { value: ParentSituation; label: string; desc: string }[] = [
-  { value: 'cooperates', label: 'Coopera', desc: 'Está dispuesto/a a firmar documentos' },
-  { value: 'absent', label: 'Ausente', desc: 'No tiene contacto o está ausente' },
-  { value: 'deceased', label: 'Falleció', desc: 'El padre/madre ha fallecido' },
-  { value: 'unknown', label: 'Desconocido', desc: 'No sabe quién es' },
-  { value: 'never_known', label: 'Nunca lo/la conoció', desc: 'Nunca tuvo relación' },
+  { value: 'cooperates', label: 'Coopera', desc: 'Está dispuesto/a a firmar la renuncia voluntaria de custodia' },
+  { value: 'absent', label: 'Ausente', desc: 'No tiene contacto, no sabemos dónde está' },
+  { value: 'deceased', label: 'Falleció', desc: 'El padre/madre del menor ha fallecido' },
+  { value: 'unknown', label: 'Desconocido', desc: 'No se sabe quién es el padre/madre' },
+  { value: 'never_known', label: 'Nunca lo/la conoció', desc: 'El menor nunca tuvo relación con esa persona' },
 ]
 
 export function ClientStoryWizard({ token, clientName }: ClientStoryWizardProps) {
@@ -359,46 +359,49 @@ function StoryStep({ story, onChange }: { story: StoryData; onChange: (s: StoryD
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-2">
         <BookOpen className="w-5 h-5 text-[#F2A900]" />
-        <h3 className="font-semibold text-gray-900">Tu Historia</h3>
+        <h3 className="font-semibold text-gray-900">Tu Declaración</h3>
       </div>
       <p className="text-sm text-gray-500">
-        Cuéntanos tu experiencia. Esta información es confidencial y será usada por tu consultor para preparar tu caso.
+        Esta información es para <strong>tu declaración jurada</strong> como madre/padre o tutor. Escribe desde tu perspectiva. Toda la información es confidencial.
       </p>
+      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+        Incluye todos los detalles que puedas: violencia, penurias, momentos difíciles, todo suma. Nuestro sistema tomará los puntos más relevantes para tu caso.
+      </div>
 
       <div>
-        <FieldLabel required>¿En qué año llegaste a los Estados Unidos?</FieldLabel>
+        <FieldLabel required>¿En qué año llegaron a los Estados Unidos?</FieldLabel>
         <TextInput value={story.arrival_year} onChange={v => set('arrival_year', v)} placeholder="Ej: 2020" />
       </div>
       <div>
-        <FieldLabel required>¿Quién te trajo a los Estados Unidos?</FieldLabel>
-        <TextInput value={story.who_brought} onChange={v => set('who_brought', v)} placeholder="Ej: Mi madre, mi tía, un familiar, etc." />
+        <FieldLabel required>¿Quién trajo al menor a los Estados Unidos?</FieldLabel>
+        <TextInput value={story.who_brought} onChange={v => set('who_brought', v)} placeholder="Ej: Yo (su madre), un familiar, un conocido, etc." />
       </div>
       <div>
-        <FieldLabel required>¿Con quién vives actualmente en EE.UU.?</FieldLabel>
-        <TextInput value={story.current_guardian} onChange={v => set('current_guardian', v)} placeholder="Nombre completo de la persona y su relación contigo (ej: Mi madre María López)" />
+        <FieldLabel required>¿Con quién vive el menor actualmente en EE.UU.? (nombre completo y relación)</FieldLabel>
+        <TextInput value={story.current_guardian} onChange={v => set('current_guardian', v)} placeholder="Ej: Conmigo, María López (su madre) / Con su abuela Juana Pérez" />
       </div>
       <div>
-        <FieldLabel>¿Cuándo se separaron tus padres? (fecha aproximada)</FieldLabel>
-        <TextInput value={story.separation_date} onChange={v => set('separation_date', v)} placeholder="Ej: En 2015, cuando yo tenía 5 años / Nunca vivieron juntos" />
+        <FieldLabel>¿Cuándo se separaron usted y la pareja? (fecha aproximada)</FieldLabel>
+        <TextInput value={story.separation_date} onChange={v => set('separation_date', v)} placeholder="Ej: En 2015 / Nunca vivimos juntos / Cuando estaba embarazada" />
       </div>
       <div>
         <FieldLabel required>¿Cómo fue el abandono? Describe con el mayor detalle posible.</FieldLabel>
-        <TextArea value={story.how_was_abandonment} onChange={v => set('how_was_abandonment', v)} placeholder="Cuenta desde el inicio: ¿vivías con ambos padres? ¿qué pasó? ¿se fue, nunca lo/la conociste, tenía otra familia? Incluye nombres, fechas y lugares que recuerdes. Sé lo más detallista posible." rows={6} />
+        <TextArea value={story.how_was_abandonment} onChange={v => set('how_was_abandonment', v)} placeholder="Cuenta desde el inicio: ¿Vivían juntos? ¿Qué pasó? ¿Se fue con otra persona, fue violento, nunca quiso hacerse cargo? Incluye nombres, fechas y lugares. Sé lo más detallista posible. Ej: 'Vivíamos juntos en Honduras, él conoció a otra pareja y nos dejó en 2016, nunca más dio dinero ni llamó...'" rows={6} />
       </div>
       <div>
-        <FieldLabel>¿El padre/madre que te abandonó dio apoyo económico alguna vez?</FieldLabel>
-        <TextArea value={story.father_economic_support} onChange={v => set('father_economic_support', v)} placeholder="Ej: Nunca dio dinero / Daba algo al principio y luego dejó de dar / Hubo demanda de alimentos..." rows={3} />
+        <FieldLabel>¿La pareja que los abandonó dio apoyo económico alguna vez?</FieldLabel>
+        <TextArea value={story.father_economic_support} onChange={v => set('father_economic_support', v)} placeholder="Ej: Nunca dio dinero / Al principio daba algo y luego dejó de dar / Tuve que poner demanda de alimentos / Da actualmente pero poco..." rows={3} />
       </div>
       <div>
-        <FieldLabel>¿El padre/madre ausente tuvo contacto contigo después de la separación? (llamadas, visitas, cumpleaños, etc.)</FieldLabel>
-        <TextArea value={story.father_contact_with_child} onChange={v => set('father_contact_with_child', v)} placeholder="Ej: Nunca me llamó / Una vez prometió venir a mi cumpleaños y nunca llegó / No sé nada de él/ella desde 2016..." rows={3} />
+        <FieldLabel>¿La pareja ausente tuvo contacto con el menor después de la separación? (llamadas, visitas, cumpleaños)</FieldLabel>
+        <TextArea value={story.father_contact_with_child} onChange={v => set('father_contact_with_child', v)} placeholder="Ej: Nunca llamó / Una vez prometió ir al cumpleaños y nunca llegó / No sabemos nada desde 2016 / De vez en cuando llama pero no da apoyo..." rows={3} />
       </div>
       <div>
-        <FieldLabel>¿Quién se hizo cargo de ti cuando te abandonaron? (nombre completo y relación)</FieldLabel>
-        <TextArea value={story.who_took_care} onChange={v => set('who_took_care', v)} placeholder="Ej: Mi madre María López se hizo cargo sola / Mi abuela Juana Pérez me cuidó los primeros años..." rows={3} />
+        <FieldLabel>¿Quién se hizo cargo del menor cuando los abandonaron? (nombre completo y relación)</FieldLabel>
+        <TextArea value={story.who_took_care} onChange={v => set('who_took_care', v)} placeholder="Ej: Yo sola me hice cargo / Tuve que ir a casa de mis padres: Juan Pérez (mi papá) y Rosa López (mi mamá) me ayudaron / Mi hermana María me apoyó..." rows={3} />
       </div>
       <div>
-        <FieldLabel>¿Tienes denuncias o documentos que prueben el abandono?</FieldLabel>
+        <FieldLabel>¿Tiene denuncias o documentos que prueben el abandono?</FieldLabel>
         <div className="flex gap-3 mb-2">
           {['Sí', 'No'].map(opt => (
             <button
@@ -415,16 +418,19 @@ function StoryStep({ story, onChange }: { story: StoryData; onChange: (s: StoryD
           ))}
         </div>
         {story.has_complaints === 'Sí' && (
-          <TextArea value={story.complaints_detail} onChange={v => set('complaints_detail', v)} placeholder="Describe qué documentos tienes: demanda de alimentos, denuncia por maltrato, denuncia por violencia, acta policial, etc." rows={3} />
+          <TextArea value={story.complaints_detail} onChange={v => set('complaints_detail', v)} placeholder="Describe qué documentos tiene: demanda de alimentos, denuncia por maltrato, orden de alejamiento, denuncia por violencia, acta policial, etc. Si no los tiene a la mano, indique dónde se podrían conseguir." rows={3} />
+        )}
+        {story.has_complaints === 'No' && (
+          <p className="text-xs text-gray-500 mt-1">Si nunca denunció, puede escribir por qué: por temor, por falta de recursos, porque en su país no procede, etc.</p>
         )}
       </div>
       <div>
-        <FieldLabel>¿Por qué no puedes volver a vivir con el padre/madre que te abandonó?</FieldLabel>
-        <TextArea value={story.why_no_reunification} onChange={v => set('why_no_reunification', v)} placeholder="Ej: Tiene otra familia, está preso, tiene denuncias por violencia, no sé dónde vive, nunca se hizo responsable..." rows={4} />
+        <FieldLabel>¿Por qué su hijo/a no puede volver a vivir con el padre/madre que lo abandonó?</FieldLabel>
+        <TextArea value={story.why_no_reunification} onChange={v => set('why_no_reunification', v)} placeholder="Ej: Ya tiene otra familia, está preso, tiene denuncias por violencia, no sabemos dónde vive, nunca se hizo responsable, la niña no lo conoce..." rows={4} />
       </div>
       <div>
-        <FieldLabel>¿Hay algo más que quieras agregar?</FieldLabel>
-        <TextArea value={story.additional_details} onChange={v => set('additional_details', v)} placeholder="Cualquier detalle adicional que creas importante para tu caso..." rows={3} />
+        <FieldLabel>¿Hay algo más que quiera agregar?</FieldLabel>
+        <TextArea value={story.additional_details} onChange={v => set('additional_details', v)} placeholder="Escriba todo lo que considere importante: agresiones, momentos difíciles, si su hijo/a le ha preguntado por el padre, las penurias que pasó, si la pareja tiene otra familia (fotos de redes sociales ayudan), todo suma para fortalecer su caso." rows={4} />
       </div>
     </div>
   )
@@ -434,13 +440,13 @@ function ParentStep({ parent, onChange }: { parent: ParentData; onChange: (p: Pa
   const set = (field: keyof ParentData, value: string) => onChange({ ...parent, [field]: value })
   return (
     <div className="space-y-4">
-      <h3 className="font-semibold text-gray-900">Situación del Padre/Madre</h3>
+      <h3 className="font-semibold text-gray-900">Situación del Padre/Madre Ausente</h3>
       <p className="text-sm text-gray-500">
-        Selecciona la situación que mejor describe la relación con tu padre o madre ausente.
+        Seleccione la situación que mejor describe la relación de su hijo/a con el padre o madre ausente.
       </p>
 
       <div>
-        <FieldLabel required>¿De quién estamos hablando?</FieldLabel>
+        <FieldLabel required>¿Quién es la persona ausente?</FieldLabel>
         <div className="flex gap-3">
           {['padre', 'madre'].map(r => (
             <button
@@ -459,7 +465,7 @@ function ParentStep({ parent, onChange }: { parent: ParentData; onChange: (p: Pa
       </div>
 
       <div>
-        <FieldLabel required>¿Cuál es la situación?</FieldLabel>
+        <FieldLabel required>¿Cuál es la situación actual de esa persona?</FieldLabel>
         <div className="grid gap-2">
           {PARENT_SITUATIONS.map(opt => (
             <button
@@ -481,13 +487,13 @@ function ParentStep({ parent, onChange }: { parent: ParentData; onChange: (p: Pa
       {/* Adaptive fields */}
       {parent.situation === 'cooperates' && (
         <div className="space-y-3 p-4 bg-blue-50 rounded-xl">
-          <p className="text-sm font-medium text-blue-800">Información de contacto del padre/madre</p>
+          <p className="text-sm font-medium text-blue-800">Información de contacto de la pareja que coopera</p>
           <div>
-            <FieldLabel required>Nombre completo</FieldLabel>
-            <TextInput value={parent.parent_name} onChange={v => set('parent_name', v)} placeholder="Nombre del padre/madre" />
+            <FieldLabel required>Nombre completo del padre/madre del menor</FieldLabel>
+            <TextInput value={parent.parent_name} onChange={v => set('parent_name', v)} placeholder="Nombre completo" />
           </div>
           <div>
-            <FieldLabel>Teléfono</FieldLabel>
+            <FieldLabel>Teléfono de contacto</FieldLabel>
             <TextInput value={parent.parent_phone} onChange={v => set('parent_phone', v)} placeholder="+1 (000) 000-0000" />
           </div>
           <div>
@@ -495,7 +501,7 @@ function ParentStep({ parent, onChange }: { parent: ParentData; onChange: (p: Pa
             <TextInput value={parent.parent_email} onChange={v => set('parent_email', v)} placeholder="email@ejemplo.com" />
           </div>
           <div>
-            <FieldLabel>¿Está dispuesto/a a firmar documentos de custodia?</FieldLabel>
+            <FieldLabel>¿Está dispuesto/a a firmar la renuncia voluntaria de custodia?</FieldLabel>
             <div className="flex gap-3">
               {['Sí', 'No', 'No estoy seguro/a'].map(opt => (
                 <button
@@ -519,24 +525,24 @@ function ParentStep({ parent, onChange }: { parent: ParentData; onChange: (p: Pa
         <div className="space-y-3 p-4 bg-orange-50 rounded-xl">
           <p className="text-sm font-medium text-orange-800">Información sobre la ausencia</p>
           <div>
-            <FieldLabel>Nombre del padre/madre (si lo sabe)</FieldLabel>
-            <TextInput value={parent.parent_name} onChange={v => set('parent_name', v)} />
+            <FieldLabel>Nombre completo del padre/madre ausente (si lo sabe)</FieldLabel>
+            <TextInput value={parent.parent_name} onChange={v => set('parent_name', v)} placeholder="Nombre completo" />
           </div>
           <div>
-            <FieldLabel>¿Cuándo fue la última vez que tuvo contacto?</FieldLabel>
-            <TextInput value={parent.last_contact_date} onChange={v => set('last_contact_date', v)} placeholder="Ej: Hace 5 años, en 2018, nunca" />
+            <FieldLabel>¿Cuándo fue la última vez que tuvo contacto con el menor o con usted?</FieldLabel>
+            <TextInput value={parent.last_contact_date} onChange={v => set('last_contact_date', v)} placeholder="Ej: Hace 5 años, en 2018, nunca tuvo contacto" />
           </div>
           <div>
             <FieldLabel>¿Cómo fue ese último contacto?</FieldLabel>
-            <TextArea value={parent.last_contact_description} onChange={v => set('last_contact_description', v)} placeholder="Describe brevemente..." />
+            <TextArea value={parent.last_contact_description} onChange={v => set('last_contact_description', v)} placeholder="Ej: Me llamó para pedir algo pero no preguntó por los niños / Fue cortante / Lo busqué para el cumpleaños de mi hija y no contestó..." />
           </div>
           <div>
-            <FieldLabel required>¿Por qué está ausente?</FieldLabel>
-            <TextArea value={parent.reason_absent} onChange={v => set('reason_absent', v)} placeholder="Explica la razón de la ausencia..." rows={4} />
+            <FieldLabel required>¿Por qué está ausente? Explique la razón.</FieldLabel>
+            <TextArea value={parent.reason_absent} onChange={v => set('reason_absent', v)} placeholder="Ej: Nos abandonó, no quiso saber de nosotros, tiene otra relación, nunca supimos de él/ella, se fue del país..." rows={4} />
           </div>
           <div>
-            <FieldLabel>¿Se ha intentado localizarlo/a?</FieldLabel>
-            <TextArea value={parent.efforts_to_find} onChange={v => set('efforts_to_find', v)} placeholder="Describe si se han hecho intentos por encontrarlo/a..." />
+            <FieldLabel>¿Ha intentado localizarlo/a en algún momento?</FieldLabel>
+            <TextArea value={parent.efforts_to_find} onChange={v => set('efforts_to_find', v)} placeholder="Ej: Sí, para pedirle dinero cuando la niña estaba enferma / Sí, para el cumpleaños / No, perdí todo contacto / Busqué en redes sociales..." />
           </div>
         </div>
       )}
@@ -545,8 +551,8 @@ function ParentStep({ parent, onChange }: { parent: ParentData; onChange: (p: Pa
         <div className="space-y-3 p-4 bg-gray-50 rounded-xl">
           <p className="text-sm font-medium text-gray-700">Información sobre el fallecimiento</p>
           <div>
-            <FieldLabel>Nombre del padre/madre</FieldLabel>
-            <TextInput value={parent.parent_name} onChange={v => set('parent_name', v)} />
+            <FieldLabel>Nombre completo del padre/madre fallecido/a</FieldLabel>
+            <TextInput value={parent.parent_name} onChange={v => set('parent_name', v)} placeholder="Nombre completo" />
           </div>
           <div>
             <FieldLabel>¿Cuándo falleció?</FieldLabel>
@@ -620,7 +626,7 @@ function WitnessStep({ witnesses, onChange }: { witnesses: WitnessesData; onChan
     <div className="space-y-4">
       <h3 className="font-semibold text-gray-900">Testigos</h3>
       <p className="text-sm text-gray-500">
-        Agrega personas que puedan confirmar tu historia (familiares, maestros, conocidos). Mínimo 1, máximo 3.
+        Agregue personas que puedan dar fe del abandono y de su situación: familiares, amigos, vecinos que hayan presenciado esa etapa. Recomendamos 2 testigos de su país de origen y 1 de Estados Unidos. Mínimo 1, máximo 3.
       </p>
 
       {witnesses.witnesses.map((w, i) => (
@@ -636,11 +642,11 @@ function WitnessStep({ witnesses, onChange }: { witnesses: WitnessesData; onChan
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <FieldLabel required>Nombre completo</FieldLabel>
-              <TextInput value={w.name} onChange={v => updateWitness(i, 'name', v)} placeholder="Nombre del testigo" />
+              <TextInput value={w.name} onChange={v => updateWitness(i, 'name', v)} placeholder="Nombre completo del testigo" />
             </div>
             <div>
-              <FieldLabel required>Relación contigo</FieldLabel>
-              <TextInput value={w.relationship} onChange={v => updateWitness(i, 'relationship', v)} placeholder="Ej: Tía, maestro, vecino" />
+              <FieldLabel required>Relación con usted o el menor</FieldLabel>
+              <TextInput value={w.relationship} onChange={v => updateWitness(i, 'relationship', v)} placeholder="Ej: Mi mamá, mi hermana, amiga de Honduras, vecina en EE.UU." />
             </div>
           </div>
           <div>
@@ -648,8 +654,8 @@ function WitnessStep({ witnesses, onChange }: { witnesses: WitnessesData; onChan
             <TextInput value={w.phone} onChange={v => updateWitness(i, 'phone', v)} placeholder="+1 (000) 000-0000" />
           </div>
           <div>
-            <FieldLabel required>¿Qué puede declarar esta persona?</FieldLabel>
-            <TextArea value={w.can_testify} onChange={v => updateWitness(i, 'can_testify', v)} placeholder="Ej: Ha visto cómo me crio mi madre sola, sabe que mi padre nos abandonó..." rows={3} />
+            <FieldLabel required>¿Qué puede declarar esta persona? ¿Qué etapa presenció?</FieldLabel>
+            <TextArea value={w.can_testify} onChange={v => updateWitness(i, 'can_testify', v)} placeholder="Ej: 'Entre 2018-2022 vivió cerca de nosotros, vio que el padre nunca estuvo, me ayudó a cuidar a los niños, sabe que nunca recibí apoyo económico, me acompañó al hospital cuando la cesárea...' Sea específica con fechas y situaciones." rows={3} />
           </div>
         </div>
       ))}
@@ -677,12 +683,12 @@ function ReviewStep({
   return (
     <div className="space-y-4">
       <h3 className="font-semibold text-gray-900">Revisión Final</h3>
-      <p className="text-sm text-gray-500">Revisa tu información antes de enviarla a tu consultor.</p>
+      <p className="text-sm text-gray-500">Revise su información antes de enviarla a su consultor. Puede regresar a cualquier paso para corregir.</p>
 
       {/* Story summary */}
       <div className="p-4 rounded-xl border border-gray-200">
         <div className="flex justify-between items-center mb-3">
-          <span className="text-sm font-semibold text-gray-700">Mi Historia</span>
+          <span className="text-sm font-semibold text-gray-700">Mi Declaración</span>
           <button onClick={() => onEdit(0)} className="text-xs text-[#F2A900] hover:underline">Editar</button>
         </div>
         <div className="space-y-2 text-sm text-gray-600">

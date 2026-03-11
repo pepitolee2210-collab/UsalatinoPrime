@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { statusLabels } from '@/lib/case-status'
 import { format, differenceInDays } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { Clock } from 'lucide-react'
+import { Clock, FileText, CheckCircle } from 'lucide-react'
 
 interface CaseCardProps {
   caseData: any
@@ -36,6 +36,25 @@ export function CaseCard({ caseData }: CaseCardProps) {
           <span className="text-xs text-gray-400">
             {format(new Date(caseData.created_at), 'd MMM', { locale: es })}
           </span>
+          <div className="flex items-center gap-1.5">
+            {(caseData.doc_count > 0) && (
+              <span className="flex items-center gap-0.5 text-xs text-blue-600" title={`${caseData.doc_count} documentos`}>
+                <FileText className="w-3 h-3" />
+                {caseData.doc_count}
+              </span>
+            )}
+            {(caseData.submission_total > 0) && (
+              <span
+                className={`flex items-center gap-0.5 text-xs ${
+                  caseData.submission_done === caseData.submission_total ? 'text-green-600' : 'text-amber-600'
+                }`}
+                title={`${caseData.submission_done}/${caseData.submission_total} historias enviadas`}
+              >
+                <CheckCircle className="w-3 h-3" />
+                {caseData.submission_done}/{caseData.submission_total}
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </Link>
