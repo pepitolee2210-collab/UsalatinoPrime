@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server'
-import { getGeminiClient } from '@/lib/ai/gemini'
+import { GoogleGenAI } from '@google/genai'
 import { CHATBOT_VOICE_SYSTEM_PROMPT, CHATBOT_TOOLS } from '@/lib/ai/prompts/chatbot-system'
 
-export const VOICE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025'
+export const VOICE_MODEL = 'gemini-live-2.5-flash-preview'
 
 // Rate limit: max 5 voice sessions per IP per hour
 const voiceRateLimits = new Map<string, { count: number; resetAt: number }>()
@@ -24,21 +24,23 @@ export async function POST(request: NextRequest) {
       entry.count++
     }
 
-    const client = getGeminiClient()
+    const apiKey = process.env.GEMINI_API_KEY
+    if (!apiKey) {
+      return Response.json({ error: 'API key not configured' }, { status: 500 })
+    }
+
+    // Ephemeral tokens require v1alpha API version
+    const client = new GoogleGenAI({
+      apiKey,
+      httpOptions: { apiVersion: 'v1alpha' },
+    })
 
     const expireTime = new Date(Date.now() + 15 * 60 * 1000).toISOString() // 15 min
-    const newSessionExpireTime = new Date(Date.now() + 2 * 60 * 1000).toISOString() // 2 min to start
 
-    const token = await (client as unknown as {
-      authTokens: {
-        create: (config: Record<string, unknown>) => Promise<{ name: string }>
-      }
-    }).authTokens.create({
+    const token = await client.authTokens.create({
       config: {
         uses: 1,
         expireTime,
-        newSessionExpireTime,
-        httpOptions: { apiVersion: 'v1alpha' },
       },
     })
 

@@ -77,7 +77,10 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
 
       // 3. Import SDK dynamically and connect to Gemini Live API
       const { GoogleGenAI, Modality } = await import('@google/genai')
-      const ai = new GoogleGenAI({ apiKey: token })
+      const ai = new GoogleGenAI({
+        apiKey: token,
+        httpOptions: { apiVersion: 'v1alpha' },
+      })
       sdkRef.current = ai
 
       // Audio context for playback
@@ -126,7 +129,7 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
         config: {
           ...config,
           responseModalities: [Modality.AUDIO],
-        },
+        } as Record<string, unknown>,
         callbacks: {
           onopen: () => {
             setCallState('active')
