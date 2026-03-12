@@ -230,6 +230,26 @@ export function ClientStoryWizard({ token, clientName }: ClientStoryWizardProps)
   }, [token])
 
   // -- Save helpers --
+
+  // Only save draft if the form has meaningful content (not just empty fields)
+  function hasStoryContent(decl: MinorDeclaration): boolean {
+    return !!(
+      decl.info.name.trim() ||
+      decl.story.how_was_abandonment.trim() ||
+      decl.story.arrival_year.trim() ||
+      decl.story.who_brought.trim() ||
+      decl.story.separation_date.trim()
+    )
+  }
+
+  function hasParentContent(parent: ParentData): boolean {
+    return !!(parent.situation && (parent.parent_name.trim() || parent.reason_absent.trim()))
+  }
+
+  function hasWitnessContent(witnesses: WitnessesData): boolean {
+    return witnesses.witnesses.some(w => w.name.trim())
+  }
+
   const saveDraft = useCallback(async (formType: string, formData: unknown, minorIndex: number) => {
     setSaving(true)
     try {
@@ -250,13 +270,22 @@ export function ClientStoryWizard({ token, clientName }: ClientStoryWizardProps)
       const { minorIdx, subStep } = stepInfo
       const decl = declarations[minorIdx]
       if (!decl) return
-      if (subStep === 0) await saveDraft('client_story', { ...decl.story, minor_info: decl.info }, minorIdx)
-      if (subStep === 1) await saveDraft('client_absent_parent', decl.parent, minorIdx)
-      if (subStep === 2) await saveDraft('client_witnesses', decl.witnesses, minorIdx)
+      // Only save if user has entered meaningful data
+      if (subStep === 0 && hasStoryContent(decl)) {
+        await saveDraft('client_story', { ...decl.story, minor_info: decl.info }, minorIdx)
+      }
+      if (subStep === 1 && hasParentContent(decl.parent)) {
+        await saveDraft('client_absent_parent', decl.parent, minorIdx)
+      }
+      if (subStep === 2 && hasWitnessContent(decl.witnesses)) {
+        await saveDraft('client_witnesses', decl.witnesses, minorIdx)
+      }
     } else if (stepInfo.type === 'minors') {
-      // Save minor info for all minors
+      // Save minor info only for minors with content
       for (let i = 0; i < declarations.length; i++) {
-        await saveDraft('client_story', { ...declarations[i].story, minor_info: declarations[i].info }, i)
+        if (hasStoryContent(declarations[i])) {
+          await saveDraft('client_story', { ...declarations[i].story, minor_info: declarations[i].info }, i)
+        }
       }
     }
   }, [stepInfo, declarations, saveDraft])
