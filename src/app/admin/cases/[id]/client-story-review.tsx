@@ -269,14 +269,29 @@ function DataRow({ label, value }: { label: string; value?: string | null }) {
 }
 
 function StoryDetails({ data }: { data: Record<string, unknown> }) {
+  // Show minor info if present (multi-minor format)
+  const minorInfo = data.minor_info as Record<string, string> | undefined
+
   return (
     <div className="grid gap-3">
+      {minorInfo?.name && <DataRow label="Menor" value={minorInfo.name} />}
+      {minorInfo?.guardian_relation && (
+        <DataRow label="Relación del tutor" value={minorInfo.guardian_relation === 'otro' ? minorInfo.guardian_relation_other : minorInfo.guardian_relation} />
+      )}
       <DataRow label="Año de llegada" value={data.arrival_year as string} />
       <DataRow label="Quién lo/la trajo" value={data.who_brought as string} />
       <DataRow label="Vive con" value={data.current_guardian as string} />
+      <DataRow label="Fecha de separación" value={data.separation_date as string} />
+      <DataRow label="Cómo fue el abandono" value={(data.how_was_abandonment || data.abandonment_description) as string} />
+      <DataRow label="Apoyo económico del padre" value={data.father_economic_support as string} />
+      <DataRow label="Contacto del padre con el menor" value={data.father_contact_with_child as string} />
+      <DataRow label="Quién cuidó al menor" value={data.who_took_care as string} />
+      <DataRow label="Denuncias o quejas" value={data.has_complaints as string} />
+      <DataRow label="Detalle de denuncias" value={data.complaints_detail as string} />
+      <DataRow label="Por qué no hubo reunificación" value={data.why_no_reunification as string} />
+      {/* Legacy fields from old wizard version */}
       <DataRow label="Vida antes de EE.UU." value={data.life_before as string} />
       <DataRow label="Razón de venir" value={data.why_came as string} />
-      <DataRow label="Abandono/negligencia" value={data.abandonment_description as string} />
       <DataRow label="Detalles adicionales" value={data.additional_details as string} />
     </div>
   )

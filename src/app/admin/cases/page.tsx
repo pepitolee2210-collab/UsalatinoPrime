@@ -20,7 +20,8 @@ export default async function AdminCasesPage() {
       .select('case_id'),
     service
       .from('case_form_submissions')
-      .select('case_id, status'),
+      .select('case_id, status')
+      .neq('status', 'draft'),
   ])
 
   // Build lookup maps: case_id -> counts
