@@ -116,6 +116,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No se pudo obtener el client_id' }, { status: 500 })
     }
 
+    // Always sync phone and name on the profile (handles edits and missing data)
+    await service
+      .from('profiles')
+      .update({
+        phone: client_phone.trim(),
+        first_name: firstName,
+        last_name: lastName,
+      })
+      .eq('id', clientId)
+
     // Step 3: Find service in catalog
     const { data: serviceCatalog } = await service
       .from('service_catalog')
@@ -130,36 +140,60 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Step 4: Create case
-    const { data: newCase, error: caseError } = await service
+    // Step 4: Check if case already exists for this client + service
+    const { data: existingCase } = await service
       .from('cases')
-      .insert({
-        client_id: clientId,
-        service_id: serviceCatalog.id,
-        total_cost: total_price || 0,
-        intake_status: 'in_progress',
-        form_data: {},
-        current_step: 0,
-      })
       .select('id, case_number')
-      .single()
+      .eq('client_id', clientId)
+      .eq('service_id', serviceCatalog.id)
+      .limit(1)
+      .maybeSingle()
 
-    if (caseError) {
-      // Case creation failed but contract is already saved — don't block
-      console.error('Error creating case:', caseError)
-      // Still update contract with client_id
-      if (contract_id) {
+    let caseId: string
+    let caseNumber: string
+
+    if (existingCase) {
+      // Reuse existing case, just update total_cost if changed
+      caseId = existingCase.id
+      caseNumber = existingCase.case_number
+      if (total_price) {
         await service
-          .from('contracts')
-          .update({ client_id: clientId })
-          .eq('id', contract_id)
+          .from('cases')
+          .update({ total_cost: total_price })
+          .eq('id', existingCase.id)
       }
-      return NextResponse.json({
-        client_id: clientId,
-        case_id: null,
-        case_number: null,
-        warning: 'Cliente registrado pero hubo error al crear el caso',
-      })
+    } else {
+      // Create new case
+      const { data: newCase, error: caseError } = await service
+        .from('cases')
+        .insert({
+          client_id: clientId,
+          service_id: serviceCatalog.id,
+          total_cost: total_price || 0,
+          intake_status: 'in_progress',
+          form_data: {},
+          current_step: 0,
+        })
+        .select('id, case_number')
+        .single()
+
+      if (caseError) {
+        console.error('Error creating case:', caseError)
+        if (contract_id) {
+          await service
+            .from('contracts')
+            .update({ client_id: clientId })
+            .eq('id', contract_id)
+        }
+        return NextResponse.json({
+          client_id: clientId,
+          case_id: null,
+          case_number: null,
+          warning: 'Cliente registrado pero hubo error al crear el caso',
+        })
+      }
+      caseId = newCase.id
+      caseNumber = newCase.case_number
     }
 
     // Step 5: Update contract with client_id
@@ -172,8 +206,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       client_id: clientId,
-      case_id: newCase.id,
-      case_number: newCase.case_number,
+      case_id: caseId,
+      case_number: caseNumber,
     })
   } catch (err) {
     console.error('register-client error:', err)

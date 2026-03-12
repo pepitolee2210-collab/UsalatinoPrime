@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
-import { CHATBOT_VOICE_SYSTEM_PROMPT, CHATBOT_TOOLS } from '@/lib/ai/prompts/chatbot-system'
+import { CHATBOT_VOICE_SYSTEM_PROMPT } from '@/lib/ai/prompts/chatbot-system'
 
-const VOICE_MODEL = 'gemini-live-2.5-flash-preview'
+const VOICE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025'
 
 // Rate limit: max 5 voice sessions per IP per hour
 const voiceRateLimits = new Map<string, { count: number; resetAt: number }>()
@@ -44,6 +44,8 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    // Return token + config. Tools use plain string types (not SDK enums)
+    // because this config will be JSON-serialized to the client.
     return Response.json({
       token: token.name,
       model: VOICE_MODEL,
@@ -58,11 +60,20 @@ export async function POST(request: NextRequest) {
         },
         systemInstruction: CHATBOT_VOICE_SYSTEM_PROMPT,
         tools: [{
-          functionDeclarations: CHATBOT_TOOLS.map(t => ({
-            name: t.name,
-            description: t.description,
-            parameters: t.parameters,
-          })),
+          functionDeclarations: [{
+            name: 'create_lead',
+            description: 'Registra un prospecto interesado para que Henry lo contacte.',
+            parameters: {
+              type: 'OBJECT',
+              properties: {
+                name: { type: 'STRING', description: 'Nombre completo del prospecto' },
+                phone: { type: 'STRING', description: 'Número de teléfono' },
+                service_interest: { type: 'STRING', description: 'Servicio: visa-juvenil, asilo, tps, permiso-trabajo, consulta-general' },
+                situation_summary: { type: 'STRING', description: 'Resumen breve de la situación' },
+              },
+              required: ['name', 'phone', 'service_interest'],
+            },
+          }],
         }],
       },
     })

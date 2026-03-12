@@ -3,9 +3,25 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { ChevronLeft, ChevronRight, Loader2, CheckCircle, Send, BookOpen } from 'lucide-react'
+import {
+  ChevronLeft, ChevronRight, Loader2, CheckCircle, Send,
+  BookOpen, UserPlus, Trash2, Users,
+} from 'lucide-react'
+
+// -- Types --
 
 type ParentSituation = 'cooperates' | 'absent' | 'deceased' | 'unknown' | 'never_known' | ''
+
+type GuardianRelation =
+  | 'madre' | 'padre' | 'abuela' | 'abuelo'
+  | 'tia' | 'tio' | 'hermana' | 'hermano'
+  | 'madrastra' | 'padrastro' | 'tutor_legal' | 'otro'
+
+interface MinorInfo {
+  name: string
+  guardian_relation: GuardianRelation | ''
+  guardian_relation_other: string
+}
 
 interface StoryData {
   arrival_year: string
@@ -26,20 +42,16 @@ interface ParentData {
   situation: ParentSituation
   parent_name: string
   parent_relationship: string
-  // cooperates
   parent_phone: string
   parent_email: string
   willing_to_sign: string
-  // absent
   last_contact_date: string
   last_contact_description: string
   reason_absent: string
   efforts_to_find: string
-  // deceased
   death_date: string
   death_place: string
   has_death_certificate: string
-  // unknown / never_known
   what_is_known: string
 }
 
@@ -54,14 +66,48 @@ interface WitnessesData {
   witnesses: Witness[]
 }
 
+// All data for one minor
+interface MinorDeclaration {
+  info: MinorInfo
+  story: StoryData
+  parent: ParentData
+  witnesses: WitnessesData
+}
+
 interface ClientStoryWizardProps {
   token: string
   clientName: string
 }
 
+// -- Constants --
+
 const EMPTY_WITNESS: Witness = { name: '', relationship: '', phone: '', can_testify: '' }
 
-const STEPS = ['Mi Declaración', 'Padre/Madre Ausente', 'Testigos', 'Revisión']
+const EMPTY_STORY: StoryData = {
+  arrival_year: '', who_brought: '', current_guardian: '',
+  separation_date: '', how_was_abandonment: '', father_economic_support: '',
+  father_contact_with_child: '', who_took_care: '', has_complaints: '',
+  complaints_detail: '', why_no_reunification: '', additional_details: '',
+}
+
+const EMPTY_PARENT: ParentData = {
+  situation: '', parent_name: '', parent_relationship: 'padre',
+  parent_phone: '', parent_email: '', willing_to_sign: '',
+  last_contact_date: '', last_contact_description: '', reason_absent: '', efforts_to_find: '',
+  death_date: '', death_place: '', has_death_certificate: '',
+  what_is_known: '',
+}
+
+const EMPTY_MINOR_INFO: MinorInfo = { name: '', guardian_relation: '', guardian_relation_other: '' }
+
+function createEmptyDeclaration(): MinorDeclaration {
+  return {
+    info: { ...EMPTY_MINOR_INFO },
+    story: { ...EMPTY_STORY },
+    parent: { ...EMPTY_PARENT },
+    witnesses: { witnesses: [{ ...EMPTY_WITNESS }] },
+  }
+}
 
 const PARENT_SITUATIONS: { value: ParentSituation; label: string; desc: string }[] = [
   { value: 'cooperates', label: 'Coopera', desc: 'Está dispuesto/a a firmar la renuncia voluntaria de custodia' },
@@ -70,6 +116,45 @@ const PARENT_SITUATIONS: { value: ParentSituation; label: string; desc: string }
   { value: 'unknown', label: 'Desconocido', desc: 'No se sabe quién es el padre/madre' },
   { value: 'never_known', label: 'Nunca lo/la conoció', desc: 'El menor nunca tuvo relación con esa persona' },
 ]
+
+const GUARDIAN_RELATIONS: { value: GuardianRelation; label: string }[] = [
+  { value: 'madre', label: 'Madre' },
+  { value: 'padre', label: 'Padre' },
+  { value: 'abuela', label: 'Abuela' },
+  { value: 'abuelo', label: 'Abuelo' },
+  { value: 'tia', label: 'Tía' },
+  { value: 'tio', label: 'Tío' },
+  { value: 'hermana', label: 'Hermana mayor' },
+  { value: 'hermano', label: 'Hermano mayor' },
+  { value: 'madrastra', label: 'Madrastra' },
+  { value: 'padrastro', label: 'Padrastro' },
+  { value: 'tutor_legal', label: 'Tutor legal' },
+  { value: 'otro', label: 'Otra relación' },
+]
+
+// -- Wizard Navigation --
+// Steps: [Menores] → per minor: [Declaración, Padre/Madre, Testigos] → [Revisión]
+// Step 0 = Minor selection
+// Steps 1..N*3 = 3 steps per minor (story, parent, witnesses)
+// Last step = Review
+
+function getStepInfo(step: number, minorCount: number) {
+  if (step === 0) return { type: 'minors' as const, minorIdx: -1, subStep: -1 }
+  const totalMinorSteps = minorCount * 3
+  if (step > totalMinorSteps) return { type: 'review' as const, minorIdx: -1, subStep: -1 }
+  const adjustedStep = step - 1
+  const minorIdx = Math.floor(adjustedStep / 3)
+  const subStep = adjustedStep % 3 // 0=story, 1=parent, 2=witnesses
+  return { type: 'minor_form' as const, minorIdx, subStep }
+}
+
+function getTotalSteps(minorCount: number) {
+  return 1 + minorCount * 3 + 1 // minors + (3 per minor) + review
+}
+
+const SUB_STEP_LABELS = ['Declaración', 'Padre/Madre Ausente', 'Testigos']
+
+// -- Main Component --
 
 export function ClientStoryWizard({ token, clientName }: ClientStoryWizardProps) {
   const [step, setStep] = useState(0)
@@ -80,48 +165,60 @@ export function ClientStoryWizard({ token, clientName }: ClientStoryWizardProps)
   const [statuses, setStatuses] = useState<Record<string, string>>({})
   const [adminNotes, setAdminNotes] = useState<Record<string, string>>({})
 
-  const [story, setStory] = useState<StoryData>({
-    arrival_year: '', who_brought: '', current_guardian: '',
-    separation_date: '', how_was_abandonment: '', father_economic_support: '',
-    father_contact_with_child: '', who_took_care: '', has_complaints: '',
-    complaints_detail: '', why_no_reunification: '', additional_details: '',
-  })
+  const [declarations, setDeclarations] = useState<MinorDeclaration[]>([createEmptyDeclaration()])
 
-  const [parent, setParent] = useState<ParentData>({
-    situation: '', parent_name: '', parent_relationship: 'padre',
-    parent_phone: '', parent_email: '', willing_to_sign: '',
-    last_contact_date: '', last_contact_description: '', reason_absent: '', efforts_to_find: '',
-    death_date: '', death_place: '', has_death_certificate: '',
-    what_is_known: '',
-  })
+  const minorCount = declarations.length
+  const totalSteps = getTotalSteps(minorCount)
+  const stepInfo = getStepInfo(step, minorCount)
 
-  const [witnesses, setWitnesses] = useState<WitnessesData>({
-    witnesses: [{ ...EMPTY_WITNESS }],
-  })
-
-  // Load existing data
+  // -- Data loading --
   useEffect(() => {
     async function load() {
       try {
         const res = await fetch(`/api/client-story?token=${token}`)
         if (!res.ok) return
         const data = await res.json()
-        if (data.client_story?.data) setStory(prev => ({ ...prev, ...data.client_story.data }))
-        if (data.client_witnesses?.data) setWitnesses(prev => ({ ...prev, ...data.client_witnesses.data }))
-        if (data.client_absent_parent?.data) setParent(prev => ({ ...prev, ...data.client_absent_parent.data }))
 
+        if (data.declarations && Array.isArray(data.declarations) && data.declarations.length > 0) {
+          // New multi-minor format
+          const loaded: MinorDeclaration[] = data.declarations.map((d: Record<string, unknown>) => ({
+            info: { ...EMPTY_MINOR_INFO, ...(d.info as object || {}) },
+            story: { ...EMPTY_STORY, ...(d.story as object || {}) },
+            parent: { ...EMPTY_PARENT, ...(d.parent as object || {}) },
+            witnesses: d.witnesses
+              ? { witnesses: ((d.witnesses as { witnesses?: Witness[] }).witnesses || []).map((w: Witness) => ({ ...EMPTY_WITNESS, ...w })) }
+              : { witnesses: [{ ...EMPTY_WITNESS }] },
+          }))
+          setDeclarations(loaded)
+        } else if (data.client_story?.data) {
+          // Legacy single-minor format — migrate
+          const decl = createEmptyDeclaration()
+          decl.story = { ...EMPTY_STORY, ...data.client_story.data }
+          if (data.client_absent_parent?.data) decl.parent = { ...EMPTY_PARENT, ...data.client_absent_parent.data }
+          if (data.client_witnesses?.data) {
+            const wd = data.client_witnesses.data
+            decl.witnesses = { witnesses: (wd.witnesses || []).map((w: Witness) => ({ ...EMPTY_WITNESS, ...w })) }
+          }
+          setDeclarations([decl])
+        }
+
+        // Load statuses/notes
         const s: Record<string, string> = {}
         const notes: Record<string, string> = {}
-        for (const key of ['client_story', 'client_witnesses', 'client_absent_parent']) {
+        for (const key of Object.keys(data)) {
           if (data[key]?.status) s[key] = data[key].status
           if (data[key]?.admin_notes) notes[key] = data[key].admin_notes
         }
         setStatuses(s)
         setAdminNotes(notes)
 
-        const allSubmittedOrApproved = Object.values(s).length === 3 &&
-          Object.values(s).every(v => v === 'submitted' || v === 'approved')
-        if (allSubmittedOrApproved) setSubmitted(true)
+        // Check if all submitted
+        const formKeys = ['client_story', 'client_absent_parent', 'client_witnesses']
+        const allKeys = declarations.flatMap((_, i) =>
+          formKeys.map(k => i === 0 ? k : `${k}_${i}`)
+        )
+        const allDone = allKeys.length > 0 && allKeys.every(k => s[k] === 'submitted' || s[k] === 'approved')
+        if (allDone) setSubmitted(true)
       } catch {
         // First time, no data
       } finally {
@@ -129,33 +226,45 @@ export function ClientStoryWizard({ token, clientName }: ClientStoryWizardProps)
       }
     }
     load()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
-  const saveDraft = useCallback(async (formType: string, formData: unknown) => {
+  // -- Save helpers --
+  const saveDraft = useCallback(async (formType: string, formData: unknown, minorIndex: number) => {
     setSaving(true)
     try {
       await fetch('/api/client-story', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, form_type: formType, form_data: formData, action: 'draft' }),
+        body: JSON.stringify({ token, form_type: formType, form_data: formData, action: 'draft', minor_index: minorIndex }),
       })
     } catch {
-      // Silent draft save failure
+      // Silent draft save
     } finally {
       setSaving(false)
     }
   }, [token])
 
-  // Auto-save when moving between steps
   const saveCurrentStep = useCallback(async () => {
-    if (step === 0) await saveDraft('client_story', story)
-    if (step === 1) await saveDraft('client_absent_parent', parent)
-    if (step === 2) await saveDraft('client_witnesses', witnesses)
-  }, [step, story, parent, witnesses, saveDraft])
+    if (stepInfo.type === 'minor_form') {
+      const { minorIdx, subStep } = stepInfo
+      const decl = declarations[minorIdx]
+      if (!decl) return
+      if (subStep === 0) await saveDraft('client_story', { ...decl.story, minor_info: decl.info }, minorIdx)
+      if (subStep === 1) await saveDraft('client_absent_parent', decl.parent, minorIdx)
+      if (subStep === 2) await saveDraft('client_witnesses', decl.witnesses, minorIdx)
+    } else if (stepInfo.type === 'minors') {
+      // Save minor info for all minors
+      for (let i = 0; i < declarations.length; i++) {
+        await saveDraft('client_story', { ...declarations[i].story, minor_info: declarations[i].info }, i)
+      }
+    }
+  }, [stepInfo, declarations, saveDraft])
 
+  // -- Navigation --
   function goNext() {
     saveCurrentStep()
-    setStep(s => Math.min(s + 1, 3))
+    setStep(s => Math.min(s + 1, totalSteps - 1))
   }
 
   function goBack() {
@@ -163,74 +272,114 @@ export function ClientStoryWizard({ token, clientName }: ClientStoryWizardProps)
     setStep(s => Math.max(s - 1, 0))
   }
 
-  function validateStory(): boolean {
-    if (!story.arrival_year || !story.who_brought || !story.current_guardian || !story.how_was_abandonment) {
-      toast.error('Completa los campos obligatorios de "Mi Historia" (marcados con *)')
-      return false
-    }
-    return true
+  // -- Minor management --
+  function addMinor() {
+    setDeclarations(prev => [...prev, createEmptyDeclaration()])
   }
 
-  function validateParent(): boolean {
-    if (!parent.situation) {
-      toast.error('Selecciona la situación del padre/madre')
-      return false
-    }
-    if (parent.situation === 'cooperates' && !parent.parent_name) {
-      toast.error('Ingresa el nombre del padre/madre')
-      return false
-    }
-    if (parent.situation === 'absent' && !parent.reason_absent) {
-      toast.error('Describe la razón de la ausencia')
-      return false
-    }
-    return true
+  function removeMinor(idx: number) {
+    if (declarations.length <= 1) return
+    setDeclarations(prev => prev.filter((_, i) => i !== idx))
+    // Reset step if current step would be out of bounds
+    const newTotal = getTotalSteps(declarations.length - 1)
+    if (step >= newTotal) setStep(0)
   }
 
-  function validateWitnesses(): boolean {
-    const valid = witnesses.witnesses.filter(w => w.name.trim())
-    if (valid.length === 0) {
-      toast.error('Agrega al menos un testigo')
-      return false
-    }
-    for (const w of valid) {
-      if (!w.relationship || !w.can_testify) {
-        toast.error('Completa los datos de cada testigo')
+  function updateMinorInfo(idx: number, info: MinorInfo) {
+    setDeclarations(prev => prev.map((d, i) => i === idx ? { ...d, info } : d))
+  }
+
+  function updateStory(idx: number, story: StoryData) {
+    setDeclarations(prev => prev.map((d, i) => i === idx ? { ...d, story } : d))
+  }
+
+  function updateParent(idx: number, parent: ParentData) {
+    setDeclarations(prev => prev.map((d, i) => i === idx ? { ...d, parent } : d))
+  }
+
+  function updateWitnesses(idx: number, witnesses: WitnessesData) {
+    setDeclarations(prev => prev.map((d, i) => i === idx ? { ...d, witnesses } : d))
+  }
+
+  // -- Validation --
+  function validateAll(): boolean {
+    for (let i = 0; i < declarations.length; i++) {
+      const d = declarations[i]
+      const label = declarations.length > 1 ? ` (${d.info.name || `Menor ${i + 1}`})` : ''
+
+      if (!d.info.name.trim()) {
+        toast.error(`Ingresa el nombre del menor${label}`)
+        setStep(0)
         return false
+      }
+      if (!d.info.guardian_relation) {
+        toast.error(`Selecciona tu relación con ${d.info.name}`)
+        setStep(0)
+        return false
+      }
+      if (!d.story.how_was_abandonment) {
+        toast.error(`Completa la historia de abandono${label}`)
+        setStep(1 + i * 3)
+        return false
+      }
+      if (!d.parent.situation) {
+        toast.error(`Selecciona la situación del padre/madre${label}`)
+        setStep(2 + i * 3)
+        return false
+      }
+      if (d.parent.situation === 'absent' && !d.parent.reason_absent) {
+        toast.error(`Describe la razón de la ausencia${label}`)
+        setStep(2 + i * 3)
+        return false
+      }
+      const validWitnesses = d.witnesses.witnesses.filter(w => w.name.trim())
+      if (validWitnesses.length === 0) {
+        toast.error(`Agrega al menos un testigo${label}`)
+        setStep(3 + i * 3)
+        return false
+      }
+      for (const w of validWitnesses) {
+        if (!w.relationship || !w.can_testify) {
+          toast.error(`Completa los datos de cada testigo${label}`)
+          setStep(3 + i * 3)
+          return false
+        }
       }
     }
     return true
   }
 
   async function handleSubmit() {
-    // Validate only at final submission
-    if (!validateStory()) return
-    if (!validateParent()) return
-    if (!validateWitnesses()) return
+    if (!validateAll()) return
 
     setSubmitting(true)
     try {
-      const submissions = [
-        { form_type: 'client_story', form_data: story },
-        { form_type: 'client_absent_parent', form_data: parent },
-        { form_type: 'client_witnesses', form_data: witnesses },
-      ]
-      for (const sub of submissions) {
-        const res = await fetch('/api/client-story', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, ...sub, action: 'submit' }),
-        })
-        if (!res.ok) throw new Error('Error al enviar')
+      for (let i = 0; i < declarations.length; i++) {
+        const d = declarations[i]
+        const submissions = [
+          { form_type: 'client_story', form_data: { ...d.story, minor_info: d.info } },
+          { form_type: 'client_absent_parent', form_data: d.parent },
+          { form_type: 'client_witnesses', form_data: d.witnesses },
+        ]
+        for (const sub of submissions) {
+          const res = await fetch('/api/client-story', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, ...sub, action: 'submit', minor_index: i }),
+          })
+          if (!res.ok) throw new Error('Error al enviar')
+        }
       }
       setSubmitted(true)
-      toast.success('¡Tu historia ha sido enviada exitosamente!')
+      toast.success('¡Toda la información ha sido enviada exitosamente!')
     } catch {
       toast.error('Error al enviar. Intenta de nuevo.')
     } finally {
       setSubmitting(false)
     }
   }
+
+  // -- Render --
 
   if (loadingData) {
     return (
@@ -256,24 +405,8 @@ export function ClientStoryWizard({ token, clientName }: ClientStoryWizardProps)
 
   return (
     <div className="space-y-6">
-      {/* Step indicator */}
-      <div className="flex items-center justify-between">
-        {STEPS.map((label, i) => (
-          <div key={label} className="flex items-center">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-              i < step ? 'bg-green-500 text-white'
-                : i === step ? 'bg-[#F2A900] text-white'
-                  : 'bg-gray-200 text-gray-500'
-            }`}>
-              {i < step ? <CheckCircle className="w-4 h-4" /> : i + 1}
-            </div>
-            <span className={`ml-2 text-xs hidden sm:inline ${i === step ? 'text-[#F2A900] font-semibold' : 'text-gray-400'}`}>
-              {label}
-            </span>
-            {i < STEPS.length - 1 && <div className="w-8 sm:w-16 h-0.5 mx-2 bg-gray-200" />}
-          </div>
-        ))}
-      </div>
+      {/* Step progress bar */}
+      <StepProgressBar step={step} totalSteps={totalSteps} stepInfo={stepInfo} declarations={declarations} />
 
       {/* Corrections banner */}
       {Object.values(statuses).some(s => s === 'needs_correction') && (
@@ -281,19 +414,51 @@ export function ClientStoryWizard({ token, clientName }: ClientStoryWizardProps)
           <p className="text-sm font-semibold text-red-700 mb-1">Tu consultor ha solicitado correcciones:</p>
           {Object.entries(adminNotes).map(([key, note]) => note && statuses[key] === 'needs_correction' && (
             <p key={key} className="text-sm text-red-600 mt-1">
-              <span className="font-medium">{key === 'client_story' ? 'Historia' : key === 'client_absent_parent' ? 'Padre/Madre' : 'Testigos'}:</span>{' '}
-              {note}
+              <span className="font-medium">
+                {key.startsWith('client_story') ? 'Historia' : key.startsWith('client_absent_parent') ? 'Padre/Madre' : 'Testigos'}:
+              </span>{' '}{note}
             </p>
           ))}
         </div>
       )}
 
       {/* Step content */}
-      {step === 0 && <StoryStep story={story} onChange={setStory} />}
-      {step === 1 && <ParentStep parent={parent} onChange={setParent} />}
-      {step === 2 && <WitnessStep witnesses={witnesses} onChange={setWitnesses} />}
-      {step === 3 && (
-        <ReviewStep story={story} parent={parent} witnesses={witnesses} onEdit={setStep} />
+      {stepInfo.type === 'minors' && (
+        <MinorsStep
+          declarations={declarations}
+          onUpdateInfo={updateMinorInfo}
+          onAdd={addMinor}
+          onRemove={removeMinor}
+        />
+      )}
+
+      {stepInfo.type === 'minor_form' && stepInfo.subStep === 0 && (
+        <StoryStep
+          story={declarations[stepInfo.minorIdx].story}
+          minorInfo={declarations[stepInfo.minorIdx].info}
+          onChange={s => updateStory(stepInfo.minorIdx, s)}
+          minorCount={minorCount}
+        />
+      )}
+
+      {stepInfo.type === 'minor_form' && stepInfo.subStep === 1 && (
+        <ParentStep
+          parent={declarations[stepInfo.minorIdx].parent}
+          minorName={declarations[stepInfo.minorIdx].info.name}
+          onChange={p => updateParent(stepInfo.minorIdx, p)}
+        />
+      )}
+
+      {stepInfo.type === 'minor_form' && stepInfo.subStep === 2 && (
+        <WitnessStep
+          witnesses={declarations[stepInfo.minorIdx].witnesses}
+          minorName={declarations[stepInfo.minorIdx].info.name}
+          onChange={w => updateWitnesses(stepInfo.minorIdx, w)}
+        />
+      )}
+
+      {stepInfo.type === 'review' && (
+        <ReviewStep declarations={declarations} onEdit={setStep} />
       )}
 
       {/* Navigation */}
@@ -303,7 +468,7 @@ export function ClientStoryWizard({ token, clientName }: ClientStoryWizardProps)
         </Button>
         <div className="flex items-center gap-2">
           {saving && <span className="text-xs text-gray-400">Guardando...</span>}
-          {step < 3 ? (
+          {stepInfo.type !== 'review' ? (
             <Button onClick={goNext} className="bg-[#F2A900] hover:bg-[#D4940A] text-white">
               Siguiente <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
@@ -319,7 +484,40 @@ export function ClientStoryWizard({ token, clientName }: ClientStoryWizardProps)
   )
 }
 
-// -- Step Components --
+// -- Progress Bar Component --
+
+function StepProgressBar({
+  step, totalSteps, stepInfo, declarations,
+}: {
+  step: number; totalSteps: number; stepInfo: ReturnType<typeof getStepInfo>; declarations: MinorDeclaration[]
+}) {
+  const progress = ((step) / (totalSteps - 1)) * 100
+
+  let currentLabel = 'Menores'
+  if (stepInfo.type === 'minor_form') {
+    const minorName = declarations[stepInfo.minorIdx]?.info.name || `Menor ${stepInfo.minorIdx + 1}`
+    currentLabel = `${minorName} — ${SUB_STEP_LABELS[stepInfo.subStep]}`
+  } else if (stepInfo.type === 'review') {
+    currentLabel = 'Revisión Final'
+  }
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-sm font-semibold text-gray-700">{currentLabel}</span>
+        <span className="text-xs text-gray-400">Paso {step + 1} de {totalSteps}</span>
+      </div>
+      <div className="w-full bg-gray-100 rounded-full h-2">
+        <div
+          className="bg-gradient-to-r from-[#F2A900] to-[#D4940A] h-2 rounded-full transition-all duration-300"
+          style={{ width: `${Math.max(progress, 3)}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+// -- Shared UI Components --
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
@@ -353,16 +551,111 @@ function TextArea({ value, onChange, placeholder, rows = 3 }: { value: string; o
   )
 }
 
-function StoryStep({ story, onChange }: { story: StoryData; onChange: (s: StoryData) => void }) {
+// -- Step 0: Minors Selection --
+
+function MinorsStep({
+  declarations, onUpdateInfo, onAdd, onRemove,
+}: {
+  declarations: MinorDeclaration[]
+  onUpdateInfo: (idx: number, info: MinorInfo) => void
+  onAdd: () => void
+  onRemove: (idx: number) => void
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Users className="w-5 h-5 text-[#F2A900]" />
+        <h3 className="font-semibold text-gray-900">Menores para la Declaración</h3>
+      </div>
+
+      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+        <strong>Importante:</strong> Agregue cada menor para el cual se hará la declaración.
+        Si tiene varios hijos de diferente padre, cada uno se declara por separado.
+        Si usted no es la madre/padre biológico, seleccione su relación real con el menor.
+      </div>
+
+      {declarations.map((decl, i) => (
+        <div key={i} className="p-4 rounded-xl border border-gray-200 space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-semibold text-gray-700">Menor {i + 1}</span>
+            {declarations.length > 1 && (
+              <button onClick={() => onRemove(i)} className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1">
+                <Trash2 className="w-3 h-3" /> Eliminar
+              </button>
+            )}
+          </div>
+
+          <div>
+            <FieldLabel required>Nombre completo del menor</FieldLabel>
+            <TextInput
+              value={decl.info.name}
+              onChange={v => onUpdateInfo(i, { ...decl.info, name: v })}
+              placeholder="Nombre y apellidos del niño/a"
+            />
+          </div>
+
+          <div>
+            <FieldLabel required>¿Cuál es tu relación con este menor?</FieldLabel>
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {GUARDIAN_RELATIONS.map(r => (
+                <button
+                  key={r.value}
+                  onClick={() => onUpdateInfo(i, { ...decl.info, guardian_relation: r.value, guardian_relation_other: r.value === 'otro' ? decl.info.guardian_relation_other : '' })}
+                  className={`py-2 px-2 rounded-lg border text-xs font-medium transition-colors ${
+                    decl.info.guardian_relation === r.value
+                      ? 'border-[#F2A900] bg-[#F2A900]/10 text-[#F2A900]'
+                      : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+            {decl.info.guardian_relation === 'otro' && (
+              <div className="mt-2">
+                <TextInput
+                  value={decl.info.guardian_relation_other}
+                  onChange={v => onUpdateInfo(i, { ...decl.info, guardian_relation_other: v })}
+                  placeholder="Especifique la relación (ej: prima, vecina con custodia...)"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      ))}
+
+      <button
+        onClick={onAdd}
+        className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-[#F2A900] hover:text-[#F2A900] transition-colors flex items-center justify-center gap-2"
+      >
+        <UserPlus className="w-4 h-4" /> Agregar otro menor
+      </button>
+    </div>
+  )
+}
+
+// -- Story Step --
+
+function StoryStep({
+  story, minorInfo, onChange, minorCount,
+}: {
+  story: StoryData; minorInfo: MinorInfo; onChange: (s: StoryData) => void; minorCount: number
+}) {
   const set = (field: keyof StoryData, value: string) => onChange({ ...story, [field]: value })
+  const guardianLabel = GUARDIAN_RELATIONS.find(r => r.value === minorInfo.guardian_relation)?.label || 'tutor/a'
+  const minorName = minorInfo.name || 'el menor'
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 mb-2">
         <BookOpen className="w-5 h-5 text-[#F2A900]" />
-        <h3 className="font-semibold text-gray-900">Tu Declaración</h3>
+        <h3 className="font-semibold text-gray-900">
+          Tu Declaración {minorCount > 1 && <span className="text-[#F2A900]">— {minorName}</span>}
+        </h3>
       </div>
       <p className="text-sm text-gray-500">
-        Esta información es para <strong>tu declaración jurada</strong> como madre/padre o tutor. Escribe desde tu perspectiva. Toda la información es confidencial.
+        Esta información es para <strong>tu declaración jurada</strong> como {guardianLabel.toLowerCase()} de <strong>{minorName}</strong>.
+        Escribe desde tu perspectiva. Toda la información es confidencial.
       </p>
       <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
         Incluye todos los detalles que puedas: violencia, penurias, momentos difíciles, todo suma. Nuestro sistema tomará los puntos más relevantes para tu caso.
@@ -373,12 +666,12 @@ function StoryStep({ story, onChange }: { story: StoryData; onChange: (s: StoryD
         <TextInput value={story.arrival_year} onChange={v => set('arrival_year', v)} placeholder="Ej: 2020" />
       </div>
       <div>
-        <FieldLabel required>¿Quién trajo al menor a los Estados Unidos?</FieldLabel>
-        <TextInput value={story.who_brought} onChange={v => set('who_brought', v)} placeholder="Ej: Yo (su madre), un familiar, un conocido, etc." />
+        <FieldLabel required>¿Quién trajo a {minorName} a los Estados Unidos?</FieldLabel>
+        <TextInput value={story.who_brought} onChange={v => set('who_brought', v)} placeholder={`Ej: Yo (su ${guardianLabel.toLowerCase()}), un familiar, un conocido, etc.`} />
       </div>
       <div>
-        <FieldLabel required>¿Con quién vive el menor actualmente en EE.UU.? (nombre completo y relación)</FieldLabel>
-        <TextInput value={story.current_guardian} onChange={v => set('current_guardian', v)} placeholder="Ej: Conmigo, María López (su madre) / Con su abuela Juana Pérez" />
+        <FieldLabel required>¿Con quién vive {minorName} actualmente en EE.UU.? (nombre completo y relación)</FieldLabel>
+        <TextInput value={story.current_guardian} onChange={v => set('current_guardian', v)} placeholder={`Ej: Conmigo (su ${guardianLabel.toLowerCase()}) / Con su abuela Juana Pérez`} />
       </div>
       <div>
         <FieldLabel>¿Cuándo se separaron usted y la pareja? (fecha aproximada)</FieldLabel>
@@ -386,19 +679,19 @@ function StoryStep({ story, onChange }: { story: StoryData; onChange: (s: StoryD
       </div>
       <div>
         <FieldLabel required>¿Cómo fue el abandono? Describe con el mayor detalle posible.</FieldLabel>
-        <TextArea value={story.how_was_abandonment} onChange={v => set('how_was_abandonment', v)} placeholder="Cuenta desde el inicio: ¿Vivían juntos? ¿Qué pasó? ¿Se fue con otra persona, fue violento, nunca quiso hacerse cargo? Incluye nombres, fechas y lugares. Sé lo más detallista posible. Ej: 'Vivíamos juntos en Honduras, él conoció a otra pareja y nos dejó en 2016, nunca más dio dinero ni llamó...'" rows={6} />
+        <TextArea value={story.how_was_abandonment} onChange={v => set('how_was_abandonment', v)} placeholder={`Cuenta desde el inicio: ¿Vivían juntos? ¿Qué pasó? ¿Se fue con otra persona, fue violento, nunca quiso hacerse cargo de ${minorName}? Incluye nombres, fechas y lugares.`} rows={6} />
       </div>
       <div>
         <FieldLabel>¿La pareja que los abandonó dio apoyo económico alguna vez?</FieldLabel>
-        <TextArea value={story.father_economic_support} onChange={v => set('father_economic_support', v)} placeholder="Ej: Nunca dio dinero / Al principio daba algo y luego dejó de dar / Tuve que poner demanda de alimentos / Da actualmente pero poco..." rows={3} />
+        <TextArea value={story.father_economic_support} onChange={v => set('father_economic_support', v)} placeholder="Ej: Nunca dio dinero / Al principio daba algo y luego dejó de dar / Tuve que poner demanda de alimentos..." rows={3} />
       </div>
       <div>
-        <FieldLabel>¿La pareja ausente tuvo contacto con el menor después de la separación? (llamadas, visitas, cumpleaños)</FieldLabel>
-        <TextArea value={story.father_contact_with_child} onChange={v => set('father_contact_with_child', v)} placeholder="Ej: Nunca llamó / Una vez prometió ir al cumpleaños y nunca llegó / No sabemos nada desde 2016 / De vez en cuando llama pero no da apoyo..." rows={3} />
+        <FieldLabel>¿La pareja ausente tuvo contacto con {minorName} después de la separación?</FieldLabel>
+        <TextArea value={story.father_contact_with_child} onChange={v => set('father_contact_with_child', v)} placeholder="Ej: Nunca llamó / Una vez prometió ir al cumpleaños y nunca llegó / No sabemos nada desde 2016..." rows={3} />
       </div>
       <div>
-        <FieldLabel>¿Quién se hizo cargo del menor cuando los abandonaron? (nombre completo y relación)</FieldLabel>
-        <TextArea value={story.who_took_care} onChange={v => set('who_took_care', v)} placeholder="Ej: Yo sola me hice cargo / Tuve que ir a casa de mis padres: Juan Pérez (mi papá) y Rosa López (mi mamá) me ayudaron / Mi hermana María me apoyó..." rows={3} />
+        <FieldLabel>¿Quién se hizo cargo de {minorName} cuando los abandonaron? (nombre completo y relación)</FieldLabel>
+        <TextArea value={story.who_took_care} onChange={v => set('who_took_care', v)} placeholder="Ej: Yo sola me hice cargo / Tuve que ir a casa de mis padres: Juan Pérez (mi papá) y Rosa López (mi mamá) me ayudaron..." rows={3} />
       </div>
       <div>
         <FieldLabel>¿Tiene denuncias o documentos que prueben el abandono?</FieldLabel>
@@ -418,31 +711,39 @@ function StoryStep({ story, onChange }: { story: StoryData; onChange: (s: StoryD
           ))}
         </div>
         {story.has_complaints === 'Sí' && (
-          <TextArea value={story.complaints_detail} onChange={v => set('complaints_detail', v)} placeholder="Describe qué documentos tiene: demanda de alimentos, denuncia por maltrato, orden de alejamiento, denuncia por violencia, acta policial, etc. Si no los tiene a la mano, indique dónde se podrían conseguir." rows={3} />
+          <TextArea value={story.complaints_detail} onChange={v => set('complaints_detail', v)} placeholder="Describe qué documentos tiene: demanda de alimentos, denuncia por maltrato, orden de alejamiento, etc." rows={3} />
         )}
         {story.has_complaints === 'No' && (
           <p className="text-xs text-gray-500 mt-1">Si nunca denunció, puede escribir por qué: por temor, por falta de recursos, porque en su país no procede, etc.</p>
         )}
       </div>
       <div>
-        <FieldLabel>¿Por qué su hijo/a no puede volver a vivir con el padre/madre que lo abandonó?</FieldLabel>
-        <TextArea value={story.why_no_reunification} onChange={v => set('why_no_reunification', v)} placeholder="Ej: Ya tiene otra familia, está preso, tiene denuncias por violencia, no sabemos dónde vive, nunca se hizo responsable, la niña no lo conoce..." rows={4} />
+        <FieldLabel>¿Por qué {minorName} no puede volver a vivir con el padre/madre que lo abandonó?</FieldLabel>
+        <TextArea value={story.why_no_reunification} onChange={v => set('why_no_reunification', v)} placeholder="Ej: Ya tiene otra familia, está preso, tiene denuncias por violencia, no sabemos dónde vive, nunca se hizo responsable..." rows={4} />
       </div>
       <div>
         <FieldLabel>¿Hay algo más que quiera agregar?</FieldLabel>
-        <TextArea value={story.additional_details} onChange={v => set('additional_details', v)} placeholder="Escriba todo lo que considere importante: agresiones, momentos difíciles, si su hijo/a le ha preguntado por el padre, las penurias que pasó, si la pareja tiene otra familia (fotos de redes sociales ayudan), todo suma para fortalecer su caso." rows={4} />
+        <TextArea value={story.additional_details} onChange={v => set('additional_details', v)} placeholder="Escriba todo lo que considere importante: agresiones, momentos difíciles, si su hijo/a le ha preguntado por el padre, las penurias que pasó... todo suma." rows={4} />
       </div>
     </div>
   )
 }
 
-function ParentStep({ parent, onChange }: { parent: ParentData; onChange: (p: ParentData) => void }) {
+// -- Parent Step --
+
+function ParentStep({
+  parent, minorName, onChange,
+}: {
+  parent: ParentData; minorName: string; onChange: (p: ParentData) => void
+}) {
   const set = (field: keyof ParentData, value: string) => onChange({ ...parent, [field]: value })
+  const name = minorName || 'el menor'
+
   return (
     <div className="space-y-4">
-      <h3 className="font-semibold text-gray-900">Situación del Padre/Madre Ausente</h3>
+      <h3 className="font-semibold text-gray-900">Padre/Madre Ausente de {name}</h3>
       <p className="text-sm text-gray-500">
-        Seleccione la situación que mejor describe la relación de su hijo/a con el padre o madre ausente.
+        Seleccione la situación que mejor describe la relación de {name} con el padre o madre ausente.
       </p>
 
       <div>
@@ -484,12 +785,11 @@ function ParentStep({ parent, onChange }: { parent: ParentData; onChange: (p: Pa
         </div>
       </div>
 
-      {/* Adaptive fields */}
       {parent.situation === 'cooperates' && (
         <div className="space-y-3 p-4 bg-blue-50 rounded-xl">
           <p className="text-sm font-medium text-blue-800">Información de contacto de la pareja que coopera</p>
           <div>
-            <FieldLabel required>Nombre completo del padre/madre del menor</FieldLabel>
+            <FieldLabel required>Nombre completo del padre/madre de {name}</FieldLabel>
             <TextInput value={parent.parent_name} onChange={v => set('parent_name', v)} placeholder="Nombre completo" />
           </div>
           <div>
@@ -529,12 +829,12 @@ function ParentStep({ parent, onChange }: { parent: ParentData; onChange: (p: Pa
             <TextInput value={parent.parent_name} onChange={v => set('parent_name', v)} placeholder="Nombre completo" />
           </div>
           <div>
-            <FieldLabel>¿Cuándo fue la última vez que tuvo contacto con el menor o con usted?</FieldLabel>
+            <FieldLabel>¿Cuándo fue la última vez que tuvo contacto con {name} o con usted?</FieldLabel>
             <TextInput value={parent.last_contact_date} onChange={v => set('last_contact_date', v)} placeholder="Ej: Hace 5 años, en 2018, nunca tuvo contacto" />
           </div>
           <div>
             <FieldLabel>¿Cómo fue ese último contacto?</FieldLabel>
-            <TextArea value={parent.last_contact_description} onChange={v => set('last_contact_description', v)} placeholder="Ej: Me llamó para pedir algo pero no preguntó por los niños / Fue cortante / Lo busqué para el cumpleaños de mi hija y no contestó..." />
+            <TextArea value={parent.last_contact_description} onChange={v => set('last_contact_description', v)} placeholder="Ej: Me llamó para pedir algo pero no preguntó por los niños / Fue cortante / Lo busqué para el cumpleaños y no contestó..." />
           </div>
           <div>
             <FieldLabel required>¿Por qué está ausente? Explique la razón.</FieldLabel>
@@ -542,7 +842,7 @@ function ParentStep({ parent, onChange }: { parent: ParentData; onChange: (p: Pa
           </div>
           <div>
             <FieldLabel>¿Ha intentado localizarlo/a en algún momento?</FieldLabel>
-            <TextArea value={parent.efforts_to_find} onChange={v => set('efforts_to_find', v)} placeholder="Ej: Sí, para pedirle dinero cuando la niña estaba enferma / Sí, para el cumpleaños / No, perdí todo contacto / Busqué en redes sociales..." />
+            <TextArea value={parent.efforts_to_find} onChange={v => set('efforts_to_find', v)} placeholder="Ej: Sí, para pedirle dinero cuando la niña estaba enferma / Sí, para el cumpleaños / No, perdí todo contacto..." />
           </div>
         </div>
       )}
@@ -605,7 +905,13 @@ function ParentStep({ parent, onChange }: { parent: ParentData; onChange: (p: Pa
   )
 }
 
-function WitnessStep({ witnesses, onChange }: { witnesses: WitnessesData; onChange: (w: WitnessesData) => void }) {
+// -- Witness Step --
+
+function WitnessStep({
+  witnesses, minorName, onChange,
+}: {
+  witnesses: WitnessesData; minorName: string; onChange: (w: WitnessesData) => void
+}) {
   function updateWitness(idx: number, field: keyof Witness, value: string) {
     const updated = [...witnesses.witnesses]
     updated[idx] = { ...updated[idx], [field]: value }
@@ -622,11 +928,13 @@ function WitnessStep({ witnesses, onChange }: { witnesses: WitnessesData; onChan
     onChange({ witnesses: witnesses.witnesses.filter((_, i) => i !== idx) })
   }
 
+  const name = minorName || 'el menor'
+
   return (
     <div className="space-y-4">
-      <h3 className="font-semibold text-gray-900">Testigos</h3>
+      <h3 className="font-semibold text-gray-900">Testigos para {name}</h3>
       <p className="text-sm text-gray-500">
-        Agregue personas que puedan dar fe del abandono y de su situación: familiares, amigos, vecinos que hayan presenciado esa etapa. Recomendamos 2 testigos de su país de origen y 1 de Estados Unidos. Mínimo 1, máximo 3.
+        Personas que puedan dar fe del abandono y de su situación con {name}: familiares, amigos, vecinos. Recomendamos 2 de su país de origen y 1 de EE.UU. Mínimo 1, máximo 3.
       </p>
 
       {witnesses.witnesses.map((w, i) => (
@@ -645,8 +953,8 @@ function WitnessStep({ witnesses, onChange }: { witnesses: WitnessesData; onChan
               <TextInput value={w.name} onChange={v => updateWitness(i, 'name', v)} placeholder="Nombre completo del testigo" />
             </div>
             <div>
-              <FieldLabel required>Relación con usted o el menor</FieldLabel>
-              <TextInput value={w.relationship} onChange={v => updateWitness(i, 'relationship', v)} placeholder="Ej: Mi mamá, mi hermana, amiga de Honduras, vecina en EE.UU." />
+              <FieldLabel required>Relación con usted o {name}</FieldLabel>
+              <TextInput value={w.relationship} onChange={v => updateWitness(i, 'relationship', v)} placeholder="Ej: Mi mamá, mi hermana, amiga, vecina en EE.UU." />
             </div>
           </div>
           <div>
@@ -655,7 +963,7 @@ function WitnessStep({ witnesses, onChange }: { witnesses: WitnessesData; onChan
           </div>
           <div>
             <FieldLabel required>¿Qué puede declarar esta persona? ¿Qué etapa presenció?</FieldLabel>
-            <TextArea value={w.can_testify} onChange={v => updateWitness(i, 'can_testify', v)} placeholder="Ej: 'Entre 2018-2022 vivió cerca de nosotros, vio que el padre nunca estuvo, me ayudó a cuidar a los niños, sabe que nunca recibí apoyo económico, me acompañó al hospital cuando la cesárea...' Sea específica con fechas y situaciones." rows={3} />
+            <TextArea value={w.can_testify} onChange={v => updateWitness(i, 'can_testify', v)} placeholder={`Ej: 'Entre 2018-2022 vivió cerca de nosotros, vio que el padre de ${name} nunca estuvo, me ayudó a cuidar al niño/a...'`} rows={3} />
           </div>
         </div>
       ))}
@@ -672,65 +980,78 @@ function WitnessStep({ witnesses, onChange }: { witnesses: WitnessesData; onChan
   )
 }
 
-function ReviewStep({
-  story, parent, witnesses, onEdit,
-}: {
-  story: StoryData; parent: ParentData; witnesses: WitnessesData; onEdit: (step: number) => void
-}) {
-  const situationLabel = PARENT_SITUATIONS.find(s => s.value === parent.situation)?.label || 'No especificado'
-  const validWitnesses = witnesses.witnesses.filter(w => w.name.trim())
+// -- Review Step --
 
+function ReviewStep({
+  declarations, onEdit,
+}: {
+  declarations: MinorDeclaration[]; onEdit: (step: number) => void
+}) {
   return (
     <div className="space-y-4">
       <h3 className="font-semibold text-gray-900">Revisión Final</h3>
-      <p className="text-sm text-gray-500">Revise su información antes de enviarla a su consultor. Puede regresar a cualquier paso para corregir.</p>
+      <p className="text-sm text-gray-500">Revise la información de {declarations.length === 1 ? 'su menor' : `sus ${declarations.length} menores`} antes de enviarla.</p>
 
-      {/* Story summary */}
-      <div className="p-4 rounded-xl border border-gray-200">
-        <div className="flex justify-between items-center mb-3">
-          <span className="text-sm font-semibold text-gray-700">Mi Declaración</span>
-          <button onClick={() => onEdit(0)} className="text-xs text-[#F2A900] hover:underline">Editar</button>
-        </div>
-        <div className="space-y-2 text-sm text-gray-600">
-          <p><span className="font-medium">Año de llegada:</span> {story.arrival_year || '—'}</p>
-          <p><span className="font-medium">Quién te trajo:</span> {story.who_brought || '—'}</p>
-          <p><span className="font-medium">Vive con:</span> {story.current_guardian || '—'}</p>
-          {story.separation_date && <p><span className="font-medium">Separación:</span> {story.separation_date}</p>}
-          {story.how_was_abandonment && (
-            <p><span className="font-medium">Abandono:</span> {story.how_was_abandonment.slice(0, 200)}{story.how_was_abandonment.length > 200 ? '...' : ''}</p>
-          )}
-          {story.has_complaints === 'Sí' && <p><span className="font-medium">Denuncias:</span> Sí{story.complaints_detail ? ` — ${story.complaints_detail.slice(0, 100)}` : ''}</p>}
-          {story.why_no_reunification && (
-            <p><span className="font-medium">No reunificación:</span> {story.why_no_reunification.slice(0, 150)}{story.why_no_reunification.length > 150 ? '...' : ''}</p>
-          )}
-        </div>
-      </div>
+      {declarations.map((decl, i) => {
+        const baseStep = 1 + i * 3
+        const situationLabel = PARENT_SITUATIONS.find(s => s.value === decl.parent.situation)?.label || 'No especificado'
+        const guardianLabel = GUARDIAN_RELATIONS.find(r => r.value === decl.info.guardian_relation)?.label || '—'
+        const validWitnesses = decl.witnesses.witnesses.filter(w => w.name.trim())
 
-      {/* Parent summary */}
-      <div className="p-4 rounded-xl border border-gray-200">
-        <div className="flex justify-between items-center mb-3">
-          <span className="text-sm font-semibold text-gray-700">Padre/Madre Ausente</span>
-          <button onClick={() => onEdit(1)} className="text-xs text-[#F2A900] hover:underline">Editar</button>
-        </div>
-        <div className="space-y-2 text-sm text-gray-600">
-          <p><span className="font-medium">Relación:</span> {parent.parent_relationship === 'padre' ? 'Padre' : 'Madre'}</p>
-          <p><span className="font-medium">Situación:</span> {situationLabel}</p>
-          {parent.parent_name && <p><span className="font-medium">Nombre:</span> {parent.parent_name}</p>}
-        </div>
-      </div>
+        return (
+          <div key={i} className="space-y-3">
+            {declarations.length > 1 && (
+              <h4 className="text-sm font-bold text-[#F2A900] border-b pb-1">
+                {decl.info.name || `Menor ${i + 1}`}
+              </h4>
+            )}
 
-      {/* Witnesses summary */}
-      <div className="p-4 rounded-xl border border-gray-200">
-        <div className="flex justify-between items-center mb-3">
-          <span className="text-sm font-semibold text-gray-700">Testigos ({validWitnesses.length})</span>
-          <button onClick={() => onEdit(2)} className="text-xs text-[#F2A900] hover:underline">Editar</button>
-        </div>
-        <div className="space-y-2 text-sm text-gray-600">
-          {validWitnesses.map((w, i) => (
-            <p key={i}>{w.name} — {w.relationship}</p>
-          ))}
-        </div>
-      </div>
+            {/* Story summary */}
+            <div className="p-4 rounded-xl border border-gray-200">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-sm font-semibold text-gray-700">Declaración</span>
+                <button onClick={() => onEdit(baseStep)} className="text-xs text-[#F2A900] hover:underline">Editar</button>
+              </div>
+              <div className="space-y-1 text-sm text-gray-600">
+                <p><span className="font-medium">Menor:</span> {decl.info.name || '—'}</p>
+                <p><span className="font-medium">Relación:</span> {guardianLabel}{decl.info.guardian_relation === 'otro' ? ` (${decl.info.guardian_relation_other})` : ''}</p>
+                <p><span className="font-medium">Año llegada:</span> {decl.story.arrival_year || '—'}</p>
+                <p><span className="font-medium">Vive con:</span> {decl.story.current_guardian || '—'}</p>
+                {decl.story.how_was_abandonment && (
+                  <p><span className="font-medium">Abandono:</span> {decl.story.how_was_abandonment.slice(0, 200)}{decl.story.how_was_abandonment.length > 200 ? '...' : ''}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Parent summary */}
+            <div className="p-4 rounded-xl border border-gray-200">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-sm font-semibold text-gray-700">Padre/Madre Ausente</span>
+                <button onClick={() => onEdit(baseStep + 1)} className="text-xs text-[#F2A900] hover:underline">Editar</button>
+              </div>
+              <div className="space-y-1 text-sm text-gray-600">
+                <p><span className="font-medium">Relación:</span> {decl.parent.parent_relationship === 'padre' ? 'Padre' : 'Madre'}</p>
+                <p><span className="font-medium">Situación:</span> {situationLabel}</p>
+                {decl.parent.parent_name && <p><span className="font-medium">Nombre:</span> {decl.parent.parent_name}</p>}
+              </div>
+            </div>
+
+            {/* Witnesses summary */}
+            <div className="p-4 rounded-xl border border-gray-200">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-sm font-semibold text-gray-700">Testigos ({validWitnesses.length})</span>
+                <button onClick={() => onEdit(baseStep + 2)} className="text-xs text-[#F2A900] hover:underline">Editar</button>
+              </div>
+              <div className="space-y-1 text-sm text-gray-600">
+                {validWitnesses.map((w, wi) => (
+                  <p key={wi}>{w.name} — {w.relationship}</p>
+                ))}
+                {validWitnesses.length === 0 && <p className="text-red-500">Sin testigos</p>}
+              </div>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }

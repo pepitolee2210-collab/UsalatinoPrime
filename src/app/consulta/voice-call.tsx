@@ -5,6 +5,17 @@ import { ArrowLeft, Phone, PhoneOff, Loader2, Mic, MicOff } from 'lucide-react'
 
 type CallState = 'idle' | 'connecting' | 'active' | 'ended' | 'error'
 
+// SDK session type — methods we use from the Live session
+interface LiveSession {
+  sendRealtimeInput: (params: { audio: { data: string; mimeType: string } }) => void
+  sendToolResponse: (params: { functionResponses: Array<{ name: string; response: unknown }> }) => void
+  close: () => void
+}
+
+interface ToolCallData {
+  functionCalls?: Array<{ name: string; args: Record<string, string> }>
+}
+
 interface VoiceCallProps {
   onBack: () => void
 }
@@ -16,17 +27,21 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
   const [statusText, setStatusText] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
-  const sessionRef = useRef<unknown>(null)
+  const sessionRef = useRef<LiveSession | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const mediaStreamRef = useRef<MediaStream | null>(null)
-  const workletNodeRef = useRef<AudioWorkletNode | null>(null)
+  const processorRef = useRef<ScriptProcessorNode | null>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const sdkRef = useRef<unknown>(null)
+  const mutedRef = useRef(false)
 
   const cleanup = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current)
       timerRef.current = null
+    }
+    if (processorRef.current) {
+      processorRef.current.disconnect()
+      processorRef.current = null
     }
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(t => t.stop())
@@ -36,8 +51,8 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
       audioContextRef.current?.close()
       audioContextRef.current = null
     }
-    if (sessionRef.current && typeof (sessionRef.current as { close: () => void }).close === 'function') {
-      (sessionRef.current as { close: () => void }).close()
+    if (sessionRef.current) {
+      try { sessionRef.current.close() } catch { /* already closed */ }
       sessionRef.current = null
     }
   }, [])
@@ -75,19 +90,18 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
 
       setStatusText('Conectando con el asistente...')
 
-      // 3. Import SDK dynamically and connect to Gemini Live API
+      // 3. Import SDK and connect to Gemini Live API
       const { GoogleGenAI, Modality } = await import('@google/genai')
       const ai = new GoogleGenAI({
         apiKey: token,
         httpOptions: { apiVersion: 'v1alpha' },
       })
-      sdkRef.current = ai
 
-      // Audio context for playback
+      // Audio context for playback at 24kHz (Gemini output rate)
       const audioCtx = new AudioContext({ sampleRate: 24000 })
       audioContextRef.current = audioCtx
 
-      // Queue for audio playback
+      // Audio playback queue
       const audioQueue: Float32Array[] = []
       let isPlaying = false
 
@@ -107,9 +121,8 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
         source.start()
       }
 
-      function queueAudio(pcmData: string) {
-        // Decode base64 PCM 16-bit to Float32
-        const raw = atob(pcmData)
+      function queueAudio(pcmBase64: string) {
+        const raw = atob(pcmBase64)
         const bytes = new Uint8Array(raw.length)
         for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
         const int16 = new Int16Array(bytes.buffer)
@@ -120,72 +133,72 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
       }
 
       // 4. Connect to Gemini Live API
-      const session = await (ai as unknown as {
-        live: {
-          connect: (opts: Record<string, unknown>) => Promise<unknown>
-        }
-      }).live.connect({
+      const session = await ai.live.connect({
         model,
         config: {
           ...config,
           responseModalities: [Modality.AUDIO],
-        } as Record<string, unknown>,
+        },
         callbacks: {
           onopen: () => {
             setCallState('active')
             setStatusText('')
-            // Start duration timer
             let seconds = 0
             timerRef.current = setInterval(() => {
               seconds++
               setCallDuration(seconds)
-              // Max 15 min
               if (seconds >= 900) endCall()
             }, 1000)
           },
-          onmessage: (message: Record<string, unknown>) => {
+          onmessage: (message: unknown) => {
+            const msg = message as Record<string, unknown>
             // Handle audio response
-            const serverContent = message.serverContent as Record<string, unknown> | undefined
-            if (serverContent?.modelTurn) {
-              const modelTurn = serverContent.modelTurn as { parts?: Array<{ inlineData?: { data: string } }> }
-              for (const part of modelTurn.parts || []) {
+            const serverContent = msg.serverContent as Record<string, unknown> | undefined
+            const modelTurn = serverContent?.modelTurn as { parts?: Array<{ inlineData?: { data?: string } }> } | undefined
+            if (modelTurn?.parts) {
+              for (const part of modelTurn.parts) {
                 if (part.inlineData?.data) {
                   queueAudio(part.inlineData.data)
                 }
               }
             }
             // Handle function calls
-            if (message.toolCall) {
-              handleToolCall(message.toolCall as Record<string, unknown>)
+            if (msg.toolCall) {
+              handleToolCall(msg.toolCall as ToolCallData)
             }
           },
-          onerror: (e: { message?: string }) => {
+          onerror: (e: Event | { message?: string }) => {
             console.error('Live API error:', e)
-            setErrorMessage(e.message || 'Error en la conexión')
+            const msg = 'message' in e ? (e as { message: string }).message : 'Error en la conexión de voz'
+            setErrorMessage(msg)
             setCallState('error')
             cleanup()
           },
-          onclose: () => {
-            if (callState === 'active') {
+          onclose: (e: CloseEvent | Event) => {
+            const closeEvent = e as CloseEvent
+            console.log('Live API closed:', closeEvent.code, closeEvent.reason)
+            if (closeEvent.code && closeEvent.code !== 1000) {
+              setErrorMessage(`Conexión cerrada: ${closeEvent.reason || 'Error del servidor'} (${closeEvent.code})`)
+              setCallState('error')
+            } else {
               setCallState('ended')
             }
             cleanup()
           },
         },
-      })
+      }) as unknown as LiveSession
 
       sessionRef.current = session
 
-      // 5. Send microphone audio to Gemini
-      // Use AudioWorklet or ScriptProcessor to capture PCM
+      // 5. Capture microphone audio and send to Gemini
       const sourceNode = audioCtx.createMediaStreamSource(stream)
-
-      // Fallback to ScriptProcessor if AudioWorklet not available
       const processorNode = audioCtx.createScriptProcessor(4096, 1, 1)
+      processorRef.current = processorNode
+
       processorNode.onaudioprocess = (event) => {
-        if (isMuted) return
+        if (mutedRef.current || !sessionRef.current) return
         const inputData = event.inputBuffer.getChannelData(0)
-        // Resample from audioCtx.sampleRate to 16000
+        // Resample from audioCtx.sampleRate to 16kHz
         const ratio = audioCtx.sampleRate / 16000
         const outputLength = Math.floor(inputData.length / ratio)
         const int16 = new Int16Array(outputLength)
@@ -199,22 +212,16 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
         for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
         const base64 = btoa(binary)
 
-        // Send to Gemini
-        if (sessionRef.current && typeof (sessionRef.current as Record<string, unknown>).sendRealtimeInput === 'function') {
-          (sessionRef.current as { sendRealtimeInput: (data: Record<string, unknown>) => void }).sendRealtimeInput({
-            audio: {
-              data: base64,
-              mimeType: 'audio/pcm;rate=16000',
-            },
-          })
-        }
+        sessionRef.current.sendRealtimeInput({
+          audio: { data: base64, mimeType: 'audio/pcm;rate=16000' },
+        })
       }
 
       sourceNode.connect(processorNode)
-      processorNode.connect(audioCtx.destination) // Required for processing to work
-      workletNodeRef.current = processorNode as unknown as AudioWorkletNode
+      processorNode.connect(audioCtx.destination)
 
     } catch (err: unknown) {
+      console.error('Voice call error:', err)
       const message = err instanceof Error ? err.message : 'Error al conectar'
       setErrorMessage(message)
       setCallState('error')
@@ -222,8 +229,8 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
     }
   }
 
-  async function handleToolCall(toolCall: Record<string, unknown>) {
-    const functionCalls = toolCall.functionCalls as Array<{ name: string; args: Record<string, string> }> | undefined
+  async function handleToolCall(toolCall: ToolCallData) {
+    const functionCalls = toolCall.functionCalls
     if (!functionCalls) return
 
     for (const fc of functionCalls) {
@@ -241,17 +248,14 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
           })
           const result = await res.json()
 
-          // Send function response back to Gemini
-          if (sessionRef.current && typeof (sessionRef.current as Record<string, unknown>).sendToolResponse === 'function') {
-            (sessionRef.current as { sendToolResponse: (data: Record<string, unknown>) => void }).sendToolResponse({
-              functionResponses: [{
-                name: 'create_lead',
-                response: result,
-              }],
-            })
-          }
-        } catch {
-          // Tool call failed silently
+          sessionRef.current?.sendToolResponse({
+            functionResponses: [{
+              name: 'create_lead',
+              response: result,
+            }],
+          })
+        } catch (err) {
+          console.error('Lead creation failed:', err)
         }
       }
     }
@@ -263,12 +267,16 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
   }
 
   function toggleMute() {
-    setIsMuted(prev => !prev)
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getAudioTracks().forEach(t => {
-        t.enabled = isMuted // Toggle (was muted, now unmute)
-      })
-    }
+    setIsMuted(prev => {
+      const newMuted = !prev
+      mutedRef.current = newMuted
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getAudioTracks().forEach(t => {
+          t.enabled = !newMuted
+        })
+      }
+      return newMuted
+    })
   }
 
   function formatDuration(seconds: number): string {
