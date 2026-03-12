@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
 import { CHATBOT_VOICE_SYSTEM_PROMPT } from '@/lib/ai/prompts/chatbot-system'
 
+// Native audio model — supports Live API + function calling
 const VOICE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025'
 
 // Rate limit: max 5 voice sessions per IP per hour
@@ -44,8 +45,8 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Return token + config. Tools use plain string types (not SDK enums)
-    // because this config will be JSON-serialized to the client.
+    // Return token + config with tools for lead creation.
+    // Tools use plain string types (not SDK enums) — JSON-serialized to client.
     return Response.json({
       token: token.name,
       model: VOICE_MODEL,
