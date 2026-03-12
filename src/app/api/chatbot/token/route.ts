@@ -62,14 +62,14 @@ export async function POST(request: NextRequest) {
         tools: [{
           functionDeclarations: [{
             name: 'create_lead',
-            description: 'Registra un prospecto interesado para que Henry lo contacte.',
+            description: 'Registra un prospecto interesado en Visa Juvenil para que Henry lo contacte. Usa cuando tengas nombre, teléfono y situación.',
             parameters: {
               type: 'OBJECT',
               properties: {
                 name: { type: 'STRING', description: 'Nombre completo del prospecto' },
                 phone: { type: 'STRING', description: 'Número de teléfono' },
-                service_interest: { type: 'STRING', description: 'Servicio: visa-juvenil, asilo, tps, permiso-trabajo, consulta-general' },
-                situation_summary: { type: 'STRING', description: 'Resumen breve de la situación' },
+                service_interest: { type: 'STRING', description: 'Siempre "visa-juvenil"' },
+                situation_summary: { type: 'STRING', description: 'Resumen: estado, cantidad de hijos, edades, situación de abandono' },
               },
               required: ['name', 'phone', 'service_interest'],
             },
