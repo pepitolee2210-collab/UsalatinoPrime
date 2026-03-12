@@ -33,7 +33,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Public routes (no auth required)
-  if (pathname.startsWith('/miedo-creible') || pathname.startsWith('/visa-juvenil-form') || pathname.startsWith('/asilo-form') || pathname.startsWith('/ajuste-form') || pathname.startsWith('/renuncia-form') || pathname.startsWith('/offline') || pathname.startsWith('/contrato') || pathname.startsWith('/cita')) {
+  if (pathname.startsWith('/miedo-creible') || pathname.startsWith('/visa-juvenil-form') || pathname.startsWith('/asilo-form') || pathname.startsWith('/ajuste-form') || pathname.startsWith('/renuncia-form') || pathname.startsWith('/offline') || pathname.startsWith('/contrato') || pathname.startsWith('/cita') || pathname.startsWith('/consulta')) {
     return supabaseResponse
   }
 
