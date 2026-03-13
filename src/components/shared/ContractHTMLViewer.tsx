@@ -213,6 +213,25 @@ export function ContractHTMLViewer({ contract }: { contract: ContractData }) {
         </ul>
       </Section>
 
+      {/* Política de cancelación */}
+      <Section title="POL&Iacute;TICA DE CANCELACI&Oacute;N Y REEMBOLSO">
+        <p className="mb-2">
+          Una vez firmado el presente contrato, no se realizar&aacute;n devoluciones de dinero por los servicios contratados.
+          Los pagos realizados corresponden al inicio y avance del trabajo de preparaci&oacute;n del caso,
+          el cual comienza inmediatamente despu&eacute;s de la firma.
+        </p>
+        <p className="mb-2">
+          Si EL CLIENTE desea dar por terminado este contrato, deber&aacute; hacerlo &uacute;nicamente por mutuo acuerdo
+          con EL CONSULTOR. Para ello, EL CLIENTE enviar&aacute; una carta escrita expresando su voluntad de
+          terminar la relaci&oacute;n contractual. EL CONSULTOR evaluar&aacute; la solicitud y ambas partes acordar&aacute;n
+          los t&eacute;rminos de la terminaci&oacute;n.
+        </p>
+        <p>
+          En ning&uacute;n caso podr&aacute; EL CLIENTE dar por terminado el contrato de forma unilateral sin el
+          consentimiento escrito de EL CONSULTOR.
+        </p>
+      </Section>
+
       {/* Aceptacion */}
       <Section title="ACEPTACI&Oacute;N">
         <p>

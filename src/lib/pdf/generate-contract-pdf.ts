@@ -372,6 +372,24 @@ export function generateContractPDF(input: ContractPDFInput): jsPDF {
   })
   y += 6
 
+  // === POLÍTICA DE CANCELACIÓN Y REEMBOLSO ===
+  sectionTitle('POL\u00cdTICA DE CANCELACI\u00d3N Y REEMBOLSO')
+  paragraph(
+    'Una vez firmado el presente contrato, no se realizar\u00e1n devoluciones de dinero por los servicios contratados. ' +
+    'Los pagos realizados corresponden al inicio y avance del trabajo de preparaci\u00f3n del caso, ' +
+    'el cual comienza inmediatamente despu\u00e9s de la firma.'
+  )
+  paragraph(
+    'Si EL CLIENTE desea dar por terminado este contrato, deber\u00e1 hacerlo \u00fanicamente por mutuo acuerdo ' +
+    'con EL CONSULTOR. Para ello, EL CLIENTE enviar\u00e1 una carta escrita expresando su voluntad de ' +
+    'terminar la relaci\u00f3n contractual. EL CONSULTOR evaluar\u00e1 la solicitud y ambas partes acordar\u00e1n ' +
+    'los t\u00e9rminos de la terminaci\u00f3n.'
+  )
+  paragraph(
+    'En ning\u00fan caso podr\u00e1 EL CLIENTE dar por terminado el contrato de forma unilateral sin el ' +
+    'consentimiento escrito de EL CONSULTOR.'
+  )
+
   // === ACEPTACION Y FIRMAS ===
   sectionTitle('ACEPTACI\u00d3N')
   paragraph(
