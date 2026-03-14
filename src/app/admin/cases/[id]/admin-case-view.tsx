@@ -24,6 +24,7 @@ import {
 import { APPOINTMENT_DOCUMENT_KEYS } from '@/lib/appointments/constants'
 import { CaseChat } from './case-chat'
 import { ClientStoryReview } from './client-story-review'
+import { I589Review } from './i589-review'
 import { uploadDirect } from '@/lib/upload-direct'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -364,6 +365,15 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               <FileText className="w-3.5 h-3.5 text-[#F2A900]" />
               Historia
               {(aiSubmissions || []).some((s: { form_type: string; status: string }) => s.form_type === 'client_story' && s.status === 'submitted') && (
+                <span className="w-2 h-2 rounded-full bg-yellow-500" />
+              )}
+            </TabsTrigger>
+          )}
+          {isAsylumService && (
+            <TabsTrigger value="i589-review" className="flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-[#F2A900]" />
+              I-589
+              {(aiSubmissions || []).some((s: { form_type: string; status: string }) => s.form_type === 'i589_part_b1' && s.status === 'submitted') && (
                 <span className="w-2 h-2 rounded-full bg-yellow-500" />
               )}
             </TabsTrigger>
@@ -984,6 +994,17 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               caseId={caseData.id}
               submissions={(aiSubmissions || []).filter((s: { form_type: string }) =>
                 ['client_story', 'client_witnesses', 'client_absent_parent'].includes(s.form_type)
+              )}
+            />
+          </TabsContent>
+        )}
+
+        {isAsylumService && (
+          <TabsContent value="i589-review" className="mt-4">
+            <I589Review
+              caseId={caseData.id}
+              submissions={(aiSubmissions || []).filter((s: { form_type: string }) =>
+                ['i589_part_b1', 'i589_part_b2', 'i589_part_c1', 'i589_part_c2'].includes(s.form_type)
               )}
             />
           </TabsContent>

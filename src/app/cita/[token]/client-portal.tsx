@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { CalendarClock, FileText, FileUp, Download, CheckCircle, BookOpen } from 'lucide-react'
+import { CalendarClock, FileText, FileUp, Download, CheckCircle, BookOpen, ClipboardList } from 'lucide-react'
 import { AppointmentBooking } from './appointment-booking'
 import { DocumentUploadSection } from './document-upload-section'
 import { HenryDocuments } from './henry-documents'
 import { ClientStoryWizard } from './client-story-wizard'
+import { I589Wizard } from './i589-wizard'
 
 import type { Appointment } from '@/types/database'
 
@@ -50,8 +51,9 @@ const BASE_TABS = [
 ] as const
 
 const STORY_TAB = { id: 'mi-historia', label: 'Mi Historia', icon: BookOpen } as const
+const I589_TAB = { id: 'i589', label: 'Formulario I-589', icon: ClipboardList } as const
 
-type TabId = typeof BASE_TABS[number]['id'] | 'mi-historia'
+type TabId = typeof BASE_TABS[number]['id'] | 'mi-historia' | 'i589'
 
 export function ClientPortal({
   token,
@@ -68,6 +70,7 @@ export function ClientPortal({
   const [activeTab, setActiveTab] = useState<TabId>('cita')
 
   const isVisaJuvenil = serviceSlug === 'visa-juvenil'
+  const isAsilo = serviceSlug === 'asilo-defensivo' || serviceSlug === 'asilo-afirmativo'
 
   // Progress indicators
   const hasAppointment = appointments.some(a => a.status === 'scheduled' || a.status === 'completed')
@@ -77,14 +80,21 @@ export function ClientPortal({
   const hasSubmittedStory = formSubmissions.some(f =>
     f.form_type === 'client_story' && (f.status === 'submitted' || f.status === 'approved')
   )
+  const hasSubmittedI589 = formSubmissions.some(f =>
+    f.form_type === 'i589_part_b1' && (f.status === 'submitted' || f.status === 'approved')
+  )
   const stepsArray = isVisaJuvenil
     ? [hasAppointment, hasClientDocs, hasSubmittedStory, hasHenryDocs]
+    : isAsilo
+    ? [hasAppointment, hasClientDocs, hasSubmittedI589, hasHenryDocs]
     : [hasAppointment, hasClientDocs, hasHenryDocs]
   const completedSteps = stepsArray.filter(Boolean).length
   const totalSteps = stepsArray.length
 
   const visibleTabs = isVisaJuvenil
     ? [...BASE_TABS.slice(0, 2), STORY_TAB, BASE_TABS[2]]
+    : isAsilo
+    ? [...BASE_TABS.slice(0, 2), I589_TAB, BASE_TABS[2]]
     : [...BASE_TABS]
 
   return (
@@ -105,6 +115,7 @@ export function ClientPortal({
           <StepIndicator done={hasAppointment} label="Cita" />
           <StepIndicator done={hasClientDocs} label="Documentos" />
           {isVisaJuvenil && <StepIndicator done={hasSubmittedStory} label="Mi Historia" />}
+          {isAsilo && <StepIndicator done={hasSubmittedI589} label="I-589 B/C" />}
           <StepIndicator done={hasHenryDocs} label="Docs Consultor" />
         </div>
       </div>
@@ -153,6 +164,9 @@ export function ClientPortal({
           )}
           {activeTab === 'mi-historia' && isVisaJuvenil && (
             <ClientStoryWizard token={token} clientName={clientName} />
+          )}
+          {activeTab === 'i589' && isAsilo && (
+            <I589Wizard token={token} clientName={clientName} />
           )}
           {activeTab === 'henry-docs' && (
             <HenryDocuments
