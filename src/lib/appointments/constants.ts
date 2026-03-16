@@ -33,6 +33,16 @@ export const APPOINTMENT_DOCUMENT_KEYS = [
     label: 'Documentos Sustentatorios',
     required: true,
   },
+  {
+    key: 'tax_declaration',
+    label: 'Declaración de Taxes',
+    required: false,
+  },
+  {
+    key: 'school_proof',
+    label: 'Prueba Domiciliaria Escolar',
+    required: false,
+  },
 ] as const
 
 export type AppointmentDocumentKey = typeof APPOINTMENT_DOCUMENT_KEYS[number]['key']
