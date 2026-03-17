@@ -9,11 +9,28 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import {
-  Users, FileText, Video, Megaphone, Pin, PinOff,
-  Trash2, Plus, Link2, Save, Loader2, DollarSign
+  Users, Video, Pin, PinOff,
+  Trash2, Plus, Link2, Save, Loader2, DollarSign, CalendarClock, Clock
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+
+const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
+const HOURS = Array.from({ length: 24 }, (_, i) => i)
+
+function fmtHour(h: number) {
+  if (h === 0) return '12 AM'
+  if (h < 12) return `${h} AM`
+  if (h === 12) return '12 PM'
+  return `${h - 12} PM`
+}
+
+interface DayConfig {
+  day_of_week: number
+  start_hour: number
+  end_hour: number
+  is_available: boolean
+}
 
 type Post = {
   id: string
@@ -44,7 +61,12 @@ export default function AdminComunidadPage() {
   // Zoom config
   const [zoomUrl, setZoomUrl] = useState('')
   const [zoomTitle, setZoomTitle] = useState('Sesión en Vivo con Henry')
-  const [zoomSchedule, setZoomSchedule] = useState('Todos los días')
+
+  // Schedule config
+  const [scheduleConfig, setScheduleConfig] = useState<DayConfig[]>(
+    DAYS.map((_, i) => ({ day_of_week: i, start_hour: 9, end_hour: 18, is_available: false }))
+  )
+  const [savingSchedule, setSavingSchedule] = useState(false)
 
   const supabase = createClient()
 
@@ -90,7 +112,23 @@ export default function AdminComunidadPage() {
     if (zoom) {
       setZoomUrl(zoom.zoom_url || '')
       setZoomTitle(zoom.title || 'Sesión en Vivo con Henry')
-      setZoomSchedule(zoom.content || 'Todos los días')
+    }
+
+    // Schedule config
+    const { data: schedData } = await supabase
+      .from('scheduling_config')
+      .select('day_of_week, start_hour, end_hour, is_available')
+      .order('day_of_week')
+
+    if (schedData && schedData.length > 0) {
+      setScheduleConfig(
+        DAYS.map((_, i) => {
+          const found = schedData.find(d => d.day_of_week === i)
+          return found
+            ? { day_of_week: i, start_hour: found.start_hour, end_hour: found.end_hour, is_available: found.is_available }
+            : { day_of_week: i, start_hour: 9, end_hour: 18, is_available: false }
+        })
+      )
     }
 
     setLoading(false)
@@ -143,13 +181,31 @@ export default function AdminComunidadPage() {
           author_id: user.id,
           type: 'zoom',
           title: zoomTitle,
-          content: zoomSchedule,
           zoom_url: zoomUrl.trim(),
         })
     }
 
     toast.success('Link de Zoom actualizado')
     setSaving(false)
+  }
+
+  async function handleSaveSchedule() {
+    setSavingSchedule(true)
+    const updates = scheduleConfig.map(day =>
+      supabase
+        .from('scheduling_config')
+        .upsert(
+          { day_of_week: day.day_of_week, start_hour: day.start_hour, end_hour: day.end_hour, is_available: day.is_available },
+          { onConflict: 'day_of_week' }
+        )
+    )
+    await Promise.all(updates)
+    toast.success('Horarios guardados — se reflejan en el portal del cliente')
+    setSavingSchedule(false)
+  }
+
+  function updateDay(idx: number, changes: Partial<DayConfig>) {
+    setScheduleConfig(prev => prev.map(d => d.day_of_week === idx ? { ...d, ...changes } : d))
   }
 
   async function togglePin(postId: string, currentPinned: boolean) {
@@ -259,37 +315,113 @@ export default function AdminComunidadPage() {
         <CardContent className="space-y-3">
           <div className="space-y-2">
             <Label>URL de Zoom</Label>
-            <div className="flex gap-2">
-              <Input
-                value={zoomUrl}
-                onChange={(e) => setZoomUrl(e.target.value)}
-                placeholder="https://zoom.us/j/..."
-                className="h-11"
-              />
-            </div>
+            <Input
+              value={zoomUrl}
+              onChange={(e) => setZoomUrl(e.target.value)}
+              placeholder="https://zoom.us/j/..."
+              className="h-11"
+            />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Título</Label>
-              <Input
-                value={zoomTitle}
-                onChange={(e) => setZoomTitle(e.target.value)}
-                className="h-11"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Horario</Label>
-              <Input
-                value={zoomSchedule}
-                onChange={(e) => setZoomSchedule(e.target.value)}
-                className="h-11"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label>Título de la sesión</Label>
+            <Input
+              value={zoomTitle}
+              onChange={(e) => setZoomTitle(e.target.value)}
+              className="h-11"
+            />
           </div>
           <Button onClick={handleSaveZoom} disabled={saving} className="bg-[#002855]">
             <Save className="w-4 h-4 mr-2" />
             Guardar Zoom
           </Button>
+        </CardContent>
+      </Card>
+
+      {/* Schedule Config */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <CalendarClock className="w-5 h-5 text-[#F2A900]" />
+            Horarios de Sesiones
+          </CardTitle>
+          <p className="text-sm text-gray-500 mt-1">
+            Los días y horas activados se muestran automáticamente en el portal del cliente (/cita → Comunidad).
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {scheduleConfig.map(day => (
+            <div
+              key={day.day_of_week}
+              className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${
+                day.is_available
+                  ? 'border-[#F2A900]/40 bg-[#F2A900]/5'
+                  : 'border-gray-200 bg-gray-50'
+              }`}
+            >
+              {/* Toggle */}
+              <button
+                type="button"
+                onClick={() => updateDay(day.day_of_week, { is_available: !day.is_available })}
+                className={`relative w-10 h-5.5 rounded-full transition-colors flex-shrink-0 ${
+                  day.is_available ? 'bg-[#F2A900]' : 'bg-gray-300'
+                }`}
+                style={{ height: '22px', width: '40px' }}
+              >
+                <span
+                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                    day.is_available ? 'translate-x-5' : 'translate-x-0.5'
+                  }`}
+                />
+              </button>
+
+              {/* Day name */}
+              <span className={`w-24 text-sm font-semibold ${day.is_available ? 'text-gray-900' : 'text-gray-400'}`}>
+                {DAYS[day.day_of_week]}
+              </span>
+
+              {/* Time range — only visible when enabled */}
+              {day.is_available ? (
+                <div className="flex items-center gap-2 flex-1">
+                  <Clock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                  <select
+                    value={day.start_hour}
+                    onChange={e => updateDay(day.day_of_week, { start_hour: Number(e.target.value) })}
+                    className="text-sm border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#F2A900]"
+                  >
+                    {HOURS.filter(h => h < day.end_hour).map(h => (
+                      <option key={h} value={h}>{fmtHour(h)}</option>
+                    ))}
+                  </select>
+                  <span className="text-gray-400 text-sm">–</span>
+                  <select
+                    value={day.end_hour}
+                    onChange={e => updateDay(day.day_of_week, { end_hour: Number(e.target.value) })}
+                    className="text-sm border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#F2A900]"
+                  >
+                    {HOURS.filter(h => h > day.start_hour).map(h => (
+                      <option key={h} value={h}>{fmtHour(h)}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <span className="text-xs text-gray-400 flex-1">Sin sesión este día</span>
+              )}
+            </div>
+          ))}
+
+          <div className="pt-2">
+            <Button
+              onClick={handleSaveSchedule}
+              disabled={savingSchedule}
+              className="bg-[#002855] hover:bg-[#001d3d]"
+            >
+              {savingSchedule
+                ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                : <Save className="w-4 h-4 mr-2" />
+              }
+              Guardar horarios
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
