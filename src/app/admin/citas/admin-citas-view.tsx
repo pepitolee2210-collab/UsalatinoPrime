@@ -17,6 +17,7 @@ import {
 import {
   CalendarClock, Settings, ChevronDown, ChevronUp,
   CheckCircle, XCircle, AlertTriangle, Trash2, Plus, RefreshCw, UserPlus, Loader2, Clock,
+  Search, X, UserRound,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatToMT, formatDateMT } from '@/lib/appointments/slots'
@@ -67,16 +68,43 @@ interface AdminCitasViewProps {
 
 export function AdminCitasView({ appointments, config, settings, blockedDates, activeCases }: AdminCitasViewProps) {
   const [filter, setFilter] = useState<string>('all')
+  const [search, setSearch] = useState('')
   const [showConfig, setShowConfig] = useState(false)
   const [bookDialogOpen, setBookDialogOpen] = useState(false)
+  const [guestDialogOpen, setGuestDialogOpen] = useState(false)
 
-  const filtered = filter === 'all'
-    ? appointments
-    : appointments.filter(a => a.status === filter)
+  const filtered = appointments.filter(a => {
+    const matchesFilter = filter === 'all' || a.status === filter
+    if (!matchesFilter) return false
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    const clientName = `${a.client?.first_name || ''} ${a.client?.last_name || ''}`.toLowerCase()
+    const caseNumber = ((a.case as any)?.case_number || '').toLowerCase()
+    const guestName = ((a as any).guest_name || '').toLowerCase()
+    const notes = (a.notes || '').toLowerCase()
+    return clientName.includes(q) || caseNumber.includes(q) || guestName.includes(q) || notes.includes(q)
+  })
 
   return (
     <div className="space-y-6">
-      {/* Filtros + Boton agendar */}
+      {/* Search */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Buscar por nombre, caso o notas..."
+          className="w-full pl-9 pr-9 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40 focus:border-[#F2A900]/30"
+        />
+        {search && (
+          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Filtros + Botones agendar */}
       <div className="flex flex-wrap items-center gap-2">
         {['all', 'scheduled', 'completed', 'cancelled', 'no_show'].map(s => (
           <Button
@@ -89,7 +117,21 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
             {s === 'all' ? 'Todas' : statusLabels[s]}
           </Button>
         ))}
-        <div className="ml-auto">
+        <div className="ml-auto flex gap-2">
+          <Dialog open={guestDialogOpen} onOpenChange={setGuestDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="border-[#F2A900] text-[#002855] hover:bg-[#F2A900]/10">
+                <UserRound className="w-4 h-4 mr-2" />
+                Agendar No-Cliente
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Agendar Visita — No Cliente</DialogTitle>
+              </DialogHeader>
+              <GuestBookForm onSuccess={() => { setGuestDialogOpen(false); window.location.reload() }} />
+            </DialogContent>
+          </Dialog>
           <Dialog open={bookDialogOpen} onOpenChange={setBookDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-[#002855] hover:bg-[#003570]">
@@ -291,13 +333,26 @@ function AppointmentRow({ appointment }: { appointment: AdminCitasViewProps['app
         </div>
       </TableCell>
       <TableCell>
-        <p className="text-sm font-medium">
-          {client?.first_name} {client?.last_name}
-        </p>
+        {client ? (
+          <p className="text-sm font-medium">
+            {client.first_name} {client.last_name}
+          </p>
+        ) : (
+          <div>
+            <p className="text-sm font-medium text-amber-700">{(appointment as any).guest_name || 'Sin nombre'}</p>
+            <p className="text-[10px] text-amber-500 font-medium">No cliente</p>
+          </div>
+        )}
       </TableCell>
       <TableCell>
-        <p className="text-sm">#{caseInfo?.case_number}</p>
-        <p className="text-xs text-gray-500">{service?.name || '—'}</p>
+        {caseInfo ? (
+          <>
+            <p className="text-sm">#{caseInfo.case_number}</p>
+            <p className="text-xs text-gray-500">{service?.name || '—'}</p>
+          </>
+        ) : (
+          <p className="text-xs text-gray-400 italic">Visita presencial</p>
+        )}
       </TableCell>
       <TableCell>
         <Badge className={statusColors[appointment.status] || ''}>
@@ -593,6 +648,133 @@ function AdminBookForm({ activeCases, onSuccess }: { activeCases: ActiveCase[]; 
           <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Agendando...</>
         ) : (
           <><CalendarClock className="w-4 h-4 mr-2" /> Confirmar Cita</>
+        )}
+      </Button>
+    </div>
+  )
+}
+
+// ── Formulario para agendar cita de no-cliente ──
+function GuestBookForm({ onSuccess }: { onSuccess: () => void }) {
+  const [guestName, setGuestName] = useState('')
+  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedSlot, setSelectedSlot] = useState('')
+  const [slots, setSlots] = useState<string[]>([])
+  const [loadingSlots, setLoadingSlots] = useState(false)
+  const [blocked, setBlocked] = useState(false)
+  const [booking, setBooking] = useState(false)
+
+  async function loadSlots(date: string) {
+    setSelectedSlot('')
+    setBlocked(false)
+    setLoadingSlots(true)
+    try {
+      const res = await fetch(`/api/admin/appointments/available-slots?date=${date}`)
+      const data = await res.json()
+      if (data.blocked) {
+        setBlocked(true)
+        setSlots([])
+      } else {
+        setSlots(data.slots || [])
+      }
+    } catch {
+      toast.error('Error al cargar horarios')
+      setSlots([])
+    } finally {
+      setLoadingSlots(false)
+    }
+  }
+
+  async function handleBook() {
+    if (!guestName.trim() || !selectedSlot) return
+    setBooking(true)
+    try {
+      const res = await fetch('/api/admin/appointments/book', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ guest_name: guestName.trim(), scheduled_at: selectedSlot }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Error')
+      toast.success(`Visita de ${guestName} agendada`)
+      onSuccess()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al agendar')
+    } finally {
+      setBooking(false)
+    }
+  }
+
+  const today = new Date().toISOString().split('T')[0]
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <Label className="text-sm font-medium">Nombre del visitante</Label>
+        <Input
+          value={guestName}
+          onChange={e => setGuestName(e.target.value)}
+          placeholder="Ej: Eliana García"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label className="text-sm font-medium">Fecha</Label>
+        <Input
+          type="date"
+          min={today}
+          value={selectedDate}
+          onChange={e => {
+            setSelectedDate(e.target.value)
+            if (e.target.value) loadSlots(e.target.value)
+          }}
+        />
+      </div>
+
+      {selectedDate && (
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium">Horario disponible (Mountain Time)</Label>
+          {loadingSlots ? (
+            <div className="flex items-center gap-2 py-3 text-sm text-gray-500">
+              <Loader2 className="w-4 h-4 animate-spin" /> Cargando horarios...
+            </div>
+          ) : blocked ? (
+            <p className="text-sm text-red-600 py-2">Esta fecha está bloqueada</p>
+          ) : slots.length === 0 ? (
+            <p className="text-sm text-gray-500 py-2">No hay horarios disponibles</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+              {slots.map(slot => (
+                <Button
+                  key={slot}
+                  variant={selectedSlot === slot ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedSlot(slot)}
+                  className={selectedSlot === slot ? 'bg-[#002855]' : ''}
+                >
+                  <Clock className="w-3 h-3 mr-1" />
+                  {formatToMT(slot)}
+                </Button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="bg-amber-50 rounded-lg p-3 text-sm text-amber-700">
+        <p className="font-medium">Visita presencial</p>
+        <p className="text-xs text-amber-600 mt-0.5">Esta cita bloqueará el horario para que ningún cliente lo reserve.</p>
+      </div>
+
+      <Button
+        className="w-full bg-[#002855] hover:bg-[#003570]"
+        disabled={!guestName.trim() || !selectedSlot || booking}
+        onClick={handleBook}
+      >
+        {booking ? (
+          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Agendando...</>
+        ) : (
+          <><CalendarClock className="w-4 h-4 mr-2" /> Confirmar Visita</>
         )}
       </Button>
     </div>

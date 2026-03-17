@@ -51,10 +51,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Número de teléfono inválido' }, { status: 400 })
     }
 
-    // Parse name into first/last
+    // Parse name into first/last and normalize to Title Case
+    function toTitleCase(str: string): string {
+      return str.toLowerCase().replace(/(?:^|\s)\S/g, c => c.toUpperCase())
+    }
     const nameParts = client_full_name.trim().split(/\s+/)
-    const firstName = nameParts[0]
-    const lastName = nameParts.slice(1).join(' ') || nameParts[0]
+    const firstName = toTitleCase(nameParts[0])
+    const lastName = toTitleCase(nameParts.slice(1).join(' ') || nameParts[0])
 
     // Step 1: Check if profile already exists by phone
     let clientId: string | null = null

@@ -7,7 +7,7 @@ export default async function AdminCitasPage() {
   const [appointmentsRes, configRes, settingsRes, blockedDatesRes, casesRes] = await Promise.all([
     supabase
       .from('appointments')
-      .select('*, client:profiles(first_name, last_name, email, phone), case:cases(case_number, service:service_catalog(name))')
+      .select('*, guest_name, client:profiles(first_name, last_name, email, phone), case:cases(case_number, service:service_catalog(name))')
       .order('scheduled_at', { ascending: false }),
     supabase
       .from('scheduling_config')

@@ -20,38 +20,47 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
-  const { case_id, client_id, scheduled_at } = await request.json()
+  const { case_id, client_id, scheduled_at, guest_name } = await request.json()
 
-  if (!case_id || !client_id || !scheduled_at) {
-    return NextResponse.json({ error: 'case_id, client_id y scheduled_at requeridos' }, { status: 400 })
+  // Guest booking (non-client)
+  const isGuest = !case_id && !client_id && guest_name
+
+  if (!isGuest && (!case_id || !client_id || !scheduled_at)) {
+    return NextResponse.json({ error: 'case_id, client_id y scheduled_at requeridos (o guest_name para no-clientes)' }, { status: 400 })
+  }
+
+  if (!scheduled_at) {
+    return NextResponse.json({ error: 'scheduled_at requerido' }, { status: 400 })
   }
 
   const service = createServiceClient()
 
-  // Verificar que el caso existe y pertenece al cliente
-  const { data: caseRow } = await service
-    .from('cases')
-    .select('id, client_id')
-    .eq('id', case_id)
-    .single()
+  if (!isGuest) {
+    // Verify case belongs to client
+    const { data: caseRow } = await service
+      .from('cases')
+      .select('id, client_id')
+      .eq('id', case_id)
+      .single()
 
-  if (!caseRow || caseRow.client_id !== client_id) {
-    return NextResponse.json({ error: 'Caso no encontrado o no pertenece al cliente' }, { status: 404 })
+    if (!caseRow || caseRow.client_id !== client_id) {
+      return NextResponse.json({ error: 'Caso no encontrado o no pertenece al cliente' }, { status: 404 })
+    }
+
+    // Check client doesn't already have a scheduled appointment
+    const { data: existing } = await service
+      .from('appointments')
+      .select('id')
+      .eq('client_id', client_id)
+      .eq('status', 'scheduled')
+      .limit(1)
+
+    if (existing && existing.length > 0) {
+      return NextResponse.json({ error: 'Este cliente ya tiene una cita agendada' }, { status: 400 })
+    }
   }
 
-  // Verificar que no tenga ya una cita scheduled
-  const { data: existing } = await service
-    .from('appointments')
-    .select('id')
-    .eq('client_id', client_id)
-    .eq('status', 'scheduled')
-    .limit(1)
-
-  if (existing && existing.length > 0) {
-    return NextResponse.json({ error: 'Este cliente ya tiene una cita agendada' }, { status: 400 })
-  }
-
-  // Verificar que el slot no esté tomado
+  // Verify slot is not taken
   const { data: slotTaken } = await service
     .from('appointments')
     .select('id')
@@ -63,15 +72,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Este horario ya fue tomado' }, { status: 409 })
   }
 
-  // Crear la cita (admin no tiene penalización, la crea directamente)
+  // Create the appointment
+  const insertData: Record<string, unknown> = {
+    scheduled_at,
+    notes: isGuest
+      ? `Visita presencial — ${guest_name}`
+      : 'Agendada por el equipo de Henry',
+  }
+
+  if (isGuest) {
+    insertData.guest_name = guest_name
+  } else {
+    insertData.case_id = case_id
+    insertData.client_id = client_id
+  }
+
   const { data: appointment, error } = await service
     .from('appointments')
-    .insert({
-      case_id,
-      client_id,
-      scheduled_at,
-      notes: 'Agendada por el equipo de Henry',
-    })
+    .insert(insertData)
     .select()
     .single()
 
