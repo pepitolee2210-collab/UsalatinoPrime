@@ -1,458 +1,413 @@
 'use client'
 
 import { useState } from 'react'
-import { Play, ExternalLink, Megaphone, Pin } from 'lucide-react'
+import { Play, Megaphone, Video, Pin, ExternalLink, Calendar } from 'lucide-react'
+
+interface SchedulingDay {
+  day_of_week: number
+  start_hour: number
+  end_hour: number
+}
 
 interface CommunityPost {
-  id: string
-  type: string
-  title: string | null
-  content: string | null
-  video_url: string | null
-  zoom_url: string | null
-  pinned: boolean
-  created_at: string
+  id: string; type: string; title: string | null; content: string | null
+  video_url: string | null; zoom_url: string | null; pinned: boolean; created_at: string
 }
 
 interface CommunityReaction {
-  post_id: string
-  user_id: string
-  emoji: string
+  post_id: string; user_id: string; emoji: string
 }
 
-interface CommunityPortalProps {
+interface Props {
   token: string
   clientId: string
   posts: CommunityPost[]
   reactions: CommunityReaction[]
+  schedulingDays: SchedulingDay[]
 }
 
-const REACTION_EMOJIS = ['👍', '❤️', '🙌']
+const DAY_NAMES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+const EMOJIS = ['👍', '❤️', '🙌']
 
-function getYouTubeId(url: string): string | null {
-  const patterns = [
-    /youtube\.com\/watch\?v=([^&\s]+)/,
-    /youtu\.be\/([^?\s]+)/,
-    /youtube\.com\/embed\/([^?\s]+)/,
-    /youtube\.com\/shorts\/([^?\s]+)/,
-  ]
-  for (const p of patterns) {
-    const m = url.match(p)
-    if (m) return m[1]
-  }
-  return null
+function fmt12(h: number) {
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const hour = h > 12 ? h - 12 : h === 0 ? 12 : h
+  return `${hour}${ampm}`
 }
 
-function formatDate(iso: string) {
-  const d = new Date(iso)
-  const now = new Date()
-  const diffH = Math.floor((now.getTime() - d.getTime()) / 3600000)
-  if (diffH < 1) return 'Hace un momento'
-  if (diffH < 24) return `Hace ${diffH}h`
-  const diffD = Math.floor(diffH / 24)
-  if (diffD < 7) return `Hace ${diffD}d`
-  return d.toLocaleDateString('es-US', { day: 'numeric', month: 'long' })
+function getYTId(url: string) {
+  const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([^&?\s]+)/)
+  return m ? m[1] : null
 }
 
-// ── Sub-components ────────────────────────────────────────────────
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime()
+  const h = Math.floor(diff / 3.6e6)
+  if (h < 1) return 'Hace un momento'
+  if (h < 24) return `Hace ${h}h`
+  const d = Math.floor(h / 24)
+  if (d < 7) return `Hace ${d}d`
+  return new Date(iso).toLocaleDateString('es-US', { day: 'numeric', month: 'short' })
+}
 
-function SectionDivider({ icon, label, count }: { icon: React.ReactNode; label: string; count?: number }) {
+// ── Module wrapper ────────────────────────────────────────────────
+function Module({ icon, title, subtitle, dark, children }: {
+  icon: React.ReactNode; title: string; subtitle?: string
+  dark?: boolean; children: React.ReactNode
+}) {
   return (
-    <div className="flex items-center gap-3 my-8">
-      <div className="flex-1 h-px bg-gray-200" />
-      <div className="flex items-center gap-2 shrink-0 border border-gray-200 rounded-full px-4 py-1.5 bg-white shadow-sm">
-        <span className="text-gray-500">{icon}</span>
-        <span className="text-[11px] font-bold text-gray-600 uppercase tracking-widest">{label}</span>
-        {count !== undefined && (
-          <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5">{count}</span>
-        )}
+    <div
+      className="rounded-3xl overflow-hidden"
+      style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.09), 0 0 0 1px rgba(0,0,0,0.06)' }}
+    >
+      {/* Header */}
+      <div
+        className="flex items-center gap-3 px-6 py-5"
+        style={dark
+          ? { background: 'linear-gradient(135deg, #000f1f 0%, #001d3d 100%)' }
+          : { background: '#fff', borderBottom: '1.5px solid #f0f1f3' }
+        }
+      >
+        <div
+          className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+          style={dark
+            ? { background: 'rgba(242,169,0,0.18)' }
+            : { background: 'linear-gradient(135deg, #001d3d, #002855)' }
+          }
+        >
+          <span style={{ color: '#F2A900' }}>{icon}</span>
+        </div>
+        <div>
+          <p className="font-bold text-[15px] leading-tight" style={{ color: dark ? '#fff' : '#111827' }}>{title}</p>
+          {subtitle && <p className="text-xs mt-0.5" style={{ color: dark ? 'rgba(255,255,255,0.4)' : '#9ca3af' }}>{subtitle}</p>}
+        </div>
       </div>
-      <div className="flex-1 h-px bg-gray-200" />
+
+      {/* Body */}
+      <div style={{ background: '#fff' }}>{children}</div>
     </div>
   )
 }
 
-function VideoCard({
-  post,
-  counts,
-  myReactions,
-  onReact,
-  bouncingKey,
-}: {
-  post: CommunityPost
-  counts: Record<string, number>
-  myReactions: string[]
-  onReact: (postId: string, emoji: string) => void
-  bouncingKey: string | null
+// ── ReactionRow ───────────────────────────────────────────────────
+function ReactionRow({ postId, rxCounts, myRx, bouncing, onReact, small }: {
+  postId: string; rxCounts: Record<string, number>; myRx: string[]
+  bouncing: string | null; onReact: (pid: string, emoji: string) => void; small?: boolean
 }) {
-  const [thumbFailed, setThumbFailed] = useState(false)
-  const ytId = post.video_url ? getYouTubeId(post.video_url) : null
-  const thumb = ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : null
+  const total = Object.values(rxCounts).reduce((a, b) => a + b, 0)
+  return (
+    <div className="flex items-center gap-1.5">
+      {EMOJIS.map(emoji => {
+        const cnt = rxCounts[emoji] || 0
+        const active = myRx.includes(emoji)
+        const k = `${postId}-${emoji}`
+        return (
+          <button
+            key={emoji}
+            onClick={e => { e.preventDefault(); onReact(postId, emoji) }}
+            className={bouncing === k ? 'rx-pop' : ''}
+            style={{
+              display: 'flex', alignItems: 'center', gap: small ? '2px' : '4px',
+              padding: small ? '3px 8px' : '5px 11px',
+              borderRadius: '999px', cursor: 'pointer', transition: 'all .15s',
+              fontSize: small ? '11px' : '13px', fontWeight: 700,
+              background: active ? 'rgba(242,169,0,0.15)' : '#f5f6f8',
+              boxShadow: active ? '0 0 0 1.5px rgba(242,169,0,0.5)' : 'none',
+              color: active ? '#9a6500' : '#6b7280',
+            }}
+          >
+            <span style={{ fontSize: small ? '12px' : '14px', lineHeight: 1 }}>{emoji}</span>
+            {cnt > 0 && <span>{cnt}</span>}
+          </button>
+        )
+      })}
+      {!small && total > 0 && (
+        <span className="text-xs text-gray-400 ml-auto">{total} {total === 1 ? 'reacción' : 'reacciones'}</span>
+      )}
+    </div>
+  )
+}
+
+// ── Video Card (fixed width for horizontal carousel) ──────────────
+function VideoCard({ post, thumb, rxCounts, myRx, onReact, bouncing }: {
+  post: CommunityPost; thumb: string | null
+  rxCounts: Record<string, number>; myRx: string[]
+  onReact: (pid: string, emoji: string) => void; bouncing: string | null
+}) {
+  const [failed, setFailed] = useState(false)
 
   return (
     <a
       href={post.video_url!}
       target="_blank"
       rel="noopener noreferrer"
-      className="group block rounded-2xl overflow-hidden border border-gray-100 hover:border-[#F2A900]/40 hover:shadow-lg transition-all duration-300"
-      style={{ background: '#fff' }}
+      className="group flex-shrink-0 rounded-2xl overflow-hidden transition-all hover:shadow-lg"
+      style={{ width: '210px', border: '1.5px solid #f0f1f3', display: 'block' }}
     >
       {/* Thumbnail */}
-      <div className="relative aspect-video overflow-hidden bg-[#001428]">
-        {thumb && !thumbFailed ? (
+      <div className="relative overflow-hidden" style={{ aspectRatio: '16/9', background: '#001020' }}>
+        {thumb && !failed ? (
           <img
             src={thumb}
-            alt={post.title || 'Video'}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            onError={() => setThumbFailed(true)}
+            alt={post.title || ''}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            onError={() => setFailed(true)}
           />
         ) : (
-          <div
-            className="w-full h-full flex flex-col items-center justify-center gap-3"
-            style={{ background: 'linear-gradient(135deg, #001428 0%, #002855 100%)' }}
-          >
-            <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: 'rgba(242,169,0,0.15)' }}>
-              <Play className="w-6 h-6 text-[#F2A900]" />
-            </div>
-            {post.title && (
-              <p className="text-white/60 text-xs text-center px-6 line-clamp-2">{post.title}</p>
-            )}
+          <div className="w-full h-full flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #001020 0%, #002255 100%)' }}>
+            <Play className="w-7 h-7 text-[#F2A900]" />
           </div>
         )}
-        {/* Hover overlay */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <div className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl" style={{ background: '#F2A900' }}>
-            <Play className="w-6 h-6 fill-[#001428] text-[#001428] ml-0.5" />
+        {/* Play overlay on hover */}
+        <div
+          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ background: 'rgba(0,0,0,0.32)' }}
+        >
+          <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg"
+            style={{ background: '#F2A900' }}>
+            <Play className="w-4 h-4 fill-[#001020] text-[#001020] ml-0.5" />
           </div>
-        </div>
-        {/* Duration badge placeholder */}
-        <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm">
-          YouTube
         </div>
       </div>
 
       {/* Info */}
-      <div className="p-4">
+      <div className="p-3 bg-white">
         {post.title && (
-          <p className="font-semibold text-gray-900 text-sm leading-snug mb-1 line-clamp-2">
-            {post.title}
-          </p>
+          <p className="font-semibold text-gray-900 text-xs leading-snug mb-0.5 line-clamp-2">{post.title}</p>
         )}
-        {post.content && (
-          <p className="text-xs text-gray-400 line-clamp-1 mb-3">{post.content}</p>
-        )}
-
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-          <span className="text-[11px] text-gray-400">{formatDate(post.created_at)}</span>
-          <div className="flex gap-1">
-            {REACTION_EMOJIS.map(emoji => {
-              const count = counts[emoji] || 0
-              const active = myReactions.includes(emoji)
-              const bKey = `${post.id}-${emoji}`
-              return (
-                <button
-                  key={emoji}
-                  onClick={e => { e.preventDefault(); onReact(post.id, emoji) }}
-                  className={`flex items-center gap-0.5 px-2 py-1 rounded-full text-xs transition-all select-none ${
-                    bouncingKey === bKey ? 'cp-bounce' : ''
-                  }`}
-                  style={active
-                    ? { background: 'rgba(242,169,0,0.18)', boxShadow: '0 0 0 1px rgba(242,169,0,0.4)' }
-                    : { background: '#f3f4f6' }
-                  }
-                >
-                  <span style={{ fontSize: '12px' }}>{emoji}</span>
-                  {count > 0 && <span className="font-bold text-gray-600 ml-0.5">{count}</span>}
-                </button>
-              )
-            })}
-          </div>
+        <p className="text-[10px] text-gray-400 mb-2.5">{timeAgo(post.created_at)}</p>
+        <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '8px' }}>
+          <ReactionRow
+            postId={post.id} rxCounts={rxCounts} myRx={myRx}
+            bouncing={bouncing} onReact={onReact} small
+          />
         </div>
       </div>
     </a>
   )
 }
 
-function PostCard({
-  post,
-  counts,
-  myReactions,
-  onReact,
-  bouncingKey,
-  isLast,
-}: {
-  post: CommunityPost
-  counts: Record<string, number>
-  myReactions: string[]
-  onReact: (postId: string, emoji: string) => void
-  bouncingKey: string | null
-  isLast: boolean
-}) {
-  const totalReactions = Object.values(counts).reduce((a, b) => a + b, 0)
+// ── Main ──────────────────────────────────────────────────────────
+export function CommunityPortal({ token, clientId, posts, reactions, schedulingDays }: Props) {
+  const [localRx, setLocalRx] = useState(reactions)
+  const [bouncing, setBouncing] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
 
-  return (
-    <div className={`py-6 ${!isLast ? 'border-b border-gray-100' : ''}`}>
-      {/* Author header */}
-      <div className="flex items-center gap-3 mb-4">
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm"
-          style={{ background: 'linear-gradient(135deg, #001d3d, #002855)', color: '#F2A900' }}
-        >
-          H
-        </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-gray-900 text-sm">Henry Orellana</span>
-            {post.pinned && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: 'rgba(242,169,0,0.15)', color: '#9a6500' }}>
-                <Pin className="w-2.5 h-2.5" /> Fijado
-              </span>
-            )}
-            {post.type === 'announcement' && (
-              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: '#002855', color: '#F2A900' }}>
-                Anuncio
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-gray-400 mt-0.5">{formatDate(post.created_at)}</p>
-        </div>
-      </div>
-
-      {/* Content */}
-      {post.title && (
-        <h4 className="font-bold text-gray-900 text-base leading-snug mb-2">{post.title}</h4>
-      )}
-      {post.content && (
-        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{post.content}</p>
-      )}
-
-      {/* Reactions */}
-      <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
-        <div className="flex items-center gap-1.5">
-          {REACTION_EMOJIS.map(emoji => {
-            const count = counts[emoji] || 0
-            const active = myReactions.includes(emoji)
-            const bKey = `${post.id}-${emoji}`
-            return (
-              <button
-                key={emoji}
-                onClick={() => onReact(post.id, emoji)}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-all select-none ${
-                  bouncingKey === bKey ? 'cp-bounce' : ''
-                }`}
-                style={active
-                  ? { background: 'rgba(242,169,0,0.18)', boxShadow: '0 0 0 1.5px rgba(242,169,0,0.4)', color: '#9a6500' }
-                  : { background: '#f3f4f6', color: '#6b7280' }
-                }
-              >
-                <span style={{ fontSize: '15px', lineHeight: 1 }}>{emoji}</span>
-                {count > 0 && <span className="text-xs font-bold">{count}</span>}
-              </button>
-            )
-          })}
-        </div>
-        {totalReactions > 0 && (
-          <p className="text-xs text-gray-400 ml-auto">
-            {totalReactions} {totalReactions === 1 ? 'reacción' : 'reacciones'}
-          </p>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ── Main Component ────────────────────────────────────────────────
-
-export function CommunityPortal({ token, clientId, posts, reactions }: CommunityPortalProps) {
-  const [localReactions, setLocalReactions] = useState<CommunityReaction[]>(reactions)
-  const [bouncingKey, setBouncingKey] = useState<string | null>(null)
-  const [loadingKey, setLoadingKey] = useState<string | null>(null)
-
-  const zoomPost = posts.find(p => p.type === 'zoom')
+  const zoomPost   = posts.find(p => p.type === 'zoom')
   const videoPosts = posts.filter(p => p.type === 'video' && p.video_url)
-  const textPosts = [
+  const textPosts  = [
     ...posts.filter(p => p.type !== 'zoom' && p.type !== 'video' && p.pinned),
     ...posts.filter(p => p.type !== 'zoom' && p.type !== 'video' && !p.pinned),
   ]
 
-  function getCounts(postId: string) {
-    const counts: Record<string, number> = {}
-    localReactions.filter(r => r.post_id === postId).forEach(r => {
-      counts[r.emoji] = (counts[r.emoji] || 0) + 1
-    })
-    return counts
+  function counts(pid: string) {
+    const c: Record<string, number> = {}
+    localRx.filter(r => r.post_id === pid).forEach(r => { c[r.emoji] = (c[r.emoji] || 0) + 1 })
+    return c
+  }
+  function mine(pid: string) {
+    return localRx.filter(r => r.post_id === pid && r.user_id === clientId).map(r => r.emoji)
   }
 
-  function getMyReactions(postId: string) {
-    return localReactions
-      .filter(r => r.post_id === postId && r.user_id === clientId)
-      .map(r => r.emoji)
-  }
-
-  async function toggleReaction(postId: string, emoji: string) {
-    const key = `${postId}-${emoji}`
-    if (loadingKey === key) return
-    setLoadingKey(key)
-
-    const alreadyReacted = localReactions.some(
-      r => r.post_id === postId && r.user_id === clientId && r.emoji === emoji
+  async function react(pid: string, emoji: string) {
+    const key = `${pid}-${emoji}`
+    if (busy === key) return
+    setBusy(key)
+    const had = localRx.some(r => r.post_id === pid && r.user_id === clientId && r.emoji === emoji)
+    setLocalRx(prev =>
+      had
+        ? prev.filter(r => !(r.post_id === pid && r.user_id === clientId && r.emoji === emoji))
+        : [...prev, { post_id: pid, user_id: clientId, emoji }]
     )
-
-    if (alreadyReacted) {
-      setLocalReactions(prev =>
-        prev.filter(r => !(r.post_id === postId && r.user_id === clientId && r.emoji === emoji))
-      )
-    } else {
-      setLocalReactions(prev => [...prev, { post_id: postId, user_id: clientId, emoji }])
-      setBouncingKey(key)
-      setTimeout(() => setBouncingKey(null), 400)
-    }
-
+    if (!had) { setBouncing(key); setTimeout(() => setBouncing(null), 380) }
     try {
-      const res = await fetch('/api/community/react', {
+      await fetch('/api/community/react', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, post_id: postId, emoji }),
+        body: JSON.stringify({ token, post_id: pid, emoji }),
       })
-      if (!res.ok) throw new Error()
-    } catch {
-      setLocalReactions(reactions)
-    } finally {
-      setLoadingKey(null)
-    }
+    } catch { setLocalRx(reactions) }
+    finally { setBusy(null) }
   }
-
-  const isEmpty = !zoomPost && videoPosts.length === 0 && textPosts.length === 0
 
   return (
     <>
       <style>{`
-        @keyframes cp-bounce {
-          0%  { transform: scale(1); }
-          35% { transform: scale(1.45); }
-          65% { transform: scale(0.88); }
-          100%{ transform: scale(1); }
-        }
-        .cp-bounce { animation: cp-bounce 0.38s cubic-bezier(.36,.07,.19,.97) both; }
-        @keyframes cp-shimmer {
-          0%   { transform: translateX(-100%); }
-          100% { transform: translateX(200%); }
-        }
-        .zoom-shimmer::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
-          animation: cp-shimmer 4s linear infinite;
-          pointer-events: none;
-        }
+        @keyframes rx-pop{0%{transform:scale(1)}40%{transform:scale(1.5)}70%{transform:scale(.85)}100%{transform:scale(1)}}
+        .rx-pop{animation:rx-pop .35s cubic-bezier(.36,.07,.19,.97) both}
+        @keyframes live-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.75)}}
+        .live-dot{width:8px;height:8px;border-radius:50%;background:#F2A900;animation:live-pulse 1.6s ease-in-out infinite}
+        .vid-scroll{overflow-x:auto;scrollbar-width:none;display:flex;gap:12px;padding:16px 20px 20px 20px}
+        .vid-scroll::-webkit-scrollbar{display:none}
+        .vid-scroll::after{content:'';flex-shrink:0;width:4px}
       `}</style>
 
-      {/* ── Empty state ── */}
-      {isEmpty && (
-        <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #001428, #002855)' }}>
-            <Megaphone className="w-7 h-7 text-[#F2A900]" />
-          </div>
-          <div>
-            <p className="font-bold text-gray-800 text-base">Comunidad próximamente</p>
-            <p className="text-sm text-gray-400 mt-1 max-w-[240px]">
-              Henry publicará sesiones, videos y actualizaciones aquí muy pronto.
-            </p>
-          </div>
-        </div>
-      )}
+      <div className="space-y-4">
 
-      {/* ── ZOOM ── */}
-      {zoomPost?.zoom_url && (
-        <div
-          className="relative overflow-hidden rounded-2xl zoom-shimmer"
-          style={{ background: 'linear-gradient(135deg, #000f1f 0%, #001f40 55%, #002d60 100%)' }}
-        >
-          {/* Gold glow */}
-          <div className="absolute -right-12 -bottom-12 w-48 h-48 rounded-full pointer-events-none"
-            style={{ background: 'radial-gradient(circle, rgba(242,169,0,0.12) 0%, transparent 70%)' }} />
-          <div className="absolute -left-8 -top-8 w-32 h-32 rounded-full pointer-events-none"
-            style={{ background: 'radial-gradient(circle, rgba(242,169,0,0.06) 0%, transparent 70%)' }} />
+        {/* ══ MÓDULO 1 — Sesiones con Henry ══ */}
+        <Module dark icon={<Video className="w-4.5 h-4.5" />} title="Sesiones con Henry" subtitle="Sesiones grupales en vivo">
+          <div className="px-6 py-5 space-y-5">
 
-          <div className="relative p-6 sm:p-8">
-            {/* Live badge */}
-            <div className="inline-flex items-center gap-2 mb-4">
-              <span className="w-2 h-2 rounded-full bg-[#F2A900] shrink-0"
-                style={{ boxShadow: '0 0 0 0 rgba(242,169,0,0.7)', animation: 'cp-pulse 2s ease-in-out infinite' }} />
-              <span className="text-[10px] font-black text-[#F2A900] tracking-[0.2em] uppercase">Sesiones con Henry</span>
-            </div>
-
-            <div className="flex items-end justify-between gap-6">
-              <div className="min-w-0">
-                <p className="text-white font-bold text-xl sm:text-2xl leading-tight mb-1">
-                  {zoomPost.title || 'Sesión en Vivo con Henry'}
-                </p>
-                {zoomPost.content && (
-                  <p className="text-white/50 text-sm">{zoomPost.content}</p>
-                )}
+            {/* Schedule pills */}
+            {schedulingDays.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Horario semanal</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {schedulingDays.map(d => (
+                    <div
+                      key={d.day_of_week}
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                      style={{ background: 'linear-gradient(135deg, #001d3d, #002855)', border: '1px solid rgba(242,169,0,0.2)' }}
+                    >
+                      <span className="text-xs font-black" style={{ color: '#F2A900' }}>{DAY_NAMES[d.day_of_week]}</span>
+                      <span className="text-[10px] text-white/50">·</span>
+                      <span className="text-xs font-medium text-white/80">{fmt12(d.start_hour)} – {fmt12(d.end_hour)}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <a
-                href={zoomPost.zoom_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="shrink-0 flex items-center gap-2 font-bold text-sm px-5 py-3 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-lg"
-                style={{ background: 'linear-gradient(135deg, #F2A900, #ffca28)', color: '#001428' }}
-              >
-                <Play className="w-3.5 h-3.5 fill-current" />
-                Unirse
-              </a>
+            )}
+
+            {/* Zoom button */}
+            {zoomPost?.zoom_url ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="live-dot shrink-0" />
+                  <span className="text-xs font-bold tracking-widest uppercase" style={{ color: '#F2A900' }}>Sesión disponible</span>
+                </div>
+                <a
+                  href={zoomPost.zoom_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl font-bold text-sm transition-all hover:opacity-90 active:scale-[.98]"
+                  style={{ background: 'linear-gradient(135deg, #F2A900 0%, #ffca28 100%)', color: '#001020' }}
+                >
+                  <Play className="w-4 h-4 fill-current" />
+                  Unirse a la sesión de Zoom
+                  <ExternalLink className="w-3.5 h-3.5 opacity-60" />
+                </a>
+              </div>
+            ) : (
+              schedulingDays.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-2">Henry actualizará la información de sesiones pronto.</p>
+              )
+            )}
+
+            {/* No zoom link but has schedule */}
+            {!zoomPost?.zoom_url && schedulingDays.length > 0 && (
+              <p className="text-sm text-gray-400 text-center py-1">El link de Zoom aparecerá aquí cuando Henry publique la sesión.</p>
+            )}
+          </div>
+        </Module>
+
+        {/* ══ MÓDULO 2 — Videos Grabados (carousel) ══ */}
+        <Module icon={<Play className="w-4 h-4" />} title="Videos Grabados"
+          subtitle={videoPosts.length > 0 ? `${videoPosts.length} video${videoPosts.length !== 1 ? 's' : ''} disponible${videoPosts.length !== 1 ? 's' : ''}` : 'Sin videos aún'}
+        >
+          {videoPosts.length === 0 ? (
+            <div className="px-6 py-10 text-center">
+              <div className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: '#f5f6f8' }}>
+                <Play className="w-6 h-6 text-gray-300" />
+              </div>
+              <p className="text-sm text-gray-400">Henry aún no ha subido videos grabados.</p>
             </div>
-          </div>
-        </div>
-      )}
+          ) : (
+            <>
+              {videoPosts.length > 1 && (
+                <p className="text-[11px] text-gray-400 text-right px-5 pt-3">← Desliza para ver más</p>
+              )}
+              <div className="vid-scroll">
+                {videoPosts.map(post => {
+                  const ytId = post.video_url ? getYTId(post.video_url) : null
+                  const thumb = ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : null
+                  return (
+                    <VideoCard
+                      key={post.id}
+                      post={post}
+                      thumb={thumb}
+                      rxCounts={counts(post.id)}
+                      myRx={mine(post.id)}
+                      onReact={react}
+                      bouncing={bouncing}
+                    />
+                  )
+                })}
+              </div>
+            </>
+          )}
+        </Module>
 
-      {/* ── VIDEOS ── */}
-      {videoPosts.length > 0 && (
-        <div>
-          <SectionDivider
-            icon={<Play className="w-3.5 h-3.5" />}
-            label="Videos Grabados"
-            count={videoPosts.length}
-          />
-          <div className={`grid gap-4 ${videoPosts.length === 1 ? 'grid-cols-1 max-w-sm' : 'grid-cols-1 sm:grid-cols-2'}`}>
-            {videoPosts.map(post => (
-              <VideoCard
-                key={post.id}
-                post={post}
-                counts={getCounts(post.id)}
-                myReactions={getMyReactions(post.id)}
-                onReact={toggleReaction}
-                bouncingKey={bouncingKey}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+        {/* ══ MÓDULO 3 — Publicaciones ══ */}
+        <Module icon={<Megaphone className="w-4 h-4" />} title="Publicaciones" subtitle="Mensajes de Henry para la comunidad">
+          {textPosts.length === 0 ? (
+            <div className="px-6 py-10 text-center">
+              <div className="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style={{ background: '#f5f6f8' }}>
+                <Megaphone className="w-6 h-6 text-gray-300" />
+              </div>
+              <p className="text-sm text-gray-400">No hay publicaciones aún.</p>
+            </div>
+          ) : (
+            <div>
+              {textPosts.map((post, i) => (
+                <div
+                  key={post.id}
+                  className="px-6 py-6"
+                  style={{ borderTop: i > 0 ? '1.5px solid #f3f4f6' : 'none' }}
+                >
+                  {/* Author row */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div
+                      className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 font-black text-sm"
+                      style={{ background: 'linear-gradient(135deg, #001020, #002255)', color: '#F2A900' }}
+                    >
+                      H
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-gray-900 text-sm">Henry Orellana</span>
+                        {post.pinned && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                            style={{ background: 'rgba(242,169,0,0.12)', color: '#9a6500' }}>
+                            <Pin className="w-2.5 h-2.5" />Fijado
+                          </span>
+                        )}
+                        {post.type === 'announcement' && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full"
+                            style={{ background: '#001d3d', color: '#F2A900' }}>
+                            Anuncio
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">{timeAgo(post.created_at)}</p>
+                    </div>
+                  </div>
 
-      {/* ── PUBLICACIONES ── */}
-      {textPosts.length > 0 && (
-        <div>
-          <SectionDivider
-            icon={<Megaphone className="w-3.5 h-3.5" />}
-            label="Publicaciones"
-          />
-          <div>
-            {textPosts.map((post, i) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                counts={getCounts(post.id)}
-                myReactions={getMyReactions(post.id)}
-                onReact={toggleReaction}
-                bouncingKey={bouncingKey}
-                isLast={i === textPosts.length - 1}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+                  {/* Content */}
+                  {post.title && (
+                    <p className="font-bold text-gray-900 text-[15px] leading-snug mb-2">{post.title}</p>
+                  )}
+                  {post.content && (
+                    <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+                  )}
+
+                  {/* Reactions */}
+                  <div className="mt-4 pt-4" style={{ borderTop: '1.5px solid #f3f4f6' }}>
+                    <ReactionRow
+                      postId={post.id} rxCounts={counts(post.id)} myRx={mine(post.id)}
+                      bouncing={bouncing} onReact={react}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Module>
+
+      </div>
     </>
   )
 }

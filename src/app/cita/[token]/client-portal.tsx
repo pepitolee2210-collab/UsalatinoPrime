@@ -27,6 +27,9 @@ interface CommunityPost {
 interface CommunityReaction {
   post_id: string; user_id: string; emoji: string
 }
+interface SchedulingDay {
+  day_of_week: number; start_hour: number; end_hour: number
+}
 
 interface ClientPortalProps {
   token: string
@@ -41,6 +44,7 @@ interface ClientPortalProps {
   formSubmissions: FormSubmission[]
   communityPosts: CommunityPost[]
   communityReactions: CommunityReaction[]
+  schedulingDays: SchedulingDay[]
   serviceName: string
   serviceSlug: string
   minorData?: {
@@ -63,7 +67,7 @@ type TabId = keyof typeof TABS
 export function ClientPortal({
   token, clientId, clientName, caseNumber, avatarUrl,
   appointments, zoomLink, uploadedDocuments, henryDocuments,
-  formSubmissions, communityPosts, communityReactions,
+  formSubmissions, communityPosts, communityReactions, schedulingDays,
   serviceName, serviceSlug, minorData,
 }: ClientPortalProps) {
   const [activeTab, setActiveTab] = useState<TabId>('cita')
@@ -94,10 +98,10 @@ export function ClientPortal({
   const progressPct = Math.round((completedSteps / steps.length) * 100)
 
   const visibleTabs: TabId[] = isVisaJuvenil
-    ? ['cita', 'documentos', 'historia', 'consultor', 'comunidad']
+    ? ['cita', 'documentos', 'historia', 'comunidad', 'consultor']
     : isAsilo
-    ? ['cita', 'documentos', 'i589', 'consultor', 'comunidad']
-    : ['cita', 'documentos', 'consultor', 'comunidad']
+    ? ['cita', 'documentos', 'i589', 'comunidad', 'consultor']
+    : ['cita', 'documentos', 'comunidad', 'consultor']
 
   const initials = clientName.split(' ').filter(Boolean).slice(0, 2).map(n => n[0]).join('').toUpperCase()
 
@@ -325,6 +329,7 @@ export function ClientPortal({
                 clientId={clientId}
                 posts={communityPosts}
                 reactions={communityReactions}
+                schedulingDays={schedulingDays}
               />
             )}
           </div>
