@@ -36,13 +36,15 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
   }
 
   // Fetch all data in parallel
-  const [profileRes, caseRes, appointmentsRes, documentsRes, settingsRes, formSubmissionsRes] = await Promise.all([
+  const [profileRes, caseRes, appointmentsRes, documentsRes, settingsRes, formSubmissionsRes, communityPostsRes, communityReactionsRes] = await Promise.all([
     supabase.from('profiles').select('first_name, last_name, email').eq('id', tokenData.client_id).single(),
     supabase.from('cases').select('id, case_number, form_data, service:service_catalog(name, slug)').eq('id', tokenData.case_id).single(),
     supabase.from('appointments').select('*').eq('client_id', tokenData.client_id).order('scheduled_at', { ascending: false }),
     supabase.from('documents').select('id, document_key, name, file_size, status, direction').eq('case_id', tokenData.case_id),
     supabase.from('scheduling_settings').select('*').single(),
     supabase.from('case_form_submissions').select('id, form_type, status, updated_at').eq('case_id', tokenData.case_id).order('updated_at', { ascending: false }),
+    supabase.from('community_posts').select('id, type, title, content, video_url, zoom_url, pinned, created_at').order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(30),
+    supabase.from('community_reactions').select('post_id, user_id, emoji'),
   ])
 
   const profile = profileRes.data
@@ -51,6 +53,8 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
   const allDocuments = documentsRes.data || []
   const zoomLink = settingsRes.data?.zoom_link || ''
   const formSubmissions = formSubmissionsRes.data || []
+  const communityPosts = communityPostsRes.data || []
+  const communityReactions = communityReactionsRes.data || []
 
   const serviceRaw = caseData?.service as unknown
   const service = Array.isArray(serviceRaw)
@@ -104,11 +108,14 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
         {/* Portal with tabs */}
         <ClientPortal
           token={token}
+          clientId={tokenData.client_id}
           appointments={appointments}
           zoomLink={zoomLink}
           uploadedDocuments={clientDocuments}
           henryDocuments={henryDocuments}
           formSubmissions={formSubmissions}
+          communityPosts={communityPosts}
+          communityReactions={communityReactions}
           serviceName={service?.name || 'Servicio'}
           serviceSlug={service?.slug || ''}
           clientName={clientName}

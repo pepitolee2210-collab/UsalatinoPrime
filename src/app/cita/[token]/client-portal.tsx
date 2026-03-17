@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { CalendarClock, FileText, FileUp, Download, CheckCircle, BookOpen, ClipboardList } from 'lucide-react'
+import { CalendarClock, FileUp, Download, CheckCircle, BookOpen, ClipboardList, Users } from 'lucide-react'
 import { AppointmentBooking } from './appointment-booking'
 import { DocumentUploadSection } from './document-upload-section'
 import { HenryDocuments } from './henry-documents'
 import { ClientStoryWizard } from './client-story-wizard'
 import { I589Wizard } from './i589-wizard'
+import { CommunityPortal } from './community-portal'
 
 import type { Appointment } from '@/types/database'
 
@@ -26,13 +27,33 @@ interface FormSubmission {
   updated_at: string
 }
 
+interface CommunityPost {
+  id: string
+  type: string
+  title: string | null
+  content: string | null
+  video_url: string | null
+  zoom_url: string | null
+  pinned: boolean
+  created_at: string
+}
+
+interface CommunityReaction {
+  post_id: string
+  user_id: string
+  emoji: string
+}
+
 interface ClientPortalProps {
   token: string
+  clientId: string
   appointments: Appointment[]
   zoomLink: string
   uploadedDocuments: UploadedDoc[]
   henryDocuments: UploadedDoc[]
   formSubmissions: FormSubmission[]
+  communityPosts: CommunityPost[]
+  communityReactions: CommunityReaction[]
   serviceName: string
   serviceSlug: string
   clientName: string
@@ -52,16 +73,20 @@ const BASE_TABS = [
 
 const STORY_TAB = { id: 'mi-historia', label: 'Mi Historia', icon: BookOpen } as const
 const I589_TAB = { id: 'i589', label: 'Formulario I-589', icon: ClipboardList } as const
+const COMMUNITY_TAB = { id: 'comunidad', label: 'Comunidad', icon: Users } as const
 
-type TabId = typeof BASE_TABS[number]['id'] | 'mi-historia' | 'i589'
+type TabId = typeof BASE_TABS[number]['id'] | 'mi-historia' | 'i589' | 'comunidad'
 
 export function ClientPortal({
   token,
+  clientId,
   appointments,
   zoomLink,
   uploadedDocuments,
   henryDocuments,
   formSubmissions,
+  communityPosts,
+  communityReactions,
   serviceName,
   serviceSlug,
   clientName,
@@ -92,10 +117,10 @@ export function ClientPortal({
   const totalSteps = stepsArray.length
 
   const visibleTabs = isVisaJuvenil
-    ? [...BASE_TABS.slice(0, 2), STORY_TAB, BASE_TABS[2]]
+    ? [...BASE_TABS.slice(0, 2), STORY_TAB, BASE_TABS[2], COMMUNITY_TAB]
     : isAsilo
-    ? [...BASE_TABS.slice(0, 2), I589_TAB, BASE_TABS[2]]
-    : [...BASE_TABS]
+    ? [...BASE_TABS.slice(0, 2), I589_TAB, BASE_TABS[2], COMMUNITY_TAB]
+    : [...BASE_TABS, COMMUNITY_TAB]
 
   return (
     <div className="space-y-4">
@@ -172,6 +197,14 @@ export function ClientPortal({
             <HenryDocuments
               token={token}
               documents={henryDocuments}
+            />
+          )}
+          {activeTab === 'comunidad' && (
+            <CommunityPortal
+              token={token}
+              clientId={clientId}
+              posts={communityPosts}
+              reactions={communityReactions}
             />
           )}
         </div>
