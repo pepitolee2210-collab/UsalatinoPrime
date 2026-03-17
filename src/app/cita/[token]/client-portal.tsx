@@ -31,6 +31,10 @@ interface SchedulingDay {
   day_of_week: number; start_hour: number; end_hour: number
 }
 
+interface DeclarationDoc {
+  id: string; name: string; file_size: number; declaration_number: number
+}
+
 interface ClientPortalProps {
   token: string
   clientId: string
@@ -45,6 +49,7 @@ interface ClientPortalProps {
   communityPosts: CommunityPost[]
   communityReactions: CommunityReaction[]
   schedulingDays: SchedulingDay[]
+  declarationDocs: DeclarationDoc[]
   serviceName: string
   serviceSlug: string
   minorData?: {
@@ -68,7 +73,7 @@ export function ClientPortal({
   token, clientId, clientName, caseNumber, avatarUrl,
   appointments, zoomLink, uploadedDocuments, henryDocuments,
   formSubmissions, communityPosts, communityReactions, schedulingDays,
-  serviceName, serviceSlug, minorData,
+  declarationDocs, serviceName, serviceSlug, minorData,
 }: ClientPortalProps) {
   const [activeTab, setActiveTab] = useState<TabId>('cita')
   const [avatar, setAvatar] = useState<string | null>(avatarUrl)
@@ -315,7 +320,7 @@ export function ClientPortal({
               />
             )}
             {activeTab === 'historia' && isVisaJuvenil && (
-              <ClientStoryWizard token={token} clientName={clientName} />
+              <ClientStoryWizard token={token} clientName={clientName} declarationDocs={declarationDocs} />
             )}
             {activeTab === 'i589' && isAsilo && (
               <I589Wizard token={token} clientName={clientName} />

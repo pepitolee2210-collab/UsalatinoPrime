@@ -1,56 +1,110 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
-import { Loader2, CheckCircle, AlertTriangle, Clock, BookOpen, Users, UserX, Pencil, Save, X } from 'lucide-react'
+import {
+  Loader2, CheckCircle, AlertTriangle, Clock, BookOpen,
+  Users, UserX, Pencil, X, ChevronDown, ChevronRight, FileText,
+} from 'lucide-react'
 
 interface FormSubmission {
   id: string
   form_type: string
   form_data: Record<string, unknown>
   status: string
+  minor_index?: number
   admin_notes?: string
   updated_at: string
+}
+
+interface DeclarationDoc {
+  id: string
+  name: string
+  file_size: number
+  declaration_number: number
 }
 
 interface ClientStoryReviewProps {
   caseId: string
   submissions: FormSubmission[]
+  declarationDocs?: DeclarationDoc[]
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
-  submitted: { label: 'Pendiente de revisión', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-  approved: { label: 'Aprobado', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-  needs_correction: { label: 'Correcciones solicitadas', color: 'bg-red-100 text-red-800', icon: AlertTriangle },
-  draft: { label: 'Borrador (no enviado)', color: 'bg-gray-100 text-gray-600', icon: Clock },
+  submitted:        { label: 'Pendiente de revisión',    color: 'bg-yellow-100 text-yellow-800', icon: Clock },
+  approved:         { label: 'Aprobado',                 color: 'bg-green-100 text-green-800',   icon: CheckCircle },
+  needs_correction: { label: 'Correcciones solicitadas', color: 'bg-red-100 text-red-800',       icon: AlertTriangle },
+  draft:            { label: 'Borrador (no enviado)',    color: 'bg-gray-100 text-gray-600',     icon: Clock },
 }
 
 const PARENT_SITUATIONS: Record<string, string> = {
-  cooperates: 'Coopera — dispuesto/a a firmar',
-  absent: 'Ausente — sin contacto',
-  deceased: 'Fallecido/a',
-  unknown: 'Desconocido',
+  cooperates:  'Coopera — dispuesto/a a firmar',
+  absent:      'Ausente — sin contacto',
+  deceased:    'Fallecido/a',
+  unknown:     'Desconocido',
   never_known: 'Nunca lo/la conoció',
 }
 
-export function ClientStoryReview({ caseId, submissions }: ClientStoryReviewProps) {
+function djLabel(idx: number) {
+  if (idx === 0) return 'Primera Declaración Jurada'
+  return `Declaración Jurada ${idx + 1}`
+}
+
+function djShortLabel(idx: number) {
+  if (idx === 0) return 'DJ 1'
+  return `DJ ${idx + 1}`
+}
+
+function djStatusSummary(story?: FormSubmission, parent?: FormSubmission, witnesses?: FormSubmission) {
+  const subs = [story, parent, witnesses].filter(Boolean) as FormSubmission[]
+  if (!subs.length) return 'draft'
+  if (subs.every(s => s.status === 'approved')) return 'approved'
+  if (subs.some(s => s.status === 'needs_correction')) return 'needs_correction'
+  if (subs.some(s => s.status === 'submitted')) return 'submitted'
+  return 'draft'
+}
+
+export function ClientStoryReview({ caseId: _caseId, submissions, declarationDocs = [] }: ClientStoryReviewProps) {
   const [subs, setSubs] = useState(submissions)
   const [loading, setLoading] = useState(false)
   const [editingNotes, setEditingNotes] = useState<string | null>(null)
   const [notes, setNotes] = useState('')
+  const [expandedDJs, setExpandedDJs] = useState<Set<number>>(new Set([0]))
 
-  const storySubmission = subs.find(s => s.form_type === 'client_story')
-  const parentSubmission = subs.find(s => s.form_type === 'client_absent_parent')
-  const witnessSubmission = subs.find(s => s.form_type === 'client_witnesses')
+  // Group by minor_index
+  const djMap = new Map<number, { story?: FormSubmission; parent?: FormSubmission; witnesses?: FormSubmission }>()
+  for (const s of subs) {
+    const idx = s.minor_index ?? 0
+    if (!djMap.has(idx)) djMap.set(idx, {})
+    const g = djMap.get(idx)!
+    if (s.form_type === 'client_story')          g.story     = s
+    else if (s.form_type === 'client_absent_parent') g.parent = s
+    else if (s.form_type === 'client_witnesses') g.witnesses  = s
+  }
 
-  const hasAnySubmission = storySubmission || parentSubmission || witnessSubmission
-  const allApproved = [storySubmission, parentSubmission, witnessSubmission]
-    .filter(Boolean)
-    .every(s => s!.status === 'approved')
+  const sortedIndices = [...djMap.keys()].sort()
+  const isMultiDJ = sortedIndices.length > 1
+
+  if (!sortedIndices.length) {
+    return (
+      <div className="text-center py-12">
+        <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
+          <BookOpen className="w-8 h-8 text-gray-400" />
+        </div>
+        <h4 className="font-semibold text-gray-700 mb-1">Sin historia del cliente</h4>
+        <p className="text-sm text-gray-500">El cliente aún no ha llenado el formulario de su historia.</p>
+      </div>
+    )
+  }
+
+  const allFullyApproved = sortedIndices.every(idx => {
+    const g = djMap.get(idx)!
+    return djStatusSummary(g.story, g.parent, g.witnesses) === 'approved'
+  })
 
   async function updateStatus(submissionId: string, newStatus: string, adminNotes?: string) {
     setLoading(true)
@@ -73,88 +127,162 @@ export function ClientStoryReview({ caseId, submissions }: ClientStoryReviewProp
     }
   }
 
-  if (!hasAnySubmission) {
-    return (
-      <div className="text-center py-12">
-        <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
-          <BookOpen className="w-8 h-8 text-gray-400" />
-        </div>
-        <h4 className="font-semibold text-gray-700 mb-1">Sin historia del cliente</h4>
-        <p className="text-sm text-gray-500">El cliente aún no ha llenado el formulario de su historia.</p>
-      </div>
-    )
+  function toggleDJ(idx: number) {
+    setExpandedDJs(prev => {
+      const next = new Set(prev)
+      if (next.has(idx)) next.delete(idx)
+      else next.add(idx)
+      return next
+    })
   }
 
   return (
     <div className="space-y-4">
-      {allApproved && (
+      {allFullyApproved && (
         <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
           <CheckCircle className="w-5 h-5 text-green-500" />
-          <span className="text-sm text-green-700 font-medium">Toda la historia del cliente ha sido aprobada</span>
+          <span className="text-sm text-green-700 font-medium">
+            Toda la historia del cliente ha sido aprobada
+          </span>
         </div>
       )}
 
-      {/* Story Section */}
-      {storySubmission && (
-        <ReviewCard
-          title="Historia del Cliente"
-          icon={<BookOpen className="w-4 h-4" />}
-          submission={storySubmission}
-          loading={loading}
-          editingNotes={editingNotes}
-          notes={notes}
-          onEditNotes={(id) => { setEditingNotes(id); setNotes(storySubmission.admin_notes || '') }}
-          onCancelNotes={() => setEditingNotes(null)}
-          onNotesChange={setNotes}
-          onApprove={(id) => updateStatus(id, 'approved')}
-          onRequestCorrections={(id) => updateStatus(id, 'needs_correction', notes)}
-        >
-          <StoryDetails data={storySubmission.form_data} />
-        </ReviewCard>
-      )}
+      {sortedIndices.map(idx => {
+        const g = djMap.get(idx)!
+        const overallStatus = djStatusSummary(g.story, g.parent, g.witnesses)
+        const config = STATUS_CONFIG[overallStatus] || STATUS_CONFIG.draft
+        const StatusIcon = config.icon
+        const isExpanded = expandedDJs.has(idx)
+        const djDocs = declarationDocs.filter(d => d.declaration_number === idx + 1)
 
-      {/* Parent Section */}
-      {parentSubmission && (
-        <ReviewCard
-          title="Padre/Madre Ausente"
-          icon={<UserX className="w-4 h-4" />}
-          submission={parentSubmission}
-          loading={loading}
-          editingNotes={editingNotes}
-          notes={notes}
-          onEditNotes={(id) => { setEditingNotes(id); setNotes(parentSubmission.admin_notes || '') }}
-          onCancelNotes={() => setEditingNotes(null)}
-          onNotesChange={setNotes}
-          onApprove={(id) => updateStatus(id, 'approved')}
-          onRequestCorrections={(id) => updateStatus(id, 'needs_correction', notes)}
-        >
-          <ParentDetails data={parentSubmission.form_data} />
-        </ReviewCard>
-      )}
+        return (
+          <div key={idx} className="border border-gray-200 rounded-2xl overflow-hidden">
+            {/* DJ header — collapsible when multiple */}
+            <button
+              className="w-full flex items-center justify-between px-5 py-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+              onClick={() => isMultiDJ && toggleDJ(idx)}
+            >
+              <div className="flex items-center gap-3">
+                {isMultiDJ && (
+                  isExpanded
+                    ? <ChevronDown className="w-4 h-4 text-gray-500" />
+                    : <ChevronRight className="w-4 h-4 text-gray-500" />
+                )}
+                <span className="font-semibold text-gray-800 text-sm">{djLabel(idx)}</span>
+                {isMultiDJ && (
+                  <span className="text-xs text-gray-400">{djShortLabel(idx)}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {djDocs.length > 0 && (
+                  <span className="flex items-center gap-1 text-xs text-gray-500 bg-white border border-gray-200 rounded-lg px-2 py-1">
+                    <FileText className="w-3 h-3" />
+                    {djDocs.length} doc{djDocs.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+                <Badge className={config.color}>
+                  <StatusIcon className="w-3 h-3 mr-1" />
+                  {config.label}
+                </Badge>
+              </div>
+            </button>
 
-      {/* Witnesses Section */}
-      {witnessSubmission && (
-        <ReviewCard
-          title="Testigos"
-          icon={<Users className="w-4 h-4" />}
-          submission={witnessSubmission}
-          loading={loading}
-          editingNotes={editingNotes}
-          notes={notes}
-          onEditNotes={(id) => { setEditingNotes(id); setNotes(witnessSubmission.admin_notes || '') }}
-          onCancelNotes={() => setEditingNotes(null)}
-          onNotesChange={setNotes}
-          onApprove={(id) => updateStatus(id, 'approved')}
-          onRequestCorrections={(id) => updateStatus(id, 'needs_correction', notes)}
-        >
-          <WitnessDetails data={witnessSubmission.form_data} />
-        </ReviewCard>
-      )}
+            {/* DJ content */}
+            {(!isMultiDJ || isExpanded) && (
+              <div className="p-4 space-y-4">
+                {/* Declaration docs */}
+                {djDocs.length > 0 && (
+                  <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                    <p className="text-xs font-semibold text-blue-700 mb-2">
+                      Documentos subidos ({djLabel(idx)})
+                    </p>
+                    <div className="space-y-1">
+                      {djDocs.map(doc => (
+                        <div key={doc.id} className="flex items-center gap-2">
+                          <FileText className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                          <span className="text-xs text-blue-800 truncate">{doc.name}</span>
+                          <span className="text-[10px] text-blue-500 shrink-0">
+                            {(doc.file_size / 1024 / 1024).toFixed(1)} MB
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Story */}
+                {g.story && (
+                  <ReviewCard
+                    title="Historia del Cliente"
+                    icon={<BookOpen className="w-4 h-4" />}
+                    submission={g.story}
+                    loading={loading}
+                    editingNotes={editingNotes}
+                    notes={notes}
+                    onEditNotes={(id) => { setEditingNotes(id); setNotes(g.story!.admin_notes || '') }}
+                    onCancelNotes={() => setEditingNotes(null)}
+                    onNotesChange={setNotes}
+                    onApprove={(id) => updateStatus(id, 'approved')}
+                    onRequestCorrections={(id) => updateStatus(id, 'needs_correction', notes)}
+                  >
+                    <StoryDetails data={g.story.form_data} />
+                  </ReviewCard>
+                )}
+
+                {/* Parent */}
+                {g.parent && (
+                  <ReviewCard
+                    title="Padre/Madre Ausente"
+                    icon={<UserX className="w-4 h-4" />}
+                    submission={g.parent}
+                    loading={loading}
+                    editingNotes={editingNotes}
+                    notes={notes}
+                    onEditNotes={(id) => { setEditingNotes(id); setNotes(g.parent!.admin_notes || '') }}
+                    onCancelNotes={() => setEditingNotes(null)}
+                    onNotesChange={setNotes}
+                    onApprove={(id) => updateStatus(id, 'approved')}
+                    onRequestCorrections={(id) => updateStatus(id, 'needs_correction', notes)}
+                  >
+                    <ParentDetails data={g.parent.form_data} />
+                  </ReviewCard>
+                )}
+
+                {/* Witnesses */}
+                {g.witnesses && (
+                  <ReviewCard
+                    title="Testigos"
+                    icon={<Users className="w-4 h-4" />}
+                    submission={g.witnesses}
+                    loading={loading}
+                    editingNotes={editingNotes}
+                    notes={notes}
+                    onEditNotes={(id) => { setEditingNotes(id); setNotes(g.witnesses!.admin_notes || '') }}
+                    onCancelNotes={() => setEditingNotes(null)}
+                    onNotesChange={setNotes}
+                    onApprove={(id) => updateStatus(id, 'approved')}
+                    onRequestCorrections={(id) => updateStatus(id, 'needs_correction', notes)}
+                  >
+                    <WitnessDetails data={g.witnesses.form_data} />
+                  </ReviewCard>
+                )}
+
+                {/* No submissions yet for this DJ */}
+                {!g.story && !g.parent && !g.witnesses && (
+                  <p className="text-sm text-gray-400 text-center py-4">
+                    El cliente aún no ha llenado esta declaración.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
 
-// -- Subcomponents --
+// ─── Sub-components ──────────────────────────────────────────────────────────
 
 function ReviewCard({
   title, icon, submission, loading, editingNotes, notes, children,
@@ -193,7 +321,6 @@ function ReviewCard({
       <CardContent className="space-y-4">
         {children}
 
-        {/* Admin notes */}
         {submission.admin_notes && !isEditing && (
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
             <p className="text-xs font-medium text-amber-700 mb-1">Notas del consultor:</p>
@@ -201,7 +328,6 @@ function ReviewCard({
           </div>
         )}
 
-        {/* Actions */}
         {submission.status !== 'draft' && (
           <div className="flex items-center gap-2 pt-2 border-t">
             {isEditing ? (
@@ -269,30 +395,51 @@ function DataRow({ label, value }: { label: string; value?: string | null }) {
 }
 
 function StoryDetails({ data }: { data: Record<string, unknown> }) {
-  // Show minor info if present (multi-minor format)
+  const children = data.children as Array<Record<string, string>> | undefined
   const minorInfo = data.minor_info as Record<string, string> | undefined
 
   return (
     <div className="grid gap-3">
-      {minorInfo?.name && <DataRow label="Menor" value={minorInfo.name} />}
-      {minorInfo?.guardian_relation && (
-        <DataRow label="Relación del tutor" value={minorInfo.guardian_relation === 'otro' ? minorInfo.guardian_relation_other : minorInfo.guardian_relation} />
+      {/* New multi-children format */}
+      {children && children.length > 0 && (
+        <div>
+          <span className="text-xs font-medium text-gray-500">
+            {children.length === 1 ? 'Menor' : `Menores (${children.length})`}
+          </span>
+          <div className="mt-1 space-y-1">
+            {children.filter(c => c.name).map((c, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm text-gray-800">
+                <span className="font-medium">{c.name}</span>
+                {c.dob && <span className="text-gray-400 text-xs">· {c.dob}</span>}
+                {c.country_of_birth && <span className="text-gray-400 text-xs">· {c.country_of_birth}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
       )}
-      <DataRow label="Año de llegada" value={data.arrival_year as string} />
-      <DataRow label="Quién lo/la trajo" value={data.who_brought as string} />
-      <DataRow label="Vive con" value={data.current_guardian as string} />
-      <DataRow label="Fecha de separación" value={data.separation_date as string} />
-      <DataRow label="Cómo fue el abandono" value={(data.how_was_abandonment || data.abandonment_description) as string} />
-      <DataRow label="Apoyo económico del padre" value={data.father_economic_support as string} />
+      {/* Legacy single-child format */}
+      {!children && minorInfo?.name && <DataRow label="Menor" value={minorInfo.name} />}
+      {!children && minorInfo?.guardian_relation && (
+        <DataRow
+          label="Relación del tutor"
+          value={minorInfo.guardian_relation === 'otro' ? minorInfo.guardian_relation_other : minorInfo.guardian_relation}
+        />
+      )}
+      <DataRow label="Año de llegada"                  value={data.arrival_year as string} />
+      <DataRow label="Quién lo/la trajo"               value={data.who_brought as string} />
+      <DataRow label="Vive con"                        value={data.current_guardian as string} />
+      <DataRow label="Fecha de separación"             value={data.separation_date as string} />
+      <DataRow label="Cómo fue el abandono"            value={(data.how_was_abandonment || data.abandonment_description) as string} />
+      <DataRow label="Apoyo económico del padre"       value={data.father_economic_support as string} />
       <DataRow label="Contacto del padre con el menor" value={data.father_contact_with_child as string} />
-      <DataRow label="Quién cuidó al menor" value={data.who_took_care as string} />
-      <DataRow label="Denuncias o quejas" value={data.has_complaints as string} />
-      <DataRow label="Detalle de denuncias" value={data.complaints_detail as string} />
-      <DataRow label="Por qué no hubo reunificación" value={data.why_no_reunification as string} />
-      {/* Legacy fields from old wizard version */}
-      <DataRow label="Vida antes de EE.UU." value={data.life_before as string} />
-      <DataRow label="Razón de venir" value={data.why_came as string} />
-      <DataRow label="Detalles adicionales" value={data.additional_details as string} />
+      <DataRow label="Quién cuidó al menor"            value={data.who_took_care as string} />
+      <DataRow label="Denuncias o quejas"              value={data.has_complaints as string} />
+      <DataRow label="Detalle de denuncias"            value={data.complaints_detail as string} />
+      <DataRow label="Por qué no hubo reunificación"   value={data.why_no_reunification as string} />
+      {/* Legacy fields */}
+      <DataRow label="Vida antes de EE.UU."            value={data.life_before as string} />
+      <DataRow label="Razón de venir"                  value={data.why_came as string} />
+      <DataRow label="Detalles adicionales"            value={data.additional_details as string} />
     </div>
   )
 }
@@ -301,28 +448,28 @@ function ParentDetails({ data }: { data: Record<string, unknown> }) {
   const situation = data.situation as string
   return (
     <div className="grid gap-3">
-      <DataRow label="Relación" value={data.parent_relationship === 'padre' ? 'Padre' : 'Madre'} />
+      <DataRow label="Relación"  value={data.parent_relationship === 'padre' ? 'Padre' : 'Madre'} />
       <DataRow label="Situación" value={PARENT_SITUATIONS[situation] || situation} />
-      <DataRow label="Nombre" value={data.parent_name as string} />
+      <DataRow label="Nombre"    value={data.parent_name as string} />
       {situation === 'cooperates' && (
         <>
-          <DataRow label="Teléfono" value={data.parent_phone as string} />
-          <DataRow label="Email" value={data.parent_email as string} />
+          <DataRow label="Teléfono"           value={data.parent_phone as string} />
+          <DataRow label="Email"              value={data.parent_email as string} />
           <DataRow label="Dispuesto a firmar" value={data.willing_to_sign as string} />
         </>
       )}
       {situation === 'absent' && (
         <>
-          <DataRow label="Último contacto" value={data.last_contact_date as string} />
+          <DataRow label="Último contacto"          value={data.last_contact_date as string} />
           <DataRow label="Descripción último contacto" value={data.last_contact_description as string} />
-          <DataRow label="Razón de ausencia" value={data.reason_absent as string} />
-          <DataRow label="Intentos de localizar" value={data.efforts_to_find as string} />
+          <DataRow label="Razón de ausencia"        value={data.reason_absent as string} />
+          <DataRow label="Intentos de localizar"    value={data.efforts_to_find as string} />
         </>
       )}
       {situation === 'deceased' && (
         <>
-          <DataRow label="Fecha de fallecimiento" value={data.death_date as string} />
-          <DataRow label="Lugar" value={data.death_place as string} />
+          <DataRow label="Fecha de fallecimiento"   value={data.death_date as string} />
+          <DataRow label="Lugar"                    value={data.death_place as string} />
           <DataRow label="Certificado de defunción" value={data.has_death_certificate as string} />
         </>
       )}

@@ -38,7 +38,7 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
     supabase.from('profiles').select('first_name, last_name, email, avatar_url').eq('id', tokenData.client_id).single(),
     supabase.from('cases').select('id, case_number, form_data, service:service_catalog(name, slug)').eq('id', tokenData.case_id).single(),
     supabase.from('appointments').select('*').eq('client_id', tokenData.client_id).order('scheduled_at', { ascending: false }),
-    supabase.from('documents').select('id, document_key, name, file_size, status, direction').eq('case_id', tokenData.case_id),
+    supabase.from('documents').select('id, document_key, name, file_size, status, direction, declaration_number').eq('case_id', tokenData.case_id),
     supabase.from('scheduling_settings').select('*').single(),
     supabase.from('case_form_submissions').select('id, form_type, status, updated_at').eq('case_id', tokenData.case_id).order('updated_at', { ascending: false }),
     supabase.from('community_posts').select('id, type, title, content, video_url, zoom_url, pinned, created_at').order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(30),
@@ -63,6 +63,9 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
 
   const clientDocuments = allDocuments.filter(d => !d.direction || d.direction === 'client_to_admin')
   const henryDocuments = allDocuments.filter(d => d.direction === 'admin_to_client')
+  const declarationDocs = allDocuments
+    .filter(d => d.declaration_number != null)
+    .map(d => ({ id: d.id, name: d.name, file_size: d.file_size ?? 0, declaration_number: d.declaration_number as number }))
 
   const formData = (caseData?.form_data || {}) as Record<string, string>
   const clientName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim()
@@ -108,6 +111,7 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
           communityPosts={communityPosts}
           communityReactions={communityReactions}
           schedulingDays={schedulingDays}
+          declarationDocs={declarationDocs}
           serviceName={service?.name || 'Servicio'}
           serviceSlug={service?.slug || ''}
           minorData={minorData}

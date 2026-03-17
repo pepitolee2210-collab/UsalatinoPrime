@@ -995,6 +995,17 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               submissions={(aiSubmissions || []).filter((s: { form_type: string }) =>
                 ['client_story', 'client_witnesses', 'client_absent_parent'].includes(s.form_type)
               )}
+              declarationDocs={(documents || [])
+                .filter((d: { declaration_number?: number; direction?: string }) =>
+                  d.declaration_number != null && (!d.direction || d.direction === 'client_to_admin')
+                )
+                .map((d: { id: string; name: string; file_size?: number; declaration_number: number }) => ({
+                  id: d.id,
+                  name: d.name,
+                  file_size: d.file_size ?? 0,
+                  declaration_number: d.declaration_number,
+                }))
+              }
             />
           </TabsContent>
         )}
