@@ -1,5 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/service'
-import { CalendarClock, XCircle } from 'lucide-react'
+import { XCircle } from 'lucide-react'
 import { ClientPortal } from './client-portal'
 import type { Appointment } from '@/types/database'
 
@@ -7,7 +7,6 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
   const { token } = await params
   const supabase = createServiceClient()
 
-  // Validar token
   const { data: tokenData, error: tokenError } = await supabase
     .from('appointment_tokens')
     .select('client_id, case_id, is_active')
@@ -21,23 +20,22 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
           <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
             <XCircle className="w-8 h-8 text-gray-400" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">Enlace no valido</h1>
+          <h1 className="text-xl font-bold text-gray-900 mb-2">Enlace no válido</h1>
           <p className="text-sm text-gray-500">
-            Este enlace de cita no existe o ya no esta activo.
+            Este enlace de cita no existe o ya no está activo.
             Contacte a su consultor para obtener un nuevo enlace.
           </p>
           <div className="mt-6 p-4 bg-gray-50 rounded-lg">
             <p className="text-sm text-gray-600 font-medium">UsaLatinoPrime</p>
-            <p className="text-sm text-gray-500">Telefono: 801-941-3479</p>
+            <p className="text-sm text-gray-500">Teléfono: 801-941-3479</p>
           </div>
         </div>
       </div>
     )
   }
 
-  // Fetch all data in parallel
   const [profileRes, caseRes, appointmentsRes, documentsRes, settingsRes, formSubmissionsRes, communityPostsRes, communityReactionsRes] = await Promise.all([
-    supabase.from('profiles').select('first_name, last_name, email').eq('id', tokenData.client_id).single(),
+    supabase.from('profiles').select('first_name, last_name, email, avatar_url').eq('id', tokenData.client_id).single(),
     supabase.from('cases').select('id, case_number, form_data, service:service_catalog(name, slug)').eq('id', tokenData.case_id).single(),
     supabase.from('appointments').select('*').eq('client_id', tokenData.client_id).order('scheduled_at', { ascending: false }),
     supabase.from('documents').select('id, document_key, name, file_size, status, direction').eq('case_id', tokenData.case_id),
@@ -61,11 +59,9 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
     ? (serviceRaw[0] as { name: string; slug: string } | undefined)
     : (serviceRaw as { name: string; slug: string } | null)
 
-  // Separate client docs from Henry's docs
   const clientDocuments = allDocuments.filter(d => !d.direction || d.direction === 'client_to_admin')
   const henryDocuments = allDocuments.filter(d => d.direction === 'admin_to_client')
 
-  // Extract minor data from case form_data for pre-filling
   const formData = (caseData?.form_data || {}) as Record<string, string>
   const clientName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim()
   const minorData = {
@@ -81,34 +77,27 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#002855] via-[#003366] to-[#001d3d]">
-      {/* Header */}
-      <div className="bg-[#002855]/80 backdrop-blur border-b border-white/10 sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#F2A900]/20 flex items-center justify-center">
-            <CalendarClock className="w-4 h-4 text-[#F2A900]" />
+      {/* Sticky header */}
+      <div className="bg-[#001428]/90 backdrop-blur-md border-b border-white/10 sticky top-0 z-10">
+        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+            style={{ background: 'rgba(242,169,0,0.2)' }}>
+            <span className="text-[#F2A900] font-black text-sm">U</span>
           </div>
           <div>
-            <p className="text-white font-semibold text-sm">UsaLatinoPrime</p>
-            <p className="text-white/60 text-xs">Portal del Cliente</p>
+            <p className="text-white font-bold text-sm leading-none">UsaLatinoPrime</p>
+            <p className="text-white/50 text-[11px] mt-0.5">Portal del Cliente</p>
           </div>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
-        {/* Client info */}
-        <div className="bg-white rounded-2xl shadow-2xl p-6">
-          <h1 className="text-lg font-bold text-gray-900">
-            Hola, {profile?.first_name} {profile?.last_name}
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Caso #{caseData?.case_number} — {service?.name || 'Servicio'}
-          </p>
-        </div>
-
-        {/* Portal with tabs */}
+      <div className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <ClientPortal
           token={token}
           clientId={tokenData.client_id}
+          clientName={clientName}
+          caseNumber={caseData?.case_number || ''}
+          avatarUrl={profile?.avatar_url || null}
           appointments={appointments}
           zoomLink={zoomLink}
           uploadedDocuments={clientDocuments}
@@ -118,7 +107,6 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
           communityReactions={communityReactions}
           serviceName={service?.name || 'Servicio'}
           serviceSlug={service?.slug || ''}
-          clientName={clientName}
           minorData={minorData}
         />
       </div>

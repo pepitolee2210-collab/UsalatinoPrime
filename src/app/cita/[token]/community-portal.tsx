@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ExternalLink, Play, Megaphone, FileText, Pin } from 'lucide-react'
+import { Play, ExternalLink, Megaphone, Pin } from 'lucide-react'
 
 interface CommunityPost {
   id: string
@@ -43,11 +43,6 @@ function getYouTubeId(url: string): string | null {
   return null
 }
 
-function getYouTubeThumbnail(url: string): string | null {
-  const id = getYouTubeId(url)
-  return id ? `https://img.youtube.com/vi/${id}/hqdefault.jpg` : null
-}
-
 function formatDate(iso: string) {
   const d = new Date(iso)
   const now = new Date()
@@ -56,8 +51,217 @@ function formatDate(iso: string) {
   if (diffH < 24) return `Hace ${diffH}h`
   const diffD = Math.floor(diffH / 24)
   if (diffD < 7) return `Hace ${diffD}d`
-  return d.toLocaleDateString('es-US', { day: 'numeric', month: 'short' })
+  return d.toLocaleDateString('es-US', { day: 'numeric', month: 'long' })
 }
+
+// ── Sub-components ────────────────────────────────────────────────
+
+function SectionDivider({ icon, label, count }: { icon: React.ReactNode; label: string; count?: number }) {
+  return (
+    <div className="flex items-center gap-3 my-8">
+      <div className="flex-1 h-px bg-gray-200" />
+      <div className="flex items-center gap-2 shrink-0 border border-gray-200 rounded-full px-4 py-1.5 bg-white shadow-sm">
+        <span className="text-gray-500">{icon}</span>
+        <span className="text-[11px] font-bold text-gray-600 uppercase tracking-widest">{label}</span>
+        {count !== undefined && (
+          <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 rounded-full px-1.5 py-0.5">{count}</span>
+        )}
+      </div>
+      <div className="flex-1 h-px bg-gray-200" />
+    </div>
+  )
+}
+
+function VideoCard({
+  post,
+  counts,
+  myReactions,
+  onReact,
+  bouncingKey,
+}: {
+  post: CommunityPost
+  counts: Record<string, number>
+  myReactions: string[]
+  onReact: (postId: string, emoji: string) => void
+  bouncingKey: string | null
+}) {
+  const [thumbFailed, setThumbFailed] = useState(false)
+  const ytId = post.video_url ? getYouTubeId(post.video_url) : null
+  const thumb = ytId ? `https://img.youtube.com/vi/${ytId}/hqdefault.jpg` : null
+
+  return (
+    <a
+      href={post.video_url!}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group block rounded-2xl overflow-hidden border border-gray-100 hover:border-[#F2A900]/40 hover:shadow-lg transition-all duration-300"
+      style={{ background: '#fff' }}
+    >
+      {/* Thumbnail */}
+      <div className="relative aspect-video overflow-hidden bg-[#001428]">
+        {thumb && !thumbFailed ? (
+          <img
+            src={thumb}
+            alt={post.title || 'Video'}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            onError={() => setThumbFailed(true)}
+          />
+        ) : (
+          <div
+            className="w-full h-full flex flex-col items-center justify-center gap-3"
+            style={{ background: 'linear-gradient(135deg, #001428 0%, #002855 100%)' }}
+          >
+            <div className="w-14 h-14 rounded-full flex items-center justify-center" style={{ background: 'rgba(242,169,0,0.15)' }}>
+              <Play className="w-6 h-6 text-[#F2A900]" />
+            </div>
+            {post.title && (
+              <p className="text-white/60 text-xs text-center px-6 line-clamp-2">{post.title}</p>
+            )}
+          </div>
+        )}
+        {/* Hover overlay */}
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="w-14 h-14 rounded-full flex items-center justify-center shadow-xl" style={{ background: '#F2A900' }}>
+            <Play className="w-6 h-6 fill-[#001428] text-[#001428] ml-0.5" />
+          </div>
+        </div>
+        {/* Duration badge placeholder */}
+        <div className="absolute bottom-2 right-2 bg-black/70 text-white text-[10px] font-bold px-1.5 py-0.5 rounded backdrop-blur-sm">
+          YouTube
+        </div>
+      </div>
+
+      {/* Info */}
+      <div className="p-4">
+        {post.title && (
+          <p className="font-semibold text-gray-900 text-sm leading-snug mb-1 line-clamp-2">
+            {post.title}
+          </p>
+        )}
+        {post.content && (
+          <p className="text-xs text-gray-400 line-clamp-1 mb-3">{post.content}</p>
+        )}
+
+        <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+          <span className="text-[11px] text-gray-400">{formatDate(post.created_at)}</span>
+          <div className="flex gap-1">
+            {REACTION_EMOJIS.map(emoji => {
+              const count = counts[emoji] || 0
+              const active = myReactions.includes(emoji)
+              const bKey = `${post.id}-${emoji}`
+              return (
+                <button
+                  key={emoji}
+                  onClick={e => { e.preventDefault(); onReact(post.id, emoji) }}
+                  className={`flex items-center gap-0.5 px-2 py-1 rounded-full text-xs transition-all select-none ${
+                    bouncingKey === bKey ? 'cp-bounce' : ''
+                  }`}
+                  style={active
+                    ? { background: 'rgba(242,169,0,0.18)', boxShadow: '0 0 0 1px rgba(242,169,0,0.4)' }
+                    : { background: '#f3f4f6' }
+                  }
+                >
+                  <span style={{ fontSize: '12px' }}>{emoji}</span>
+                  {count > 0 && <span className="font-bold text-gray-600 ml-0.5">{count}</span>}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </a>
+  )
+}
+
+function PostCard({
+  post,
+  counts,
+  myReactions,
+  onReact,
+  bouncingKey,
+  isLast,
+}: {
+  post: CommunityPost
+  counts: Record<string, number>
+  myReactions: string[]
+  onReact: (postId: string, emoji: string) => void
+  bouncingKey: string | null
+  isLast: boolean
+}) {
+  const totalReactions = Object.values(counts).reduce((a, b) => a + b, 0)
+
+  return (
+    <div className={`py-6 ${!isLast ? 'border-b border-gray-100' : ''}`}>
+      {/* Author header */}
+      <div className="flex items-center gap-3 mb-4">
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm"
+          style={{ background: 'linear-gradient(135deg, #001d3d, #002855)', color: '#F2A900' }}
+        >
+          H
+        </div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-gray-900 text-sm">Henry Orellana</span>
+            {post.pinned && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: 'rgba(242,169,0,0.15)', color: '#9a6500' }}>
+                <Pin className="w-2.5 h-2.5" /> Fijado
+              </span>
+            )}
+            {post.type === 'announcement' && (
+              <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ background: '#002855', color: '#F2A900' }}>
+                Anuncio
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-gray-400 mt-0.5">{formatDate(post.created_at)}</p>
+        </div>
+      </div>
+
+      {/* Content */}
+      {post.title && (
+        <h4 className="font-bold text-gray-900 text-base leading-snug mb-2">{post.title}</h4>
+      )}
+      {post.content && (
+        <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+      )}
+
+      {/* Reactions */}
+      <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+        <div className="flex items-center gap-1.5">
+          {REACTION_EMOJIS.map(emoji => {
+            const count = counts[emoji] || 0
+            const active = myReactions.includes(emoji)
+            const bKey = `${post.id}-${emoji}`
+            return (
+              <button
+                key={emoji}
+                onClick={() => onReact(post.id, emoji)}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm transition-all select-none ${
+                  bouncingKey === bKey ? 'cp-bounce' : ''
+                }`}
+                style={active
+                  ? { background: 'rgba(242,169,0,0.18)', boxShadow: '0 0 0 1.5px rgba(242,169,0,0.4)', color: '#9a6500' }
+                  : { background: '#f3f4f6', color: '#6b7280' }
+                }
+              >
+                <span style={{ fontSize: '15px', lineHeight: 1 }}>{emoji}</span>
+                {count > 0 && <span className="text-xs font-bold">{count}</span>}
+              </button>
+            )
+          })}
+        </div>
+        {totalReactions > 0 && (
+          <p className="text-xs text-gray-400 ml-auto">
+            {totalReactions} {totalReactions === 1 ? 'reacción' : 'reacciones'}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Main Component ────────────────────────────────────────────────
 
 export function CommunityPortal({ token, clientId, posts, reactions }: CommunityPortalProps) {
   const [localReactions, setLocalReactions] = useState<CommunityReaction[]>(reactions)
@@ -66,24 +270,23 @@ export function CommunityPortal({ token, clientId, posts, reactions }: Community
 
   const zoomPost = posts.find(p => p.type === 'zoom')
   const videoPosts = posts.filter(p => p.type === 'video' && p.video_url)
-  const textPosts = posts.filter(p => p.type !== 'zoom' && p.type !== 'video')
-
-  // Pinned first within text feed
-  const sortedTextPosts = [
-    ...textPosts.filter(p => p.pinned),
-    ...textPosts.filter(p => !p.pinned),
+  const textPosts = [
+    ...posts.filter(p => p.type !== 'zoom' && p.type !== 'video' && p.pinned),
+    ...posts.filter(p => p.type !== 'zoom' && p.type !== 'video' && !p.pinned),
   ]
 
-  function getReactionCounts(postId: string) {
+  function getCounts(postId: string) {
     const counts: Record<string, number> = {}
-    localReactions
-      .filter(r => r.post_id === postId)
-      .forEach(r => { counts[r.emoji] = (counts[r.emoji] || 0) + 1 })
+    localReactions.filter(r => r.post_id === postId).forEach(r => {
+      counts[r.emoji] = (counts[r.emoji] || 0) + 1
+    })
     return counts
   }
 
-  function hasReacted(postId: string, emoji: string) {
-    return localReactions.some(r => r.post_id === postId && r.user_id === clientId && r.emoji === emoji)
+  function getMyReactions(postId: string) {
+    return localReactions
+      .filter(r => r.post_id === postId && r.user_id === clientId)
+      .map(r => r.emoji)
   }
 
   async function toggleReaction(postId: string, emoji: string) {
@@ -91,8 +294,11 @@ export function CommunityPortal({ token, clientId, posts, reactions }: Community
     if (loadingKey === key) return
     setLoadingKey(key)
 
-    const reacted = hasReacted(postId, emoji)
-    if (reacted) {
+    const alreadyReacted = localReactions.some(
+      r => r.post_id === postId && r.user_id === clientId && r.emoji === emoji
+    )
+
+    if (alreadyReacted) {
       setLocalReactions(prev =>
         prev.filter(r => !(r.post_id === postId && r.user_id === clientId && r.emoji === emoji))
       )
@@ -116,340 +322,137 @@ export function CommunityPortal({ token, clientId, posts, reactions }: Community
     }
   }
 
-  const hasContent = zoomPost || videoPosts.length > 0 || sortedTextPosts.length > 0
+  const isEmpty = !zoomPost && videoPosts.length === 0 && textPosts.length === 0
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
-        .cp-root { font-family: 'DM Sans', sans-serif; }
-
-        @keyframes live-pulse {
-          0%,100% { opacity:1; box-shadow: 0 0 0 0 rgba(242,169,0,0.7); }
-          50% { opacity:.5; box-shadow: 0 0 0 5px rgba(242,169,0,0); }
-        }
-        @keyframes shimmer-sweep {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-        @keyframes reaction-pop {
+        @keyframes cp-bounce {
           0%  { transform: scale(1); }
-          40% { transform: scale(1.4); }
-          70% { transform: scale(0.88); }
+          35% { transform: scale(1.45); }
+          65% { transform: scale(0.88); }
           100%{ transform: scale(1); }
         }
-        @keyframes fade-up {
-          from { opacity:0; transform: translateY(12px); }
-          to   { opacity:1; transform: translateY(0); }
+        .cp-bounce { animation: cp-bounce 0.38s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes cp-shimmer {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(200%); }
         }
-
-        .live-dot {
-          width: 8px; height: 8px; border-radius: 50%;
-          background: #F2A900;
-          animation: live-pulse 2s ease-in-out infinite;
-        }
-        .zoom-shimmer::after {
+        .zoom-shimmer::before {
           content: '';
-          position: absolute; inset: 0;
-          background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.06) 50%, transparent 60%);
-          animation: shimmer-sweep 3.5s linear infinite;
+          position: absolute;
+          inset: 0;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+          animation: cp-shimmer 4s linear infinite;
           pointer-events: none;
         }
-        .reaction-pop { animation: reaction-pop 0.38s cubic-bezier(.36,.07,.19,.97) both; }
-        .video-thumb { position: relative; overflow: hidden; }
-        .video-thumb img { transition: transform 0.3s ease; }
-        .video-thumb:hover img { transform: scale(1.04); }
-        .play-overlay {
-          position: absolute; inset: 0;
-          display: flex; align-items: center; justify-content: center;
-          background: rgba(0,0,0,0.25);
-          transition: background 0.2s ease;
-        }
-        .video-thumb:hover .play-overlay { background: rgba(0,0,0,0.38); }
-        .play-btn {
-          width: 44px; height: 44px; border-radius: 50%;
-          background: rgba(242,169,0,0.92);
-          display: flex; align-items: center; justify-content: center;
-          backdrop-filter: blur(4px);
-          transition: transform 0.2s ease;
-        }
-        .video-thumb:hover .play-btn { transform: scale(1.1); }
-        .post-card { animation: fade-up .3s ease both; }
       `}</style>
 
-      <div className="cp-root space-y-6">
-
-        {/* ─── Empty state ─── */}
-        {!hasContent && (
-          <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, #001d3d, #002855)' }}>
-              <span className="text-3xl">✦</span>
-            </div>
-            <p className="font-semibold text-gray-700">La comunidad está por comenzar</p>
-            <p className="text-sm text-gray-400 max-w-[220px]">
-              Henry pronto compartirá sesiones, videos y anuncios aquí.
+      {/* ── Empty state ── */}
+      {isEmpty && (
+        <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #001428, #002855)' }}>
+            <Megaphone className="w-7 h-7 text-[#F2A900]" />
+          </div>
+          <div>
+            <p className="font-bold text-gray-800 text-base">Comunidad próximamente</p>
+            <p className="text-sm text-gray-400 mt-1 max-w-[240px]">
+              Henry publicará sesiones, videos y actualizaciones aquí muy pronto.
             </p>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* ─── ZOOM CARD ─── */}
-        {zoomPost?.zoom_url && (
-          <div
-            className="relative overflow-hidden rounded-2xl zoom-shimmer"
-            style={{ background: 'linear-gradient(135deg, #001428 0%, #002255 55%, #003580 100%)' }}
-          >
-            {/* Gold glow blob */}
-            <div className="absolute -right-10 -top-10 w-44 h-44 rounded-full pointer-events-none"
-              style={{ background: 'radial-gradient(circle, rgba(242,169,0,0.18) 0%, transparent 70%)' }} />
+      {/* ── ZOOM ── */}
+      {zoomPost?.zoom_url && (
+        <div
+          className="relative overflow-hidden rounded-2xl zoom-shimmer"
+          style={{ background: 'linear-gradient(135deg, #000f1f 0%, #001f40 55%, #002d60 100%)' }}
+        >
+          {/* Gold glow */}
+          <div className="absolute -right-12 -bottom-12 w-48 h-48 rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(circle, rgba(242,169,0,0.12) 0%, transparent 70%)' }} />
+          <div className="absolute -left-8 -top-8 w-32 h-32 rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(circle, rgba(242,169,0,0.06) 0%, transparent 70%)' }} />
 
-            <div className="relative p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <span className="live-dot shrink-0" />
-                <span className="text-[10px] font-bold text-[#F2A900] tracking-[0.18em] uppercase">
-                  Sesiones en Vivo
-                </span>
+          <div className="relative p-6 sm:p-8">
+            {/* Live badge */}
+            <div className="inline-flex items-center gap-2 mb-4">
+              <span className="w-2 h-2 rounded-full bg-[#F2A900] shrink-0"
+                style={{ boxShadow: '0 0 0 0 rgba(242,169,0,0.7)', animation: 'cp-pulse 2s ease-in-out infinite' }} />
+              <span className="text-[10px] font-black text-[#F2A900] tracking-[0.2em] uppercase">Sesiones con Henry</span>
+            </div>
+
+            <div className="flex items-end justify-between gap-6">
+              <div className="min-w-0">
+                <p className="text-white font-bold text-xl sm:text-2xl leading-tight mb-1">
+                  {zoomPost.title || 'Sesión en Vivo con Henry'}
+                </p>
+                {zoomPost.content && (
+                  <p className="text-white/50 text-sm">{zoomPost.content}</p>
+                )}
               </div>
-              <div className="flex items-end justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-white font-bold text-xl leading-tight">
-                    {zoomPost.title || 'Sesión con Henry'}
-                  </p>
-                  {zoomPost.content && (
-                    <p className="text-white/55 text-sm mt-1 leading-snug">{zoomPost.content}</p>
-                  )}
-                </div>
-                <a
-                  href={zoomPost.zoom_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="shrink-0 flex items-center gap-1.5 font-bold text-sm px-4 py-2.5 rounded-xl transition-all hover:scale-105 active:scale-95"
-                  style={{ background: 'linear-gradient(135deg, #F2A900, #D4940A)', color: '#001428' }}
-                >
-                  <Play className="w-3.5 h-3.5 fill-current" />
-                  Unirse
-                </a>
-              </div>
+              <a
+                href={zoomPost.zoom_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 flex items-center gap-2 font-bold text-sm px-5 py-3 rounded-xl transition-all hover:scale-105 active:scale-95 shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #F2A900, #ffca28)', color: '#001428' }}
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                Unirse
+              </a>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* ─── VIDEOS GRABADOS ─── */}
-        {videoPosts.length > 0 && (
-          <section>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: 'linear-gradient(135deg, #002855, #003d7a)' }}>
-                <Play className="w-3 h-3 fill-[#F2A900] text-[#F2A900]" />
-              </div>
-              <h3 className="font-bold text-sm text-gray-900 tracking-tight">Videos Grabados</h3>
-              <span className="text-xs text-gray-400 font-medium">
-                {videoPosts.length} {videoPosts.length === 1 ? 'video' : 'videos'}
-              </span>
-            </div>
+      {/* ── VIDEOS ── */}
+      {videoPosts.length > 0 && (
+        <div>
+          <SectionDivider
+            icon={<Play className="w-3.5 h-3.5" />}
+            label="Videos Grabados"
+            count={videoPosts.length}
+          />
+          <div className={`grid gap-4 ${videoPosts.length === 1 ? 'grid-cols-1 max-w-sm' : 'grid-cols-1 sm:grid-cols-2'}`}>
+            {videoPosts.map(post => (
+              <VideoCard
+                key={post.id}
+                post={post}
+                counts={getCounts(post.id)}
+                myReactions={getMyReactions(post.id)}
+                onReact={toggleReaction}
+                bouncingKey={bouncingKey}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
-            <div className="grid grid-cols-2 gap-2.5">
-              {videoPosts.map((post, idx) => {
-                const thumb = post.video_url ? getYouTubeThumbnail(post.video_url) : null
-                const counts = getReactionCounts(post.id)
-                const totalReactions = Object.values(counts).reduce((a, b) => a + b, 0)
-
-                return (
-                  <div
-                    key={post.id}
-                    className="bg-white rounded-xl overflow-hidden post-card"
-                    style={{
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.07), 0 4px 12px rgba(0,0,0,0.05)',
-                      animationDelay: `${idx * 60}ms`,
-                    }}
-                  >
-                    {/* Thumbnail */}
-                    <a
-                      href={post.video_url!}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="video-thumb block aspect-video bg-gray-900"
-                    >
-                      {thumb ? (
-                        <img
-                          src={thumb}
-                          alt={post.title || 'Video'}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center"
-                          style={{ background: 'linear-gradient(135deg, #001428, #002855)' }}>
-                          <Play className="w-8 h-8 text-[#F2A900]" />
-                        </div>
-                      )}
-                      <div className="play-overlay">
-                        <div className="play-btn">
-                          <Play className="w-4 h-4 fill-[#001428] text-[#001428] ml-0.5" />
-                        </div>
-                      </div>
-                    </a>
-
-                    {/* Info */}
-                    <div className="p-2.5">
-                      {post.title && (
-                        <p className="text-xs font-semibold text-gray-900 leading-snug line-clamp-2 mb-1">
-                          {post.title}
-                        </p>
-                      )}
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-[10px] text-gray-400">{formatDate(post.created_at)}</span>
-                        {totalReactions > 0 && (
-                          <span className="text-[10px] text-gray-400">{totalReactions} ✦</span>
-                        )}
-                      </div>
-
-                      {/* Compact reactions */}
-                      <div className="flex gap-1 mt-2">
-                        {REACTION_EMOJIS.map(emoji => {
-                          const count = counts[emoji] || 0
-                          const active = hasReacted(post.id, emoji)
-                          const key = `${post.id}-${emoji}`
-                          return (
-                            <button
-                              key={emoji}
-                              onClick={() => toggleReaction(post.id, emoji)}
-                              disabled={loadingKey === key}
-                              className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] transition-all select-none ${
-                                bouncingKey === key ? 'reaction-pop' : ''
-                              }`}
-                              style={active ? {
-                                background: 'rgba(242,169,0,0.15)',
-                                boxShadow: '0 0 0 1px rgba(242,169,0,0.4)',
-                              } : { background: '#f1f1f3' }}
-                            >
-                              <span style={{ fontSize: '11px' }}>{emoji}</span>
-                              {count > 0 && <span className="font-bold text-gray-600">{count}</span>}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-        )}
-
-        {/* ─── PUBLICACIONES ─── */}
-        {sortedTextPosts.length > 0 && (
-          <section>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0"
-                style={{ background: 'linear-gradient(135deg, #002855, #003d7a)' }}>
-                <Megaphone className="w-3 h-3 text-[#F2A900]" />
-              </div>
-              <h3 className="font-bold text-sm text-gray-900 tracking-tight">Publicaciones</h3>
-            </div>
-
-            <div className="space-y-3">
-              {sortedTextPosts.map((post, idx) => {
-                const counts = getReactionCounts(post.id)
-                const totalReactions = Object.values(counts).reduce((a, b) => a + b, 0)
-
-                return (
-                  <div
-                    key={post.id}
-                    className="bg-white rounded-2xl overflow-hidden post-card"
-                    style={{
-                      boxShadow: post.pinned
-                        ? '0 0 0 1.5px rgba(242,169,0,0.35), 0 4px 16px rgba(0,40,85,0.08)'
-                        : '0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04)',
-                      animationDelay: `${idx * 60}ms`,
-                    }}
-                  >
-                    {/* Pinned stripe */}
-                    {post.pinned && (
-                      <div className="h-[3px]"
-                        style={{ background: 'linear-gradient(90deg, #F2A900, #ffcd55, #F2A900)' }} />
-                    )}
-
-                    <div className="p-4">
-                      {/* Header */}
-                      <div className="flex items-start gap-3 mb-3">
-                        <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 font-bold text-sm"
-                          style={{ background: 'linear-gradient(135deg, #002855, #003d7a)', color: '#F2A900' }}
-                        >
-                          H
-                        </div>
-                        <div className="flex-1 min-w-0 pt-0.5">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="text-sm font-semibold text-gray-900">Henry Orellana</span>
-                            {post.pinned && (
-                              <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-[#F2A900]/15 text-[#B8780A]">
-                                <Pin className="w-2.5 h-2.5" />Fijado
-                              </span>
-                            )}
-                            {post.type === 'announcement' && (
-                              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md"
-                                style={{ background: '#002855', color: '#F2A900' }}>
-                                Anuncio
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[11px] text-gray-400 mt-0.5">{formatDate(post.created_at)}</p>
-                        </div>
-                      </div>
-
-                      {/* Content */}
-                      {post.title && (
-                        <p className="font-semibold text-gray-900 text-[13.5px] mb-1.5 leading-snug">
-                          {post.title}
-                        </p>
-                      )}
-                      {post.content && (
-                        <p className="text-[13px] text-gray-600 leading-relaxed whitespace-pre-wrap">
-                          {post.content}
-                        </p>
-                      )}
-
-                      {/* Divider + reactions */}
-                      <div className="flex items-center gap-2 mt-4 pt-3 border-t border-gray-100">
-                        <div className="flex items-center gap-1.5">
-                          {REACTION_EMOJIS.map(emoji => {
-                            const count = counts[emoji] || 0
-                            const active = hasReacted(post.id, emoji)
-                            const key = `${post.id}-${emoji}`
-                            return (
-                              <button
-                                key={emoji}
-                                onClick={() => toggleReaction(post.id, emoji)}
-                                disabled={loadingKey === key}
-                                className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-sm transition-all select-none ${
-                                  bouncingKey === key ? 'reaction-pop' : ''
-                                }`}
-                                style={active ? {
-                                  background: 'linear-gradient(135deg, rgba(242,169,0,0.2), rgba(242,169,0,0.1))',
-                                  boxShadow: '0 0 0 1.5px rgba(242,169,0,0.45)',
-                                  color: '#9a6500',
-                                } : { background: '#f1f1f3', color: '#777' }}
-                              >
-                                <span style={{ fontSize: '14px', lineHeight: 1 }}>{emoji}</span>
-                                {count > 0 && <span className="text-[11px] font-bold">{count}</span>}
-                              </button>
-                            )
-                          })}
-                        </div>
-                        {totalReactions > 0 && (
-                          <p className="text-[11px] text-gray-400 ml-auto">
-                            {totalReactions} {totalReactions === 1 ? 'reacción' : 'reacciones'}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-        )}
-      </div>
+      {/* ── PUBLICACIONES ── */}
+      {textPosts.length > 0 && (
+        <div>
+          <SectionDivider
+            icon={<Megaphone className="w-3.5 h-3.5" />}
+            label="Publicaciones"
+          />
+          <div>
+            {textPosts.map((post, i) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                counts={getCounts(post.id)}
+                myReactions={getMyReactions(post.id)}
+                onReact={toggleReaction}
+                bouncingKey={bouncingKey}
+                isLast={i === textPosts.length - 1}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </>
   )
 }
