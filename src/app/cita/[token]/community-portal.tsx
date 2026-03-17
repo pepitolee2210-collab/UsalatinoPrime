@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Play, Megaphone, Video, Pin, ExternalLink, Calendar, Globe, ChevronDown, ChevronUp } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Play, Megaphone, Video, Pin, ExternalLink, Calendar, Globe, ChevronDown, ChevronUp, X } from 'lucide-react'
 
 interface SchedulingDay {
   day_of_week: number
@@ -167,13 +167,96 @@ function ReactionRow({ postId, rxCounts, myRx, bouncing, onReact, small }: {
   )
 }
 
-// ── Video Card (fixed width for horizontal carousel) ──────────────
-function VideoCard({ post, ytId, thumb, rxCounts, myRx, onReact, bouncing }: {
+// ── Video Modal (fullscreen, mobile-first) ────────────────────────
+function VideoModal({ post, ytId, rxCounts, myRx, bouncing, onReact, onClose }: {
+  post: CommunityPost; ytId: string | null
+  rxCounts: Record<string, number>; myRx: string[]
+  bouncing: string | null; onReact: (pid: string, emoji: string) => void
+  onClose: () => void
+}) {
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex flex-col"
+      style={{ background: 'rgba(0,0,0,0.92)' }}
+      onClick={onClose}
+    >
+      {/* Top bar */}
+      <div
+        className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+        onClick={e => e.stopPropagation()}
+      >
+        <p className="text-white font-semibold text-sm leading-snug flex-1 mr-4 line-clamp-1">
+          {post.title || 'Video'}
+        </p>
+        <button
+          onClick={onClose}
+          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-opacity hover:opacity-70 active:opacity-50"
+          style={{ background: 'rgba(255,255,255,0.12)' }}
+        >
+          <X className="w-5 h-5 text-white" />
+        </button>
+      </div>
+
+      {/* Video — centered, full width, 16:9 */}
+      <div
+        className="w-full flex-shrink-0"
+        style={{ aspectRatio: '16/9' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {ytId ? (
+          <iframe
+            src={`https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0&playsinline=1`}
+            allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+            allowFullScreen
+            className="w-full h-full"
+            style={{ border: 'none', display: 'block' }}
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center gap-3">
+            <p className="text-white/60 text-sm">Este video no está disponible para reproducción inline.</p>
+            <a
+              href={post.video_url!}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold"
+              style={{ background: '#F2A900', color: '#001020' }}
+            >
+              <ExternalLink className="w-4 h-4" />
+              Abrir en YouTube
+            </a>
+          </div>
+        )}
+      </div>
+
+      {/* Reactions + meta below video */}
+      <div
+        className="px-4 pt-4 pb-6 flex-shrink-0"
+        onClick={e => e.stopPropagation()}
+      >
+        <p className="text-white/40 text-[11px] mb-3">{timeAgo(post.created_at)}</p>
+        <ReactionRow
+          postId={post.id} rxCounts={rxCounts} myRx={myRx}
+          bouncing={bouncing} onReact={onReact}
+        />
+      </div>
+    </div>
+  )
+}
+
+// ── Video Card (thumbnail only — play opens modal) ─────────────────
+function VideoCard({ post, ytId, thumb, rxCounts, myRx, onReact, bouncing, onPlay }: {
   post: CommunityPost; ytId: string | null; thumb: string | null
   rxCounts: Record<string, number>; myRx: string[]
   onReact: (pid: string, emoji: string) => void; bouncing: string | null
+  onPlay: () => void
 }) {
-  const [playing, setPlaying] = useState(false)
   const [imgFailed, setImgFailed] = useState(false)
 
   return (
@@ -181,47 +264,34 @@ function VideoCard({ post, ytId, thumb, rxCounts, myRx, onReact, bouncing }: {
       className="flex-shrink-0 rounded-2xl overflow-hidden"
       style={{ width: '210px', border: '1.5px solid #f0f1f3' }}
     >
-      {/* Thumbnail / Player */}
-      <div className="relative" style={{ aspectRatio: '16/9', background: '#001020' }}>
-        {playing && ytId ? (
-          <iframe
-            src={`https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`}
-            allow="autoplay; encrypted-media; picture-in-picture"
-            allowFullScreen
-            className="absolute inset-0 w-full h-full"
-            style={{ border: 'none' }}
+      {/* Thumbnail — tapping opens modal */}
+      <button
+        className="group relative w-full block"
+        style={{ aspectRatio: '16/9', background: '#001020' }}
+        onClick={onPlay}
+      >
+        {thumb && !imgFailed ? (
+          <img
+            src={thumb}
+            alt={post.title || ''}
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            onError={() => setImgFailed(true)}
           />
         ) : (
-          <button
-            className="group absolute inset-0 w-full h-full"
-            onClick={() => ytId ? setPlaying(true) : window.open(post.video_url!, '_blank')}
-          >
-            {thumb && !imgFailed ? (
-              <img
-                src={thumb}
-                alt={post.title || ''}
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                onError={() => setImgFailed(true)}
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, #001020 0%, #002255 100%)' }}>
-                <Play className="w-7 h-7 text-[#F2A900]" />
-              </div>
-            )}
-            {/* Play overlay */}
-            <div
-              className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-              style={{ background: 'rgba(0,0,0,0.35)' }}
-            >
-              <div className="w-11 h-11 rounded-full flex items-center justify-center shadow-xl"
-                style={{ background: '#F2A900' }}>
-                <Play className="w-5 h-5 fill-[#001020] text-[#001020] ml-0.5" />
-              </div>
-            </div>
-          </button>
+          <div className="absolute inset-0 flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #001020 0%, #002255 100%)' }}>
+            <Play className="w-7 h-7 text-[#F2A900]" />
+          </div>
         )}
-      </div>
+        {/* Play button always visible on mobile, hover on desktop */}
+        <div className="absolute inset-0 flex items-center justify-center sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity"
+          style={{ background: 'rgba(0,0,0,0.28)' }}>
+          <div className="w-12 h-12 rounded-full flex items-center justify-center shadow-2xl"
+            style={{ background: '#F2A900' }}>
+            <Play className="w-5 h-5 fill-[#001020] text-[#001020] ml-0.5" />
+          </div>
+        </div>
+      </button>
 
       {/* Info */}
       <div className="p-3 bg-white">
@@ -246,6 +316,7 @@ export function CommunityPortal({ token, clientId, posts, reactions, schedulingD
   const [bouncing, setBouncing] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
   const [showZones, setShowZones] = useState(false)
+  const [activeVideo, setActiveVideo] = useState<{ post: CommunityPost; ytId: string | null } | null>(null)
 
   const zoomPost   = posts.find(p => p.type === 'zoom')
   const videoPosts = posts.filter(p => p.type === 'video' && p.video_url)
@@ -286,6 +357,19 @@ export function CommunityPortal({ token, clientId, posts, reactions, schedulingD
 
   return (
     <>
+      {/* Video modal */}
+      {activeVideo && (
+        <VideoModal
+          post={activeVideo.post}
+          ytId={activeVideo.ytId}
+          rxCounts={counts(activeVideo.post.id)}
+          myRx={mine(activeVideo.post.id)}
+          bouncing={bouncing}
+          onReact={react}
+          onClose={() => setActiveVideo(null)}
+        />
+      )}
+
       <style>{`
         @keyframes rx-pop{0%{transform:scale(1)}40%{transform:scale(1.5)}70%{transform:scale(.85)}100%{transform:scale(1)}}
         .rx-pop{animation:rx-pop .35s cubic-bezier(.36,.07,.19,.97) both}
@@ -494,6 +578,7 @@ export function CommunityPortal({ token, clientId, posts, reactions, schedulingD
                       myRx={mine(post.id)}
                       onReact={react}
                       bouncing={bouncing}
+                      onPlay={() => setActiveVideo({ post, ytId })}
                     />
                   )
                 })}
