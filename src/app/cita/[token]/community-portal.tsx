@@ -168,46 +168,59 @@ function ReactionRow({ postId, rxCounts, myRx, bouncing, onReact, small }: {
 }
 
 // ── Video Card (fixed width for horizontal carousel) ──────────────
-function VideoCard({ post, thumb, rxCounts, myRx, onReact, bouncing }: {
-  post: CommunityPost; thumb: string | null
+function VideoCard({ post, ytId, thumb, rxCounts, myRx, onReact, bouncing }: {
+  post: CommunityPost; ytId: string | null; thumb: string | null
   rxCounts: Record<string, number>; myRx: string[]
   onReact: (pid: string, emoji: string) => void; bouncing: string | null
 }) {
-  const [failed, setFailed] = useState(false)
+  const [playing, setPlaying] = useState(false)
+  const [imgFailed, setImgFailed] = useState(false)
 
   return (
-    <a
-      href={post.video_url!}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex-shrink-0 rounded-2xl overflow-hidden transition-all hover:shadow-lg"
-      style={{ width: '210px', border: '1.5px solid #f0f1f3', display: 'block' }}
+    <div
+      className="flex-shrink-0 rounded-2xl overflow-hidden"
+      style={{ width: '210px', border: '1.5px solid #f0f1f3' }}
     >
-      {/* Thumbnail */}
-      <div className="relative overflow-hidden" style={{ aspectRatio: '16/9', background: '#001020' }}>
-        {thumb && !failed ? (
-          <img
-            src={thumb}
-            alt={post.title || ''}
-            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-            onError={() => setFailed(true)}
+      {/* Thumbnail / Player */}
+      <div className="relative" style={{ aspectRatio: '16/9', background: '#001020' }}>
+        {playing && ytId ? (
+          <iframe
+            src={`https://www.youtube.com/embed/${ytId}?autoplay=1&rel=0`}
+            allow="autoplay; encrypted-media; picture-in-picture"
+            allowFullScreen
+            className="absolute inset-0 w-full h-full"
+            style={{ border: 'none' }}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #001020 0%, #002255 100%)' }}>
-            <Play className="w-7 h-7 text-[#F2A900]" />
-          </div>
+          <button
+            className="group absolute inset-0 w-full h-full"
+            onClick={() => ytId ? setPlaying(true) : window.open(post.video_url!, '_blank')}
+          >
+            {thumb && !imgFailed ? (
+              <img
+                src={thumb}
+                alt={post.title || ''}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                onError={() => setImgFailed(true)}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center"
+                style={{ background: 'linear-gradient(135deg, #001020 0%, #002255 100%)' }}>
+                <Play className="w-7 h-7 text-[#F2A900]" />
+              </div>
+            )}
+            {/* Play overlay */}
+            <div
+              className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              style={{ background: 'rgba(0,0,0,0.35)' }}
+            >
+              <div className="w-11 h-11 rounded-full flex items-center justify-center shadow-xl"
+                style={{ background: '#F2A900' }}>
+                <Play className="w-5 h-5 fill-[#001020] text-[#001020] ml-0.5" />
+              </div>
+            </div>
+          </button>
         )}
-        {/* Play overlay on hover */}
-        <div
-          className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ background: 'rgba(0,0,0,0.32)' }}
-        >
-          <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-lg"
-            style={{ background: '#F2A900' }}>
-            <Play className="w-4 h-4 fill-[#001020] text-[#001020] ml-0.5" />
-          </div>
-        </div>
       </div>
 
       {/* Info */}
@@ -223,7 +236,7 @@ function VideoCard({ post, thumb, rxCounts, myRx, onReact, bouncing }: {
           />
         </div>
       </div>
-    </a>
+    </div>
   )
 }
 
@@ -475,6 +488,7 @@ export function CommunityPortal({ token, clientId, posts, reactions, schedulingD
                     <VideoCard
                       key={post.id}
                       post={post}
+                      ytId={ytId}
                       thumb={thumb}
                       rxCounts={counts(post.id)}
                       myRx={mine(post.id)}
