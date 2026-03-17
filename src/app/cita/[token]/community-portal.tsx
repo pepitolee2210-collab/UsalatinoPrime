@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Play, Megaphone, Video, Pin, ExternalLink, Calendar } from 'lucide-react'
+import { Play, Megaphone, Video, Pin, ExternalLink, Calendar, Globe, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface SchedulingDay {
   day_of_week: number
@@ -33,6 +33,45 @@ function fmt12(h: number) {
   const ampm = h >= 12 ? 'PM' : 'AM'
   const hour = h > 12 ? h - 12 : h === 0 ? 12 : h
   return `${hour}${ampm}`
+}
+
+// US timezone zones — offset is RELATIVE to Utah (Mountain Time)
+// ET/CT/PT/AKT all observe DST at the same time as MT → offsets are constant year-round
+// HI and AZ don't observe DST → their offset shifts 1h in summer (noted below)
+const US_ZONES = [
+  {
+    label: 'Hora del Este', abbr: 'ET', offset: +2,
+    states: 'NY · FL · PA · OH · NC · VA · GA · MA · NJ · MI · TN(E) · IN · SC · MD · WV · CT · ME · RI · NH · VT · DE · DC',
+  },
+  {
+    label: 'Hora Central', abbr: 'CT', offset: +1,
+    states: 'TX · IL · AL · MS · MO · AR · MN · WI · IA · LA · KY · OK · KS · TN(O) · NE(E) · ND(E) · SD(E)',
+  },
+  {
+    label: 'Hora de Montaña', abbr: 'MT', offset: 0, isBase: true,
+    states: 'UT · CO · WY · MT · NM · ID(N) · NE(O) · SD(O)',
+  },
+  {
+    label: 'Hora del Pacífico', abbr: 'PT', offset: -1,
+    states: 'CA · WA · OR · NV · ID(S)',
+  },
+  {
+    label: 'Alaska', abbr: 'AKT', offset: -2,
+    states: 'AK',
+  },
+  {
+    label: 'Hawái', abbr: 'HT', offset: -3, summerNote: '−4h en verano (jun–nov)',
+    states: 'HI',
+  },
+  {
+    label: 'Arizona', abbr: 'AZ', offset: 0, summerNote: '−1h en verano (jun–nov)',
+    states: 'AZ',
+  },
+] as const
+
+// Convert a Utah hour to the target zone using static offsets
+function convertH(h: number, offset: number) {
+  return ((h + offset) % 24 + 24) % 24
 }
 
 function getYTId(url: string) {
@@ -193,6 +232,7 @@ export function CommunityPortal({ token, clientId, posts, reactions, schedulingD
   const [localRx, setLocalRx] = useState(reactions)
   const [bouncing, setBouncing] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [showZones, setShowZones] = useState(false)
 
   const zoomPost   = posts.find(p => p.type === 'zoom')
   const videoPosts = posts.filter(p => p.type === 'video' && p.video_url)
@@ -252,11 +292,22 @@ export function CommunityPortal({ token, clientId, posts, reactions, schedulingD
             {/* Schedule pills */}
             {schedulingDays.length > 0 && (
               <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Horario semanal</span>
+                {/* Header row: label + Utah badge */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Horario semanal</span>
+                  </div>
+                  <span
+                    className="text-[10px] font-bold px-2.5 py-1 rounded-full"
+                    style={{ background: 'rgba(242,169,0,0.12)', color: '#9a6500' }}
+                  >
+                    Utah, EE.UU. (MT)
+                  </span>
                 </div>
-                <div className="flex flex-wrap gap-2">
+
+                {/* Day pills */}
+                <div className="flex flex-wrap gap-2 mb-3">
                   {schedulingDays.map(d => (
                     <div
                       key={d.day_of_week}
@@ -269,6 +320,102 @@ export function CommunityPortal({ token, clientId, posts, reactions, schedulingD
                     </div>
                   ))}
                 </div>
+
+                {/* Zone converter button */}
+                <button
+                  onClick={() => setShowZones(v => !v)}
+                  className="flex items-center gap-1.5 text-xs font-semibold transition-colors"
+                  style={{ color: showZones ? '#F2A900' : '#6b7280' }}
+                >
+                  <Globe className="w-3.5 h-3.5" />
+                  {showZones ? 'Ocultar' : '¿En qué estado vives? Ver horario en tu zona'}
+                  {showZones ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+
+                {/* Zones panel */}
+                {showZones && (
+                  <div
+                    className="mt-3 rounded-2xl overflow-hidden"
+                    style={{ border: '1px solid #e5e7eb' }}
+                  >
+                    {/* Panel header */}
+                    <div className="px-4 py-3" style={{ background: 'linear-gradient(135deg, #001d3d, #002855)' }}>
+                      <p className="text-xs font-bold text-white/70 uppercase tracking-widest">Conversión por zona horaria</p>
+                    </div>
+
+                    {US_ZONES.map((zone, zi) => {
+                      const isBase = 'isBase' in zone && zone.isBase
+                      return (
+                        <div
+                          key={zone.abbr}
+                          className="px-4 py-3"
+                          style={{
+                            background: isBase ? 'rgba(242,169,0,0.06)' : '#fff',
+                            borderTop: zi === 0 ? 'none' : '1px solid #f3f4f6',
+                          }}
+                        >
+                          {/* Zone header */}
+                          <div className="flex items-start justify-between gap-2 mb-1.5">
+                            <div>
+                              <span
+                                className="text-[11px] font-black uppercase tracking-wider"
+                                style={{ color: isBase ? '#9a6500' : '#374151' }}
+                              >
+                                {zone.label}
+                              </span>
+                              {isBase && (
+                                <span
+                                  className="ml-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                                  style={{ background: 'rgba(242,169,0,0.2)', color: '#9a6500' }}
+                                >
+                                  BASE (Utah)
+                                </span>
+                              )}
+                              {'summerNote' in zone && (
+                                <p className="text-[10px] text-gray-400 mt-0.5">{zone.summerNote}</p>
+                              )}
+                            </div>
+                            <span
+                              className="text-[10px] font-black px-2 py-1 rounded-lg flex-shrink-0"
+                              style={{ background: isBase ? 'rgba(242,169,0,0.15)' : '#f3f4f6', color: isBase ? '#9a6500' : '#6b7280' }}
+                            >
+                              {zone.abbr}
+                            </span>
+                          </div>
+
+                          {/* Converted times */}
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {schedulingDays.map(d => {
+                              const s = convertH(d.start_hour, zone.offset)
+                              const e = convertH(d.end_hour, zone.offset)
+                              return (
+                                <span
+                                  key={d.day_of_week}
+                                  className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg"
+                                  style={{
+                                    background: isBase ? 'rgba(242,169,0,0.12)' : '#f5f6f8',
+                                    color: isBase ? '#9a6500' : '#374151',
+                                  }}
+                                >
+                                  {DAY_NAMES[d.day_of_week]} · {fmt12(s)}–{fmt12(e)}
+                                </span>
+                              )
+                            })}
+                          </div>
+
+                          {/* States list */}
+                          <p className="text-[10px] text-gray-400 leading-relaxed">{zone.states}</p>
+                        </div>
+                      )
+                    })}
+
+                    <div className="px-4 py-2.5" style={{ background: '#fafafa', borderTop: '1px solid #f3f4f6' }}>
+                      <p className="text-[10px] text-gray-400">
+                        * AZ y HI no observan horario de verano — su diferencia varía 1h entre jun–nov.
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
