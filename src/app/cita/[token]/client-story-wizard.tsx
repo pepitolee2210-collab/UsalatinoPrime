@@ -93,8 +93,8 @@ const GUARDIAN_RELATIONS: { value: GuardianRelation; label: string }[] = [
   { value: 'tutor_legal', label: 'Tutor legal' }, { value: 'otro', label: 'Otro' },
 ]
 
-const DJ_STEP_LABELS = ['Hijos', 'Declaración', 'Padre/Madre', 'Testigos', 'Documentos', 'Confirmar y Enviar']
-const DJ_TOTAL_STEPS = 6
+const DJ_STEP_LABELS = ['Hijos', 'Declaración', 'Padre/Madre', 'Testigos', 'Confirmar y Enviar']
+const DJ_TOTAL_STEPS = 5
 
 function createEmptyDJ(docs: DJDoc[] = []): DJState {
   return {
@@ -539,15 +539,6 @@ function DJWizard({
           />
         )}
         {step === 4 && (
-          <DocsStep
-            djNumber={djNumber}
-            token={token}
-            docs={state.docs}
-            onAdded={doc => { onDocAdded(doc); updateState({ docs: [...state.docs, doc] }) }}
-            onRemoved={docId => { onDocRemoved(docId); updateState({ docs: state.docs.filter(d => d.id !== docId) }) }}
-          />
-        )}
-        {step === 5 && (
           <FinalStep
             djNumber={djNumber}
             state={state}
