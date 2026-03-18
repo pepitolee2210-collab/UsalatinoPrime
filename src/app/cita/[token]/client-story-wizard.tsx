@@ -45,6 +45,12 @@ interface TutorData {
   phone: string
   arrival_to_us: string
   caring_since: string
+  why_left_country: string
+  journey_to_us: string
+  current_situation: string
+  hardships: string
+  how_caring_children: string
+  additional_info: string
 }
 
 interface Witness { name: string; relationship: string; phone: string; can_testify: string }
@@ -53,7 +59,6 @@ interface DJDoc { id: string; name: string; file_size: number }
 
 interface DJState {
   status: 'empty' | 'draft' | 'submitted' | 'approved' | 'needs_correction'
-  tutor: TutorData
   children: ChildInfo[]
   story: StoryData
   parent: ParentData
@@ -90,6 +95,8 @@ const EMPTY_TUTOR: TutorData = {
   full_name: '', date_of_birth: '', country_of_birth: '',
   current_city: '', current_state: '', phone: '',
   arrival_to_us: '', caring_since: '',
+  why_left_country: '', journey_to_us: '', current_situation: '',
+  hardships: '', how_caring_children: '', additional_info: '',
 }
 
 const EMPTY_CHILD: ChildInfo = { name: '', guardian_relation: '', guardian_relation_other: '' }
@@ -111,13 +118,12 @@ const GUARDIAN_RELATIONS: { value: GuardianRelation; label: string }[] = [
   { value: 'tutor_legal', label: 'Tutor legal' }, { value: 'otro', label: 'Otro' },
 ]
 
-const DJ_STEP_LABELS = ['Tutor/Guardián', 'Hijos', 'Declaración', 'Padre/Madre Ausente', 'Testigos', 'Confirmar y Enviar']
-const DJ_TOTAL_STEPS = 6
+const DJ_STEP_LABELS = ['Hijos', 'Declaración', 'Padre/Madre Ausente', 'Testigos', 'Confirmar y Enviar']
+const DJ_TOTAL_STEPS = 5
 
 function createEmptyDJ(docs: DJDoc[] = []): DJState {
   return {
     status: 'empty',
-    tutor: { ...EMPTY_TUTOR },
     children: [{ ...EMPTY_CHILD }],
     story: { ...EMPTY_STORY },
     parent: { ...EMPTY_PARENT },
@@ -131,7 +137,12 @@ function createEmptyDJ(docs: DJDoc[] = []): DJState {
 
 export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWizardProps) {
   const [activeDJ, setActiveDJ] = useState<1 | 2 | 3 | 4 | null>(null)
+  const [showTutorForm, setShowTutorForm] = useState(false)
   const [loading, setLoading] = useState(true)
+
+  // Tutor is a separate state — filled once, shared across all DJs
+  const [tutorData, setTutorData] = useState<TutorData>({ ...EMPTY_TUTOR })
+  const [tutorSaved, setTutorSaved] = useState(false)
 
   const initialStates = (): Record<number, DJState> => ({
     1: createEmptyDJ(declarationDocs.filter(d => d.declaration_number === 1)),
@@ -150,6 +161,12 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
         if (!res.ok) { setLoading(false); return }
         const data = await res.json()
 
+        // Load tutor data (stored in tutor_guardian submission)
+        if (data.tutor_guardian?.data) {
+          setTutorData({ ...EMPTY_TUTOR, ...data.tutor_guardian.data })
+          setTutorSaved(true)
+        }
+
         if (data.declarations && Array.isArray(data.declarations)) {
           // New multi-minor format
           setDjStates(prev => {
@@ -158,7 +175,13 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
               const djNum = idx + 1
               if (djNum > 4) return
               const storyRaw = (decl.story || {}) as Record<string, unknown>
-              const { children, has_another_father, tutor, ...restStory } = storyRaw
+              const { children, has_another_father, tutor: _t, ...restStory } = storyRaw
+
+              // Load tutor from DJ1 story if not loaded yet (backward compat)
+              if (!data.tutor_guardian?.data && _t && idx === 0) {
+                setTutorData(prev => ({ ...prev, ...(_t as Partial<TutorData>) }))
+                setTutorSaved(true)
+              }
 
               let loadedChildren: ChildInfo[] = []
               if (Array.isArray(children) && children.length > 0) {
@@ -171,7 +194,6 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
               next[djNum] = {
                 ...prev[djNum],
                 status: (data[statusKey]?.status as DJState['status']) || 'draft',
-                tutor: { ...EMPTY_TUTOR, ...(tutor as Partial<TutorData> || {}) },
                 children: loadedChildren.length > 0 ? loadedChildren : [{ ...EMPTY_CHILD }],
                 story: { ...EMPTY_STORY, ...(restStory as Partial<StoryData>) },
                 parent: { ...EMPTY_PARENT, ...(decl.parent as Partial<ParentData> || {}) },
@@ -186,7 +208,12 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
           // Legacy format fallback — load into DJ1
           setDjStates(prev => {
             const storyRaw = (data.client_story?.data || {}) as Record<string, unknown>
-            const { children, has_another_father, minor_info, tutor, ...restStory } = storyRaw
+            const { children, has_another_father, minor_info, tutor: _t, ...restStory } = storyRaw
+
+            if (!data.tutor_guardian?.data && _t) {
+              setTutorData(prev => ({ ...prev, ...(_t as Partial<TutorData>) }))
+              setTutorSaved(true)
+            }
 
             let loadedChildren: ChildInfo[] = []
             if (Array.isArray(children) && children.length > 0) {
@@ -203,7 +230,6 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
               1: {
                 ...prev[1],
                 status: (data.client_story?.status as DJState['status']) || 'draft',
-                tutor: { ...EMPTY_TUTOR, ...(tutor as Partial<TutorData> || {}) },
                 children: loadedChildren.length > 0 ? loadedChildren : [{ ...EMPTY_CHILD }],
                 story: { ...EMPTY_STORY, ...(restStory as Partial<StoryData>) },
                 parent: { ...EMPTY_PARENT, ...parentData },
@@ -249,11 +275,38 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
     }))
   }
 
+  async function saveTutor() {
+    try {
+      await fetch('/api/client-story', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, form_type: 'tutor_guardian', form_data: tutorData, action: 'submit', minor_index: 0 }),
+      })
+      setTutorSaved(true)
+      setShowTutorForm(false)
+      toast.success('Historia del tutor guardada')
+    } catch {
+      toast.error('Error al guardar')
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
         <Loader2 className="w-6 h-6 animate-spin text-[#F2A900]" />
       </div>
+    )
+  }
+
+  // Show tutor form
+  if (showTutorForm) {
+    return (
+      <TutorStep
+        tutor={tutorData}
+        onChange={setTutorData}
+        onSave={saveTutor}
+        onBack={() => setShowTutorForm(false)}
+      />
     )
   }
 
@@ -273,11 +326,42 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
   }
 
   return (
-    <DJSelector
-      djStates={djStates}
-      visibleDJs={visibleDJs}
-      onOpen={setActiveDJ}
-    />
+    <div className="space-y-5">
+      {/* Tutor card — always at the top */}
+      <div
+        className="rounded-2xl border-2 p-5 cursor-pointer transition-all hover:shadow-md"
+        style={{
+          borderColor: tutorSaved ? '#bbf7d0' : '#fde68a',
+          background: tutorSaved ? '#f0fdf4' : '#fffbeb',
+        }}
+        onClick={() => setShowTutorForm(true)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ background: tutorSaved ? '#dcfce7' : '#fef3c7' }}>
+              <Users className="w-5 h-5" style={{ color: tutorSaved ? '#059669' : '#d97706' }} />
+            </div>
+            <div>
+              <p className="font-bold text-gray-900 text-sm">Mi Historia (Tutor/Guardián)</p>
+              {tutorSaved && tutorData.full_name ? (
+                <p className="text-xs text-gray-500">{tutorData.full_name} — Completado</p>
+              ) : (
+                <p className="text-xs text-amber-600 font-medium">Pendiente — Toca para llenar</p>
+              )}
+            </div>
+          </div>
+          <ArrowRight className="w-5 h-5 text-gray-400" />
+        </div>
+      </div>
+
+      {/* DJ Selector */}
+      <DJSelector
+        djStates={djStates}
+        visibleDJs={visibleDJs}
+        onOpen={setActiveDJ}
+      />
+    </div>
   )
 }
 
@@ -424,22 +508,17 @@ function DJWizard({
   }, [token, minorIndex])
 
   function autoSave(currentStep: number, currentState: DJState) {
-    // Save tutor + children + story together in client_story
-    if (currentStep >= 0 && currentStep <= 2) {
-      const hasData = currentState.tutor.full_name.trim() || currentState.children.some(c => c.name.trim()) || currentState.story.how_was_abandonment.trim()
-      if (hasData) {
-        saveDraft('client_story', {
-          ...currentState.story,
-          tutor: currentState.tutor,
-          children: currentState.children,
-          has_another_father: currentState.hasAnotherFather,
-        })
-      }
+    if (currentStep === 1 && currentState.story.how_was_abandonment.trim()) {
+      saveDraft('client_story', {
+        ...currentState.story,
+        children: currentState.children,
+        has_another_father: currentState.hasAnotherFather,
+      })
     }
-    if (currentStep === 3 && currentState.parent.situation) {
+    if (currentStep === 2 && currentState.parent.situation) {
       saveDraft('client_absent_parent', currentState.parent)
     }
-    if (currentStep === 4 && currentState.witnesses.some(w => w.name.trim())) {
+    if (currentStep === 3 && currentState.witnesses.some(w => w.name.trim())) {
       saveDraft('client_witnesses', { witnesses: currentState.witnesses })
     }
   }
@@ -455,36 +534,32 @@ function DJWizard({
   }
 
   function validate(): boolean {
-    if (!state.tutor.full_name.trim()) {
-      toast.error('Ingresa el nombre completo del tutor/guardián')
-      setStep(0); return false
-    }
     const validChildren = state.children.filter(c => c.name.trim())
     if (validChildren.length === 0) {
       toast.error('Agrega el nombre de al menos un hijo/a')
-      setStep(1); return false
+      setStep(0); return false
     }
     for (const c of validChildren) {
       if (!c.guardian_relation) {
         toast.error(`Selecciona tu relación con ${c.name}`)
-        setStep(1); return false
+        setStep(0); return false
       }
     }
     if (!state.story.how_was_abandonment.trim()) {
       toast.error('Describe cómo fue el abandono')
-      setStep(2); return false
+      setStep(1); return false
     }
     if (!state.parent.situation) {
       toast.error('Selecciona la situación del padre/madre')
-      setStep(3); return false
+      setStep(2); return false
     }
     if (state.parent.situation === 'absent' && !state.parent.reason_absent.trim()) {
       toast.error('Describe la razón de la ausencia')
-      setStep(3); return false
+      setStep(2); return false
     }
     if (!state.witnesses.some(w => w.name.trim())) {
       toast.error('Agrega al menos un testigo')
-      setStep(4); return false
+      setStep(3); return false
     }
     return true
   }
@@ -498,7 +573,6 @@ function DJWizard({
           form_type: 'client_story',
           form_data: {
             ...state.story,
-            tutor: state.tutor,
             children: state.children.filter(c => c.name.trim()),
             has_another_father: state.hasAnotherFather,
           },
@@ -573,40 +647,34 @@ function DJWizard({
       {/* Step content */}
       <div>
         {step === 0 && (
-          <TutorStep
-            tutor={state.tutor}
-            onChange={tutor => updateState({ tutor })}
-          />
-        )}
-        {step === 1 && (
           <ChildrenStep
             children={state.children}
             onChange={children => updateState({ children })}
             djNumber={djNumber}
           />
         )}
-        {step === 2 && (
+        {step === 1 && (
           <StoryStep
             story={state.story}
             children={state.children.filter(c => c.name.trim())}
             onChange={story => updateState({ story })}
           />
         )}
-        {step === 3 && (
+        {step === 2 && (
           <ParentStep
             parent={state.parent}
             childNames={state.children.filter(c => c.name.trim()).map(c => c.name)}
             onChange={parent => updateState({ parent })}
           />
         )}
-        {step === 4 && (
+        {step === 3 && (
           <WitnessStep
             witnesses={state.witnesses}
             childNames={state.children.filter(c => c.name.trim()).map(c => c.name)}
             onChange={witnesses => updateState({ witnesses })}
           />
         )}
-        {step === 5 && (
+        {step === 4 && (
           <FinalStep
             djNumber={djNumber}
             state={state}
@@ -650,113 +718,151 @@ function DJWizard({
   )
 }
 
-// ══ STEP 0: TUTOR/GUARDIAN ═════════════════════════════════════════
+// ══ TUTOR STEP (independent, outside DJ wizard) ═══════════════════
 
-function TutorStep({ tutor, onChange }: { tutor: TutorData; onChange: (t: TutorData) => void }) {
+function TutorStep({ tutor, onChange, onSave, onBack }: {
+  tutor: TutorData; onChange: (t: TutorData) => void
+  onSave: () => void; onBack: () => void
+}) {
+  const [saving, setSaving] = useState(false)
   function upd(field: keyof TutorData, value: string) {
     onChange({ ...tutor, [field]: value })
   }
 
+  async function handleSave() {
+    if (!tutor.full_name.trim()) { toast.error('Ingresa tu nombre completo'); return }
+    setSaving(true)
+    await onSave()
+    setSaving(false)
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-2">
-        <Users className="w-5 h-5 text-[#F2A900]" />
-        <h3 className="font-semibold text-gray-900">Datos del Tutor / Guardián</h3>
+    <div className="space-y-5">
+      <div>
+        <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-3">
+          <ChevronLeft className="w-4 h-4" /> Volver
+        </button>
+        <div className="flex items-center gap-2">
+          <Users className="w-5 h-5 text-[#F2A900]" />
+          <h3 className="font-bold text-gray-900">Mi Historia (Tutor / Guardián)</h3>
+        </div>
+        <p className="text-sm text-gray-500 mt-1">Cuéntenos su historia. Toda la información es confidencial.</p>
       </div>
-      <p className="text-sm text-gray-500">
-        Complete la información de la persona responsable de los menores (usted, la madre, padre o tutor legal).
-      </p>
 
-      <div className="space-y-3">
+      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+        Escriba desde su perspectiva como tutor/guardián de los menores. Incluya todos los detalles que considere importantes: dificultades, sacrificios, y cómo ha cuidado a los niños.
+      </div>
+
+      <div className="space-y-4">
+        {/* Basic info */}
         <div>
-          <label className="text-sm font-medium text-gray-700 mb-1 block">Nombre completo *</label>
-          <input
-            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
-            placeholder="Nombre y apellidos completos"
-            value={tutor.full_name}
-            onChange={e => upd('full_name', e.target.value)}
-          />
+          <FieldLabel required>Nombre completo</FieldLabel>
+          <TextInput value={tutor.full_name} onChange={v => upd('full_name', v)} placeholder="Nombre y apellidos completos" />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Fecha de nacimiento</label>
-            <input
-              type="date"
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
-              value={tutor.date_of_birth}
-              onChange={e => upd('date_of_birth', e.target.value)}
-            />
+            <FieldLabel>Fecha de nacimiento</FieldLabel>
+            <input type="date" value={tutor.date_of_birth} onChange={e => upd('date_of_birth', e.target.value)}
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40" />
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">País de nacimiento</label>
-            <input
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
-              placeholder="Ej: Colombia"
-              value={tutor.country_of_birth}
-              onChange={e => upd('country_of_birth', e.target.value)}
-            />
+            <FieldLabel>País de nacimiento</FieldLabel>
+            <TextInput value={tutor.country_of_birth} onChange={v => upd('country_of_birth', v)} placeholder="Ej: Colombia, Venezuela..." />
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Ciudad actual</label>
-            <input
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
-              placeholder="Ej: Salt Lake City"
-              value={tutor.current_city}
-              onChange={e => upd('current_city', e.target.value)}
-            />
+            <FieldLabel>Ciudad donde vive ahora</FieldLabel>
+            <TextInput value={tutor.current_city} onChange={v => upd('current_city', v)} placeholder="Ej: Salt Lake City" />
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Estado</label>
-            <input
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
-              placeholder="Ej: Utah"
-              value={tutor.current_state}
-              onChange={e => upd('current_state', e.target.value)}
-            />
+            <FieldLabel>Estado</FieldLabel>
+            <TextInput value={tutor.current_state} onChange={v => upd('current_state', v)} placeholder="Ej: Utah" />
           </div>
         </div>
 
         <div>
-          <label className="text-sm font-medium text-gray-700 mb-1 block">Teléfono</label>
-          <input
-            type="tel"
-            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
-            placeholder="Número de contacto"
-            value={tutor.phone}
-            onChange={e => upd('phone', e.target.value)}
-          />
+          <FieldLabel>Teléfono de contacto</FieldLabel>
+          <TextInput value={tutor.phone} onChange={v => upd('phone', v)} placeholder="Número de teléfono" />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Año de llegada a EE.UU.</label>
-            <input
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
-              placeholder="Ej: 2019"
-              value={tutor.arrival_to_us}
-              onChange={e => upd('arrival_to_us', e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700 mb-1 block">Cuida al menor desde</label>
-            <input
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
-              placeholder="Ej: Desde su nacimiento"
-              value={tutor.caring_since}
-              onChange={e => upd('caring_since', e.target.value)}
-            />
-          </div>
+        {/* Story section */}
+        <div className="border-t border-gray-200 pt-4 mt-2">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Su historia</p>
         </div>
+
+        <div>
+          <FieldLabel>¿En qué año llegó a los Estados Unidos?</FieldLabel>
+          <TextInput value={tutor.arrival_to_us} onChange={v => upd('arrival_to_us', v)} placeholder="Ej: 2019" />
+        </div>
+
+        <div>
+          <FieldLabel>¿Desde cuándo cuida a los menores?</FieldLabel>
+          <TextInput value={tutor.caring_since} onChange={v => upd('caring_since', v)} placeholder="Ej: Desde su nacimiento / Desde 2018" />
+        </div>
+
+        <div>
+          <FieldLabel required>¿Por qué salió de su país? Cuente su historia.</FieldLabel>
+          <TextArea value={tutor.why_left_country} onChange={v => upd('why_left_country', v)}
+            placeholder="Cuente por qué tuvo que salir: violencia, pobreza, amenazas, falta de oportunidades... Incluya fechas y detalles."
+            rows={5} />
+        </div>
+
+        <div>
+          <FieldLabel>¿Cómo fue el viaje hasta Estados Unidos?</FieldLabel>
+          <TextArea value={tutor.journey_to_us} onChange={v => upd('journey_to_us', v)}
+            placeholder="Describa el viaje: por dónde pasó, cuánto duró, las dificultades que enfrentó con los niños, peligros..."
+            rows={4} />
+        </div>
+
+        <div>
+          <FieldLabel>¿Cuál es su situación actual?</FieldLabel>
+          <TextArea value={tutor.current_situation} onChange={v => upd('current_situation', v)}
+            placeholder="Dónde vive, con quién, si trabaja, cómo se sostiene, estado migratorio..."
+            rows={4} />
+        </div>
+
+        <div>
+          <FieldLabel>¿Qué dificultades ha enfrentado para criar a los menores?</FieldLabel>
+          <TextArea value={tutor.hardships} onChange={v => upd('hardships', v)}
+            placeholder="Problemas económicos, de salud, emocionales, falta de apoyo del otro padre, discriminación..."
+            rows={4} />
+        </div>
+
+        <div>
+          <FieldLabel>¿Cómo ha cuidado a los menores? ¿Qué ha hecho por ellos?</FieldLabel>
+          <TextArea value={tutor.how_caring_children} onChange={v => upd('how_caring_children', v)}
+            placeholder="Escuela, salud, vivienda, alimentación, apoyo emocional — todo lo que usted ha hecho sola/solo..."
+            rows={4} />
+        </div>
+
+        <div>
+          <FieldLabel>¿Hay algo más que quiera agregar?</FieldLabel>
+          <TextArea value={tutor.additional_info} onChange={v => upd('additional_info', v)}
+            placeholder="Cualquier información adicional que considere importante para su caso..."
+            rows={3} />
+        </div>
+      </div>
+
+      {/* Save button */}
+      <div className="flex justify-end pt-4 border-t border-gray-100">
+        <button
+          onClick={handleSave}
+          disabled={saving || !tutor.full_name.trim()}
+          className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
+          style={{ background: '#F2A900', color: '#001020' }}
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+          Guardar mi historia
+        </button>
       </div>
     </div>
   )
 }
 
-// ══ STEP 1: CHILDREN ═══════════════════════════════════════════════
+// ══ STEP 0: CHILDREN ═══════════════════════════════════════════════
 
 function ChildrenStep({ children, onChange, djNumber }: {
   children: ChildInfo[]
@@ -1179,16 +1285,8 @@ function FinalStep({ djNumber, state, isLastPossibleDJ, onEditStep, onHasAnother
         <p className="text-sm text-gray-500 mt-1">Verifique la información antes de enviar.</p>
       </div>
 
-      {/* Tutor summary */}
-      <ReviewCard title="Tutor / Guardián" onEdit={() => onEditStep(0)}>
-        {state.tutor.full_name && <p className="text-sm text-gray-700"><span className="font-medium">Nombre:</span> {state.tutor.full_name}</p>}
-        {state.tutor.country_of_birth && <p className="text-sm text-gray-700"><span className="font-medium">País:</span> {state.tutor.country_of_birth}</p>}
-        {state.tutor.current_city && <p className="text-sm text-gray-700"><span className="font-medium">Ubicación:</span> {state.tutor.current_city}, {state.tutor.current_state}</p>}
-        {state.tutor.phone && <p className="text-sm text-gray-700"><span className="font-medium">Tel:</span> {state.tutor.phone}</p>}
-      </ReviewCard>
-
       {/* Children summary */}
-      <ReviewCard title="Hijos en esta declaración" onEdit={() => onEditStep(1)}>
+      <ReviewCard title="Hijos en esta declaración" onEdit={() => onEditStep(0)}>
         {validChildren.map((c, i) => (
           <p key={i} className="text-sm text-gray-700">
             {c.name} — <span className="text-gray-500">{GUARDIAN_RELATIONS.find(r => r.value === c.guardian_relation)?.label || c.guardian_relation}</span>
@@ -1197,7 +1295,7 @@ function FinalStep({ djNumber, state, isLastPossibleDJ, onEditStep, onHasAnother
       </ReviewCard>
 
       {/* Story summary */}
-      <ReviewCard title="Declaración" onEdit={() => onEditStep(2)}>
+      <ReviewCard title="Declaración" onEdit={() => onEditStep(1)}>
         {state.story.arrival_year && <p className="text-sm text-gray-700"><span className="font-medium">Año de llegada:</span> {state.story.arrival_year}</p>}
         {state.story.how_was_abandonment && (
           <p className="text-sm text-gray-700">
@@ -1208,13 +1306,13 @@ function FinalStep({ djNumber, state, isLastPossibleDJ, onEditStep, onHasAnother
       </ReviewCard>
 
       {/* Parent summary */}
-      <ReviewCard title="Padre/Madre Ausente" onEdit={() => onEditStep(3)}>
+      <ReviewCard title="Padre/Madre Ausente" onEdit={() => onEditStep(2)}>
         <p className="text-sm text-gray-700"><span className="font-medium">Situación:</span> {parentSituation}</p>
         {state.parent.parent_name && <p className="text-sm text-gray-700"><span className="font-medium">Nombre:</span> {state.parent.parent_name}</p>}
       </ReviewCard>
 
       {/* Witnesses summary */}
-      <ReviewCard title={`Testigos (${validWitnesses.length})`} onEdit={() => onEditStep(4)}>
+      <ReviewCard title={`Testigos (${validWitnesses.length})`} onEdit={() => onEditStep(3)}>
         {validWitnesses.map((w, i) => (
           <p key={i} className="text-sm text-gray-700">{w.name} — <span className="text-gray-500">{w.relationship}</span></p>
         ))}

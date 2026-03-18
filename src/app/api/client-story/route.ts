@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     .select('form_type, form_data, status, admin_notes, updated_at, minor_index')
     .eq('case_id', tokenData.case_id)
     .in('form_type', [
-      'client_story', 'client_witnesses', 'client_absent_parent',
+      'client_story', 'client_witnesses', 'client_absent_parent', 'tutor_guardian',
       'i589_part_b1', 'i589_part_b2', 'i589_part_c1', 'i589_part_c2',
     ])
     .order('minor_index', { ascending: true })
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
   }
 
   const validTypes = [
-    'client_story', 'client_witnesses', 'client_absent_parent',
+    'client_story', 'client_witnesses', 'client_absent_parent', 'tutor_guardian',
     'i589_part_b1', 'i589_part_b2', 'i589_part_c1', 'i589_part_c2',
   ]
   if (!validTypes.includes(form_type)) {
