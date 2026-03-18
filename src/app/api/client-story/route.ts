@@ -35,15 +35,16 @@ export async function GET(request: NextRequest) {
   // Check if any submission has minor_index > 0 (multi-minor format)
   const hasMultiMinor = submissions.some(s => (s.minor_index ?? 0) > 0)
 
-  // Check if any submission has minor_info in form_data (new format indicator)
-  const hasMinorInfo = submissions.some(s =>
+  // Check if any submission has minor_info or children in form_data (new format indicators)
+  const hasNewFormat = submissions.some(s =>
     s.form_type === 'client_story' &&
     s.form_data &&
     typeof s.form_data === 'object' &&
-    'minor_info' in (s.form_data as Record<string, unknown>)
+    ('minor_info' in (s.form_data as Record<string, unknown>) ||
+     'children' in (s.form_data as Record<string, unknown>))
   )
 
-  if (hasMultiMinor || hasMinorInfo) {
+  if (hasMultiMinor || hasNewFormat) {
     // New multi-minor format: group by minor_index
     const minorMap = new Map<number, Record<string, unknown>>()
 

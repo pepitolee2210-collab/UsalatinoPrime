@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import {
   ChevronLeft, ChevronRight, CheckCircle, Send, Loader2,
@@ -124,14 +124,15 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
   const [djStates, setDjStates] = useState<Record<number, DJState>>(initialStates)
 
   // Load saved data on mount
-  useState(() => {
+  useEffect(() => {
     async function load() {
       try {
         const res = await fetch(`/api/client-story?token=${token}`)
-        if (!res.ok) return
+        if (!res.ok) { setLoading(false); return }
         const data = await res.json()
 
         if (data.declarations && Array.isArray(data.declarations)) {
+          // New multi-minor format
           setDjStates(prev => {
             const next = { ...prev }
             data.declarations.forEach((decl: Record<string, unknown>, idx: number) => {
@@ -140,7 +141,6 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
               const storyRaw = (decl.story || {}) as Record<string, unknown>
               const { children, has_another_father, ...restStory } = storyRaw
 
-              // Support both new (children array) and legacy (single minor_info)
               let loadedChildren: ChildInfo[] = []
               if (Array.isArray(children) && children.length > 0) {
                 loadedChildren = children as ChildInfo[]
@@ -162,6 +162,36 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
             })
             return next
           })
+        } else if (data.client_story) {
+          // Legacy format fallback — load into DJ1
+          setDjStates(prev => {
+            const storyRaw = (data.client_story?.data || {}) as Record<string, unknown>
+            const { children, has_another_father, minor_info, ...restStory } = storyRaw
+
+            let loadedChildren: ChildInfo[] = []
+            if (Array.isArray(children) && children.length > 0) {
+              loadedChildren = children as ChildInfo[]
+            } else if (minor_info && (minor_info as ChildInfo).name) {
+              loadedChildren = [minor_info as ChildInfo]
+            }
+
+            const parentData = (data.client_absent_parent?.data || {}) as Partial<ParentData>
+            const witnessesData = (data.client_witnesses?.data || {}) as { witnesses?: Witness[] }
+
+            return {
+              ...prev,
+              1: {
+                ...prev[1],
+                status: (data.client_story?.status as DJState['status']) || 'draft',
+                children: loadedChildren.length > 0 ? loadedChildren : [{ ...EMPTY_CHILD }],
+                story: { ...EMPTY_STORY, ...(restStory as Partial<StoryData>) },
+                parent: { ...EMPTY_PARENT, ...parentData },
+                witnesses: witnessesData?.witnesses?.length ? witnessesData.witnesses : [{ name: '', relationship: '', phone: '', can_testify: '' }],
+                hasAnotherFather: has_another_father === true ? true : has_another_father === false ? false : null,
+                adminNotes: data.client_story?.admin_notes,
+              },
+            }
+          })
         }
       } catch {
         // First load, no data
@@ -170,7 +200,8 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
       }
     }
     load()
-  })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Which DJs are unlocked
   const visibleDJs = ([1, 2, 3, 4] as const).filter(n => {
