@@ -2,14 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createClient as createAdminClient } from '@supabase/supabase-js'
 
-export async function POST(request: NextRequest) {
-  const { phone, password } = await request.json()
+const EMPLOYEE_PASSWORD = process.env.EMPLOYEE_AUTH_PASSWORD || 'emp_ULP_2026_internal'
 
-  if (!phone || !password) {
-    return NextResponse.json({ error: 'Teléfono y contraseña requeridos' }, { status: 400 })
+export async function POST(request: NextRequest) {
+  const { phone } = await request.json()
+
+  if (!phone) {
+    return NextResponse.json({ error: 'Número de teléfono requerido' }, { status: 400 })
   }
 
-  // Use service role to look up employee by phone (no auth needed)
+  // Use service role to look up employee by phone
   const admin = createAdminClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -23,18 +25,18 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (!profile?.email) {
-    return NextResponse.json({ error: 'No se encontró una cuenta de empleado con este teléfono' }, { status: 401 })
+    return NextResponse.json({ error: 'No se encontró una cuenta con este número' }, { status: 401 })
   }
 
-  // Sign in with the found email + provided password
+  // Sign in using the internal password
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword({
     email: profile.email,
-    password,
+    password: EMPLOYEE_PASSWORD,
   })
 
   if (error) {
-    return NextResponse.json({ error: 'Contraseña incorrecta' }, { status: 401 })
+    return NextResponse.json({ error: 'Error de autenticación' }, { status: 401 })
   }
 
   return NextResponse.json({ success: true })

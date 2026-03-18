@@ -5,11 +5,10 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, Briefcase, Phone, Lock } from 'lucide-react'
+import { Loader2, Briefcase, Phone } from 'lucide-react'
 
 export default function EmployeeLoginPage() {
   const [phone, setPhone] = useState('')
-  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const router = useRouter()
@@ -23,7 +22,7 @@ export default function EmployeeLoginPage() {
       const res = await fetch('/api/employee/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: phone.trim(), password }),
+        body: JSON.stringify({ phone: phone.trim() }),
       })
 
       const data = await res.json()
@@ -75,22 +74,6 @@ export default function EmployeeLoginPage() {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="Ingrese su contraseña"
-                className="pl-10 h-12"
-                required
-              />
-            </div>
-          </div>
-
           {error && (
             <div className="p-3 rounded-xl bg-red-50 border border-red-200">
               <p className="text-sm text-red-700">{error}</p>
@@ -99,10 +82,10 @@ export default function EmployeeLoginPage() {
 
           <Button
             type="submit"
-            disabled={loading || !phone.trim() || !password}
+            disabled={loading || !phone.trim()}
             className="w-full h-12 text-sm font-bold bg-[#002855] hover:bg-[#001d3d]"
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Iniciar Sesión'}
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Ingresar'}
           </Button>
         </form>
       </div>
