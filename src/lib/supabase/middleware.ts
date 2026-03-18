@@ -37,8 +37,8 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse
   }
 
-  // Auth pages
-  if (pathname.startsWith('/login') || pathname.startsWith('/register')) {
+  // Auth pages (including employee login at exactly /employee)
+  if (pathname.startsWith('/login') || pathname.startsWith('/register') || pathname === '/employee') {
     if (user) {
       // Redirect logged in users
       const { data: role } = await supabase.rpc('get_user_role', { user_id: user.id })
