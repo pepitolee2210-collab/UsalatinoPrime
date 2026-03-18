@@ -1,17 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, Briefcase, Phone } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
 export default function EmployeeLoginPage() {
   const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const router = useRouter()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -32,8 +31,20 @@ export default function EmployeeLoginPage() {
         return
       }
 
-      router.push('/employee/dashboard')
-      router.refresh()
+      // Set session on client side — this properly sets cookies
+      const supabase = createClient()
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: data.access_token,
+        refresh_token: data.refresh_token,
+      })
+
+      if (sessionError) {
+        setError('Error al establecer sesión')
+        return
+      }
+
+      // Full page navigation to ensure server picks up cookies
+      window.location.href = '/employee/dashboard'
     } catch {
       setError('Error de conexión')
     } finally {
@@ -44,7 +55,6 @@ export default function EmployeeLoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-sm">
-        {/* Logo */}
         <div className="text-center mb-8">
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
@@ -56,7 +66,6 @@ export default function EmployeeLoginPage() {
           <p className="text-sm text-gray-500 mt-1">Portal de Empleado</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 shadow-sm">
           <div className="space-y-2">
             <Label htmlFor="phone">Número de teléfono</Label>
