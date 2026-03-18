@@ -36,12 +36,24 @@ interface ParentData {
   death_date: string; death_place: string; has_death_certificate: string; what_is_known: string
 }
 
+interface TutorData {
+  full_name: string
+  date_of_birth: string
+  country_of_birth: string
+  current_city: string
+  current_state: string
+  phone: string
+  arrival_to_us: string
+  caring_since: string
+}
+
 interface Witness { name: string; relationship: string; phone: string; can_testify: string }
 
 interface DJDoc { id: string; name: string; file_size: number }
 
 interface DJState {
   status: 'empty' | 'draft' | 'submitted' | 'approved' | 'needs_correction'
+  tutor: TutorData
   children: ChildInfo[]
   story: StoryData
   parent: ParentData
@@ -74,6 +86,12 @@ const EMPTY_PARENT: ParentData = {
   death_date: '', death_place: '', has_death_certificate: '', what_is_known: '',
 }
 
+const EMPTY_TUTOR: TutorData = {
+  full_name: '', date_of_birth: '', country_of_birth: '',
+  current_city: '', current_state: '', phone: '',
+  arrival_to_us: '', caring_since: '',
+}
+
 const EMPTY_CHILD: ChildInfo = { name: '', guardian_relation: '', guardian_relation_other: '' }
 
 const PARENT_SITUATIONS: { value: ParentSituation; label: string; desc: string }[] = [
@@ -93,12 +111,13 @@ const GUARDIAN_RELATIONS: { value: GuardianRelation; label: string }[] = [
   { value: 'tutor_legal', label: 'Tutor legal' }, { value: 'otro', label: 'Otro' },
 ]
 
-const DJ_STEP_LABELS = ['Hijos', 'Declaración', 'Padre/Madre', 'Testigos', 'Confirmar y Enviar']
-const DJ_TOTAL_STEPS = 5
+const DJ_STEP_LABELS = ['Tutor/Guardián', 'Hijos', 'Declaración', 'Padre/Madre Ausente', 'Testigos', 'Confirmar y Enviar']
+const DJ_TOTAL_STEPS = 6
 
 function createEmptyDJ(docs: DJDoc[] = []): DJState {
   return {
     status: 'empty',
+    tutor: { ...EMPTY_TUTOR },
     children: [{ ...EMPTY_CHILD }],
     story: { ...EMPTY_STORY },
     parent: { ...EMPTY_PARENT },
@@ -139,7 +158,7 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
               const djNum = idx + 1
               if (djNum > 4) return
               const storyRaw = (decl.story || {}) as Record<string, unknown>
-              const { children, has_another_father, ...restStory } = storyRaw
+              const { children, has_another_father, tutor, ...restStory } = storyRaw
 
               let loadedChildren: ChildInfo[] = []
               if (Array.isArray(children) && children.length > 0) {
@@ -152,6 +171,7 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
               next[djNum] = {
                 ...prev[djNum],
                 status: (data[statusKey]?.status as DJState['status']) || 'draft',
+                tutor: { ...EMPTY_TUTOR, ...(tutor as Partial<TutorData> || {}) },
                 children: loadedChildren.length > 0 ? loadedChildren : [{ ...EMPTY_CHILD }],
                 story: { ...EMPTY_STORY, ...(restStory as Partial<StoryData>) },
                 parent: { ...EMPTY_PARENT, ...(decl.parent as Partial<ParentData> || {}) },
@@ -166,7 +186,7 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
           // Legacy format fallback — load into DJ1
           setDjStates(prev => {
             const storyRaw = (data.client_story?.data || {}) as Record<string, unknown>
-            const { children, has_another_father, minor_info, ...restStory } = storyRaw
+            const { children, has_another_father, minor_info, tutor, ...restStory } = storyRaw
 
             let loadedChildren: ChildInfo[] = []
             if (Array.isArray(children) && children.length > 0) {
@@ -183,6 +203,7 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
               1: {
                 ...prev[1],
                 status: (data.client_story?.status as DJState['status']) || 'draft',
+                tutor: { ...EMPTY_TUTOR, ...(tutor as Partial<TutorData> || {}) },
                 children: loadedChildren.length > 0 ? loadedChildren : [{ ...EMPTY_CHILD }],
                 story: { ...EMPTY_STORY, ...(restStory as Partial<StoryData>) },
                 parent: { ...EMPTY_PARENT, ...parentData },
@@ -403,17 +424,22 @@ function DJWizard({
   }, [token, minorIndex])
 
   function autoSave(currentStep: number, currentState: DJState) {
-    if (currentStep === 1 && currentState.story.how_was_abandonment.trim()) {
-      saveDraft('client_story', {
-        ...currentState.story,
-        children: currentState.children,
-        has_another_father: currentState.hasAnotherFather,
-      })
+    // Save tutor + children + story together in client_story
+    if (currentStep >= 0 && currentStep <= 2) {
+      const hasData = currentState.tutor.full_name.trim() || currentState.children.some(c => c.name.trim()) || currentState.story.how_was_abandonment.trim()
+      if (hasData) {
+        saveDraft('client_story', {
+          ...currentState.story,
+          tutor: currentState.tutor,
+          children: currentState.children,
+          has_another_father: currentState.hasAnotherFather,
+        })
+      }
     }
-    if (currentStep === 2 && currentState.parent.situation) {
+    if (currentStep === 3 && currentState.parent.situation) {
       saveDraft('client_absent_parent', currentState.parent)
     }
-    if (currentStep === 3 && currentState.witnesses.some(w => w.name.trim())) {
+    if (currentStep === 4 && currentState.witnesses.some(w => w.name.trim())) {
       saveDraft('client_witnesses', { witnesses: currentState.witnesses })
     }
   }
@@ -429,32 +455,36 @@ function DJWizard({
   }
 
   function validate(): boolean {
+    if (!state.tutor.full_name.trim()) {
+      toast.error('Ingresa el nombre completo del tutor/guardián')
+      setStep(0); return false
+    }
     const validChildren = state.children.filter(c => c.name.trim())
     if (validChildren.length === 0) {
       toast.error('Agrega el nombre de al menos un hijo/a')
-      setStep(0); return false
+      setStep(1); return false
     }
     for (const c of validChildren) {
       if (!c.guardian_relation) {
         toast.error(`Selecciona tu relación con ${c.name}`)
-        setStep(0); return false
+        setStep(1); return false
       }
     }
     if (!state.story.how_was_abandonment.trim()) {
       toast.error('Describe cómo fue el abandono')
-      setStep(1); return false
+      setStep(2); return false
     }
     if (!state.parent.situation) {
       toast.error('Selecciona la situación del padre/madre')
-      setStep(2); return false
+      setStep(3); return false
     }
     if (state.parent.situation === 'absent' && !state.parent.reason_absent.trim()) {
       toast.error('Describe la razón de la ausencia')
-      setStep(2); return false
+      setStep(3); return false
     }
     if (!state.witnesses.some(w => w.name.trim())) {
       toast.error('Agrega al menos un testigo')
-      setStep(3); return false
+      setStep(4); return false
     }
     return true
   }
@@ -468,6 +498,7 @@ function DJWizard({
           form_type: 'client_story',
           form_data: {
             ...state.story,
+            tutor: state.tutor,
             children: state.children.filter(c => c.name.trim()),
             has_another_father: state.hasAnotherFather,
           },
@@ -542,34 +573,40 @@ function DJWizard({
       {/* Step content */}
       <div>
         {step === 0 && (
+          <TutorStep
+            tutor={state.tutor}
+            onChange={tutor => updateState({ tutor })}
+          />
+        )}
+        {step === 1 && (
           <ChildrenStep
             children={state.children}
             onChange={children => updateState({ children })}
             djNumber={djNumber}
           />
         )}
-        {step === 1 && (
+        {step === 2 && (
           <StoryStep
             story={state.story}
             children={state.children.filter(c => c.name.trim())}
             onChange={story => updateState({ story })}
           />
         )}
-        {step === 2 && (
+        {step === 3 && (
           <ParentStep
             parent={state.parent}
             childNames={state.children.filter(c => c.name.trim()).map(c => c.name)}
             onChange={parent => updateState({ parent })}
           />
         )}
-        {step === 3 && (
+        {step === 4 && (
           <WitnessStep
             witnesses={state.witnesses}
             childNames={state.children.filter(c => c.name.trim()).map(c => c.name)}
             onChange={witnesses => updateState({ witnesses })}
           />
         )}
-        {step === 4 && (
+        {step === 5 && (
           <FinalStep
             djNumber={djNumber}
             state={state}
@@ -613,7 +650,113 @@ function DJWizard({
   )
 }
 
-// ══ STEP 0: CHILDREN ═══════════════════════════════════════════════
+// ══ STEP 0: TUTOR/GUARDIAN ═════════════════════════════════════════
+
+function TutorStep({ tutor, onChange }: { tutor: TutorData; onChange: (t: TutorData) => void }) {
+  function upd(field: keyof TutorData, value: string) {
+    onChange({ ...tutor, [field]: value })
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Users className="w-5 h-5 text-[#F2A900]" />
+        <h3 className="font-semibold text-gray-900">Datos del Tutor / Guardián</h3>
+      </div>
+      <p className="text-sm text-gray-500">
+        Complete la información de la persona responsable de los menores (usted, la madre, padre o tutor legal).
+      </p>
+
+      <div className="space-y-3">
+        <div>
+          <label className="text-sm font-medium text-gray-700 mb-1 block">Nombre completo *</label>
+          <input
+            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
+            placeholder="Nombre y apellidos completos"
+            value={tutor.full_name}
+            onChange={e => upd('full_name', e.target.value)}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 block">Fecha de nacimiento</label>
+            <input
+              type="date"
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
+              value={tutor.date_of_birth}
+              onChange={e => upd('date_of_birth', e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 block">País de nacimiento</label>
+            <input
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
+              placeholder="Ej: Colombia"
+              value={tutor.country_of_birth}
+              onChange={e => upd('country_of_birth', e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 block">Ciudad actual</label>
+            <input
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
+              placeholder="Ej: Salt Lake City"
+              value={tutor.current_city}
+              onChange={e => upd('current_city', e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 block">Estado</label>
+            <input
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
+              placeholder="Ej: Utah"
+              value={tutor.current_state}
+              onChange={e => upd('current_state', e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-sm font-medium text-gray-700 mb-1 block">Teléfono</label>
+          <input
+            type="tel"
+            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
+            placeholder="Número de contacto"
+            value={tutor.phone}
+            onChange={e => upd('phone', e.target.value)}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 block">Año de llegada a EE.UU.</label>
+            <input
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
+              placeholder="Ej: 2019"
+              value={tutor.arrival_to_us}
+              onChange={e => upd('arrival_to_us', e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-700 mb-1 block">Cuida al menor desde</label>
+            <input
+              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
+              placeholder="Ej: Desde su nacimiento"
+              value={tutor.caring_since}
+              onChange={e => upd('caring_since', e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ══ STEP 1: CHILDREN ═══════════════════════════════════════════════
 
 function ChildrenStep({ children, onChange, djNumber }: {
   children: ChildInfo[]
@@ -1036,8 +1179,16 @@ function FinalStep({ djNumber, state, isLastPossibleDJ, onEditStep, onHasAnother
         <p className="text-sm text-gray-500 mt-1">Verifique la información antes de enviar.</p>
       </div>
 
+      {/* Tutor summary */}
+      <ReviewCard title="Tutor / Guardián" onEdit={() => onEditStep(0)}>
+        {state.tutor.full_name && <p className="text-sm text-gray-700"><span className="font-medium">Nombre:</span> {state.tutor.full_name}</p>}
+        {state.tutor.country_of_birth && <p className="text-sm text-gray-700"><span className="font-medium">País:</span> {state.tutor.country_of_birth}</p>}
+        {state.tutor.current_city && <p className="text-sm text-gray-700"><span className="font-medium">Ubicación:</span> {state.tutor.current_city}, {state.tutor.current_state}</p>}
+        {state.tutor.phone && <p className="text-sm text-gray-700"><span className="font-medium">Tel:</span> {state.tutor.phone}</p>}
+      </ReviewCard>
+
       {/* Children summary */}
-      <ReviewCard title="Hijos en esta declaración" onEdit={() => onEditStep(0)}>
+      <ReviewCard title="Hijos en esta declaración" onEdit={() => onEditStep(1)}>
         {validChildren.map((c, i) => (
           <p key={i} className="text-sm text-gray-700">
             {c.name} — <span className="text-gray-500">{GUARDIAN_RELATIONS.find(r => r.value === c.guardian_relation)?.label || c.guardian_relation}</span>
@@ -1046,7 +1197,7 @@ function FinalStep({ djNumber, state, isLastPossibleDJ, onEditStep, onHasAnother
       </ReviewCard>
 
       {/* Story summary */}
-      <ReviewCard title="Declaración" onEdit={() => onEditStep(1)}>
+      <ReviewCard title="Declaración" onEdit={() => onEditStep(2)}>
         {state.story.arrival_year && <p className="text-sm text-gray-700"><span className="font-medium">Año de llegada:</span> {state.story.arrival_year}</p>}
         {state.story.how_was_abandonment && (
           <p className="text-sm text-gray-700">
@@ -1057,24 +1208,17 @@ function FinalStep({ djNumber, state, isLastPossibleDJ, onEditStep, onHasAnother
       </ReviewCard>
 
       {/* Parent summary */}
-      <ReviewCard title="Padre/Madre" onEdit={() => onEditStep(2)}>
+      <ReviewCard title="Padre/Madre Ausente" onEdit={() => onEditStep(3)}>
         <p className="text-sm text-gray-700"><span className="font-medium">Situación:</span> {parentSituation}</p>
         {state.parent.parent_name && <p className="text-sm text-gray-700"><span className="font-medium">Nombre:</span> {state.parent.parent_name}</p>}
       </ReviewCard>
 
       {/* Witnesses summary */}
-      <ReviewCard title={`Testigos (${validWitnesses.length})`} onEdit={() => onEditStep(3)}>
+      <ReviewCard title={`Testigos (${validWitnesses.length})`} onEdit={() => onEditStep(4)}>
         {validWitnesses.map((w, i) => (
           <p key={i} className="text-sm text-gray-700">{w.name} — <span className="text-gray-500">{w.relationship}</span></p>
         ))}
       </ReviewCard>
-
-      {/* Documents summary */}
-      {state.docs.length > 0 && (
-        <ReviewCard title={`Documentos (${state.docs.length})`} onEdit={() => onEditStep(4)}>
-          {state.docs.map(d => <p key={d.id} className="text-sm text-gray-700">📎 {d.name}</p>)}
-        </ReviewCard>
-      )}
 
       {/* Has another father question */}
       {!isLastPossibleDJ && (

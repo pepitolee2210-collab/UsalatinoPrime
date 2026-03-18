@@ -395,11 +395,27 @@ function DataRow({ label, value }: { label: string; value?: string | null }) {
 }
 
 function StoryDetails({ data }: { data: Record<string, unknown> }) {
+  const tutor = data.tutor as Record<string, string> | undefined
   const children = data.children as Array<Record<string, string>> | undefined
   const minorInfo = data.minor_info as Record<string, string> | undefined
 
   return (
     <div className="grid gap-3">
+      {/* Tutor/Guardian info */}
+      {tutor?.full_name && (
+        <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
+          <span className="text-xs font-medium text-blue-600">Tutor / Guardián</span>
+          <p className="text-sm font-semibold text-gray-800 mt-0.5">{tutor.full_name}</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
+            {tutor.country_of_birth && <span className="text-xs text-gray-500">País: {tutor.country_of_birth}</span>}
+            {tutor.date_of_birth && <span className="text-xs text-gray-500">Nac: {tutor.date_of_birth}</span>}
+            {tutor.current_city && <span className="text-xs text-gray-500">Ubicación: {tutor.current_city}, {tutor.current_state}</span>}
+            {tutor.phone && <span className="text-xs text-gray-500">Tel: {tutor.phone}</span>}
+            {tutor.arrival_to_us && <span className="text-xs text-gray-500">Llegó a EE.UU: {tutor.arrival_to_us}</span>}
+            {tutor.caring_since && <span className="text-xs text-gray-500">Cuida al menor desde: {tutor.caring_since}</span>}
+          </div>
+        </div>
+      )}
       {/* New multi-children format */}
       {children && children.length > 0 && (
         <div>
