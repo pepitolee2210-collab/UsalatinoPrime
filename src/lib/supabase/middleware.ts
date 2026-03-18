@@ -46,7 +46,7 @@ export async function updateSession(request: NextRequest) {
       const redirectUrl = role === 'admin'
         ? '/admin/dashboard'
         : role === 'employee'
-          ? '/employee/contracts'
+          ? '/employee/dashboard'
           : '/comunidad'
       return NextResponse.redirect(new URL(redirectUrl, request.url))
     }
@@ -66,13 +66,13 @@ export async function updateSession(request: NextRequest) {
     const dest = role === 'admin'
       ? '/admin/dashboard'
       : role === 'employee'
-        ? '/employee/contracts'
+        ? '/employee/dashboard'
         : '/comunidad'
     return NextResponse.redirect(new URL(dest, request.url))
   }
 
   if (pathname.startsWith('/admin') && role !== 'admin') {
-    const dest = role === 'employee' ? '/employee/contracts' : '/comunidad'
+    const dest = role === 'employee' ? '/employee/dashboard' : '/comunidad'
     return NextResponse.redirect(new URL(dest, request.url))
   }
 
@@ -82,7 +82,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   if ((pathname.startsWith('/portal') || pathname.startsWith('/comunidad')) && role !== 'client') {
-    const dest = role === 'admin' ? '/admin/dashboard' : '/employee/contracts'
+    const dest = role === 'admin' ? '/admin/dashboard' : '/employee/dashboard'
     return NextResponse.redirect(new URL(dest, request.url))
   }
 

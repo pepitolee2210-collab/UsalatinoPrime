@@ -7,12 +7,11 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
-import { FileText, Users, LogOut, Menu, Briefcase } from 'lucide-react'
+import { LogOut, Menu, Briefcase } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [
-  { href: '/employee/contracts', label: 'Contratos', icon: FileText },
-  { href: '/employee/clients', label: 'Clientes', icon: Users },
+  { href: '/employee/dashboard', label: 'Mis Casos', icon: Briefcase },
 ]
 
 export default function EmployeeLayout({ children }: { children: React.ReactNode }) {

@@ -18,7 +18,7 @@ export default async function AdminCaseDetailPage({
 
   if (!caseData) notFound()
 
-  const [{ data: documents }, { data: activities }, { data: payments }, { data: aiSubmissions }] = await Promise.all([
+  const [{ data: documents }, { data: activities }, { data: payments }, { data: aiSubmissions }, { data: empAssignments }, { data: employees }] = await Promise.all([
     supabase.from('documents').select('*').eq('case_id', id),
     supabase
       .from('case_activity')
@@ -35,7 +35,29 @@ export default async function AdminCaseDetailPage({
       .select('*')
       .eq('case_id', id)
       .order('updated_at', { ascending: false }),
+    supabase
+      .from('employee_case_assignments')
+      .select('id, status, task_description, assigned_at, employee:profiles(first_name, last_name)')
+      .eq('case_id', id)
+      .limit(1),
+    supabase
+      .from('profiles')
+      .select('id, first_name, last_name')
+      .eq('role', 'employee'),
   ])
+
+  // Load submissions for the assignment if exists
+  let employeeAssignment = null
+  if (empAssignments && empAssignments.length > 0) {
+    const ea = empAssignments[0] as any
+    const { data: subs } = await supabase
+      .from('employee_submissions')
+      .select('*')
+      .eq('assignment_id', ea.id)
+      .order('created_at', { ascending: false })
+
+    employeeAssignment = { ...ea, submissions: subs || [] }
+  }
 
   return (
     <AdminCaseView
@@ -44,6 +66,8 @@ export default async function AdminCaseDetailPage({
       activities={activities || []}
       payments={payments || []}
       aiSubmissions={aiSubmissions || []}
+      employeeAssignment={employeeAssignment}
+      employees={employees || []}
     />
   )
 }
