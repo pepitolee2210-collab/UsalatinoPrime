@@ -12,12 +12,14 @@ interface Assignment {
   status: string
   assigned_at: string
   updated_at: string
+  service_type: string | null
+  client_name: string | null
   case: {
     id: string
     case_number: string
     client: { first_name: string; last_name: string }
     service: { name: string }
-  }
+  } | null
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof Clock }> = {
@@ -79,21 +81,24 @@ function AssignmentCard({ assignment: a }: { assignment: Assignment }) {
   const config = STATUS_CONFIG[a.status] || STATUS_CONFIG.assigned
   const StatusIcon = config.icon
 
+  const href = a.case ? `/employee/cases/${a.case.id}` : `/employee/tasks/${a.id}`
+  const clientLabel = a.case
+    ? `${a.case.client.first_name} ${a.case.client.last_name}`
+    : a.client_name || 'Sin cliente'
+  const serviceLabel = a.case ? a.case.service.name : a.service_type || 'Sin servicio'
+  const caseNum = a.case?.case_number
+
   return (
-    <Link href={`/employee/cases/${a.case.id}`}>
+    <Link href={href}>
       <div className="bg-white rounded-2xl border border-gray-200 p-5 hover:shadow-md hover:border-gray-300 transition-all cursor-pointer">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            {/* Client + Case number */}
             <div className="flex items-center gap-2 mb-1">
-              <span className="font-bold text-gray-900 text-sm">
-                {a.case.client.first_name} {a.case.client.last_name}
-              </span>
-              <span className="text-xs text-gray-400">#{a.case.case_number}</span>
+              <span className="font-bold text-gray-900 text-sm">{clientLabel}</span>
+              {caseNum && <span className="text-xs text-gray-400">#{caseNum}</span>}
             </div>
 
-            {/* Service */}
-            <p className="text-xs text-gray-500 mb-2">{a.case.service.name}</p>
+            <p className="text-xs text-gray-500 mb-2">{serviceLabel}</p>
 
             {/* Task description */}
             {a.task_description && (

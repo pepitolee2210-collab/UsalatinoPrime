@@ -19,7 +19,7 @@ export default async function EmployeeDashboardPage() {
   const { data: assignments } = await supabase
     .from('employee_case_assignments')
     .select(`
-      id, task_description, status, assigned_at, updated_at,
+      id, task_description, status, assigned_at, updated_at, service_type, client_name,
       case:cases(
         id, case_number,
         client:profiles(first_name, last_name),

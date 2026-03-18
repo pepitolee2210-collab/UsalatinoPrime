@@ -10,6 +10,7 @@ import {
 import { format, addDays } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { CopyLinkButton } from './copy-link-button'
+import { AssignTaskButton } from './assign-task-button'
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient()
@@ -29,6 +30,7 @@ export default async function AdminDashboardPage() {
     zellePendingRes, visaJuvenilRes, asiloRes,
     ajusteRes, renunciaRes, cambioRes,
     upcomingPayRes,
+    servicesRes, employeesRes,
   ] = await Promise.all([
     supabase.from('cases').select('*', { count: 'exact', head: true }).eq('intake_status', 'submitted'),
     supabase.from('cases').select('*', { count: 'exact', head: true }).in('intake_status', ['in_progress', 'submitted', 'under_review', 'needs_correction']),
@@ -56,6 +58,8 @@ export default async function AdminDashboardPage() {
       .eq('status', 'pending')
       .gte('due_date', todayStr)
       .lte('due_date', sevenDaysFromNow),
+    supabase.from('service_catalog').select('id, name').order('name'),
+    supabase.from('profiles').select('id, first_name, last_name').eq('role', 'employee'),
   ])
 
   const payments = paymentsRes.data || []
@@ -71,13 +75,20 @@ export default async function AdminDashboardPage() {
   const zellePending = zellePendingRes.count || 0
   const formsPending = (visaJuvenilRes.count || 0) + (asiloRes.count || 0) + (ajusteRes.count || 0) + (renunciaRes.count || 0) + (cambioRes.count || 0)
   const upcomingPayCount = upcomingPayRes.count || 0
+  const servicesList = servicesRes.data || []
+  const employeesList = employeesRes.data || []
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://usalatino-prime-ofew.vercel.app'
   const citaLink = `${baseUrl}/cita`
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        {employeesList.length > 0 && (
+          <AssignTaskButton services={servicesList} employees={employeesList} />
+        )}
+      </div>
 
       {/* ══════ ZONA 1: ACCIONES DE HOY ══════ */}
       <Card className="border-2 border-[#002855]/20 bg-gradient-to-r from-[#002855]/5 to-transparent">
