@@ -993,7 +993,7 @@ function TutorStep({ tutor, token, onChange, onSave, onBack }: {
           style={{ background: '#F2A900', color: '#001020' }}
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-          Guardar mi historia
+          Enviar al abogado
         </button>
       </div>
     </div>
