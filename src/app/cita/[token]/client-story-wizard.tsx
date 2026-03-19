@@ -36,6 +36,8 @@ interface ParentData {
   death_date: string; death_place: string; has_death_certificate: string; what_is_known: string
 }
 
+interface TutorWitness { name: string; relationship: string; phone: string; can_testify: string }
+
 interface TutorData {
   full_name: string
   date_of_birth: string
@@ -51,6 +53,12 @@ interface TutorData {
   hardships: string
   how_caring_children: string
   additional_info: string
+  // Absent parent from tutor's perspective
+  partner_situation: string
+  partner_name: string
+  partner_description: string
+  // Witnesses
+  witnesses: TutorWitness[]
 }
 
 interface Witness { name: string; relationship: string; phone: string; can_testify: string }
@@ -97,6 +105,8 @@ const EMPTY_TUTOR: TutorData = {
   arrival_to_us: '', caring_since: '',
   why_left_country: '', journey_to_us: '', current_situation: '',
   hardships: '', how_caring_children: '', additional_info: '',
+  partner_situation: '', partner_name: '', partner_description: '',
+  witnesses: [{ name: '', relationship: '', phone: '', can_testify: '' }],
 }
 
 const EMPTY_CHILD: ChildInfo = { name: '', guardian_relation: '', guardian_relation_other: '' }
@@ -873,11 +883,105 @@ function TutorStep({ tutor, token, onChange, onSave, onBack }: {
         </div>
 
         <div>
-          <FieldLabel>¿Hay algo más que quiera agregar?</FieldLabel>
+          <FieldLabel>¿Hay algo más que quiera agregar sobre su historia?</FieldLabel>
           <TextArea value={tutor.additional_info} onChange={v => upd('additional_info', v)}
             placeholder="Cualquier información adicional que considere importante para su caso..."
             rows={3} />
         </div>
+
+        {/* Partner / absent parent section */}
+        <div className="border-t border-gray-200 pt-4 mt-2">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Sobre el padre/madre de los menores</p>
+        </div>
+
+        <div>
+          <FieldLabel>¿Cuál es la situación con el padre/madre de sus hijos?</FieldLabel>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {[
+              { v: 'absent', l: 'Ausente / sin contacto' },
+              { v: 'never_known', l: 'Nunca lo/la conoció el menor' },
+              { v: 'deceased', l: 'Falleció' },
+              { v: 'cooperates', l: 'Coopera / tiene contacto' },
+            ].map(opt => (
+              <button key={opt.v} onClick={() => upd('partner_situation', opt.v)}
+                className={`px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
+                  tutor.partner_situation === opt.v
+                    ? 'border-[#F2A900] bg-[#F2A900]/10 text-[#9a6500]'
+                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}>
+                {opt.l}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <FieldLabel>Nombre del padre/madre de los menores</FieldLabel>
+          <TextInput value={tutor.partner_name} onChange={v => upd('partner_name', v)} placeholder="Nombre completo (si lo conoce)" />
+        </div>
+
+        <div>
+          <FieldLabel>Describa la relación con esa persona y por qué no está presente</FieldLabel>
+          <TextArea value={tutor.partner_description} onChange={v => upd('partner_description', v)}
+            placeholder="Cuente qué pasó: ¿se fue?, ¿nunca se hizo cargo?, ¿fue violento/a?, ¿los abandonó?, ¿murió? Incluya detalles, fechas y lugares..."
+            rows={5} />
+        </div>
+
+        {/* Witnesses section */}
+        <div className="border-t border-gray-200 pt-4 mt-2">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Testigos</p>
+          <p className="text-xs text-gray-500 mb-3">Personas que conocen su situación y pueden confirmar su historia (familiares, amigos, vecinos, etc.).</p>
+        </div>
+
+        {tutor.witnesses.map((w, i) => (
+          <div key={i} className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-gray-500">Testigo {i + 1}</span>
+              {tutor.witnesses.length > 1 && (
+                <button onClick={() => onChange({ ...tutor, witnesses: tutor.witnesses.filter((_, j) => j !== i) })}
+                  className="text-red-400 hover:text-red-600 text-xs">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <FieldLabel>Nombre completo</FieldLabel>
+                <TextInput value={w.name} onChange={v => {
+                  const ws = [...tutor.witnesses]; ws[i] = { ...ws[i], name: v }; onChange({ ...tutor, witnesses: ws })
+                }} placeholder="Nombre del testigo" />
+              </div>
+              <div>
+                <FieldLabel>Relación con usted</FieldLabel>
+                <TextInput value={w.relationship} onChange={v => {
+                  const ws = [...tutor.witnesses]; ws[i] = { ...ws[i], relationship: v }; onChange({ ...tutor, witnesses: ws })
+                }} placeholder="Ej: Hermana, amigo, vecina" />
+              </div>
+            </div>
+            <div>
+              <FieldLabel>Teléfono</FieldLabel>
+              <TextInput value={w.phone} onChange={v => {
+                const ws = [...tutor.witnesses]; ws[i] = { ...ws[i], phone: v }; onChange({ ...tutor, witnesses: ws })
+              }} placeholder="Número de contacto" />
+            </div>
+            <div>
+              <FieldLabel>¿Qué puede declarar esta persona?</FieldLabel>
+              <TextArea value={w.can_testify} onChange={v => {
+                const ws = [...tutor.witnesses]; ws[i] = { ...ws[i], can_testify: v }; onChange({ ...tutor, witnesses: ws })
+              }} placeholder="Ej: Conoce que el padre nos abandonó, estuvo presente cuando..." rows={3} />
+            </div>
+          </div>
+        ))}
+
+        {tutor.witnesses.length < 5 && (
+          <button
+            onClick={() => onChange({ ...tutor, witnesses: [...tutor.witnesses, { name: '', relationship: '', phone: '', can_testify: '' }] })}
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-gray-300 text-sm font-medium text-gray-500 hover:border-[#F2A900] hover:text-[#F2A900] transition-colors"
+          >
+            <UserPlus className="w-4 h-4" />
+            Agregar otro testigo
+          </button>
+        )}
       </div>
 
       {/* Save button */}

@@ -403,17 +403,49 @@ function StoryDetails({ data }: { data: Record<string, unknown> }) {
     <div className="grid gap-3">
       {/* Tutor/Guardian info */}
       {tutor?.full_name && (
-        <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
-          <span className="text-xs font-medium text-blue-600">Tutor / Guardián</span>
-          <p className="text-sm font-semibold text-gray-800 mt-0.5">{tutor.full_name}</p>
-          <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
-            {tutor.country_of_birth && <span className="text-xs text-gray-500">País: {tutor.country_of_birth}</span>}
-            {tutor.date_of_birth && <span className="text-xs text-gray-500">Nac: {tutor.date_of_birth}</span>}
-            {tutor.current_city && <span className="text-xs text-gray-500">Ubicación: {tutor.current_city}, {tutor.current_state}</span>}
-            {tutor.phone && <span className="text-xs text-gray-500">Tel: {tutor.phone}</span>}
-            {tutor.arrival_to_us && <span className="text-xs text-gray-500">Llegó a EE.UU: {tutor.arrival_to_us}</span>}
-            {tutor.caring_since && <span className="text-xs text-gray-500">Cuida al menor desde: {tutor.caring_since}</span>}
+        <div className="space-y-2">
+          <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
+            <span className="text-xs font-medium text-blue-600">Tutor / Guardián</span>
+            <p className="text-sm font-semibold text-gray-800 mt-0.5">{tutor.full_name}</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
+              {tutor.country_of_birth && <span className="text-xs text-gray-500">País: {tutor.country_of_birth}</span>}
+              {tutor.date_of_birth && <span className="text-xs text-gray-500">Nac: {tutor.date_of_birth}</span>}
+              {tutor.current_city && <span className="text-xs text-gray-500">Ubicación: {tutor.current_city}, {tutor.current_state}</span>}
+              {tutor.phone && <span className="text-xs text-gray-500">Tel: {tutor.phone}</span>}
+              {tutor.arrival_to_us && <span className="text-xs text-gray-500">Llegó a EE.UU: {tutor.arrival_to_us}</span>}
+              {tutor.caring_since && <span className="text-xs text-gray-500">Cuida al menor desde: {tutor.caring_since}</span>}
+            </div>
+            {tutor.why_left_country && <DataRow label="Por qué salió del país" value={tutor.why_left_country} />}
+            {tutor.journey_to_us && <DataRow label="Viaje a EE.UU." value={tutor.journey_to_us} />}
+            {tutor.current_situation && <DataRow label="Situación actual" value={tutor.current_situation} />}
+            {tutor.hardships && <DataRow label="Dificultades" value={tutor.hardships} />}
+            {tutor.how_caring_children && <DataRow label="Cómo cuida a los menores" value={tutor.how_caring_children} />}
           </div>
+          {/* Tutor's partner/absent parent */}
+          {tutor.partner_situation && (
+            <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
+              <span className="text-xs font-medium text-amber-600">Padre/Madre de los menores (perspectiva del tutor)</span>
+              {tutor.partner_name && <p className="text-sm font-semibold text-gray-800 mt-0.5">{tutor.partner_name}</p>}
+              <p className="text-xs text-gray-500 mt-0.5">Situación: {tutor.partner_situation === 'absent' ? 'Ausente' : tutor.partner_situation === 'never_known' ? 'Nunca conocido' : tutor.partner_situation === 'deceased' ? 'Falleció' : tutor.partner_situation === 'cooperates' ? 'Coopera' : tutor.partner_situation}</p>
+              {tutor.partner_description && <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{tutor.partner_description}</p>}
+            </div>
+          )}
+          {/* Tutor's witnesses */}
+          {tutor.witnesses && (tutor.witnesses as unknown as Array<Record<string, string>>).filter(w => w.name).length > 0 && (
+            <div className="p-3 bg-purple-50 border border-purple-100 rounded-xl">
+              <span className="text-xs font-medium text-purple-600">Testigos del tutor ({(tutor.witnesses as unknown as Array<Record<string, string>>).filter(w => w.name).length})</span>
+              <div className="mt-1.5 space-y-1.5">
+                {(tutor.witnesses as unknown as Array<Record<string, string>>).filter(w => w.name).map((w, i) => (
+                  <div key={i} className="text-sm">
+                    <span className="font-medium text-gray-800">{w.name}</span>
+                    <span className="text-gray-400 text-xs ml-1">· {w.relationship}</span>
+                    {w.phone && <span className="text-gray-400 text-xs ml-1">· {w.phone}</span>}
+                    {w.can_testify && <p className="text-xs text-gray-600 mt-0.5">{w.can_testify}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
       {/* New multi-children format */}
