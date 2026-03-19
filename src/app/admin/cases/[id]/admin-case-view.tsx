@@ -692,11 +692,32 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
                             <p className="text-xs text-gray-400">{doc.document_key} — {(doc.file_size / 1024).toFixed(0)} KB</p>
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Descargar"
-                          onClick={async () => {
-                            const { data } = await supabase.storage.from('case-documents').createSignedUrl(doc.file_path, 300)
-                            if (data?.signedUrl) window.open(data.signedUrl, '_blank')
-                          }}><Download className="w-3.5 h-3.5" /></Button>
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Ver"
+                            onClick={async () => {
+                              const { data } = await supabase.storage.from('case-documents').createSignedUrl(doc.file_path, 300)
+                              if (data?.signedUrl) setPreviewUrl(data.signedUrl)
+                              else toast.error('Error al generar preview')
+                            }}><Eye className="w-3 h-3" /></Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Renombrar"
+                            onClick={() => setRenamingDoc({ id: doc.id, name: doc.name })}><Pencil className="w-3 h-3" /></Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Descargar"
+                            onClick={async () => {
+                              const { data } = await supabase.storage.from('case-documents').createSignedUrl(doc.file_path, 300)
+                              if (data?.signedUrl) { const l = document.createElement('a'); l.href = data.signedUrl; l.download = doc.name; l.click() }
+                            }}><Download className="w-3 h-3" /></Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:text-red-700" title="Eliminar"
+                            disabled={deletingDocId === doc.id}
+                            onClick={async () => {
+                              if (!confirm('¿Eliminar?')) return
+                              setDeletingDocId(doc.id)
+                              try {
+                                const res = await fetch('/api/admin/upload-document', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ document_id: doc.id }) })
+                                if (!res.ok) throw new Error()
+                                toast.success('Eliminado'); router.refresh()
+                              } catch { toast.error('Error al eliminar') } finally { setDeletingDocId(null) }
+                            }}>{deletingDocId === doc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}</Button>
+                        </div>
                       </div>
                     ))}
                   </div>
