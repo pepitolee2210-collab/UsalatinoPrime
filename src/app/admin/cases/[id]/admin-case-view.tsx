@@ -21,7 +21,7 @@ import { Label } from '@/components/ui/label'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { APPOINTMENT_DOCUMENT_KEYS } from '@/lib/appointments/constants'
+import { APPOINTMENT_DOCUMENT_KEYS, DOCUMENT_CATEGORIES } from '@/lib/appointments/constants'
 import { CaseChat } from './case-chat'
 import { ClientStoryReview } from './client-story-review'
 import { I589Review } from './i589-review'
@@ -585,191 +585,118 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
 
         <TabsContent value="documents" className="mt-4">
           <div className="space-y-6">
-            {/* Documents grouped by category */}
-            {APPOINTMENT_DOCUMENT_KEYS.map((docType) => {
-              const categoryDocs = documents.filter(d => d.document_key === docType.key)
+            {/* Documents grouped by 3 categories */}
+            {DOCUMENT_CATEGORIES.map(category => {
+              const catDocKeys = category.docs.map(d => d.key)
+              const catUploadedCount = documents.filter((d: any) => catDocKeys.includes(d.document_key)).length
               return (
-                <Card key={docType.key}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-gray-500" />
-                        {docType.label}
-                        {categoryDocs.length > 0 && (
-                          <Badge variant="outline" className="text-green-700 border-green-300 ml-1">
-                            {categoryDocs.length}
-                          </Badge>
-                        )}
-                      </CardTitle>
-                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 border-2 border-dashed rounded-md cursor-pointer text-xs text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
-                        {uploadingKey === docType.key ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Upload className="w-3.5 h-3.5" />
-                        )}
-                        {uploadingKey === docType.key ? 'Subiendo...' : 'Subir PDF'}
-                        <input
-                          type="file"
-                          accept="application/pdf"
-                          className="hidden"
-                          disabled={uploadingKey !== null}
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0]
-                            if (!file) return
-                            setUploadingKey(docType.key)
-                            try {
-                              await uploadDirect({
-                                file,
-                                documentKey: docType.key,
-                                mode: 'admin',
-                                caseId: caseData.id,
-                                clientId: caseData.client_id,
-                              })
-                              toast.success(`${docType.label} subido correctamente`)
-                              router.refresh()
-                            } catch (err: any) {
-                              toast.error(err.message || 'Error al subir documento')
-                            } finally {
-                              setUploadingKey(null)
-                              e.target.value = ''
-                            }
-                          }}
-                        />
-                      </label>
-                    </div>
-                  </CardHeader>
-                  {categoryDocs.length > 0 && (
-                    <CardContent className="pt-0">
-                      <div className="space-y-2">
-                        {categoryDocs.map((doc: any) => (
-                          <div key={doc.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <FileText className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium truncate">{doc.name}</p>
-                                <p className="text-xs text-gray-400">{(doc.file_size / 1024).toFixed(0)} KB</p>
-                              </div>
+                <div key={category.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                  <div className={`px-4 py-3 flex items-center justify-between ${catUploadedCount === category.docs.length ? 'bg-green-50' : 'bg-gray-50'}`}>
+                    <span className="text-sm font-bold text-gray-900">{category.title}</span>
+                    <span className="text-xs text-gray-400">{catUploadedCount}/{category.docs.length}</span>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {category.docs.map(docType => {
+                      const categoryDocs = documents.filter((d: any) => d.document_key === docType.key)
+                      return (
+                        <div key={docType.key} className="px-4 py-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              {categoryDocs.length > 0
+                                ? <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                                : <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                              }
+                              <span className="text-sm font-medium text-gray-800">{docType.label}</span>
+                              {categoryDocs.length > 0 && (
+                                <Badge variant="outline" className="text-green-700 border-green-300 text-[10px]">{categoryDocs.length}</Badge>
+                              )}
                             </div>
-                            <div className="flex items-center gap-1 flex-shrink-0">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                title="Previsualizar"
-                                onClick={async () => {
-                                  const { data } = await supabase.storage
-                                    .from('case-documents')
-                                    .createSignedUrl(doc.file_path, 300)
-                                  if (data?.signedUrl) {
-                                    setPreviewUrl(data.signedUrl)
-                                  } else {
-                                    toast.error('Error al generar preview')
-                                  }
-                                }}
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                title="Renombrar"
-                                onClick={() => setRenamingDoc({ id: doc.id, name: doc.name })}
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0"
-                                title="Descargar"
-                                onClick={async () => {
-                                  const { data } = await supabase.storage
-                                    .from('case-documents')
-                                    .createSignedUrl(doc.file_path, 300)
-                                  if (data?.signedUrl) {
-                                    const link = document.createElement('a')
-                                    link.href = data.signedUrl
-                                    link.download = doc.name
-                                    link.click()
-                                  } else {
-                                    toast.error('Error al generar link de descarga')
-                                  }
-                                }}
-                              >
-                                <Download className="w-3.5 h-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                title="Eliminar"
-                                disabled={deletingDocId === doc.id}
-                                onClick={async () => {
-                                  if (!confirm('¿Eliminar este documento?')) return
-                                  setDeletingDocId(doc.id)
+                            <label className="inline-flex items-center gap-1 px-2.5 py-1 border border-dashed rounded-md cursor-pointer text-[11px] text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
+                              {uploadingKey === docType.key ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                              {uploadingKey === docType.key ? 'Subiendo...' : 'Subir'}
+                              <input type="file" accept="application/pdf" className="hidden" disabled={uploadingKey !== null}
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0]
+                                  if (!file) return
+                                  setUploadingKey(docType.key)
                                   try {
-                                    const res = await fetch('/api/admin/upload-document', {
-                                      method: 'DELETE',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ document_id: doc.id }),
-                                    })
-                                    if (!res.ok) {
-                                      const data = await res.json()
-                                      throw new Error(data.error)
-                                    }
-                                    toast.success('Documento eliminado')
+                                    await uploadDirect({ file, documentKey: docType.key, mode: 'admin', caseId: caseData.id, clientId: caseData.client_id })
+                                    toast.success(`${docType.label} subido`)
                                     router.refresh()
                                   } catch (err: any) {
-                                    toast.error(err.message || 'Error al eliminar')
-                                  } finally {
-                                    setDeletingDocId(null)
-                                  }
+                                    toast.error(err.message || 'Error al subir')
+                                  } finally { setUploadingKey(null); e.target.value = '' }
                                 }}
-                              >
-                                {deletingDocId === doc.id ? (
-                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                )}
-                              </Button>
-                            </div>
+                              />
+                            </label>
                           </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  )}
-                </Card>
+                          {categoryDocs.map((doc: any) => (
+                            <div key={doc.id} className="flex items-center justify-between p-2 ml-6 mt-1 rounded-lg bg-gray-50 border">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <FileText className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium truncate">{doc.name}</p>
+                                  <p className="text-[10px] text-gray-400">{(doc.file_size / 1024).toFixed(0)} KB</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-0.5 flex-shrink-0">
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Ver"
+                                  onClick={async () => {
+                                    const { data } = await supabase.storage.from('case-documents').createSignedUrl(doc.file_path, 300)
+                                    if (data?.signedUrl) setPreviewUrl(data.signedUrl)
+                                    else toast.error('Error al generar preview')
+                                  }}><Eye className="w-3 h-3" /></Button>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Renombrar"
+                                  onClick={() => setRenamingDoc({ id: doc.id, name: doc.name })}><Pencil className="w-3 h-3" /></Button>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Descargar"
+                                  onClick={async () => {
+                                    const { data } = await supabase.storage.from('case-documents').createSignedUrl(doc.file_path, 300)
+                                    if (data?.signedUrl) { const l = document.createElement('a'); l.href = data.signedUrl; l.download = doc.name; l.click() }
+                                  }}><Download className="w-3 h-3" /></Button>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:text-red-700" title="Eliminar"
+                                  disabled={deletingDocId === doc.id}
+                                  onClick={async () => {
+                                    if (!confirm('¿Eliminar?')) return
+                                    setDeletingDocId(doc.id)
+                                    try {
+                                      const res = await fetch('/api/admin/upload-document', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ document_id: doc.id }) })
+                                      if (!res.ok) throw new Error()
+                                      toast.success('Eliminado'); router.refresh()
+                                    } catch { toast.error('Error al eliminar') } finally { setDeletingDocId(null) }
+                                  }}>{deletingDocId === doc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}</Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
               )
             })}
 
             {/* Uncategorized documents */}
-            {documents.filter(d => !APPOINTMENT_DOCUMENT_KEYS.some(k => k.key === d.document_key)).length > 0 && (
+            {documents.filter((d: any) => !APPOINTMENT_DOCUMENT_KEYS.some(k => k.key === d.document_key) && d.direction !== 'admin_to_client').length > 0 && (
               <Card>
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-semibold">Otros Documentos</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-0">
                   <div className="space-y-2">
-                    {documents.filter(d => !APPOINTMENT_DOCUMENT_KEYS.some(k => k.key === d.document_key)).map((doc: any) => (
+                    {documents.filter((d: any) => !APPOINTMENT_DOCUMENT_KEYS.some(k => k.key === d.document_key) && d.direction !== 'admin_to_client').map((doc: any) => (
                       <div key={doc.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border">
                         <div className="flex items-center gap-2 min-w-0">
                           <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
                           <div className="min-w-0">
                             <p className="text-sm font-medium truncate">{doc.name}</p>
-                            <p className="text-xs text-gray-400">{doc.document_key} &mdash; {(doc.file_size / 1024).toFixed(0)} KB</p>
+                            <p className="text-xs text-gray-400">{doc.document_key} — {(doc.file_size / 1024).toFixed(0)} KB</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Descargar"
-                            onClick={async () => {
-                              const { data } = await supabase.storage.from('case-documents').createSignedUrl(doc.file_path, 300)
-                              if (data?.signedUrl) window.open(data.signedUrl, '_blank')
-                            }}
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" title="Descargar"
+                          onClick={async () => {
+                            const { data } = await supabase.storage.from('case-documents').createSignedUrl(doc.file_path, 300)
+                            if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+                          }}><Download className="w-3.5 h-3.5" /></Button>
                       </div>
                     ))}
                   </div>
