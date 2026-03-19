@@ -50,6 +50,7 @@ interface ActiveCase {
 interface AdminCitasViewProps {
   appointments: Array<{
     id: string
+    client_id?: string | null
     scheduled_at: string
     status: string
     duration_minutes: number
@@ -66,9 +67,31 @@ interface AdminCitasViewProps {
   activeCases: ActiveCase[]
 }
 
+// Count completed appointments per client_id (auto-calculated)
+function buildVisitCounts(appointments: AdminCitasViewProps['appointments']): Map<string, number> {
+  const counts = new Map<string, number>()
+  // Sort by date ascending to count in order
+  const sorted = [...appointments]
+    .filter(a => a.status === 'completed' && a.client_id)
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+  for (const apt of sorted) {
+    const cid = apt.client_id!
+    counts.set(cid, (counts.get(cid) || 0) + 1)
+  }
+  return counts
+}
+
+function visitLabel(count: number): string {
+  if (count === 0) return 'Primera cita'
+  if (count === 1) return '2da visita'
+  if (count === 2) return '3ra visita'
+  return `${count + 1}ta visita`
+}
+
 export function AdminCitasView({ appointments, config, settings, blockedDates, activeCases }: AdminCitasViewProps) {
   const [filter, setFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
+  const completedCounts = buildVisitCounts(appointments)
   const [showConfig, setShowConfig] = useState(false)
   const [bookDialogOpen, setBookDialogOpen] = useState(false)
   const [guestDialogOpen, setGuestDialogOpen] = useState(false)
@@ -180,7 +203,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
                 </TableRow>
               ) : (
                 filtered.map(apt => (
-                  <AppointmentRow key={apt.id} appointment={apt} />
+                  <AppointmentRow key={apt.id} appointment={apt} completedCount={apt.client_id ? (completedCounts.get(apt.client_id) || 0) : 0} />
                 ))
               )}
             </TableBody>
@@ -210,7 +233,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
 }
 
 // ── Fila de cita ──
-function AppointmentRow({ appointment }: { appointment: AdminCitasViewProps['appointments'][0] }) {
+function AppointmentRow({ appointment, completedCount }: { appointment: AdminCitasViewProps['appointments'][0]; completedCount: number }) {
   const [updating, setUpdating] = useState(false)
   const [waiving, setWaiving] = useState(false)
   const [showReschedule, setShowReschedule] = useState(false)
@@ -334,9 +357,16 @@ function AppointmentRow({ appointment }: { appointment: AdminCitasViewProps['app
       </TableCell>
       <TableCell>
         {client ? (
-          <p className="text-sm font-medium">
-            {client.first_name} {client.last_name}
-          </p>
+          <div>
+            <p className="text-sm font-medium">{client.first_name} {client.last_name}</p>
+            <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-0.5 ${
+              completedCount === 0
+                ? 'bg-blue-100 text-blue-700'
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {visitLabel(completedCount)}
+            </span>
+          </div>
         ) : (
           <div>
             <p className="text-sm font-medium text-amber-700">{(appointment as any).guest_name || 'Sin nombre'}</p>
