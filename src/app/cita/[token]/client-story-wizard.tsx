@@ -303,6 +303,7 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
     return (
       <TutorStep
         tutor={tutorData}
+        token={token}
         onChange={setTutorData}
         onSave={saveTutor}
         onBack={() => setShowTutorForm(false)}
@@ -507,24 +508,30 @@ function DJWizard({
     } catch { /* silent */ } finally { setSaving(false) }
   }, [token, minorIndex])
 
-  function autoSave(currentStep: number, currentState: DJState) {
-    if (currentStep === 1 && currentState.story.how_was_abandonment.trim()) {
-      saveDraft('client_story', {
-        ...currentState.story,
-        children: currentState.children,
-        has_another_father: currentState.hasAnotherFather,
-      })
-    }
-    if (currentStep === 2 && currentState.parent.situation) {
-      saveDraft('client_absent_parent', currentState.parent)
-    }
-    if (currentStep === 3 && currentState.witnesses.some(w => w.name.trim())) {
-      saveDraft('client_witnesses', { witnesses: currentState.witnesses })
-    }
-  }
+  // Auto-save with debounce — saves every 4 seconds while user edits
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      // Save children + story together
+      if (state.children.some(c => c.name.trim()) || state.story.how_was_abandonment.trim()) {
+        saveDraft('client_story', {
+          ...state.story,
+          children: state.children,
+          has_another_father: state.hasAnotherFather,
+        })
+      }
+      if (state.parent.situation) {
+        saveDraft('client_absent_parent', state.parent)
+      }
+      if (state.witnesses.some(w => w.name.trim())) {
+        saveDraft('client_witnesses', { witnesses: state.witnesses })
+      }
+    }, 4000)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [state, saveDraft])
 
   function goNext() {
-    autoSave(step, state)
     setStep(s => Math.min(s + 1, DJ_TOTAL_STEPS - 1))
   }
 
@@ -617,7 +624,7 @@ function DJWizard({
       <div>
         <div className="flex justify-between text-xs text-gray-400 mb-1.5">
           <span>Paso {step + 1} de {DJ_TOTAL_STEPS}</span>
-          <span>{saving && 'Guardando...'}</span>
+          <span className={saving ? 'text-green-600' : ''}>{saving ? '● Guardando...' : 'Se guarda automáticamente'}</span>
         </div>
         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
           <div
@@ -720,14 +727,35 @@ function DJWizard({
 
 // ══ TUTOR STEP (independent, outside DJ wizard) ═══════════════════
 
-function TutorStep({ tutor, onChange, onSave, onBack }: {
-  tutor: TutorData; onChange: (t: TutorData) => void
+function TutorStep({ tutor, token, onChange, onSave, onBack }: {
+  tutor: TutorData; token: string; onChange: (t: TutorData) => void
   onSave: () => void; onBack: () => void
 }) {
   const [saving, setSaving] = useState(false)
+  const [autoSaved, setAutoSaved] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   function upd(field: keyof TutorData, value: string) {
     onChange({ ...tutor, [field]: value })
   }
+
+  // Auto-save tutor draft every 4 seconds
+  useEffect(() => {
+    if (!tutor.full_name.trim()) return
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      try {
+        await fetch('/api/client-story', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, form_type: 'tutor_guardian', form_data: tutor, action: 'draft', minor_index: 0 }),
+        })
+        setAutoSaved(true)
+        setTimeout(() => setAutoSaved(false), 2000)
+      } catch { /* silent */ }
+    }, 4000)
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
+  }, [tutor, token])
 
   async function handleSave() {
     if (!tutor.full_name.trim()) { toast.error('Ingresa tu nombre completo'); return }
@@ -751,7 +779,13 @@ function TutorStep({ tutor, onChange, onSave, onBack }: {
 
       <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
         Escriba desde su perspectiva como tutor/guardián de los menores. Incluya todos los detalles que considere importantes: dificultades, sacrificios, y cómo ha cuidado a los niños.
+        <span className="block mt-1 text-xs text-amber-600">Su progreso se guarda automáticamente.</span>
       </div>
+      {autoSaved && (
+        <p className="text-xs text-green-600 flex items-center gap-1">
+          <CheckCircle className="w-3 h-3" /> Progreso guardado automáticamente
+        </p>
+      )}
 
       <div className="space-y-4">
         {/* Basic info */}
