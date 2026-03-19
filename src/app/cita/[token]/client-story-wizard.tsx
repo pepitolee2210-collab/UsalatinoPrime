@@ -958,11 +958,19 @@ function TutorStep({ tutor, token, onChange, onSave, onBack }: {
                 }} placeholder="Ej: Hermana, amigo, vecina" />
               </div>
             </div>
-            <div>
-              <FieldLabel>Teléfono</FieldLabel>
-              <TextInput value={w.phone} onChange={v => {
-                const ws = [...tutor.witnesses]; ws[i] = { ...ws[i], phone: v }; onChange({ ...tutor, witnesses: ws })
-              }} placeholder="Número de contacto" />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <FieldLabel>Teléfono</FieldLabel>
+                <TextInput value={w.phone} onChange={v => {
+                  const ws = [...tutor.witnesses]; ws[i] = { ...ws[i], phone: v }; onChange({ ...tutor, witnesses: ws })
+                }} placeholder="Número de contacto" />
+              </div>
+              <div>
+                <FieldLabel>Dirección</FieldLabel>
+                <TextInput value={(w as any).address || ''} onChange={v => {
+                  const ws = [...tutor.witnesses]; ws[i] = { ...ws[i], address: v } as any; onChange({ ...tutor, witnesses: ws })
+                }} placeholder="Ciudad, Estado" />
+              </div>
             </div>
             <div>
               <FieldLabel>¿Qué puede declarar esta persona?</FieldLabel>
@@ -976,7 +984,7 @@ function TutorStep({ tutor, token, onChange, onSave, onBack }: {
         {tutor.witnesses.length < 5 && (
           <button
             onClick={() => onChange({ ...tutor, witnesses: [...tutor.witnesses, { name: '', relationship: '', phone: '', can_testify: '' }] })}
-            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-gray-300 text-sm font-medium text-gray-500 hover:border-[#F2A900] hover:text-[#F2A900] transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-[#F2A900] text-sm font-bold text-[#9a6500] bg-[#F2A900]/10"
           >
             <UserPlus className="w-4 h-4" />
             Agregar otro testigo
@@ -1297,7 +1305,10 @@ function WitnessStep({ witnesses, childNames, onChange }: {
             <div><FieldLabel required>Nombre completo</FieldLabel><TextInput value={w.name} onChange={v => update(i, 'name', v)} placeholder="Nombre del testigo" /></div>
             <div><FieldLabel required>Relación con usted o {names}</FieldLabel><TextInput value={w.relationship} onChange={v => update(i, 'relationship', v)} placeholder="Ej: Mi mamá, vecina en EE.UU." /></div>
           </div>
-          <div><FieldLabel>Teléfono</FieldLabel><TextInput value={w.phone} onChange={v => update(i, 'phone', v)} placeholder="+1 (000) 000-0000" /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div><FieldLabel>Teléfono</FieldLabel><TextInput value={w.phone} onChange={v => update(i, 'phone', v)} placeholder="+1 (000) 000-0000" /></div>
+            <div><FieldLabel>Dirección</FieldLabel><TextInput value={(w as any).address || ''} onChange={v => onChange(witnesses.map((ww, j) => j === i ? { ...ww, address: v } as any : ww))} placeholder="Ciudad, Estado, País" /></div>
+          </div>
           <div>
             <FieldLabel required>¿Qué puede declarar? ¿Qué etapa presenció?</FieldLabel>
             <TextArea value={w.can_testify} onChange={v => update(i, 'can_testify', v)}
@@ -1309,9 +1320,10 @@ function WitnessStep({ witnesses, childNames, onChange }: {
       {witnesses.length < 3 && (
         <button
           onClick={() => onChange([...witnesses, { name: '', relationship: '', phone: '', can_testify: '' }])}
-          className="w-full py-3 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 hover:border-[#F2A900] hover:text-[#F2A900] transition-colors"
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-[#F2A900] text-sm font-bold text-[#9a6500] bg-[#F2A900]/10"
         >
-          + Agregar otro testigo
+          <UserPlus className="w-4 h-4" />
+          Agregar otro testigo
         </button>
       )}
     </div>
