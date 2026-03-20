@@ -353,10 +353,16 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
 
   // How many children need declarations
   const [childCount, setChildCount] = useState<number | null>(() => {
-    // Auto-detect from loaded data
     const filledCount = ([1, 2, 3, 4] as const).filter(n => djStates[n].status !== 'empty').length
     return filledCount > 0 ? filledCount : null
   })
+
+  // Father grouping: same father or different?
+  const [sameFather, setSameFather] = useState<boolean | null>(null)
+  const [fatherGroupCount, setFatherGroupCount] = useState<number>(1)
+  // Map: child number → father group (A=1, B=2, etc.)
+  const [fatherGroups, setFatherGroups] = useState<Record<number, number>>({ 1: 1, 2: 1, 3: 1, 4: 1 })
+  const [setupDone, setSetupDone] = useState(false)
 
   function handleDJUpdated(djNum: number, newState: DJState) {
     setDjStates(prev => ({ ...prev, [djNum]: newState }))
@@ -469,7 +475,7 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
         </div>
       </div>
 
-      {/* Step 2: How many children? */}
+      {/* Step 2: Setup wizard — how many children + father grouping */}
       {!childCount ? (
         <div className="rounded-2xl border-2 border-[#002855]/20 p-6 text-center space-y-4">
           <div className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center"
@@ -478,17 +484,86 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
           </div>
           <div>
             <p className="font-bold text-gray-900 text-lg">¿Cuántos hijos necesitan su declaración?</p>
-            <p className="text-sm text-gray-500 mt-1">Cada hijo necesita llenar su propia historia. Si tiene más de un hijo, seleccione cuántos.</p>
+            <p className="text-sm text-gray-500 mt-1">Cada hijo necesita llenar su propia historia.</p>
           </div>
           <div className="flex justify-center gap-3">
             {[1, 2, 3, 4].map(n => (
-              <button key={n} onClick={() => setChildCount(n)}
+              <button key={n} onClick={() => {
+                setChildCount(n)
+                if (n === 1) { setSameFather(true); setSetupDone(true) }
+              }}
                 className="w-16 h-16 rounded-2xl border-2 border-gray-200 text-2xl font-bold text-gray-700 hover:border-[#F2A900] hover:bg-[#F2A900]/5 hover:text-[#F2A900] transition-all active:scale-95">
                 {n}
               </button>
             ))}
           </div>
-          <p className="text-xs text-gray-400">Puede cambiar esto después si necesita agregar más</p>
+        </div>
+      ) : childCount > 1 && sameFather === null ? (
+        /* Ask if same father */
+        <div className="rounded-2xl border-2 border-[#002855]/20 p-6 text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #002855, #001d3d)' }}>
+            <Users className="w-7 h-7 text-[#F2A900]" />
+          </div>
+          <p className="font-bold text-gray-900 text-lg">¿Todos sus hijos son del mismo padre ausente?</p>
+          <p className="text-sm text-gray-500">Esto ayuda al abogado a organizar las declaraciones correctamente.</p>
+          <div className="flex justify-center gap-4">
+            <button onClick={() => { setSameFather(true); setFatherGroupCount(1); setSetupDone(true) }}
+              className="flex-1 max-w-[200px] py-4 rounded-2xl border-2 border-green-300 bg-green-50 text-sm font-bold text-green-700 hover:bg-green-100 transition-all">
+              Sí, mismo padre
+            </button>
+            <button onClick={() => { setSameFather(false) }}
+              className="flex-1 max-w-[200px] py-4 rounded-2xl border-2 border-amber-300 bg-amber-50 text-sm font-bold text-amber-700 hover:bg-amber-100 transition-all">
+              No, padres diferentes
+            </button>
+          </div>
+        </div>
+      ) : childCount > 1 && sameFather === false && !setupDone ? (
+        /* Ask how many different fathers + assign groups */
+        <div className="rounded-2xl border-2 border-[#002855]/20 p-6 space-y-5">
+          <div className="text-center">
+            <p className="font-bold text-gray-900 text-lg">¿Cuántos padres ausentes diferentes hay?</p>
+            <div className="flex justify-center gap-3 mt-3">
+              {[2, 3].filter(n => n <= childCount).map(n => (
+                <button key={n} onClick={() => setFatherGroupCount(n)}
+                  className={`w-14 h-14 rounded-2xl border-2 text-xl font-bold transition-all ${
+                    fatherGroupCount === n ? 'border-[#F2A900] bg-[#F2A900]/10 text-[#F2A900]' : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                  }`}>{n}</button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-bold text-gray-700 mb-3">Asigne cada hijo a su padre:</p>
+            <div className="space-y-2">
+              {([1, 2, 3, 4] as const).filter(n => n <= childCount).map(n => {
+                const name = djStates[n].minorBasic.full_name || `Hijo/a ${n}`
+                return (
+                  <div key={n} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-200">
+                    <span className="text-sm font-medium text-gray-800">{name}</span>
+                    <div className="flex gap-2">
+                      {Array.from({ length: fatherGroupCount }, (_, i) => i + 1).map(g => (
+                        <button key={g} onClick={() => setFatherGroups(prev => ({ ...prev, [n]: g }))}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            fatherGroups[n] === g
+                              ? g === 1 ? 'bg-blue-100 text-blue-700 border border-blue-300' : 'bg-orange-100 text-orange-700 border border-orange-300'
+                              : 'bg-gray-100 text-gray-400 border border-gray-200'
+                          }`}>
+                          Padre {String.fromCharCode(64 + g)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <button onClick={() => setSetupDone(true)}
+            className="w-full py-3 rounded-xl text-sm font-bold text-[#001020] transition-all hover:opacity-90"
+            style={{ background: '#F2A900' }}>
+            Continuar
+          </button>
         </div>
       ) : (
         <>
@@ -511,6 +586,7 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
               const state = djStates[n]
               const cfg = STATUS_CONFIG[state.status] || STATUS_CONFIG.empty
               const childName = state.minorBasic.full_name || `Hijo/a ${n}`
+              const fGroup = fatherGroups[n] || 1
               const isNext = state.status === 'empty' && ([1, 2, 3, 4] as const)
                 .filter(x => x < n && x <= childCount)
                 .every(x => djStates[x].status !== 'empty')
@@ -528,7 +604,16 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
                         {n}
                       </div>
                       <div>
-                        <p className="font-bold text-gray-900 text-sm">{childName}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-gray-900 text-sm">{childName}</p>
+                          {!sameFather && fatherGroupCount > 1 && (
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              fGroup === 1 ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
+                            }`}>
+                              Padre {String.fromCharCode(64 + fGroup)}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs" style={{ color: cfg.color }}>
                           {isNext ? '→ Toca aquí para comenzar' : `● ${cfg.label}`}
                         </p>
