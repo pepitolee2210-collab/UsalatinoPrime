@@ -968,7 +968,7 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
             <ClientStoryReview
               caseId={caseData.id}
               submissions={(aiSubmissions || []).filter((s: { form_type: string }) =>
-                ['client_story', 'client_witnesses', 'client_absent_parent'].includes(s.form_type)
+                ['client_story', 'client_witnesses', 'client_absent_parent', 'tutor_guardian'].includes(s.form_type)
               )}
               declarationDocs={(documents || [])
                 .filter((d: { declaration_number?: number; direction?: string }) =>

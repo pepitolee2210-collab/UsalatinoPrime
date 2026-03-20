@@ -75,9 +75,13 @@ export function ClientStoryReview({ caseId: _caseId, submissions, declarationDoc
   const [notes, setNotes] = useState('')
   const [expandedDJs, setExpandedDJs] = useState<Set<number>>(new Set([0]))
 
-  // Group by minor_index
+  // Extract tutor_guardian submission (separate from DJs)
+  const tutorSubmission = subs.find(s => s.form_type === 'tutor_guardian')
+
+  // Group remaining by minor_index
   const djMap = new Map<number, { story?: FormSubmission; parent?: FormSubmission; witnesses?: FormSubmission }>()
   for (const s of subs) {
+    if (s.form_type === 'tutor_guardian') continue
     const idx = s.minor_index ?? 0
     if (!djMap.has(idx)) djMap.set(idx, {})
     const g = djMap.get(idx)!
@@ -89,7 +93,7 @@ export function ClientStoryReview({ caseId: _caseId, submissions, declarationDoc
   const sortedIndices = [...djMap.keys()].sort()
   const isMultiDJ = sortedIndices.length > 1
 
-  if (!sortedIndices.length) {
+  if (!sortedIndices.length && !tutorSubmission) {
     return (
       <div className="text-center py-12">
         <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
@@ -144,6 +148,56 @@ export function ClientStoryReview({ caseId: _caseId, submissions, declarationDoc
           <span className="text-sm text-green-700 font-medium">
             Toda la historia del cliente ha sido aprobada
           </span>
+        </div>
+      )}
+
+      {/* Tutor/Guardian Declaration — 30 questions */}
+      {tutorSubmission && (
+        <div className="border border-blue-200 rounded-2xl overflow-hidden">
+          <div className="px-5 py-4 bg-blue-50 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                <BookOpen className="w-4 h-4 text-blue-600" />
+              </div>
+              <span className="font-semibold text-blue-900 text-sm">Declaración del Tutor / Guardián</span>
+            </div>
+            <Badge className={STATUS_CONFIG[tutorSubmission.status]?.color || STATUS_CONFIG.draft.color}>
+              {STATUS_CONFIG[tutorSubmission.status]?.label || 'Borrador'}
+            </Badge>
+          </div>
+          <div className="p-5">
+            <TutorReviewDetails data={tutorSubmission.form_data} />
+            {/* Actions */}
+            {tutorSubmission.status !== 'draft' && (
+              <div className="flex items-center gap-2 pt-3 mt-3 border-t">
+                {editingNotes === tutorSubmission.id ? (
+                  <div className="flex-1 space-y-2">
+                    <Textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Correcciones..." rows={3} />
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="destructive" disabled={loading || !notes.trim()}
+                        onClick={() => updateStatus(tutorSubmission.id, 'needs_correction', notes)}>
+                        Enviar correcciones
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingNotes(null)}>Cancelar</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {tutorSubmission.status !== 'approved' && (
+                      <Button size="sm" className="bg-green-600 hover:bg-green-700" disabled={loading}
+                        onClick={() => updateStatus(tutorSubmission.id, 'approved')}>
+                        <CheckCircle className="w-3 h-3 mr-1" /> Aprobar
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" disabled={loading}
+                      onClick={() => { setEditingNotes(tutorSubmission.id); setNotes(tutorSubmission.admin_notes || '') }}>
+                      <Pencil className="w-3 h-3 mr-1" /> {tutorSubmission.status === 'approved' ? 'Agregar notas' : 'Pedir correcciones'}
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -539,9 +593,100 @@ function WitnessDetails({ data }: { data: Record<string, unknown> }) {
             <Badge variant="secondary" className="text-[10px]">{w.relationship}</Badge>
           </div>
           {w.phone && <p className="text-xs text-gray-500">Tel: {w.phone}</p>}
+          {w.address && <p className="text-xs text-gray-500">Dir: {w.address}</p>}
           <p className="text-sm text-gray-700 mt-1">{w.can_testify}</p>
         </div>
       ))}
+    </div>
+  )
+}
+
+// ── Tutor Review (30 legal questions) ─────────────────────────────
+
+function ReviewSection({ title, color, children }: { title: string; color: string; children: React.ReactNode }) {
+  return (
+    <div className={`p-3 rounded-xl border ${color}`}>
+      <p className="text-xs font-bold uppercase tracking-wider mb-2 opacity-70">{title}</p>
+      <div className="grid gap-2">{children}</div>
+    </div>
+  )
+}
+
+function TutorReviewDetails({ data }: { data: Record<string, unknown> }) {
+  const d = data as Record<string, string>
+  const witnesses = (data.witnesses as unknown as Array<Record<string, string>>) || []
+
+  return (
+    <div className="space-y-3">
+      {/* Sección 1: Información Básica */}
+      <ReviewSection title="1. Información Básica del Declarante" color="bg-blue-50 border-blue-100">
+        <DataRow label="Nombre completo" value={d.full_name} />
+        <DataRow label="Relación con el menor" value={d.relationship_to_minor} />
+        <DataRow label="Dirección" value={d.full_address} />
+        <DataRow label="Tiempo en este estado" value={d.time_in_state} />
+        <DataRow label="Estado migratorio" value={d.immigration_status} />
+      </ReviewSection>
+
+      {/* Sección 2: Sobre el Menor */}
+      <ReviewSection title="2. Información del Menor" color="bg-indigo-50 border-indigo-100">
+        <DataRow label="Nombre del menor" value={d.minor_full_name} />
+        <DataRow label="Fecha de nacimiento" value={d.minor_dob} />
+        <DataRow label="País de nacimiento" value={d.minor_country} />
+        <DataRow label="Estado civil" value={d.minor_civil_status} />
+        <DataRow label="Ubicación actual" value={d.minor_location} />
+        <DataRow label="Vive con" value={d.minor_lives_with} />
+        <DataRow label="Vive con esta persona desde" value={d.minor_lives_with_since} />
+      </ReviewSection>
+
+      {/* Sección 3: Hechos de Maltrato */}
+      <ReviewSection title="3. Hechos de Maltrato" color="bg-red-50 border-red-100">
+        <DataRow label="Por qué no puede reunificarse" value={d.why_cannot_reunify} />
+        <DataRow label="Descripción del abuso/abandono/negligencia" value={d.abuse_description} />
+        <DataRow label="Quién perpetró" value={d.who_perpetrated} />
+        <DataRow label="Cuándo ocurrió" value={d.when_occurred} />
+        <DataRow label="Dónde ocurrió" value={d.where_occurred} />
+        <DataRow label="Evidencia disponible" value={d.evidence_exists} />
+        {d.evidence_exists === 'Sí' && <DataRow label="Detalle de evidencia" value={d.evidence_description} />}
+        <DataRow label="Menor recibió tratamiento" value={d.minor_treatment} />
+        {d.minor_treatment === 'Sí' && <DataRow label="Detalle de tratamiento" value={d.treatment_description} />}
+      </ReviewSection>
+
+      {/* Sección 4: Mejor Interés */}
+      <ReviewSection title="4. Mejor Interés del Menor" color="bg-amber-50 border-amber-100">
+        <DataRow label="Riesgo si es devuelto" value={d.risk_if_returned} />
+        <DataRow label="Cuidador en país de origen" value={d.caretaker_in_country} />
+        <DataRow label="Acceso a servicios en país" value={d.access_to_services} />
+        <DataRow label="Amenazas de pandillas" value={d.gang_threats} />
+      </ReviewSection>
+
+      {/* Sección 5: Proceso Legal */}
+      <ReviewSection title="5. Proceso Legal" color="bg-gray-50 border-gray-200">
+        <DataRow label="Padre no-maltratante dispuesto a firmar" value={d.parent_consent} />
+        <DataRow label="Menor en proceso de deportación" value={d.minor_in_removal} />
+        <DataRow label="Liberado por ORR" value={d.minor_released_orr} />
+        {d.minor_released_orr === 'Sí' && <DataRow label="Detalle ORR" value={d.orr_details} />}
+        <DataRow label="Guardián con antecedentes penales" value={d.guardian_criminal_record} />
+        <DataRow label="Guardián puede proveer" value={d.guardian_can_provide} />
+        <DataRow label="Otros miembros del hogar (+18)" value={d.household_members} />
+        <DataRow label="Entiende limitaciones SIJS" value={d.understands_sijs} />
+      </ReviewSection>
+
+      {/* Testigos */}
+      {witnesses.filter(w => w.name).length > 0 && (
+        <ReviewSection title={`6. Testigos (${witnesses.filter(w => w.name).length})`} color="bg-purple-50 border-purple-100">
+          {witnesses.filter(w => w.name).map((w, i) => (
+            <div key={i} className="p-2 bg-white rounded-lg border border-purple-100">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-gray-800">{w.name}</span>
+                <Badge variant="secondary" className="text-[10px]">{w.relationship}</Badge>
+              </div>
+              {w.phone && <p className="text-xs text-gray-500">Tel: {w.phone}</p>}
+              {w.address && <p className="text-xs text-gray-500">Dir: {w.address}</p>}
+              {w.can_testify && <p className="text-xs text-gray-600 mt-1">{w.can_testify}</p>}
+            </div>
+          ))}
+        </ReviewSection>
+      )}
     </div>
   )
 }
