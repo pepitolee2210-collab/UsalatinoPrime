@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { PostCard } from '@/components/community/PostCard'
 import { ZoomCard } from '@/components/community/ZoomCard'
 import { PaywallOverlay } from '@/components/community/PaywallOverlay'
+import { ContactCards } from '@/components/community/ContactCards'
 
 export default async function ComunidadPage({
   searchParams,
@@ -109,6 +110,9 @@ export default async function ComunidadPage({
           </p>
         </div>
       )}
+
+      {/* Contact cards — always visible at the top */}
+      <ContactCards />
 
       {/* Zoom card (always visible for active members) */}
       {isActive && zoomPost?.zoom_url && (
