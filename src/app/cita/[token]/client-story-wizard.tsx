@@ -351,11 +351,11 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Which DJs are unlocked
-  const visibleDJs = ([1, 2, 3, 4] as const).filter(n => {
-    if (n === 1) return true
-    const prev = djStates[n - 1]
-    return prev.hasAnotherFather === true || prev.status !== 'empty'
+  // How many children need declarations
+  const [childCount, setChildCount] = useState<number | null>(() => {
+    // Auto-detect from loaded data
+    const filledCount = ([1, 2, 3, 4] as const).filter(n => djStates[n].status !== 'empty').length
+    return filledCount > 0 ? filledCount : null
   })
 
   function handleDJUpdated(djNum: number, newState: DJState) {
@@ -418,8 +418,20 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
         djNumber={activeDJ}
         token={token}
         initial={djStates[activeDJ]}
-        isLastPossibleDJ={activeDJ === 4}
-        onBack={() => setActiveDJ(null)}
+        isLastPossibleDJ={activeDJ === (childCount || 1)}
+        onBack={() => {
+          // After completing, auto-open next if available
+          const currentState = djStates[activeDJ]
+          if (currentState.status === 'submitted' && childCount && activeDJ < childCount) {
+            const next = (activeDJ + 1) as 1 | 2 | 3 | 4
+            if (djStates[next].status === 'empty') {
+              setActiveDJ(next)
+              toast.success(`¡Declaración ${activeDJ} enviada! Ahora llene la del siguiente hijo.`)
+              return
+            }
+          }
+          setActiveDJ(null)
+        }}
         onStateChange={(state) => handleDJUpdated(activeDJ, state)}
         onDocAdded={(doc) => handleDocAdded(activeDJ, doc)}
         onDocRemoved={(docId) => handleDocRemoved(activeDJ, docId)}
@@ -446,8 +458,8 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
             </div>
             <div>
               <p className="font-bold text-gray-900 text-sm">Mi Historia (Tutor/Guardián)</p>
-              {tutorSaved && tutorData.full_name ? (
-                <p className="text-xs text-gray-500">{tutorData.full_name} — Completado</p>
+              {tutorSaved && (tutorData.full_name as string) ? (
+                <p className="text-xs text-gray-500">{tutorData.full_name as string} — Completado</p>
               ) : (
                 <p className="text-xs text-amber-600 font-medium">Pendiente — Toca para llenar</p>
               )}
@@ -457,12 +469,79 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
         </div>
       </div>
 
-      {/* DJ Selector */}
-      <DJSelector
-        djStates={djStates}
-        visibleDJs={visibleDJs}
-        onOpen={setActiveDJ}
-      />
+      {/* Step 2: How many children? */}
+      {!childCount ? (
+        <div className="rounded-2xl border-2 border-[#002855]/20 p-6 text-center space-y-4">
+          <div className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center"
+            style={{ background: 'linear-gradient(135deg, #002855, #001d3d)' }}>
+            <Users className="w-7 h-7 text-[#F2A900]" />
+          </div>
+          <div>
+            <p className="font-bold text-gray-900 text-lg">¿Cuántos hijos necesitan su declaración?</p>
+            <p className="text-sm text-gray-500 mt-1">Cada hijo necesita llenar su propia historia. Si tiene más de un hijo, seleccione cuántos.</p>
+          </div>
+          <div className="flex justify-center gap-3">
+            {[1, 2, 3, 4].map(n => (
+              <button key={n} onClick={() => setChildCount(n)}
+                className="w-16 h-16 rounded-2xl border-2 border-gray-200 text-2xl font-bold text-gray-700 hover:border-[#F2A900] hover:bg-[#F2A900]/5 hover:text-[#F2A900] transition-all active:scale-95">
+                {n}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400">Puede cambiar esto después si necesita agregar más</p>
+        </div>
+      ) : (
+        <>
+          {/* Child count indicator */}
+          <div className="flex items-center justify-between px-1">
+            <p className="text-sm font-bold text-gray-700">
+              Declaraciones de los hijos ({([1, 2, 3, 4] as const).filter(n => n <= childCount && djStates[n].status !== 'empty').length}/{childCount})
+            </p>
+            {childCount < 4 && (
+              <button onClick={() => setChildCount(c => Math.min((c || 1) + 1, 4))}
+                className="text-xs text-[#F2A900] font-bold hover:underline">
+                + Agregar otro hijo
+              </button>
+            )}
+          </div>
+
+          {/* Declaration cards */}
+          <div className="space-y-3">
+            {([1, 2, 3, 4] as const).filter(n => n <= childCount).map(n => {
+              const state = djStates[n]
+              const cfg = STATUS_CONFIG[state.status] || STATUS_CONFIG.empty
+              const childName = state.minorBasic.full_name || `Hijo/a ${n}`
+              const isNext = state.status === 'empty' && ([1, 2, 3, 4] as const)
+                .filter(x => x < n && x <= childCount)
+                .every(x => djStates[x].status !== 'empty')
+
+              return (
+                <div key={n}
+                  className="rounded-2xl border-2 p-4 cursor-pointer transition-all hover:shadow-md"
+                  style={{ borderColor: isNext ? '#F2A900' : cfg.border, background: isNext ? '#fffbeb' : cfg.bg }}
+                  onClick={() => setActiveDJ(n)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm"
+                        style={{ background: isNext ? '#F2A900' : state.status !== 'empty' ? cfg.border : '#e5e7eb', color: isNext ? '#001020' : state.status !== 'empty' ? cfg.color : '#9ca3af' }}>
+                        {n}
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900 text-sm">{childName}</p>
+                        <p className="text-xs" style={{ color: cfg.color }}>
+                          {isNext ? '→ Toca aquí para comenzar' : `● ${cfg.label}`}
+                        </p>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-5 h-5" style={{ color: isNext ? '#F2A900' : '#d1d5db' }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -773,9 +852,7 @@ function DJWizard({
           <FinalStep
             djNumber={djNumber}
             state={state}
-            isLastPossibleDJ={isLastPossibleDJ}
             onEditStep={setStep}
-            onHasAnotherFatherChange={v => updateState({ hasAnotherFather: v })}
           />
         )}
       </div>
@@ -1294,48 +1371,53 @@ function DocsStep({ djNumber, token, docs, onAdded, onRemoved }: {
 
 // ══ STEP 5: FINAL ══════════════════════════════════════════════════
 
-function FinalStep({ djNumber, state, isLastPossibleDJ, onEditStep, onHasAnotherFatherChange }: {
+function FinalStep({ djNumber, state, onEditStep }: {
   djNumber: number
   state: DJState
-  isLastPossibleDJ: boolean
   onEditStep: (step: number) => void
-  onHasAnotherFatherChange: (v: boolean) => void
 }) {
-  const validChildren = state.children.filter(c => c.name.trim())
-  const parentSituation = PARENT_SITUATIONS.find(s => s.value === state.parent.situation)?.label || '—'
   const validWitnesses = state.witnesses.filter(w => w.name.trim())
 
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="font-semibold text-gray-900">Revisión — Declaración Jurada {djNumber}</h3>
-        <p className="text-sm text-gray-500 mt-1">Verifique la información antes de enviar.</p>
+        <h3 className="font-semibold text-gray-900">Revisión — Declaración del Hijo/a {djNumber}</h3>
+        <p className="text-sm text-gray-500 mt-1">Verifique la información antes de enviar al abogado.</p>
       </div>
 
-      {/* Children summary */}
-      <ReviewCard title="Hijos en esta declaración" onEdit={() => onEditStep(0)}>
-        {validChildren.map((c, i) => (
-          <p key={i} className="text-sm text-gray-700">
-            {c.name} — <span className="text-gray-500">{GUARDIAN_RELATIONS.find(r => r.value === c.guardian_relation)?.label || c.guardian_relation}</span>
-          </p>
-        ))}
+      {/* Basic info summary */}
+      <ReviewCard title="Información Básica" onEdit={() => onEditStep(0)}>
+        {state.minorBasic.full_name && <p className="text-sm text-gray-700"><span className="font-medium">Nombre:</span> {state.minorBasic.full_name}</p>}
+        {state.minorBasic.dob && <p className="text-sm text-gray-700"><span className="font-medium">Fecha nac.:</span> {state.minorBasic.dob}</p>}
+        {state.minorBasic.country && <p className="text-sm text-gray-700"><span className="font-medium">País:</span> {state.minorBasic.country}</p>}
+        {state.minorBasic.lives_with && <p className="text-sm text-gray-700"><span className="font-medium">Vive con:</span> {state.minorBasic.lives_with}</p>}
       </ReviewCard>
 
-      {/* Story summary */}
-      <ReviewCard title="Declaración" onEdit={() => onEditStep(1)}>
-        {state.story.arrival_year && <p className="text-sm text-gray-700"><span className="font-medium">Año de llegada:</span> {state.story.arrival_year}</p>}
-        {state.story.how_was_abandonment && (
+      {/* Abuse summary */}
+      <ReviewCard title="Hechos de Maltrato" onEdit={() => onEditStep(1)}>
+        {state.minorAbuse.abuse_by_father && (
           <p className="text-sm text-gray-700">
-            <span className="font-medium">Abandono:</span>{' '}
-            {state.story.how_was_abandonment.slice(0, 150)}{state.story.how_was_abandonment.length > 150 ? '...' : ''}
+            <span className="font-medium">Abuso por padre:</span>{' '}
+            {state.minorAbuse.abuse_by_father.slice(0, 150)}{state.minorAbuse.abuse_by_father.length > 150 ? '...' : ''}
+          </p>
+        )}
+        {state.minorAbuse.abuse_by_mother && (
+          <p className="text-sm text-gray-700">
+            <span className="font-medium">Abuso por madre:</span>{' '}
+            {state.minorAbuse.abuse_by_mother.slice(0, 150)}{state.minorAbuse.abuse_by_mother.length > 150 ? '...' : ''}
           </p>
         )}
       </ReviewCard>
 
-      {/* Parent summary */}
-      <ReviewCard title="Padre/Madre Ausente" onEdit={() => onEditStep(2)}>
-        <p className="text-sm text-gray-700"><span className="font-medium">Situación:</span> {parentSituation}</p>
-        {state.parent.parent_name && <p className="text-sm text-gray-700"><span className="font-medium">Nombre:</span> {state.parent.parent_name}</p>}
+      {/* Best interest summary */}
+      <ReviewCard title="Mejor Interés" onEdit={() => onEditStep(2)}>
+        {state.minorBestInterest.fear_of_return && (
+          <p className="text-sm text-gray-700">
+            <span className="font-medium">Miedo de regresar:</span>{' '}
+            {state.minorBestInterest.fear_of_return.slice(0, 150)}{state.minorBestInterest.fear_of_return.length > 150 ? '...' : ''}
+          </p>
+        )}
+        {state.minorBestInterest.wants_to_stay && <p className="text-sm text-gray-700"><span className="font-medium">Desea quedarse:</span> {state.minorBestInterest.wants_to_stay}</p>}
       </ReviewCard>
 
       {/* Witnesses summary */}
@@ -1344,32 +1426,6 @@ function FinalStep({ djNumber, state, isLastPossibleDJ, onEditStep, onHasAnother
           <p key={i} className="text-sm text-gray-700">{w.name} — <span className="text-gray-500">{w.relationship}</span></p>
         ))}
       </ReviewCard>
-
-      {/* Has another father question */}
-      {!isLastPossibleDJ && (
-        <div className="p-5 rounded-2xl border-2 border-[#F2A900]/30 bg-amber-50">
-          <p className="text-sm font-bold text-gray-800 mb-3">
-            ¿Tiene hijos con un padre/madre diferente al de esta declaración?
-          </p>
-          <p className="text-xs text-gray-500 mb-4">
-            Si responde Sí, se habilitará la Declaración Jurada {djNumber + 1} para ese otro padre.
-          </p>
-          <div className="flex gap-3">
-            <button
-              onClick={() => onHasAnotherFatherChange(true)}
-              className={`flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-all ${state.hasAnotherFather === true ? 'border-[#F2A900] bg-[#F2A900] text-[#001020]' : 'border-gray-300 text-gray-600 hover:border-[#F2A900]'}`}
-            >
-              Sí, hay otro padre/madre
-            </button>
-            <button
-              onClick={() => onHasAnotherFatherChange(false)}
-              className={`flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-all ${state.hasAnotherFather === false ? 'border-gray-700 bg-gray-700 text-white' : 'border-gray-300 text-gray-600 hover:border-gray-700'}`}
-            >
-              No, todos son del mismo padre
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
         <p className="text-xs text-blue-700">
