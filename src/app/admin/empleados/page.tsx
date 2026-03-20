@@ -21,6 +21,12 @@ export default async function AdminEmpleadosPage() {
     `)
     .order('assigned_at', { ascending: false })
 
+  // Get services for the assign button
+  const { data: services } = await supabase
+    .from('service_catalog')
+    .select('id, name')
+    .order('name')
+
   // Get submissions for each assignment
   const { data: submissions } = await supabase
     .from('employee_submissions')
@@ -55,6 +61,7 @@ export default async function AdminEmpleadosPage() {
       <EmployeeTasksView
         employees={employees || []}
         assignments={normalized}
+        services={services || []}
       />
     </div>
   )

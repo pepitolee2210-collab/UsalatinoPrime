@@ -10,6 +10,7 @@ import {
   Briefcase, Clock, CheckCircle, AlertTriangle, Send,
   FileText, User, ChevronRight, Filter, Pencil, Save, Loader2, MessageSquare,
 } from 'lucide-react'
+import { AssignTaskButton } from './assign-task-button'
 
 interface Employee {
   id: string
@@ -45,9 +46,12 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof
   completed:        { label: 'Completado',          color: 'bg-gray-100 text-gray-600',     icon: CheckCircle },
 }
 
-export function EmployeeTasksView({ employees, assignments: initial }: {
+interface Service { id: string; name: string }
+
+export function EmployeeTasksView({ employees, assignments: initial, services }: {
   employees: Employee[]
   assignments: Assignment[]
+  services: Service[]
 }) {
   const [assignments, setAssignments] = useState(initial)
   const [filter, setFilter] = useState<string>('all')
@@ -106,6 +110,13 @@ export function EmployeeTasksView({ employees, assignments: initial }: {
 
   return (
     <div className="space-y-5">
+      {/* Action bar */}
+      {employees.length > 0 && (
+        <div className="flex justify-end">
+          <AssignTaskButton services={services} employees={employees} />
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3">
         <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">

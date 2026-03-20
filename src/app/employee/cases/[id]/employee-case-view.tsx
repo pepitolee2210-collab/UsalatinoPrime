@@ -152,7 +152,6 @@ export function EmployeeCaseView({ caseData, assignment, documents, submissions 
           {[
             { value: 'in_progress', label: 'En progreso', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
             { value: 'submitted', label: 'Enviado a revisión', color: 'bg-purple-100 text-purple-700 border-purple-300' },
-            { value: 'completed', label: 'Completado', color: 'bg-green-100 text-green-700 border-green-300' },
           ].map(s => (
             <button key={s.value} onClick={() => updateMyStatus(s.value)}
               disabled={statusLoading || currentAssignment.status === s.value}
