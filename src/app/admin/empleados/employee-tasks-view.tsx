@@ -336,7 +336,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services }:
 
               {/* Status controls for Henry */}
               <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                <span className="text-xs text-gray-400 mr-1">Cambiar estado:</span>
+                <span className="text-xs text-gray-400 mr-1">Estado:</span>
                 {['assigned', 'in_progress', 'needs_correction', 'approved', 'completed'].map(s => {
                   const sc = STATUS_CONFIG[s]
                   const isActive = a.status === s
@@ -350,6 +350,27 @@ export function EmployeeTasksView({ employees, assignments: initial, services }:
                     </button>
                   )
                 })}
+                <button
+                  onClick={async () => {
+                    if (!confirm('¿Eliminar esta tarea? Se borrarán los documentos y envíos asociados.')) return
+                    setSavingId(a.id)
+                    try {
+                      const res = await fetch('/api/admin/delete-task', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ assignment_id: a.id }),
+                      })
+                      if (!res.ok) throw new Error()
+                      setAssignments(prev => prev.filter(t => t.id !== a.id))
+                      toast.success('Tarea eliminada')
+                    } catch { toast.error('Error al eliminar') }
+                    finally { setSavingId(null) }
+                  }}
+                  disabled={savingId === a.id}
+                  className="ml-auto px-2.5 py-1 rounded-lg text-[11px] font-medium text-red-500 bg-red-50 hover:bg-red-100 transition-colors"
+                >
+                  Eliminar
+                </button>
               </div>
             </div>
           )
