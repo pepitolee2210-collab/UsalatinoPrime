@@ -8,7 +8,7 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 import {
   Briefcase, Clock, CheckCircle, AlertTriangle, Send,
-  FileText, User, ChevronRight, Filter, Pencil, Save, Loader2, MessageSquare,
+  FileText, User, ChevronRight, Filter, Pencil, Save, Loader2, MessageSquare, Upload,
 } from 'lucide-react'
 import { AssignTaskButton } from './assign-task-button'
 
@@ -58,6 +58,24 @@ export function EmployeeTasksView({ employees, assignments: initial, services }:
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editNotes, setEditNotes] = useState('')
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [uploadingId, setUploadingId] = useState<string | null>(null)
+
+  async function uploadFileToTask(assignmentId: string, file: File) {
+    setUploadingId(assignmentId)
+    try {
+      const fd = new FormData()
+      fd.append('assignment_id', assignmentId)
+      fd.append('file', file)
+
+      const res = await fetch('/api/admin/upload-task-file', { method: 'POST', body: fd })
+      if (!res.ok) throw new Error()
+      toast.success(`"${file.name}" subido — Diana lo verá en su portal`)
+    } catch {
+      toast.error('Error al subir archivo')
+    } finally {
+      setUploadingId(null)
+    }
+  }
 
   const filtered = filter === 'all'
     ? assignments
@@ -264,6 +282,21 @@ export function EmployeeTasksView({ employees, assignments: initial, services }:
                     {a.task_description || <span className="text-gray-400 italic">Sin notas — toca Editar para agregar</span>}
                   </p>
                 )}
+              </div>
+
+              {/* Upload documents */}
+              <div className="flex items-center gap-2 mb-2">
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-gray-300 cursor-pointer text-xs text-gray-500 hover:border-[#F2A900] hover:text-[#F2A900] transition-colors">
+                  {uploadingId === a.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+                  {uploadingId === a.id ? 'Subiendo...' : 'Subir documento para Diana'}
+                  <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" className="hidden"
+                    disabled={uploadingId !== null}
+                    onChange={e => {
+                      const file = e.target.files?.[0]
+                      if (file) uploadFileToTask(a.id, file)
+                      e.target.value = ''
+                    }} />
+                </label>
               </div>
 
               {/* Submission stats */}
