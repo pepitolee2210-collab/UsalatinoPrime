@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
+import { TutorFormSections } from './tutor-form-sections'
+import { MinorBasicSection, MinorAbuseSection, MinorBestInterestSection } from './minor-form-sections'
 import {
   ChevronLeft, ChevronRight, CheckCircle, Send, Loader2,
   BookOpen, Lock, ArrowRight, Upload, X, FileText,
@@ -21,6 +23,36 @@ interface ChildInfo {
   guardian_relation_other: string
 }
 
+// Minor declaration data — 30 questions organized in sections
+interface MinorBasicData {
+  full_name: string; dob: string; country: string; nationality: string
+  civil_status: string; in_us: string; address: string
+  lives_with: string; lives_with_relationship: string
+  how_arrived: string; arrival_date: string; accompanied_by: string
+  detained_by_immigration: string; released_by_orr: string; orr_sponsor: string
+}
+
+interface MinorAbuseData {
+  life_in_country: string
+  abuse_by_father: string; abuse_by_mother: string
+  physical_abuse: string; emotional_abuse: string
+  negligence: string; abandonment: string; abandonment_details: string
+  parent_substance_abuse: string
+}
+
+interface MinorBestInterestData {
+  reported_to_authorities: string; report_details: string
+  physical_scars: string; therapy_received: string; therapy_details: string
+  fear_of_return: string; fear_details: string
+  gang_threats: string; gang_details: string
+  caretaker_in_country: string
+  current_life_us: string; attends_school: string
+  safe_home: string
+  legal_problems: string
+  wants_to_stay: string; why_stay: string
+}
+
+// Keep legacy types for backward compatibility
 interface StoryData {
   arrival_year: string; who_brought: string; current_guardian: string
   separation_date: string; how_was_abandonment: string; father_economic_support: string
@@ -36,28 +68,48 @@ interface ParentData {
   death_date: string; death_place: string; has_death_certificate: string; what_is_known: string
 }
 
-interface TutorWitness { name: string; relationship: string; phone: string; can_testify: string }
+interface TutorWitness { name: string; relationship: string; phone: string; address: string; can_testify: string }
 
 interface TutorData {
+  // Sección 1: Información Básica (Q1-5)
   full_name: string
-  date_of_birth: string
-  country_of_birth: string
-  current_city: string
-  current_state: string
-  phone: string
-  arrival_to_us: string
-  caring_since: string
-  why_left_country: string
-  journey_to_us: string
-  current_situation: string
-  hardships: string
-  how_caring_children: string
-  additional_info: string
-  // Absent parent from tutor's perspective
-  partner_situation: string
-  partner_name: string
-  partner_description: string
-  // Witnesses
+  relationship_to_minor: string
+  full_address: string
+  time_in_state: string
+  immigration_status: string
+  // Sección 2: Sobre el Menor (Q6-12)
+  minor_full_name: string
+  minor_dob: string
+  minor_country: string
+  minor_civil_status: string
+  minor_location: string
+  minor_lives_with: string
+  minor_lives_with_since: string
+  // Sección 3: Hechos de Maltrato (Q13-19)
+  why_cannot_reunify: string
+  abuse_description: string
+  who_perpetrated: string
+  when_occurred: string
+  where_occurred: string
+  evidence_exists: string
+  evidence_description: string
+  minor_treatment: string
+  treatment_description: string
+  // Sección 4: Mejor Interés (Q20-23)
+  risk_if_returned: string
+  caretaker_in_country: string
+  access_to_services: string
+  gang_threats: string
+  // Sección 5: Proceso Legal (Q24-30)
+  parent_consent: string
+  minor_in_removal: string
+  minor_released_orr: string
+  orr_details: string
+  guardian_criminal_record: string
+  guardian_can_provide: string
+  household_members: string
+  understands_sijs: string
+  // Testigos
   witnesses: TutorWitness[]
 }
 
@@ -68,6 +120,11 @@ interface DJDoc { id: string; name: string; file_size: number }
 interface DJState {
   status: 'empty' | 'draft' | 'submitted' | 'approved' | 'needs_correction'
   children: ChildInfo[]
+  // New structured minor data
+  minorBasic: MinorBasicData
+  minorAbuse: MinorAbuseData
+  minorBestInterest: MinorBestInterestData
+  // Legacy (kept for backward compat loading)
   story: StoryData
   parent: ParentData
   witnesses: Witness[]
@@ -100,13 +157,38 @@ const EMPTY_PARENT: ParentData = {
 }
 
 const EMPTY_TUTOR: TutorData = {
-  full_name: '', date_of_birth: '', country_of_birth: '',
-  current_city: '', current_state: '', phone: '',
-  arrival_to_us: '', caring_since: '',
-  why_left_country: '', journey_to_us: '', current_situation: '',
-  hardships: '', how_caring_children: '', additional_info: '',
-  partner_situation: '', partner_name: '', partner_description: '',
-  witnesses: [{ name: '', relationship: '', phone: '', can_testify: '' }],
+  full_name: '', relationship_to_minor: '', full_address: '',
+  time_in_state: '', immigration_status: '',
+  minor_full_name: '', minor_dob: '', minor_country: '',
+  minor_civil_status: '', minor_location: '', minor_lives_with: '', minor_lives_with_since: '',
+  why_cannot_reunify: '', abuse_description: '', who_perpetrated: '',
+  when_occurred: '', where_occurred: '', evidence_exists: '', evidence_description: '',
+  minor_treatment: '', treatment_description: '',
+  risk_if_returned: '', caretaker_in_country: '', access_to_services: '', gang_threats: '',
+  parent_consent: '', minor_in_removal: '', minor_released_orr: '', orr_details: '',
+  guardian_criminal_record: '', guardian_can_provide: '', household_members: '', understands_sijs: '',
+  witnesses: [{ name: '', relationship: '', phone: '', address: '', can_testify: '' }],
+}
+
+const EMPTY_MINOR_BASIC: MinorBasicData = {
+  full_name: '', dob: '', country: '', nationality: '', civil_status: 'soltero',
+  in_us: 'si', address: '', lives_with: '', lives_with_relationship: '',
+  how_arrived: '', arrival_date: '', accompanied_by: '',
+  detained_by_immigration: '', released_by_orr: '', orr_sponsor: '',
+}
+
+const EMPTY_MINOR_ABUSE: MinorAbuseData = {
+  life_in_country: '', abuse_by_father: '', abuse_by_mother: '',
+  physical_abuse: '', emotional_abuse: '', negligence: '',
+  abandonment: '', abandonment_details: '', parent_substance_abuse: '',
+}
+
+const EMPTY_MINOR_BEST_INTEREST: MinorBestInterestData = {
+  reported_to_authorities: '', report_details: '',
+  physical_scars: '', therapy_received: '', therapy_details: '',
+  fear_of_return: '', fear_details: '', gang_threats: '', gang_details: '',
+  caretaker_in_country: '', current_life_us: '', attends_school: '',
+  safe_home: '', legal_problems: '', wants_to_stay: '', why_stay: '',
 }
 
 const EMPTY_CHILD: ChildInfo = { name: '', guardian_relation: '', guardian_relation_other: '' }
@@ -128,13 +210,16 @@ const GUARDIAN_RELATIONS: { value: GuardianRelation; label: string }[] = [
   { value: 'tutor_legal', label: 'Tutor legal' }, { value: 'otro', label: 'Otro' },
 ]
 
-const DJ_STEP_LABELS = ['Hijos', 'Declaración', 'Padre/Madre Ausente', 'Testigos', 'Confirmar y Enviar']
+const DJ_STEP_LABELS = ['Información Básica', 'Hechos de Maltrato', 'Mejor Interés', 'Testigos', 'Confirmar y Enviar']
 const DJ_TOTAL_STEPS = 5
 
 function createEmptyDJ(docs: DJDoc[] = []): DJState {
   return {
     status: 'empty',
     children: [{ ...EMPTY_CHILD }],
+    minorBasic: { ...EMPTY_MINOR_BASIC },
+    minorAbuse: { ...EMPTY_MINOR_ABUSE },
+    minorBestInterest: { ...EMPTY_MINOR_BEST_INTEREST },
     story: { ...EMPTY_STORY },
     parent: { ...EMPTY_PARENT },
     witnesses: [{ name: '', relationship: '', phone: '', can_testify: '' }],
@@ -523,16 +608,16 @@ function DJWizard({
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      // Save children + story together
-      if (state.children.some(c => c.name.trim()) || state.story.how_was_abandonment.trim()) {
+      // Save all minor data together in client_story
+      const hasData = state.minorBasic.full_name.trim() || state.minorAbuse.abuse_by_father.trim() || state.minorBestInterest.fear_of_return.trim()
+      if (hasData) {
         saveDraft('client_story', {
-          ...state.story,
+          minorBasic: state.minorBasic,
+          minorAbuse: state.minorAbuse,
+          minorBestInterest: state.minorBestInterest,
           children: state.children,
           has_another_father: state.hasAnotherFather,
         })
-      }
-      if (state.parent.situation) {
-        saveDraft('client_absent_parent', state.parent)
       }
       if (state.witnesses.some(w => w.name.trim())) {
         saveDraft('client_witnesses', { witnesses: state.witnesses })
@@ -551,27 +636,16 @@ function DJWizard({
   }
 
   function validate(): boolean {
-    const validChildren = state.children.filter(c => c.name.trim())
-    if (validChildren.length === 0) {
-      toast.error('Agrega el nombre de al menos un hijo/a')
+    if (!state.minorBasic.full_name.trim()) {
+      toast.error('Ingresa el nombre completo del menor')
       setStep(0); return false
     }
-    for (const c of validChildren) {
-      if (!c.guardian_relation) {
-        toast.error(`Selecciona tu relación con ${c.name}`)
-        setStep(0); return false
-      }
-    }
-    if (!state.story.how_was_abandonment.trim()) {
-      toast.error('Describe cómo fue el abandono')
+    if (!state.minorAbuse.abuse_by_father.trim() && !state.minorAbuse.abuse_by_mother.trim()) {
+      toast.error('Describe los hechos de abuso/abandono por al menos un padre')
       setStep(1); return false
     }
-    if (!state.parent.situation) {
-      toast.error('Selecciona la situación del padre/madre')
-      setStep(2); return false
-    }
-    if (state.parent.situation === 'absent' && !state.parent.reason_absent.trim()) {
-      toast.error('Describe la razón de la ausencia')
+    if (!state.minorBestInterest.fear_of_return.trim()) {
+      toast.error('Describe por qué el menor tiene miedo de regresar')
       setStep(2); return false
     }
     if (!state.witnesses.some(w => w.name.trim())) {
@@ -589,12 +663,13 @@ function DJWizard({
         {
           form_type: 'client_story',
           form_data: {
-            ...state.story,
+            minorBasic: state.minorBasic,
+            minorAbuse: state.minorAbuse,
+            minorBestInterest: state.minorBestInterest,
             children: state.children.filter(c => c.name.trim()),
             has_another_father: state.hasAnotherFather,
           },
         },
-        { form_type: 'client_absent_parent', form_data: state.parent },
         { form_type: 'client_witnesses', form_data: { witnesses: state.witnesses.filter(w => w.name.trim()) } },
       ]
 
@@ -664,30 +739,27 @@ function DJWizard({
       {/* Step content */}
       <div>
         {step === 0 && (
-          <ChildrenStep
-            children={state.children}
-            onChange={children => updateState({ children })}
-            djNumber={djNumber}
+          <MinorBasicSection
+            data={state.minorBasic}
+            onChange={minorBasic => updateState({ minorBasic })}
           />
         )}
         {step === 1 && (
-          <StoryStep
-            story={state.story}
-            children={state.children.filter(c => c.name.trim())}
-            onChange={story => updateState({ story })}
+          <MinorAbuseSection
+            data={state.minorAbuse}
+            onChange={minorAbuse => updateState({ minorAbuse })}
           />
         )}
         {step === 2 && (
-          <ParentStep
-            parent={state.parent}
-            childNames={state.children.filter(c => c.name.trim()).map(c => c.name)}
-            onChange={parent => updateState({ parent })}
+          <MinorBestInterestSection
+            data={state.minorBestInterest}
+            onChange={minorBestInterest => updateState({ minorBestInterest })}
           />
         )}
         {step === 3 && (
           <WitnessStep
             witnesses={state.witnesses}
-            childNames={state.children.filter(c => c.name.trim()).map(c => c.name)}
+            childNames={[state.minorBasic.full_name || 'el menor']}
             onChange={witnesses => updateState({ witnesses })}
           />
         )}
@@ -735,7 +807,7 @@ function DJWizard({
   )
 }
 
-// ══ TUTOR STEP (independent, outside DJ wizard) ═══════════════════
+// ══ TUTOR STEP (independent, outside DJ wizard) — uses new 30-question form ═══
 
 function TutorStep({ tutor, token, onChange, onSave, onBack }: {
   tutor: TutorData; token: string; onChange: (t: TutorData) => void
@@ -745,13 +817,9 @@ function TutorStep({ tutor, token, onChange, onSave, onBack }: {
   const [autoSaved, setAutoSaved] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  function upd(field: keyof TutorData, value: string) {
-    onChange({ ...tutor, [field]: value })
-  }
-
   // Auto-save tutor draft every 4 seconds
   useEffect(() => {
-    if (!tutor.full_name.trim()) return
+    if (!(tutor.full_name as string)?.trim()) return
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       try {
@@ -768,7 +836,7 @@ function TutorStep({ tutor, token, onChange, onSave, onBack }: {
   }, [tutor, token])
 
   async function handleSave() {
-    if (!tutor.full_name.trim()) { toast.error('Ingresa tu nombre completo'); return }
+    if (!(tutor.full_name as string)?.trim()) { toast.error('Ingresa tu nombre completo'); return }
     setSaving(true)
     await onSave()
     setSaving(false)
@@ -782,221 +850,24 @@ function TutorStep({ tutor, token, onChange, onSave, onBack }: {
         </button>
         <div className="flex items-center gap-2">
           <Users className="w-5 h-5 text-[#F2A900]" />
-          <h3 className="font-bold text-gray-900">Mi Historia (Tutor / Guardián)</h3>
+          <h3 className="font-bold text-gray-900">Declaración Jurada del Padre/Tutor</h3>
         </div>
-        <p className="text-sm text-gray-500 mt-1">Cuéntenos su historia. Toda la información es confidencial.</p>
+        <p className="text-sm text-gray-500 mt-1">30 preguntas organizadas en 6 secciones. Su progreso se guarda automáticamente.</p>
       </div>
 
-      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-        Escriba desde su perspectiva como tutor/guardián de los menores. Incluya todos los detalles que considere importantes: dificultades, sacrificios, y cómo ha cuidado a los niños.
-        <span className="block mt-1 text-xs text-amber-600">Su progreso se guarda automáticamente.</span>
-      </div>
       {autoSaved && (
         <p className="text-xs text-green-600 flex items-center gap-1">
           <CheckCircle className="w-3 h-3" /> Progreso guardado automáticamente
         </p>
       )}
 
-      <div className="space-y-4">
-        {/* Basic info */}
-        <div>
-          <FieldLabel required>Nombre completo</FieldLabel>
-          <TextInput value={tutor.full_name} onChange={v => upd('full_name', v)} placeholder="Nombre y apellidos completos" />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <FieldLabel>Fecha de nacimiento</FieldLabel>
-            <input type="date" value={tutor.date_of_birth} onChange={e => upd('date_of_birth', e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40" />
-          </div>
-          <div>
-            <FieldLabel>País de nacimiento</FieldLabel>
-            <TextInput value={tutor.country_of_birth} onChange={v => upd('country_of_birth', v)} placeholder="Ej: Colombia, Venezuela..." />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <FieldLabel>Ciudad donde vive ahora</FieldLabel>
-            <TextInput value={tutor.current_city} onChange={v => upd('current_city', v)} placeholder="Ej: Salt Lake City" />
-          </div>
-          <div>
-            <FieldLabel>Estado</FieldLabel>
-            <TextInput value={tutor.current_state} onChange={v => upd('current_state', v)} placeholder="Ej: Utah" />
-          </div>
-        </div>
-
-        <div>
-          <FieldLabel>Teléfono de contacto</FieldLabel>
-          <TextInput value={tutor.phone} onChange={v => upd('phone', v)} placeholder="Número de teléfono" />
-        </div>
-
-        {/* Story section */}
-        <div className="border-t border-gray-200 pt-4 mt-2">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Su historia</p>
-        </div>
-
-        <div>
-          <FieldLabel>¿En qué año llegó a los Estados Unidos?</FieldLabel>
-          <TextInput value={tutor.arrival_to_us} onChange={v => upd('arrival_to_us', v)} placeholder="Ej: 2019" />
-        </div>
-
-        <div>
-          <FieldLabel>¿Desde cuándo cuida a los menores?</FieldLabel>
-          <TextInput value={tutor.caring_since} onChange={v => upd('caring_since', v)} placeholder="Ej: Desde su nacimiento / Desde 2018" />
-        </div>
-
-        <div>
-          <FieldLabel required>¿Por qué salió de su país? Cuente su historia.</FieldLabel>
-          <TextArea value={tutor.why_left_country} onChange={v => upd('why_left_country', v)}
-            placeholder="Cuente por qué tuvo que salir: violencia, pobreza, amenazas, falta de oportunidades... Incluya fechas y detalles."
-            rows={5} />
-        </div>
-
-        <div>
-          <FieldLabel>¿Cómo fue el viaje hasta Estados Unidos?</FieldLabel>
-          <TextArea value={tutor.journey_to_us} onChange={v => upd('journey_to_us', v)}
-            placeholder="Describa el viaje: por dónde pasó, cuánto duró, las dificultades que enfrentó con los niños, peligros..."
-            rows={4} />
-        </div>
-
-        <div>
-          <FieldLabel>¿Cuál es su situación actual?</FieldLabel>
-          <TextArea value={tutor.current_situation} onChange={v => upd('current_situation', v)}
-            placeholder="Dónde vive, con quién, si trabaja, cómo se sostiene, estado migratorio..."
-            rows={4} />
-        </div>
-
-        <div>
-          <FieldLabel>¿Qué dificultades ha enfrentado para criar a los menores?</FieldLabel>
-          <TextArea value={tutor.hardships} onChange={v => upd('hardships', v)}
-            placeholder="Problemas económicos, de salud, emocionales, falta de apoyo del otro padre, discriminación..."
-            rows={4} />
-        </div>
-
-        <div>
-          <FieldLabel>¿Cómo ha cuidado a los menores? ¿Qué ha hecho por ellos?</FieldLabel>
-          <TextArea value={tutor.how_caring_children} onChange={v => upd('how_caring_children', v)}
-            placeholder="Escuela, salud, vivienda, alimentación, apoyo emocional — todo lo que usted ha hecho sola/solo..."
-            rows={4} />
-        </div>
-
-        <div>
-          <FieldLabel>¿Hay algo más que quiera agregar sobre su historia?</FieldLabel>
-          <TextArea value={tutor.additional_info} onChange={v => upd('additional_info', v)}
-            placeholder="Cualquier información adicional que considere importante para su caso..."
-            rows={3} />
-        </div>
-
-        {/* Partner / absent parent section */}
-        <div className="border-t border-gray-200 pt-4 mt-2">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Sobre el padre/madre de los menores</p>
-        </div>
-
-        <div>
-          <FieldLabel>¿Cuál es la situación con el padre/madre de sus hijos?</FieldLabel>
-          <div className="flex flex-wrap gap-2 mb-2">
-            {[
-              { v: 'absent', l: 'Ausente / sin contacto' },
-              { v: 'never_known', l: 'Nunca lo/la conoció el menor' },
-              { v: 'deceased', l: 'Falleció' },
-              { v: 'cooperates', l: 'Coopera / tiene contacto' },
-            ].map(opt => (
-              <button key={opt.v} onClick={() => upd('partner_situation', opt.v)}
-                className={`px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
-                  tutor.partner_situation === opt.v
-                    ? 'border-[#F2A900] bg-[#F2A900]/10 text-[#9a6500]'
-                    : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                }`}>
-                {opt.l}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div>
-          <FieldLabel>Nombre del padre/madre de los menores</FieldLabel>
-          <TextInput value={tutor.partner_name} onChange={v => upd('partner_name', v)} placeholder="Nombre completo (si lo conoce)" />
-        </div>
-
-        <div>
-          <FieldLabel>Describa la relación con esa persona y por qué no está presente</FieldLabel>
-          <TextArea value={tutor.partner_description} onChange={v => upd('partner_description', v)}
-            placeholder="Cuente qué pasó: ¿se fue?, ¿nunca se hizo cargo?, ¿fue violento/a?, ¿los abandonó?, ¿murió? Incluya detalles, fechas y lugares..."
-            rows={5} />
-        </div>
-
-        {/* Witnesses section */}
-        <div className="border-t border-gray-200 pt-4 mt-2">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Testigos</p>
-          <p className="text-xs text-gray-500 mb-3">Personas que conocen su situación y pueden confirmar su historia (familiares, amigos, vecinos, etc.).</p>
-        </div>
-
-        {tutor.witnesses.map((w, i) => (
-          <div key={i} className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-gray-500">Testigo {i + 1}</span>
-              {tutor.witnesses.length > 1 && (
-                <button onClick={() => onChange({ ...tutor, witnesses: tutor.witnesses.filter((_, j) => j !== i) })}
-                  className="text-red-400 hover:text-red-600 text-xs">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <FieldLabel>Nombre completo</FieldLabel>
-                <TextInput value={w.name} onChange={v => {
-                  const ws = [...tutor.witnesses]; ws[i] = { ...ws[i], name: v }; onChange({ ...tutor, witnesses: ws })
-                }} placeholder="Nombre del testigo" />
-              </div>
-              <div>
-                <FieldLabel>Relación con usted</FieldLabel>
-                <TextInput value={w.relationship} onChange={v => {
-                  const ws = [...tutor.witnesses]; ws[i] = { ...ws[i], relationship: v }; onChange({ ...tutor, witnesses: ws })
-                }} placeholder="Ej: Hermana, amigo, vecina" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <FieldLabel>Teléfono</FieldLabel>
-                <TextInput value={w.phone} onChange={v => {
-                  const ws = [...tutor.witnesses]; ws[i] = { ...ws[i], phone: v }; onChange({ ...tutor, witnesses: ws })
-                }} placeholder="Número de contacto" />
-              </div>
-              <div>
-                <FieldLabel>Dirección</FieldLabel>
-                <TextInput value={(w as any).address || ''} onChange={v => {
-                  const ws = [...tutor.witnesses]; ws[i] = { ...ws[i], address: v } as any; onChange({ ...tutor, witnesses: ws })
-                }} placeholder="Ciudad, Estado" />
-              </div>
-            </div>
-            <div>
-              <FieldLabel>¿Qué puede declarar esta persona?</FieldLabel>
-              <TextArea value={w.can_testify} onChange={v => {
-                const ws = [...tutor.witnesses]; ws[i] = { ...ws[i], can_testify: v }; onChange({ ...tutor, witnesses: ws })
-              }} placeholder="Ej: Conoce que el padre nos abandonó, estuvo presente cuando..." rows={3} />
-            </div>
-          </div>
-        ))}
-
-        {tutor.witnesses.length < 5 && (
-          <button
-            onClick={() => onChange({ ...tutor, witnesses: [...tutor.witnesses, { name: '', relationship: '', phone: '', can_testify: '' }] })}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-[#F2A900] text-sm font-bold text-[#9a6500] bg-[#F2A900]/10"
-          >
-            <UserPlus className="w-4 h-4" />
-            Agregar otro testigo
-          </button>
-        )}
-      </div>
+      <TutorFormSections data={tutor as unknown as Record<string, string | TutorWitness[]>} onChange={d => onChange(d as unknown as TutorData)} />
 
       {/* Save button */}
       <div className="flex justify-end pt-4 border-t border-gray-100">
         <button
           onClick={handleSave}
-          disabled={saving || !tutor.full_name.trim()}
+          disabled={saving || !(tutor.full_name as string)?.trim()}
           className="flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
           style={{ background: '#F2A900', color: '#001020' }}
         >
