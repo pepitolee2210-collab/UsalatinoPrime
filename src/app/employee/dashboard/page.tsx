@@ -29,15 +29,18 @@ export default async function EmployeeDashboardPage() {
     .eq('employee_id', user.id)
     .order('assigned_at', { ascending: false })
 
-  // Normalize nested relations
-  const normalized = (assignments || []).map((a: any) => ({
-    ...a,
-    case: {
-      ...(Array.isArray(a.case) ? a.case[0] : a.case),
-      client: Array.isArray(a.case?.client) ? a.case.client[0] : (a.case?.client || {}),
-      service: Array.isArray(a.case?.service) ? a.case.service[0] : (a.case?.service || {}),
-    },
-  }))
+  // Normalize nested relations — keep case as null for standalone tasks
+  const normalized = (assignments || []).map((a: any) => {
+    const rawCase = Array.isArray(a.case) ? a.case[0] : a.case
+    return {
+      ...a,
+      case: rawCase?.id ? {
+        ...rawCase,
+        client: Array.isArray(rawCase.client) ? rawCase.client[0] : (rawCase.client || null),
+        service: Array.isArray(rawCase.service) ? rawCase.service[0] : (rawCase.service || null),
+      } : null,
+    }
+  })
 
   return <EmployeeDashboard assignments={normalized} />
 }
