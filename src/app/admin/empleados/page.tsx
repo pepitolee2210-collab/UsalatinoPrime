@@ -33,6 +33,12 @@ export default async function AdminEmpleadosPage() {
     .select('id, assignment_id, title, status, created_at')
     .order('created_at', { ascending: false })
 
+  // Get documents for each assignment
+  const { data: taskDocs } = await supabase
+    .from('employee_assignment_documents')
+    .select('id, assignment_id, name, file_url, file_size')
+    .order('uploaded_at', { ascending: false })
+
   // Build submission count map
   const subMap = new Map<string, { total: number; submitted: number; approved: number }>()
   for (const s of submissions || []) {
@@ -41,6 +47,14 @@ export default async function AdminEmpleadosPage() {
     if (s.status === 'submitted') cur.submitted++
     if (s.status === 'approved') cur.approved++
     subMap.set(s.assignment_id, cur)
+  }
+
+  // Build docs map
+  const docsMap = new Map<string, Array<{ id: string; name: string; file_url: string; file_size: number }>>()
+  for (const d of taskDocs || []) {
+    const cur = docsMap.get(d.assignment_id) || []
+    cur.push(d)
+    docsMap.set(d.assignment_id, cur)
   }
 
   // Normalize nested relations
@@ -53,6 +67,7 @@ export default async function AdminEmpleadosPage() {
       service: a.case?.service ? (Array.isArray(a.case.service) ? a.case.service[0] : a.case.service) : null,
     } : null,
     submissionStats: subMap.get(a.id) || { total: 0, submitted: 0, approved: 0 },
+    docs: docsMap.get(a.id) || [],
   }))
 
   return (
