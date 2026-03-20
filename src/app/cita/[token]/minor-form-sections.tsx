@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, UserPlus, Trash2 } from 'lucide-react'
+import { AIImproveButton } from '@/components/ai-improve-button'
 
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
@@ -26,6 +27,17 @@ function TArea({ value, onChange, placeholder, rows = 4 }: {
   return (
     <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows}
       className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40 resize-none" />
+  )
+}
+
+function TAreaAI({ value, onChange, placeholder, rows = 4, question }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; rows?: number; question: string
+}) {
+  return (
+    <div>
+      <TArea value={value} onChange={onChange} placeholder={placeholder} rows={rows} />
+      <AIImproveButton question={question} value={value} context="minor" onChange={onChange} />
+    </div>
   )
 }
 
@@ -150,37 +162,37 @@ export function MinorAbuseSection({ data, onChange }: { data: MinorAbuseData; on
       </div>
       <div>
         <FieldLabel>12. Describa su vida en su país de origen: ¿con quién vivía?</FieldLabel>
-        <TArea value={data.life_in_country} onChange={v => upd('life_in_country', v)}
+        <TAreaAI question="Describa su vida en su país de origen" value={data.life_in_country} onChange={v => upd('life_in_country', v)}
           placeholder="Cuente cómo era su vida, con quién vivía, en qué condiciones..." rows={4} />
       </div>
       <div>
         <FieldLabel required>13. Describa los hechos de abuso, abandono o negligencia por parte de su PADRE</FieldLabel>
-        <TArea value={data.abuse_by_father} onChange={v => upd('abuse_by_father', v)}
+        <TAreaAI question="Describa los hechos de abuso, abandono o negligencia por parte de su padre" value={data.abuse_by_father} onChange={v => upd('abuse_by_father', v)}
           placeholder="¿Qué hizo su padre? ¿Lo/la golpeó, abandonó, ignoró? ¿Nunca se hizo cargo? Incluya fechas y detalles..." rows={5} />
       </div>
       <div>
         <FieldLabel required>14. Describa los hechos de abuso, abandono o negligencia por parte de su MADRE</FieldLabel>
-        <TArea value={data.abuse_by_mother} onChange={v => upd('abuse_by_mother', v)}
+        <TAreaAI question="Describa los hechos de abuso, abandono o negligencia por parte de su madre" value={data.abuse_by_mother} onChange={v => upd('abuse_by_mother', v)}
           placeholder="Si aplica: ¿Qué hizo su madre? Si no aplica, escriba 'No aplica — mi madre es quien me cuida'." rows={5} />
       </div>
       <div>
         <FieldLabel>15. ¿Recibió golpes, castigos físicos excesivos, o violencia física?</FieldLabel>
-        <TArea value={data.physical_abuse} onChange={v => upd('physical_abuse', v)}
+        <TAreaAI question="¿Recibió golpes, castigos físicos excesivos, o violencia física?" value={data.physical_abuse} onChange={v => upd('physical_abuse', v)}
           placeholder="Describa los hechos específicos de abuso físico..." rows={3} />
       </div>
       <div>
         <FieldLabel>16. ¿Fue víctima de abuso verbal, emocional o psicológico?</FieldLabel>
-        <TArea value={data.emotional_abuse} onChange={v => upd('emotional_abuse', v)}
+        <TAreaAI question="¿Fue víctima de abuso verbal, emocional o psicológico?" value={data.emotional_abuse} onChange={v => upd('emotional_abuse', v)}
           placeholder="Insultos, amenazas, humillaciones, aislamiento..." rows={3} />
       </div>
       <div>
         <FieldLabel>17. ¿Sus padres dejaron de proveerle alimentación, vivienda, ropa o atención médica?</FieldLabel>
-        <TArea value={data.negligence} onChange={v => upd('negligence', v)}
+        <TAreaAI question="¿Sus padres dejaron de proveerle alimentación, vivienda o atención médica?" value={data.negligence} onChange={v => upd('negligence', v)}
           placeholder="Describa las carencias que sufrió..." rows={3} />
       </div>
       <div>
         <FieldLabel>18. ¿Alguno de sus padres lo/la abandonó? ¿Cuándo y por cuánto tiempo?</FieldLabel>
-        <TArea value={data.abandonment} onChange={v => upd('abandonment', v)}
+        <TAreaAI question="¿Alguno de sus padres lo/la abandonó? ¿Cuándo y por cuánto tiempo?" value={data.abandonment} onChange={v => upd('abandonment', v)}
           placeholder="Cuente cuándo lo/la dejaron y qué pasó después..." rows={3} />
       </div>
       <div>
@@ -214,7 +226,7 @@ export function MinorBestInterestSection({ data, onChange }: { data: MinorBestIn
       </div>
       <div>
         <FieldLabel required>24. ¿Tiene miedo de regresar a su país de origen? ¿Por qué?</FieldLabel>
-        <TArea value={data.fear_of_return} onChange={v => upd('fear_of_return', v)}
+        <TAreaAI question="¿Tiene miedo de regresar a su país de origen? ¿Por qué?" value={data.fear_of_return} onChange={v => upd('fear_of_return', v)}
           placeholder="Explique por qué tiene miedo de volver: violencia, pobreza, amenazas, falta de familia..." rows={5} />
       </div>
       <div>
@@ -233,7 +245,7 @@ export function MinorBestInterestSection({ data, onChange }: { data: MinorBestIn
       <div><YesNo label="29. ¿Ha tenido algún problema legal o ha sido arrestado/a en EE.UU.?" value={data.legal_problems} onChange={v => upd('legal_problems', v)} /></div>
       <div>
         <FieldLabel required>30. ¿Desea permanecer en los Estados Unidos? ¿Por qué?</FieldLabel>
-        <TArea value={data.wants_to_stay} onChange={v => upd('wants_to_stay', v)}
+        <TAreaAI question="¿Desea permanecer en los Estados Unidos? ¿Por qué?" value={data.wants_to_stay} onChange={v => upd('wants_to_stay', v)}
           placeholder="Exprese su deseo de quedarse y las razones: seguridad, educación, familia, oportunidades..." rows={4} />
       </div>
     </Section>

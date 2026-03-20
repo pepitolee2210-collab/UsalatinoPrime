@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, UserPlus, Trash2 } from 'lucide-react'
+import { AIImproveButton } from '@/components/ai-improve-button'
 
 // Reusable field components
 function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
@@ -27,6 +28,17 @@ function TArea({ value, onChange, placeholder, rows = 4 }: {
   return (
     <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows}
       className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40 resize-none" />
+  )
+}
+
+function TAreaAI({ value, onChange, placeholder, rows = 4, question }: {
+  value: string; onChange: (v: string) => void; placeholder?: string; rows?: number; question: string
+}) {
+  return (
+    <div>
+      <TArea value={value} onChange={onChange} placeholder={placeholder} rows={rows} />
+      <AIImproveButton question={question} value={value} context="tutor" onChange={onChange} />
+    </div>
   )
 }
 
@@ -153,12 +165,12 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
         </div>
         <div>
           <FieldLabel required>13. ¿Por qué el menor no puede reunificarse con uno o ambos padres?</FieldLabel>
-          <TArea value={data.why_cannot_reunify as string || ''} onChange={v => upd('why_cannot_reunify', v)}
+          <TAreaAI question="¿Por qué el menor no puede reunificarse con uno o ambos padres?" value={data.why_cannot_reunify as string || ''} onChange={v => upd('why_cannot_reunify', v)}
             placeholder="Explique las razones por las que el menor no puede volver a vivir con su padre, madre o ambos..." rows={5} />
         </div>
         <div>
           <FieldLabel required>14. Describa en detalle los hechos de abuso, abandono o negligencia que sufrió el menor</FieldLabel>
-          <TArea value={data.abuse_description as string || ''} onChange={v => upd('abuse_description', v)}
+          <TAreaAI question="Describa en detalle los hechos de abuso, abandono o negligencia" value={data.abuse_description as string || ''} onChange={v => upd('abuse_description', v)}
             placeholder="Cuente todo: golpes, abandono, falta de alimento, maltrato verbal, violencia, negligencia médica... Sea lo más detallado posible." rows={6} />
         </div>
         <div>
@@ -202,7 +214,7 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
       <Section title="Mejor Interés del Menor" number={4}>
         <div>
           <FieldLabel required>20. ¿Existe riesgo para el menor de ser devuelto a su país de origen? Describa.</FieldLabel>
-          <TArea value={data.risk_if_returned as string || ''} onChange={v => upd('risk_if_returned', v)}
+          <TAreaAI question="¿Existe riesgo para el menor de ser devuelto a su país de origen?" value={data.risk_if_returned as string || ''} onChange={v => upd('risk_if_returned', v)}
             placeholder="Pobreza, violencia, falta de acceso a educación/salud, amenazas, pandillas, falta de familia..." rows={5} />
         </div>
         <div>
@@ -216,7 +228,7 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
         </div>
         <div>
           <FieldLabel>23. ¿El menor ha sido amenazado por pandillas, crimen organizado o violencia en su país?</FieldLabel>
-          <TArea value={data.gang_threats as string || ''} onChange={v => upd('gang_threats', v)}
+          <TAreaAI question="¿El menor ha sido amenazado por pandillas o crimen organizado?" value={data.gang_threats as string || ''} onChange={v => upd('gang_threats', v)}
             placeholder="Si aplica, describa las amenazas o situaciones de peligro..." rows={3} />
         </div>
       </Section>
@@ -251,7 +263,7 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
         </div>
         <div>
           <FieldLabel>28. ¿El guardián propuesto puede proveer vivienda, alimentación, educación y atención médica?</FieldLabel>
-          <TArea value={data.guardian_can_provide as string || ''} onChange={v => upd('guardian_can_provide', v)}
+          <TAreaAI question="¿El guardián puede proveer vivienda, alimentación, educación y atención médica?" value={data.guardian_can_provide as string || ''} onChange={v => upd('guardian_can_provide', v)}
             placeholder="Describa cómo el guardián puede cuidar al menor..." rows={3} />
         </div>
         <div>
