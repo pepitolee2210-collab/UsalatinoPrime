@@ -3,10 +3,12 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { toast } from 'sonner'
 import Link from 'next/link'
 import {
   Briefcase, Clock, CheckCircle, AlertTriangle, Send,
-  FileText, User, ChevronRight, Filter,
+  FileText, User, ChevronRight, Filter, Pencil, Save, Loader2, MessageSquare,
 } from 'lucide-react'
 
 interface Employee {
@@ -43,11 +45,15 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof
   completed:        { label: 'Completado',          color: 'bg-gray-100 text-gray-600',     icon: CheckCircle },
 }
 
-export function EmployeeTasksView({ employees, assignments }: {
+export function EmployeeTasksView({ employees, assignments: initial }: {
   employees: Employee[]
   assignments: Assignment[]
 }) {
+  const [assignments, setAssignments] = useState(initial)
   const [filter, setFilter] = useState<string>('all')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editNotes, setEditNotes] = useState('')
+  const [savingId, setSavingId] = useState<string | null>(null)
 
   const filtered = filter === 'all'
     ? assignments
@@ -56,6 +62,47 @@ export function EmployeeTasksView({ employees, assignments }: {
   const pendingReview = assignments.filter(a => a.status === 'submitted').length
   const inProgress = assignments.filter(a => a.status === 'in_progress' || a.status === 'assigned').length
   const completed = assignments.filter(a => a.status === 'approved' || a.status === 'completed').length
+
+  async function saveNotes(assignmentId: string) {
+    setSavingId(assignmentId)
+    try {
+      const res = await fetch('/api/admin/update-task-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignment_id: assignmentId, task_description: editNotes }),
+      })
+      if (!res.ok) throw new Error()
+      setAssignments(prev => prev.map(a =>
+        a.id === assignmentId ? { ...a, task_description: editNotes } : a
+      ))
+      setEditingId(null)
+      toast.success('Notas actualizadas — Diana verá los cambios')
+    } catch {
+      toast.error('Error al guardar')
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  async function updateTaskStatus(assignmentId: string, newStatus: string) {
+    setSavingId(assignmentId)
+    try {
+      const res = await fetch('/api/admin/update-task-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignment_id: assignmentId, status: newStatus }),
+      })
+      if (!res.ok) throw new Error()
+      setAssignments(prev => prev.map(a =>
+        a.id === assignmentId ? { ...a, status: newStatus } : a
+      ))
+      toast.success('Estado actualizado')
+    } catch {
+      toast.error('Error al actualizar')
+    } finally {
+      setSavingId(null)
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -116,15 +163,10 @@ export function EmployeeTasksView({ employees, assignments }: {
           { value: 'needs_correction', label: 'Correcciones' },
           { value: 'approved', label: 'Aprobadas' },
         ].map(f => (
-          <button
-            key={f.value}
-            onClick={() => setFilter(f.value)}
+          <button key={f.value} onClick={() => setFilter(f.value)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              filter === f.value
-                ? 'bg-[#002855] text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
+              filter === f.value ? 'bg-[#002855] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}>
             {f.label}
           </button>
         ))}
@@ -147,12 +189,13 @@ export function EmployeeTasksView({ employees, assignments }: {
             : a.client_name || 'Sin cliente'
           const serviceLabel = a.case?.service?.name || a.service_type || '—'
           const caseLink = a.case ? `/admin/cases/${a.case.id}` : null
+          const isEditing = editingId === a.id
 
           return (
-            <div key={a.id} className="bg-white rounded-xl border border-gray-200 p-5 hover:shadow-sm transition-shadow">
-              <div className="flex items-start justify-between gap-3">
+            <div key={a.id} className="bg-white rounded-xl border border-gray-200 p-5">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex-1 min-w-0">
-                  {/* Header */}
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="font-bold text-gray-900 text-sm">{clientLabel}</span>
                     {a.case && <span className="text-xs text-gray-400">#{a.case.case_number}</span>}
@@ -161,9 +204,7 @@ export function EmployeeTasksView({ employees, assignments }: {
                       {config.label}
                     </Badge>
                   </div>
-
-                  {/* Service + Employee */}
-                  <div className="flex items-center gap-3 text-xs text-gray-500 mb-2">
+                  <div className="flex items-center gap-3 text-xs text-gray-500">
                     <span>{serviceLabel}</span>
                     <span>·</span>
                     <span className="flex items-center gap-1">
@@ -173,36 +214,76 @@ export function EmployeeTasksView({ employees, assignments }: {
                     <span>·</span>
                     <span>{new Date(a.assigned_at).toLocaleDateString('es-US', { day: 'numeric', month: 'short' })}</span>
                   </div>
+                </div>
+                {caseLink && (
+                  <Link href={caseLink}>
+                    <Button variant="outline" size="sm"><ChevronRight className="w-3 h-3" /> Ver caso</Button>
+                  </Link>
+                )}
+              </div>
 
-                  {/* Task description */}
-                  {a.task_description && (
-                    <p className="text-sm text-gray-600 line-clamp-2 mb-2">{a.task_description}</p>
-                  )}
-
-                  {/* Submission stats */}
-                  {a.submissionStats.total > 0 && (
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className="text-gray-400">{a.submissionStats.total} envío{a.submissionStats.total !== 1 ? 's' : ''}</span>
-                      {a.submissionStats.submitted > 0 && (
-                        <span className="text-purple-600 font-medium">{a.submissionStats.submitted} pendiente{a.submissionStats.submitted !== 1 ? 's' : ''} de revisión</span>
-                      )}
-                      {a.submissionStats.approved > 0 && (
-                        <span className="text-green-600">{a.submissionStats.approved} aprobado{a.submissionStats.approved !== 1 ? 's' : ''}</span>
-                      )}
-                    </div>
+              {/* Notes — editable */}
+              <div className="p-3 rounded-xl bg-[#F2A900]/5 border border-[#F2A900]/20 mb-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-bold text-[#9a6500] flex items-center gap-1">
+                    <MessageSquare className="w-3 h-3" /> Instrucciones / Notas
+                  </span>
+                  {!isEditing && (
+                    <button onClick={() => { setEditingId(a.id); setEditNotes(a.task_description || '') }}
+                      className="text-xs text-[#9a6500] hover:text-[#F2A900] flex items-center gap-1">
+                      <Pencil className="w-3 h-3" /> Editar
+                    </button>
                   )}
                 </div>
-
-                {/* Action */}
-                {caseLink ? (
-                  <Link href={caseLink}>
-                    <Button variant="outline" size="sm" className="flex-shrink-0">
-                      Ver caso <ChevronRight className="w-3 h-3 ml-1" />
-                    </Button>
-                  </Link>
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <Textarea value={editNotes} onChange={e => setEditNotes(e.target.value)}
+                      placeholder="Escribe instrucciones, feedback, correcciones..." rows={4} />
+                    <div className="flex gap-2">
+                      <Button size="sm" className="bg-[#002855]" disabled={savingId === a.id}
+                        onClick={() => saveNotes(a.id)}>
+                        {savingId === a.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Save className="w-3 h-3 mr-1" />}
+                        Guardar
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Cancelar</Button>
+                    </div>
+                  </div>
                 ) : (
-                  <Badge variant="outline" className="flex-shrink-0 text-xs">Tarea standalone</Badge>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                    {a.task_description || <span className="text-gray-400 italic">Sin notas — toca Editar para agregar</span>}
+                  </p>
                 )}
+              </div>
+
+              {/* Submission stats */}
+              {a.submissionStats.total > 0 && (
+                <div className="flex items-center gap-3 text-xs mb-3">
+                  <span className="text-gray-400">{a.submissionStats.total} envío{a.submissionStats.total !== 1 ? 's' : ''}</span>
+                  {a.submissionStats.submitted > 0 && (
+                    <span className="text-purple-600 font-medium">{a.submissionStats.submitted} pendiente{a.submissionStats.submitted !== 1 ? 's' : ''}</span>
+                  )}
+                  {a.submissionStats.approved > 0 && (
+                    <span className="text-green-600">{a.submissionStats.approved} aprobado{a.submissionStats.approved !== 1 ? 's' : ''}</span>
+                  )}
+                </div>
+              )}
+
+              {/* Status controls for Henry */}
+              <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
+                <span className="text-xs text-gray-400 mr-1">Cambiar estado:</span>
+                {['assigned', 'in_progress', 'needs_correction', 'approved', 'completed'].map(s => {
+                  const sc = STATUS_CONFIG[s]
+                  const isActive = a.status === s
+                  return (
+                    <button key={s} onClick={() => !isActive && updateTaskStatus(a.id, s)}
+                      disabled={savingId === a.id}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
+                        isActive ? sc.color + ' ring-1 ring-offset-1 ring-gray-300' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+                      }`}>
+                      {sc.label}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )

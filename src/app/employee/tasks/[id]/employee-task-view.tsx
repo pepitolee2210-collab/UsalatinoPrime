@@ -49,19 +49,39 @@ const SUB_STATUS: Record<string, { label: string; color: string; icon: typeof Cl
   approved:         { label: 'Aprobado',     color: 'bg-green-100 text-green-700', icon: CheckCircle },
 }
 
-export function EmployeeTaskView({ assignment, documents, submissions }: {
+export function EmployeeTaskView({ assignment: initialAssignment, documents, submissions }: {
   assignment: Assignment
   documents: Doc[]
   submissions: Submission[]
 }) {
+  const [assignment, setAssignment] = useState(initialAssignment)
   const [subs, setSubs] = useState(submissions)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [sending, setSending] = useState(false)
+  const [statusLoading, setStatusLoading] = useState(false)
   const [tab, setTab] = useState<'docs' | 'workspace'>('docs')
   const fileRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+
+  async function updateMyStatus(newStatus: string) {
+    setStatusLoading(true)
+    try {
+      const res = await fetch('/api/employee/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assignment_id: assignment.id, status: newStatus }),
+      })
+      if (!res.ok) throw new Error()
+      setAssignment(prev => ({ ...prev, status: newStatus }))
+      toast.success('Estado actualizado')
+    } catch {
+      toast.error('Error al actualizar estado')
+    } finally {
+      setStatusLoading(false)
+    }
+  }
 
   async function handleSubmit() {
     if (!content.trim() && !file) {
@@ -111,6 +131,28 @@ export function EmployeeTaskView({ assignment, documents, submissions }: {
               <Badge variant="secondary" className="text-[10px]">{assignment.service_type}</Badge>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Status selector for Diana */}
+      <div className="p-3 rounded-xl bg-gray-50 border border-gray-200">
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Estado de la tarea</p>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { value: 'in_progress', label: 'En progreso', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
+            { value: 'submitted', label: 'Enviado a revisión', color: 'bg-purple-100 text-purple-700 border-purple-300' },
+            { value: 'completed', label: 'Completado', color: 'bg-green-100 text-green-700 border-green-300' },
+          ].map(s => (
+            <button key={s.value} onClick={() => updateMyStatus(s.value)}
+              disabled={statusLoading || assignment.status === s.value}
+              className={`px-3 py-2 rounded-xl text-xs font-bold border-2 transition-all ${
+                assignment.status === s.value
+                  ? s.color + ' ring-2 ring-offset-1 ring-gray-300'
+                  : 'border-gray-200 text-gray-400 hover:border-gray-300'
+              }`}>
+              {s.label}
+            </button>
+          ))}
         </div>
       </div>
 
