@@ -41,7 +41,8 @@ export async function GET(request: NextRequest) {
     s.form_data &&
     typeof s.form_data === 'object' &&
     ('minor_info' in (s.form_data as Record<string, unknown>) ||
-     'children' in (s.form_data as Record<string, unknown>))
+     'children' in (s.form_data as Record<string, unknown>) ||
+     'minorBasic' in (s.form_data as Record<string, unknown>))
   )
 
   if (hasMultiMinor || hasNewFormat) {

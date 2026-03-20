@@ -449,60 +449,72 @@ function DataRow({ label, value }: { label: string; value?: string | null }) {
 }
 
 function StoryDetails({ data }: { data: Record<string, unknown> }) {
-  const tutor = data.tutor as Record<string, string> | undefined
+  const mb = data.minorBasic as Record<string, string> | undefined
+  const ma = data.minorAbuse as Record<string, string> | undefined
+  const mbi = data.minorBestInterest as Record<string, string> | undefined
+  const isNewFormat = !!(mb || ma || mbi)
+
+  // Legacy fields
   const children = data.children as Array<Record<string, string>> | undefined
   const minorInfo = data.minor_info as Record<string, string> | undefined
 
+  if (isNewFormat) {
+    return (
+      <div className="space-y-3">
+        {/* New format: 30 questions in sections */}
+        {mb && (
+          <ReviewSection title="1. Información Básica del Menor" color="bg-blue-50 border-blue-100">
+            <DataRow label="Nombre completo" value={mb.full_name} />
+            <DataRow label="Fecha de nacimiento" value={mb.dob} />
+            <DataRow label="País" value={mb.country} />
+            <DataRow label="Estado civil" value={mb.civil_status} />
+            <DataRow label="Dirección actual" value={mb.address} />
+            <DataRow label="Vive con" value={mb.lives_with} />
+            <DataRow label="Relación" value={mb.lives_with_relationship} />
+            <DataRow label="Cómo llegó a EE.UU." value={mb.how_arrived} />
+            <DataRow label="Acompañado por" value={mb.accompanied_by} />
+            <DataRow label="Detenido por migración" value={mb.detained_by_immigration} />
+            <DataRow label="Liberado por ORR" value={mb.released_by_orr} />
+            {mb.orr_sponsor && <DataRow label="Patrocinador ORR" value={mb.orr_sponsor} />}
+          </ReviewSection>
+        )}
+        {ma && (
+          <ReviewSection title="2. Hechos de Maltrato" color="bg-red-50 border-red-100">
+            <DataRow label="Vida en país de origen" value={ma.life_in_country} />
+            <DataRow label="Abuso por parte del padre" value={ma.abuse_by_father} />
+            <DataRow label="Abuso por parte de la madre" value={ma.abuse_by_mother} />
+            <DataRow label="Abuso físico" value={ma.physical_abuse} />
+            <DataRow label="Abuso emocional" value={ma.emotional_abuse} />
+            <DataRow label="Negligencia" value={ma.negligence} />
+            <DataRow label="Abandono" value={ma.abandonment} />
+            <DataRow label="Sustancias/actividades ilegales del padre" value={ma.parent_substance_abuse} />
+          </ReviewSection>
+        )}
+        {mbi && (
+          <ReviewSection title="3. Mejor Interés y Situación" color="bg-amber-50 border-amber-100">
+            <DataRow label="Reportó a autoridades" value={mbi.reported_to_authorities} />
+            {mbi.report_details && <DataRow label="Detalle de reporte" value={mbi.report_details} />}
+            <DataRow label="Cicatrices/marcas" value={mbi.physical_scars} />
+            <DataRow label="Recibió terapia" value={mbi.therapy_received} />
+            {mbi.therapy_details && <DataRow label="Detalle terapia" value={mbi.therapy_details} />}
+            <DataRow label="Miedo de regresar" value={mbi.fear_of_return} />
+            <DataRow label="Amenazas de pandillas" value={mbi.gang_threats} />
+            <DataRow label="Cuidador en país de origen" value={mbi.caretaker_in_country} />
+            <DataRow label="Vida actual en EE.UU." value={mbi.current_life_us} />
+            <DataRow label="Asiste a la escuela" value={mbi.attends_school} />
+            <DataRow label="Hogar seguro" value={mbi.safe_home} />
+            <DataRow label="Problemas legales" value={mbi.legal_problems} />
+            <DataRow label="Desea quedarse en EE.UU." value={mbi.wants_to_stay} />
+            {mbi.why_stay && <DataRow label="Por qué desea quedarse" value={mbi.why_stay} />}
+          </ReviewSection>
+        )}
+      </div>
+    )
+  }
+
+  // Legacy format
   return (
     <div className="grid gap-3">
-      {/* Tutor/Guardian info */}
-      {tutor?.full_name && (
-        <div className="space-y-2">
-          <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
-            <span className="text-xs font-medium text-blue-600">Tutor / Guardián</span>
-            <p className="text-sm font-semibold text-gray-800 mt-0.5">{tutor.full_name}</p>
-            <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
-              {tutor.country_of_birth && <span className="text-xs text-gray-500">País: {tutor.country_of_birth}</span>}
-              {tutor.date_of_birth && <span className="text-xs text-gray-500">Nac: {tutor.date_of_birth}</span>}
-              {tutor.current_city && <span className="text-xs text-gray-500">Ubicación: {tutor.current_city}, {tutor.current_state}</span>}
-              {tutor.phone && <span className="text-xs text-gray-500">Tel: {tutor.phone}</span>}
-              {tutor.arrival_to_us && <span className="text-xs text-gray-500">Llegó a EE.UU: {tutor.arrival_to_us}</span>}
-              {tutor.caring_since && <span className="text-xs text-gray-500">Cuida al menor desde: {tutor.caring_since}</span>}
-            </div>
-            {tutor.why_left_country && <DataRow label="Por qué salió del país" value={tutor.why_left_country} />}
-            {tutor.journey_to_us && <DataRow label="Viaje a EE.UU." value={tutor.journey_to_us} />}
-            {tutor.current_situation && <DataRow label="Situación actual" value={tutor.current_situation} />}
-            {tutor.hardships && <DataRow label="Dificultades" value={tutor.hardships} />}
-            {tutor.how_caring_children && <DataRow label="Cómo cuida a los menores" value={tutor.how_caring_children} />}
-          </div>
-          {/* Tutor's partner/absent parent */}
-          {tutor.partner_situation && (
-            <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
-              <span className="text-xs font-medium text-amber-600">Padre/Madre de los menores (perspectiva del tutor)</span>
-              {tutor.partner_name && <p className="text-sm font-semibold text-gray-800 mt-0.5">{tutor.partner_name}</p>}
-              <p className="text-xs text-gray-500 mt-0.5">Situación: {tutor.partner_situation === 'absent' ? 'Ausente' : tutor.partner_situation === 'never_known' ? 'Nunca conocido' : tutor.partner_situation === 'deceased' ? 'Falleció' : tutor.partner_situation === 'cooperates' ? 'Coopera' : tutor.partner_situation}</p>
-              {tutor.partner_description && <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{tutor.partner_description}</p>}
-            </div>
-          )}
-          {/* Tutor's witnesses */}
-          {tutor.witnesses && (tutor.witnesses as unknown as Array<Record<string, string>>).filter(w => w.name).length > 0 && (
-            <div className="p-3 bg-purple-50 border border-purple-100 rounded-xl">
-              <span className="text-xs font-medium text-purple-600">Testigos del tutor ({(tutor.witnesses as unknown as Array<Record<string, string>>).filter(w => w.name).length})</span>
-              <div className="mt-1.5 space-y-1.5">
-                {(tutor.witnesses as unknown as Array<Record<string, string>>).filter(w => w.name).map((w, i) => (
-                  <div key={i} className="text-sm">
-                    <span className="font-medium text-gray-800">{w.name}</span>
-                    <span className="text-gray-400 text-xs ml-1">· {w.relationship}</span>
-                    {w.phone && <span className="text-gray-400 text-xs ml-1">· {w.phone}</span>}
-                    {w.can_testify && <p className="text-xs text-gray-600 mt-0.5">{w.can_testify}</p>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-      {/* New multi-children format */}
       {children && children.length > 0 && (
         <div>
           <span className="text-xs font-medium text-gray-500">
@@ -512,35 +524,20 @@ function StoryDetails({ data }: { data: Record<string, unknown> }) {
             {children.filter(c => c.name).map((c, i) => (
               <div key={i} className="flex items-center gap-2 text-sm text-gray-800">
                 <span className="font-medium">{c.name}</span>
-                {c.dob && <span className="text-gray-400 text-xs">· {c.dob}</span>}
-                {c.country_of_birth && <span className="text-gray-400 text-xs">· {c.country_of_birth}</span>}
               </div>
             ))}
           </div>
         </div>
       )}
-      {/* Legacy single-child format */}
       {!children && minorInfo?.name && <DataRow label="Menor" value={minorInfo.name} />}
-      {!children && minorInfo?.guardian_relation && (
-        <DataRow
-          label="Relación del tutor"
-          value={minorInfo.guardian_relation === 'otro' ? minorInfo.guardian_relation_other : minorInfo.guardian_relation}
-        />
-      )}
       <DataRow label="Año de llegada"                  value={data.arrival_year as string} />
       <DataRow label="Quién lo/la trajo"               value={data.who_brought as string} />
       <DataRow label="Vive con"                        value={data.current_guardian as string} />
-      <DataRow label="Fecha de separación"             value={data.separation_date as string} />
       <DataRow label="Cómo fue el abandono"            value={(data.how_was_abandonment || data.abandonment_description) as string} />
       <DataRow label="Apoyo económico del padre"       value={data.father_economic_support as string} />
       <DataRow label="Contacto del padre con el menor" value={data.father_contact_with_child as string} />
       <DataRow label="Quién cuidó al menor"            value={data.who_took_care as string} />
-      <DataRow label="Denuncias o quejas"              value={data.has_complaints as string} />
-      <DataRow label="Detalle de denuncias"            value={data.complaints_detail as string} />
       <DataRow label="Por qué no hubo reunificación"   value={data.why_no_reunification as string} />
-      {/* Legacy fields */}
-      <DataRow label="Vida antes de EE.UU."            value={data.life_before as string} />
-      <DataRow label="Razón de venir"                  value={data.why_came as string} />
       <DataRow label="Detalles adicionales"            value={data.additional_details as string} />
     </div>
   )

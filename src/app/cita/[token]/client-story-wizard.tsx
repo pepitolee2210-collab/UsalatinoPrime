@@ -270,7 +270,7 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
               const djNum = idx + 1
               if (djNum > 4) return
               const storyRaw = (decl.story || {}) as Record<string, unknown>
-              const { children, has_another_father, tutor: _t, ...restStory } = storyRaw
+              const { children, has_another_father, tutor: _t, minorBasic, minorAbuse, minorBestInterest, ...restStory } = storyRaw
 
               // Load tutor from DJ1 story if not loaded yet (backward compat)
               if (!data.tutor_guardian?.data && _t && idx === 0) {
@@ -290,6 +290,9 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
                 ...prev[djNum],
                 status: (data[statusKey]?.status as DJState['status']) || 'draft',
                 children: loadedChildren.length > 0 ? loadedChildren : [{ ...EMPTY_CHILD }],
+                minorBasic: { ...EMPTY_MINOR_BASIC, ...(minorBasic as Partial<MinorBasicData> || {}) },
+                minorAbuse: { ...EMPTY_MINOR_ABUSE, ...(minorAbuse as Partial<MinorAbuseData> || {}) },
+                minorBestInterest: { ...EMPTY_MINOR_BEST_INTEREST, ...(minorBestInterest as Partial<MinorBestInterestData> || {}) },
                 story: { ...EMPTY_STORY, ...(restStory as Partial<StoryData>) },
                 parent: { ...EMPTY_PARENT, ...(decl.parent as Partial<ParentData> || {}) },
                 witnesses: ((decl.witnesses as { witnesses?: Witness[] })?.witnesses || []) as Witness[],
@@ -303,7 +306,7 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
           // Legacy format fallback — load into DJ1
           setDjStates(prev => {
             const storyRaw = (data.client_story?.data || {}) as Record<string, unknown>
-            const { children, has_another_father, minor_info, tutor: _t, ...restStory } = storyRaw
+            const { children, has_another_father, minor_info, tutor: _t, minorBasic, minorAbuse, minorBestInterest, ...restStory } = storyRaw
 
             if (!data.tutor_guardian?.data && _t) {
               setTutorData(prev => ({ ...prev, ...(_t as Partial<TutorData>) }))
@@ -326,6 +329,9 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
                 ...prev[1],
                 status: (data.client_story?.status as DJState['status']) || 'draft',
                 children: loadedChildren.length > 0 ? loadedChildren : [{ ...EMPTY_CHILD }],
+                minorBasic: { ...EMPTY_MINOR_BASIC, ...(minorBasic as Partial<MinorBasicData> || {}) },
+                minorAbuse: { ...EMPTY_MINOR_ABUSE, ...(minorAbuse as Partial<MinorAbuseData> || {}) },
+                minorBestInterest: { ...EMPTY_MINOR_BEST_INTEREST, ...(minorBestInterest as Partial<MinorBestInterestData> || {}) },
                 story: { ...EMPTY_STORY, ...(restStory as Partial<StoryData>) },
                 parent: { ...EMPTY_PARENT, ...parentData },
                 witnesses: witnessesData?.witnesses?.length ? witnessesData.witnesses : [{ name: '', relationship: '', phone: '', can_testify: '' }],
