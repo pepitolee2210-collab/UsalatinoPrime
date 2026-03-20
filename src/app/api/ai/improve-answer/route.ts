@@ -35,7 +35,7 @@ NO cambies los hechos. Solo mejora la redacción y profundiza en el impacto.`
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
