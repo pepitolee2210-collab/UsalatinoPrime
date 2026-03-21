@@ -25,10 +25,7 @@ export async function POST(request: NextRequest) {
 
   const { data: assignment, error } = await supabase
     .from('employee_case_assignments')
-    .upsert(
-      { case_id, employee_id, task_description, status: 'assigned' },
-      { onConflict: 'employee_id,case_id' }
-    )
+    .insert({ case_id, employee_id, task_description, status: 'assigned' })
     .select()
     .single()
 
