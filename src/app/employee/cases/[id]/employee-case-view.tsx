@@ -10,7 +10,7 @@ import { toast } from 'sonner'
 import {
   ArrowLeft, FileText, Download, Send, Loader2,
   CheckCircle, AlertTriangle, Clock, Upload, Trash2,
-  User, Briefcase, MessageSquare,
+  User, Briefcase, MessageSquare, BookOpen,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -37,6 +37,13 @@ interface Doc {
   created_at: string
 }
 
+interface FormSubmission {
+  form_type: string
+  form_data: Record<string, unknown>
+  status: string
+  updated_at: string
+}
+
 interface Submission {
   id: string
   title: string | null
@@ -56,10 +63,11 @@ const SUB_STATUS: Record<string, { label: string; color: string; icon: typeof Cl
   approved:         { label: 'Aprobado',     color: 'bg-green-100 text-green-700', icon: CheckCircle },
 }
 
-export function EmployeeCaseView({ caseData, assignment, documents, submissions }: {
+export function EmployeeCaseView({ caseData, assignment, documents, formSubmissions = [], submissions }: {
   caseData: CaseData
   assignment: Assignment
   documents: Doc[]
+  formSubmissions?: FormSubmission[]
   submissions: Submission[]
 }) {
   const [currentAssignment, setCurrentAssignment] = useState(assignment)
@@ -69,7 +77,10 @@ export function EmployeeCaseView({ caseData, assignment, documents, submissions 
   const [file, setFile] = useState<File | null>(null)
   const [sending, setSending] = useState(false)
   const [statusLoading, setStatusLoading] = useState(false)
-  const [tab, setTab] = useState<'docs' | 'workspace'>('docs')
+  const [tab, setTab] = useState<'docs' | 'forms' | 'workspace'>('docs')
+  const i589Subs = formSubmissions.filter(s => s.form_type.startsWith('i589_'))
+  const storySubs = formSubmissions.filter(s => ['client_story', 'client_witnesses', 'client_absent_parent', 'tutor_guardian'].includes(s.form_type))
+  const hasFormData = i589Subs.length > 0 || storySubs.length > 0
   const fileRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -200,23 +211,25 @@ export function EmployeeCaseView({ caseData, assignment, documents, submissions 
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
-        <button
-          onClick={() => setTab('docs')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+        <button onClick={() => setTab('docs')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold transition-colors ${
             tab === 'docs' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-          }`}
-        >
-          <FileText className="w-4 h-4" />
-          Documentos ({documents.length})
+          }`}>
+          <FileText className="w-4 h-4" /> Docs ({documents.length})
         </button>
-        <button
-          onClick={() => setTab('workspace')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+        {hasFormData && (
+          <button onClick={() => setTab('forms')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold transition-colors ${
+              tab === 'forms' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+            }`}>
+            <BookOpen className="w-4 h-4" /> Formularios ({i589Subs.length + storySubs.length})
+          </button>
+        )}
+        <button onClick={() => setTab('workspace')}
+          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold transition-colors ${
             tab === 'workspace' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-          }`}
-        >
-          <Briefcase className="w-4 h-4" />
-          Mi Trabajo ({subs.length})
+          }`}>
+          <Briefcase className="w-4 h-4" /> Mi Trabajo ({subs.length})
         </button>
       </div>
 
@@ -249,6 +262,86 @@ export function EmployeeCaseView({ caseData, assignment, documents, submissions 
                 </a>
               </div>
             ))
+          )}
+        </div>
+      )}
+
+      {/* Forms tab — I-589, historia, tutor */}
+      {tab === 'forms' && (
+        <div className="space-y-3">
+          {/* I-589 submissions */}
+          {i589Subs.length > 0 && (
+            <div className="rounded-2xl border border-indigo-200 overflow-hidden">
+              <div className="px-4 py-3 bg-indigo-50">
+                <p className="text-sm font-bold text-indigo-900">Formulario I-589 — Asilo</p>
+                <p className="text-xs text-indigo-600">{i589Subs.length} sección{i589Subs.length !== 1 ? 'es' : ''} completada{i589Subs.length !== 1 ? 's' : ''}</p>
+              </div>
+              <div className="divide-y divide-indigo-100">
+                {i589Subs.map(sub => {
+                  const d = sub.form_data as Record<string, string>
+                  const label = sub.form_type === 'i589_part_b1' ? 'Parte B1' : sub.form_type === 'i589_part_b2' ? 'Parte B2' : sub.form_type === 'i589_part_c1' ? 'Parte C1' : 'Parte C2'
+                  return (
+                    <div key={sub.form_type} className="px-4 py-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-indigo-700">{label}</span>
+                        <Badge className={sub.status === 'submitted' ? 'bg-purple-100 text-purple-700' : sub.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}>
+                          {sub.status === 'submitted' ? 'Enviado' : sub.status === 'approved' ? 'Aprobado' : sub.status}
+                        </Badge>
+                      </div>
+                      <div className="grid gap-1.5">
+                        {Object.entries(d).filter(([, v]) => v && typeof v === 'string' && v.trim()).slice(0, 8).map(([k, v]) => (
+                          <div key={k}>
+                            <span className="text-[10px] font-medium text-gray-400">{k.replace(/_/g, ' ')}</span>
+                            <p className="text-xs text-gray-700 line-clamp-3">{v as string}</p>
+                          </div>
+                        ))}
+                        {Object.entries(d).filter(([, v]) => v && typeof v === 'string' && (v as string).trim()).length > 8 && (
+                          <p className="text-[10px] text-indigo-500">+{Object.entries(d).filter(([, v]) => v && typeof v === 'string' && (v as string).trim()).length - 8} campos más</p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Story / tutor submissions */}
+          {storySubs.length > 0 && (
+            <div className="rounded-2xl border border-blue-200 overflow-hidden">
+              <div className="px-4 py-3 bg-blue-50">
+                <p className="text-sm font-bold text-blue-900">Historia del Cliente</p>
+                <p className="text-xs text-blue-600">{storySubs.length} formulario{storySubs.length !== 1 ? 's' : ''}</p>
+              </div>
+              <div className="divide-y divide-blue-100">
+                {storySubs.map(sub => {
+                  const d = sub.form_data as Record<string, unknown>
+                  const label = sub.form_type === 'tutor_guardian' ? 'Declaración del Tutor' : sub.form_type === 'client_story' ? 'Historia del Menor' : sub.form_type === 'client_witnesses' ? 'Testigos' : 'Padre Ausente'
+                  return (
+                    <div key={sub.form_type + sub.updated_at} className="px-4 py-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-blue-700">{label}</span>
+                        <Badge className={sub.status === 'submitted' ? 'bg-purple-100 text-purple-700' : sub.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}>
+                          {sub.status === 'submitted' ? 'Enviado' : sub.status === 'approved' ? 'Aprobado' : sub.status}
+                        </Badge>
+                      </div>
+                      <div className="grid gap-1.5">
+                        {Object.entries(d).filter(([, v]) => v && typeof v === 'string' && (v as string).trim()).slice(0, 6).map(([k, v]) => (
+                          <div key={k}>
+                            <span className="text-[10px] font-medium text-gray-400">{k.replace(/_/g, ' ')}</span>
+                            <p className="text-xs text-gray-700 line-clamp-3">{v as string}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {!hasFormData && (
+            <p className="text-center text-gray-400 py-8 text-sm">No hay formularios completados para este caso.</p>
           )}
         </div>
       )}

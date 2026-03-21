@@ -19,11 +19,11 @@ export default async function EmployeeCasePage({ params }: { params: Promise<{ i
 
   if (!assignment) notFound()
 
-  // Fetch case info, documents, and submissions in parallel
-  const [caseRes, docsRes, subsRes] = await Promise.all([
+  // Fetch case info, documents, form submissions, and employee submissions
+  const [caseRes, docsRes, formSubsRes, subsRes] = await Promise.all([
     supabase
       .from('cases')
-      .select('id, case_number, client:profiles(first_name, last_name, email, phone), service:service_catalog(name)')
+      .select('id, case_number, client:profiles(first_name, last_name, email, phone), service:service_catalog(name, slug)')
       .eq('id', id)
       .single(),
     supabase
@@ -31,6 +31,11 @@ export default async function EmployeeCasePage({ params }: { params: Promise<{ i
       .select('id, document_key, name, file_size, status, created_at')
       .eq('case_id', id)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('case_form_submissions')
+      .select('form_type, form_data, status, updated_at')
+      .eq('case_id', id)
+      .order('updated_at', { ascending: false }),
     supabase
       .from('employee_submissions')
       .select('*')
@@ -55,6 +60,7 @@ export default async function EmployeeCasePage({ params }: { params: Promise<{ i
       caseData={caseData}
       assignment={assignment}
       documents={docsRes.data || []}
+      formSubmissions={formSubsRes.data || []}
       submissions={subsRes.data || []}
     />
   )
