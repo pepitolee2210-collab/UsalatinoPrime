@@ -658,10 +658,6 @@ function TutorReviewDetails({ data }: { data: Record<string, unknown> }) {
 
       {/* Sección 5: Proceso Legal */}
       <ReviewSection title="5. Proceso Legal" color="bg-gray-50 border-gray-200">
-        <DataRow label="Padre no-maltratante dispuesto a firmar" value={d.parent_consent} />
-        <DataRow label="Menor en proceso de deportación" value={d.minor_in_removal} />
-        <DataRow label="Liberado por ORR" value={d.minor_released_orr} />
-        {d.minor_released_orr === 'Sí' && <DataRow label="Detalle ORR" value={d.orr_details} />}
         <DataRow label="Guardián con antecedentes penales" value={d.guardian_criminal_record} />
         <DataRow label="Guardián puede proveer" value={d.guardian_can_provide} />
         <DataRow label="Otros miembros del hogar (+18)" value={d.household_members} />

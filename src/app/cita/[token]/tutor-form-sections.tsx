@@ -236,43 +236,21 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
       {/* Sección 5: Proceso Legal */}
       <Section title="Proceso Legal" number={5}>
         <div>
-          <FieldLabel>24. ¿El padre no-maltratante está dispuesto a firmar consentimiento de custodia/guardianía?</FieldLabel>
-          <div className="flex flex-wrap gap-2">
-            {['Sí', 'No', 'No aplica', 'No se sabe'].map(opt => (
-              <button key={opt} type="button" onClick={() => upd('parent_consent', opt)}
-                className={`px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
-                  data.parent_consent === opt ? 'border-[#F2A900] bg-[#F2A900]/10 text-[#9a6500]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                }`}>{opt}</button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <FieldLabel>25. ¿El menor está actualmente en procedimientos de remoción/deportación?</FieldLabel>
-          <YesNo value={data.minor_in_removal as string || ''} onChange={v => upd('minor_in_removal', v)} />
-        </div>
-        <div>
-          <FieldLabel>26. ¿El menor fue aprehendido en la frontera y liberado a un patrocinador por ORR?</FieldLabel>
-          <YesNo value={data.minor_released_orr as string || ''} onChange={v => upd('minor_released_orr', v)} />
-          {data.minor_released_orr === 'Sí' && (
-            <TInput value={data.orr_details as string || ''} onChange={v => upd('orr_details', v)} placeholder="¿A quién fue liberado?" />
-          )}
-        </div>
-        <div>
-          <FieldLabel>27. ¿El guardián/custodio propuesto tiene antecedentes penales?</FieldLabel>
+          <FieldLabel>24. ¿El guardián/custodio propuesto tiene antecedentes penales?</FieldLabel>
           <YesNo value={data.guardian_criminal_record as string || ''} onChange={v => upd('guardian_criminal_record', v)} />
         </div>
         <div>
-          <FieldLabel>28. ¿El guardián propuesto puede proveer vivienda, alimentación, educación y atención médica?</FieldLabel>
+          <FieldLabel>25. ¿El guardián propuesto puede proveer vivienda, alimentación, educación y atención médica?</FieldLabel>
           <TAreaAI question="¿El guardián puede proveer vivienda, alimentación, educación y atención médica?" value={data.guardian_can_provide as string || ''} onChange={v => upd('guardian_can_provide', v)}
             placeholder="Describa cómo el guardián puede cuidar al menor..." rows={3} />
         </div>
         <div>
-          <FieldLabel>29. ¿Hay otros miembros del hogar mayores de 18 años?</FieldLabel>
+          <FieldLabel>26. ¿Hay otros miembros del hogar mayores de 18 años?</FieldLabel>
           <TArea value={data.household_members as string || ''} onChange={v => upd('household_members', v)}
             placeholder="Nombres y relación de cada persona mayor de 18 años en el hogar" rows={3} />
         </div>
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-          <FieldLabel>30. ¿Entiende que SIJS NO otorga beneficios migratorios a los padres del menor?</FieldLabel>
+          <FieldLabel>27. ¿Entiende que SIJS NO otorga beneficios migratorios a los padres del menor?</FieldLabel>
           <p className="text-xs text-blue-700 mb-2">
             Importante: La Visa Juvenil (SIJS) es solo para el menor. Los padres NO pueden ser patrocinados a través de este proceso.
           </p>
