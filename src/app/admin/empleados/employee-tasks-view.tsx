@@ -48,11 +48,17 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof
 }
 
 interface Service { id: string; name: string }
+interface ActiveCase {
+  id: string; case_number: string
+  client: { first_name: string; last_name: string } | null
+  service: { name: string } | null
+}
 
-export function EmployeeTasksView({ employees, assignments: initial, services }: {
+export function EmployeeTasksView({ employees, assignments: initial, services, activeCases }: {
   employees: Employee[]
   assignments: Assignment[]
   services: Service[]
+  activeCases: ActiveCase[]
 }) {
   const [assignments, setAssignments] = useState(initial)
   const [filter, setFilter] = useState<string>('all')
@@ -132,7 +138,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services }:
       {/* Action bar */}
       {employees.length > 0 && (
         <div className="flex justify-end">
-          <AssignTaskButton services={services} employees={employees} />
+          <AssignTaskButton services={services} employees={employees} activeCases={activeCases} />
         </div>
       )}
 

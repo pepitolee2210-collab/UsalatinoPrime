@@ -27,6 +27,13 @@ export default async function AdminEmpleadosPage() {
     .select('id, name')
     .order('name')
 
+  // Get active cases for case assignment
+  const { data: activeCases } = await supabase
+    .from('cases')
+    .select('id, case_number, client:profiles(first_name, last_name), service:service_catalog(name)')
+    .not('intake_status', 'eq', 'archived')
+    .order('created_at', { ascending: false })
+
   // Get submissions for each assignment
   const { data: submissions } = await supabase
     .from('employee_submissions')
@@ -77,6 +84,11 @@ export default async function AdminEmpleadosPage() {
         employees={employees || []}
         assignments={normalized}
         services={services || []}
+        activeCases={(activeCases || []).map((c: any) => ({
+          ...c,
+          client: Array.isArray(c.client) ? c.client[0] : c.client,
+          service: Array.isArray(c.service) ? c.service[0] : c.service,
+        }))}
       />
     </div>
   )
