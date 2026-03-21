@@ -621,7 +621,6 @@ function TutorReviewDetails({ data }: { data: Record<string, unknown> }) {
         <DataRow label="Relación con el menor" value={d.relationship_to_minor} />
         <DataRow label="Dirección" value={d.full_address} />
         <DataRow label="Tiempo en este estado" value={d.time_in_state} />
-        <DataRow label="Estado migratorio" value={d.immigration_status} />
       </ReviewSection>
 
       {/* Sección 2: Sobre el Menor */}

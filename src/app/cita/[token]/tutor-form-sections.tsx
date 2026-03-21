@@ -111,30 +111,26 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
           <FieldLabel>4. ¿Cuánto tiempo ha residido en este estado?</FieldLabel>
           <TInput value={data.time_in_state as string || ''} onChange={v => upd('time_in_state', v)} placeholder="Ej: 3 años / Desde 2021" />
         </div>
-        <div>
-          <FieldLabel>5. Estado migratorio actual del declarante</FieldLabel>
-          <TInput value={data.immigration_status as string || ''} onChange={v => upd('immigration_status', v)} placeholder="Ej: TPS, asilo pendiente, sin estatus, visa..." />
-        </div>
       </Section>
 
       {/* Sección 2: Sobre el Menor */}
       <Section title="Información del Menor" number={2}>
         <div>
-          <FieldLabel required>6. Nombre completo del menor</FieldLabel>
+          <FieldLabel required>5. Nombre completo del menor</FieldLabel>
           <TInput value={data.minor_full_name as string || ''} onChange={v => upd('minor_full_name', v)} placeholder="Nombre completo del menor" />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <FieldLabel required>7. Fecha de nacimiento del menor</FieldLabel>
+            <FieldLabel required>6. Fecha de nacimiento del menor</FieldLabel>
             <TInput type="date" value={data.minor_dob as string || ''} onChange={v => upd('minor_dob', v)} />
           </div>
           <div>
-            <FieldLabel>8. País de nacimiento del menor</FieldLabel>
+            <FieldLabel>7. País de nacimiento del menor</FieldLabel>
             <TInput value={data.minor_country as string || ''} onChange={v => upd('minor_country', v)} placeholder="Ej: Honduras, Guatemala..." />
           </div>
         </div>
         <div>
-          <FieldLabel>9. Estado civil actual del menor</FieldLabel>
+          <FieldLabel>8. Estado civil actual del menor</FieldLabel>
           <div className="flex gap-2">
             {['Soltero/a', 'Casado/a'].map(opt => (
               <button key={opt} type="button" onClick={() => upd('minor_civil_status', opt)}
@@ -145,15 +141,15 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
           </div>
         </div>
         <div>
-          <FieldLabel>10. ¿Dónde se encuentra actualmente el menor? (dirección completa)</FieldLabel>
+          <FieldLabel>9. ¿Dónde se encuentra actualmente el menor? (dirección completa)</FieldLabel>
           <TInput value={data.minor_location as string || ''} onChange={v => upd('minor_location', v)} placeholder="Dirección completa en EE.UU." />
         </div>
         <div>
-          <FieldLabel>11. ¿Con quién vive actualmente el menor?</FieldLabel>
+          <FieldLabel>10. ¿Con quién vive actualmente el menor?</FieldLabel>
           <TInput value={data.minor_lives_with as string || ''} onChange={v => upd('minor_lives_with', v)} placeholder="Nombre y relación" />
         </div>
         <div>
-          <FieldLabel>12. ¿Desde cuándo vive el menor con esta persona?</FieldLabel>
+          <FieldLabel>11. ¿Desde cuándo vive el menor con esta persona?</FieldLabel>
           <TInput value={data.minor_lives_with_since as string || ''} onChange={v => upd('minor_lives_with_since', v)} placeholder="Ej: Desde 2022 / Desde su nacimiento" />
         </div>
       </Section>
@@ -164,17 +160,17 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
           Esta sección es la más importante para el caso. Describa con el mayor detalle posible: nombres, fechas, lugares y circunstancias.
         </div>
         <div>
-          <FieldLabel required>13. ¿Por qué el menor no puede reunificarse con uno o ambos padres?</FieldLabel>
+          <FieldLabel required>12. ¿Por qué el menor no puede reunificarse con uno o ambos padres?</FieldLabel>
           <TAreaAI question="¿Por qué el menor no puede reunificarse con uno o ambos padres?" value={data.why_cannot_reunify as string || ''} onChange={v => upd('why_cannot_reunify', v)}
             placeholder="Explique las razones por las que el menor no puede volver a vivir con su padre, madre o ambos..." rows={5} />
         </div>
         <div>
-          <FieldLabel required>14. Describa en detalle los hechos de abuso, abandono o negligencia que sufrió el menor</FieldLabel>
+          <FieldLabel required>13. Describa en detalle los hechos de abuso, abandono o negligencia que sufrió el menor</FieldLabel>
           <TAreaAI question="Describa en detalle los hechos de abuso, abandono o negligencia" value={data.abuse_description as string || ''} onChange={v => upd('abuse_description', v)}
             placeholder="Cuente todo: golpes, abandono, falta de alimento, maltrato verbal, violencia, negligencia médica... Sea lo más detallado posible." rows={6} />
         </div>
         <div>
-          <FieldLabel>15. ¿Quién perpetró el abuso/abandono/negligencia?</FieldLabel>
+          <FieldLabel>14. ¿Quién perpetró el abuso/abandono/negligencia?</FieldLabel>
           <div className="flex flex-wrap gap-2">
             {['Padre', 'Madre', 'Ambos padres', 'Padrastro/Madrastra', 'Otro familiar'].map(opt => (
               <button key={opt} type="button" onClick={() => upd('who_perpetrated', opt)}
@@ -185,15 +181,15 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
           </div>
         </div>
         <div>
-          <FieldLabel>16. ¿Cuándo ocurrieron estos hechos? (fechas aproximadas)</FieldLabel>
+          <FieldLabel>15. ¿Cuándo ocurrieron estos hechos? (fechas aproximadas)</FieldLabel>
           <TInput value={data.when_occurred as string || ''} onChange={v => upd('when_occurred', v)} placeholder="Ej: Desde 2015 hasta 2022 / Toda la infancia" />
         </div>
         <div>
-          <FieldLabel>17. ¿Dónde ocurrieron estos hechos?</FieldLabel>
+          <FieldLabel>16. ¿Dónde ocurrieron estos hechos?</FieldLabel>
           <TInput value={data.where_occurred as string || ''} onChange={v => upd('where_occurred', v)} placeholder="País de origen, EE.UU., o ambos" />
         </div>
         <div>
-          <FieldLabel>18. ¿Existen reportes policiales, médicos, escolares o de trabajadores sociales?</FieldLabel>
+          <FieldLabel>17. ¿Existen reportes policiales, médicos, escolares o de trabajadores sociales?</FieldLabel>
           <YesNo value={data.evidence_exists as string || ''} onChange={v => upd('evidence_exists', v)} />
           {data.evidence_exists === 'Sí' && (
             <TArea value={data.evidence_description as string || ''} onChange={v => upd('evidence_description', v)}
@@ -201,7 +197,7 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
           )}
         </div>
         <div>
-          <FieldLabel>19. ¿El menor ha recibido tratamiento médico o psicológico por el maltrato?</FieldLabel>
+          <FieldLabel>18. ¿El menor ha recibido tratamiento médico o psicológico por el maltrato?</FieldLabel>
           <YesNo value={data.minor_treatment as string || ''} onChange={v => upd('minor_treatment', v)} />
           {data.minor_treatment === 'Sí' && (
             <TArea value={data.treatment_description as string || ''} onChange={v => upd('treatment_description', v)}
@@ -213,21 +209,21 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
       {/* Sección 4: Mejor Interés */}
       <Section title="Mejor Interés del Menor" number={4}>
         <div>
-          <FieldLabel required>20. ¿Existe riesgo para el menor de ser devuelto a su país de origen? Describa.</FieldLabel>
+          <FieldLabel required>19. ¿Existe riesgo para el menor de ser devuelto a su país de origen? Describa.</FieldLabel>
           <TAreaAI question="¿Existe riesgo para el menor de ser devuelto a su país de origen?" value={data.risk_if_returned as string || ''} onChange={v => upd('risk_if_returned', v)}
             placeholder="Pobreza, violencia, falta de acceso a educación/salud, amenazas, pandillas, falta de familia..." rows={5} />
         </div>
         <div>
-          <FieldLabel>21. ¿Hay un cuidador apropiado para el menor en su país de origen?</FieldLabel>
+          <FieldLabel>20. ¿Hay un cuidador apropiado para el menor en su país de origen?</FieldLabel>
           <YesNo value={data.caretaker_in_country as string || ''} onChange={v => upd('caretaker_in_country', v)} />
         </div>
         <div>
-          <FieldLabel>22. ¿El menor tiene acceso a educación, salud y seguridad en su país de origen?</FieldLabel>
+          <FieldLabel>21. ¿El menor tiene acceso a educación, salud y seguridad en su país de origen?</FieldLabel>
           <TArea value={data.access_to_services as string || ''} onChange={v => upd('access_to_services', v)}
             placeholder="Describa las condiciones en el país de origen..." rows={3} />
         </div>
         <div>
-          <FieldLabel>23. ¿El menor ha sido amenazado por pandillas, crimen organizado o violencia en su país?</FieldLabel>
+          <FieldLabel>22. ¿El menor ha sido amenazado por pandillas, crimen organizado o violencia en su país?</FieldLabel>
           <TAreaAI question="¿El menor ha sido amenazado por pandillas o crimen organizado?" value={data.gang_threats as string || ''} onChange={v => upd('gang_threats', v)}
             placeholder="Si aplica, describa las amenazas o situaciones de peligro..." rows={3} />
         </div>
@@ -236,21 +232,21 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
       {/* Sección 5: Proceso Legal */}
       <Section title="Proceso Legal" number={5}>
         <div>
-          <FieldLabel>24. ¿El guardián/custodio propuesto tiene antecedentes penales?</FieldLabel>
+          <FieldLabel>23. ¿El guardián/custodio propuesto tiene antecedentes penales?</FieldLabel>
           <YesNo value={data.guardian_criminal_record as string || ''} onChange={v => upd('guardian_criminal_record', v)} />
         </div>
         <div>
-          <FieldLabel>25. ¿El guardián propuesto puede proveer vivienda, alimentación, educación y atención médica?</FieldLabel>
+          <FieldLabel>24. ¿El guardián propuesto puede proveer vivienda, alimentación, educación y atención médica?</FieldLabel>
           <TAreaAI question="¿El guardián puede proveer vivienda, alimentación, educación y atención médica?" value={data.guardian_can_provide as string || ''} onChange={v => upd('guardian_can_provide', v)}
             placeholder="Describa cómo el guardián puede cuidar al menor..." rows={3} />
         </div>
         <div>
-          <FieldLabel>26. ¿Hay otros miembros del hogar mayores de 18 años?</FieldLabel>
+          <FieldLabel>25. ¿Hay otros miembros del hogar mayores de 18 años?</FieldLabel>
           <TArea value={data.household_members as string || ''} onChange={v => upd('household_members', v)}
             placeholder="Nombres y relación de cada persona mayor de 18 años en el hogar" rows={3} />
         </div>
         <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-          <FieldLabel>27. ¿Entiende que SIJS NO otorga beneficios migratorios a los padres del menor?</FieldLabel>
+          <FieldLabel>26. ¿Entiende que SIJS NO otorga beneficios migratorios a los padres del menor?</FieldLabel>
           <p className="text-xs text-blue-700 mb-2">
             Importante: La Visa Juvenil (SIJS) es solo para el menor. Los padres NO pueden ser patrocinados a través de este proceso.
           </p>
