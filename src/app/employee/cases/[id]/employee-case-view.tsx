@@ -253,7 +253,7 @@ export function EmployeeCaseView({ caseData, assignment, documents, formSubmissi
                   </p>
                 </div>
                 <a
-                  href={`/api/documents/download?document_id=${doc.id}`}
+                  href={`/api/employee/download-case-doc?id=${doc.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="p-2 rounded-lg hover:bg-gray-100 transition-colors"

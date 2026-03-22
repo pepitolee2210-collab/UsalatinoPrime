@@ -208,7 +208,7 @@ export function EmployeeTaskView({ assignment: initialAssignment, documents, sub
                     {(doc.file_size / 1024 / 1024).toFixed(1)} MB
                   </p>
                 </div>
-                <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-gray-100">
+                <a href={`/api/employee/download-doc?id=${doc.id}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-gray-100">
                   <Download className="w-4 h-4 text-gray-500" />
                 </a>
               </div>
