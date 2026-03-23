@@ -57,6 +57,7 @@ interface CallbackRequest {
   message_date: string | null
   status: CallbackStatus
   follow_up_date: string | null
+  scheduled_call: string | null
   created_at: string
   called_at: string | null
   source?: string
@@ -200,6 +201,15 @@ export default function AgendaPage() {
     if (activeTab === 'closed') return ['converted', 'no_answer', 'not_interested', 'closed'].includes(item.status)
     return true
   }).sort((a, b) => {
+    // Items with scheduled_call come first, sorted by date ascending (closest first)
+    const hasSchedA = !!a.scheduled_call
+    const hasSchedB = !!b.scheduled_call
+    if (hasSchedA && !hasSchedB) return -1
+    if (!hasSchedA && hasSchedB) return 1
+    if (hasSchedA && hasSchedB) {
+      return new Date(a.scheduled_call!).getTime() - new Date(b.scheduled_call!).getTime()
+    }
+    // Then by message_date / created_at
     const dateA = a.message_date ? new Date(a.message_date + 'T12:00:00') : new Date(a.created_at)
     const dateB = b.message_date ? new Date(b.message_date + 'T12:00:00') : new Date(b.created_at)
     return dateA.getTime() - dateB.getTime()
@@ -408,6 +418,23 @@ function AgendaCard({
   const henryLog = Array.isArray(item.henry_notes) ? item.henry_notes : []
   const [newNote, setNewNote] = useState('')
   const [savingNotes, setSavingNotes] = useState(false)
+  const [schedDate, setSchedDate] = useState(item.scheduled_call ? item.scheduled_call.slice(0, 16) : '')
+  const [savingSched, setSavingSched] = useState(false)
+
+  async function handleSaveSchedule() {
+    if (!schedDate) return
+    setSavingSched(true)
+    try {
+      const res = await fetch('/api/admin/agenda', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id, scheduled_call: new Date(schedDate).toISOString() }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success('Llamada programada')
+    } catch { toast.error('Error al programar') }
+    finally { setSavingSched(false) }
+  }
 
   async function handleSaveNotes() {
     if (!newNote.trim()) return
@@ -477,6 +504,32 @@ function AgendaCard({
                 Seguimiento: {format(new Date(item.follow_up_date + 'T12:00:00'), "d 'de' MMMM yyyy", { locale: es })}
               </p>
             )}
+
+            {/* Scheduled call — the green box area */}
+            <div className="mt-2 p-2.5 rounded-xl border-2 border-[#F2A900]/30 bg-[#F2A900]/5">
+              <div className="flex items-center gap-2">
+                <CalendarClock className="w-4 h-4 text-[#F2A900] flex-shrink-0" />
+                <span className="text-xs font-bold text-[#9a6500]">Programar llamada:</span>
+                <input
+                  type="datetime-local"
+                  value={schedDate}
+                  onChange={e => setSchedDate(e.target.value)}
+                  className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-[#F2A900] flex-1"
+                />
+                <button
+                  onClick={handleSaveSchedule}
+                  disabled={savingSched || !schedDate}
+                  className="px-2.5 py-1.5 rounded-lg bg-[#F2A900] text-[#001020] text-xs font-bold disabled:opacity-40 hover:opacity-90 transition-opacity"
+                >
+                  {savingSched ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                </button>
+              </div>
+              {item.scheduled_call && (
+                <p className="text-xs text-[#9a6500] mt-1 ml-6">
+                  📅 {format(new Date(item.scheduled_call), "EEEE d 'de' MMMM, h:mm a", { locale: es })}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Action buttons */}

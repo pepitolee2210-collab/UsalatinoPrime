@@ -106,7 +106,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { id, status, notes, henry_notes, follow_up_date } = body
+    const { id, status, notes, henry_notes, follow_up_date, scheduled_call } = body
 
     if (!id) {
       return NextResponse.json({ error: 'ID requerido' }, { status: 400 })
@@ -126,6 +126,7 @@ export async function PATCH(request: NextRequest) {
 
     if (notes !== undefined) updateData.notes = notes
     if (follow_up_date !== undefined) updateData.follow_up_date = follow_up_date
+    if (scheduled_call !== undefined) updateData.scheduled_call = scheduled_call
 
     // henry_notes: append new entry to JSONB array
     if (henry_notes !== undefined) {
