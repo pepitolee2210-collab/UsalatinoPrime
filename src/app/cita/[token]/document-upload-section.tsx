@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { FileText, Upload, CheckCircle, Trash2, Users, Home, FolderOpen } from 'lucide-react'
+import { FileText, Upload, CheckCircle, Trash2, Users, Home, FolderOpen, Camera } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
@@ -20,6 +20,7 @@ const CATEGORY_ICONS = {
   users: Users,
   home: Home,
   file: FolderOpen,
+  camera: Camera,
 } as const
 
 export function DocumentUploadSection({ token, uploadedDocuments }: {
@@ -81,6 +82,7 @@ export function DocumentUploadSection({ token, uploadedDocuments }: {
                     docKey={doc.key}
                     label={doc.label}
                     required={doc.required}
+                    accept={(category as any).accept || 'application/pdf'}
                     uploadedDocs={existingDocs}
                     isUploading={uploading === doc.key}
                     token={token}
@@ -112,10 +114,10 @@ export function DocumentUploadSection({ token, uploadedDocuments }: {
 }
 
 function DocumentCard({
-  docKey, label, required, uploadedDocs, isUploading, token,
+  docKey, label, required, accept = 'application/pdf', uploadedDocs, isUploading, token,
   onUploadStart, onUploadEnd, onDelete,
 }: {
-  docKey: string; label: string; required: boolean
+  docKey: string; label: string; required: boolean; accept?: string
   uploadedDocs: UploadedDoc[]; isUploading: boolean; token: string
   onUploadStart: () => void
   onUploadEnd: (doc: UploadedDoc | null) => void
@@ -124,13 +126,17 @@ function DocumentCard({
   const fileRef = useRef<HTMLInputElement>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const hasUploads = uploadedDocs.length > 0
+  const acceptsImages = accept.includes('jpg') || accept.includes('png') || accept.includes('webp')
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (file.type !== 'application/pdf') {
-      toast.error('Solo se aceptan archivos PDF')
+    const allowedTypes = ['application/pdf']
+    if (acceptsImages) allowedTypes.push('image/jpeg', 'image/png', 'image/webp')
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error(acceptsImages ? 'Solo se aceptan PDF, JPG, PNG o WebP' : 'Solo se aceptan archivos PDF')
       return
     }
 
@@ -173,7 +179,7 @@ function DocumentCard({
         </div>
 
         <div>
-          <input ref={fileRef} type="file" accept="application/pdf" onChange={handleFile} className="hidden" />
+          <input ref={fileRef} type="file" accept={accept} onChange={handleFile} className="hidden" />
           <Button
             variant="outline"
             size="sm"
@@ -184,7 +190,7 @@ function DocumentCard({
             {isUploading ? (
               <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
             ) : (
-              <><Upload className="w-4 h-4 mr-1" /> Subir PDF</>
+              <><Upload className="w-4 h-4 mr-1" /> {acceptsImages ? 'Subir archivo' : 'Subir PDF'}</>
             )}
           </Button>
         </div>

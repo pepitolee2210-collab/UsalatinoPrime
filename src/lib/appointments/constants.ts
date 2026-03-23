@@ -36,6 +36,16 @@ export const DOCUMENT_CATEGORIES = [
       { key: 'school_proof', label: 'Prueba Domiciliaria Escolar', required: false },
     ],
   },
+  {
+    id: 'probatorios',
+    title: 'Otros Documentos Probatorios',
+    icon: 'camera',
+    accept: '.pdf,.jpg,.jpeg,.png,.webp',
+    docs: [
+      { key: 'probatory_photos', label: 'Fotos y evidencia visual', required: false },
+      { key: 'probatory_other', label: 'Otros documentos de soporte', required: false },
+    ],
+  },
 ]
 
 /** Flat list for backward compatibility */
