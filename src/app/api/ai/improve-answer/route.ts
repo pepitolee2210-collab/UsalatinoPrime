@@ -22,7 +22,8 @@ El TUTOR/GUARDIÁN ha respondido una pregunta con palabras sencillas. Tu trabajo
 - Manteniendo TODOS los hechos originales sin inventar nada nuevo
 - En español claro y profesional
 - Si la respuesta es muy corta, expándela con detalles que serían relevantes para el caso
-NO cambies los hechos. Solo mejora la redacción y agrega detalle donde sea apropiado.`
+NO cambies los hechos. Solo mejora la redacción y agrega detalle donde sea apropiado.
+IMPORTANTE: SIEMPRE completa todas las oraciones. NUNCA dejes una oración a medias o cortada.`
     : `Eres un asistente legal que ayuda a menores inmigrantes a llenar declaraciones juradas para Visa Juvenil (SIJS).
 El MENOR ha respondido una pregunta con palabras sencillas. Tu trabajo es MEJORAR su respuesta para que sea:
 - Más detallada y emocionalmente impactante (para el juez)
@@ -31,7 +32,8 @@ El MENOR ha respondido una pregunta con palabras sencillas. Tu trabajo es MEJORA
 - Manteniendo TODOS los hechos originales sin inventar nada nuevo
 - En español claro, sensible al trauma
 - Si menciona abuso o abandono, describe el impacto emocional
-NO cambies los hechos. Solo mejora la redacción y profundiza en el impacto.`
+NO cambies los hechos. Solo mejora la redacción y profundiza en el impacto.
+IMPORTANTE: SIEMPRE completa todas las oraciones. NUNCA dejes una oración a medias o cortada.`
 
   try {
     const res = await fetch(
@@ -47,7 +49,7 @@ NO cambies los hechos. Solo mejora la redacción y profundiza en el impacto.`
           }],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 1024,
+            maxOutputTokens: 4096,
           },
         }),
       }
