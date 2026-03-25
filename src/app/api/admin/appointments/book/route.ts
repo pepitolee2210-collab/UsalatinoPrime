@@ -58,6 +58,31 @@ export async function POST(request: NextRequest) {
     if (existing && existing.length > 0) {
       return NextResponse.json({ error: 'Este cliente ya tiene una cita agendada' }, { status: 400 })
     }
+
+    // Check no appointment this week (1 per week max)
+    const apptDate = new Date(scheduled_at)
+    const dayOfWeek = apptDate.getDay()
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+    const weekStart = new Date(apptDate)
+    weekStart.setDate(apptDate.getDate() + mondayOffset)
+    weekStart.setHours(0, 0, 0, 0)
+    const weekEnd = new Date(weekStart)
+    weekEnd.setDate(weekStart.getDate() + 7)
+
+    const { data: weekAppts } = await service
+      .from('appointments')
+      .select('id')
+      .eq('client_id', client_id)
+      .in('status', ['scheduled', 'completed'])
+      .gte('scheduled_at', weekStart.toISOString())
+      .lt('scheduled_at', weekEnd.toISOString())
+      .limit(1)
+
+    if (weekAppts && weekAppts.length > 0) {
+      return NextResponse.json({
+        error: 'Este cliente ya tiene una cita esta semana. Solo se permite 1 cita por semana.',
+      }, { status: 400 })
+    }
   }
 
   // Verify slot is not taken

@@ -53,6 +53,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Ya tiene una cita agendada. Cancélela primero.' }, { status: 400 })
   }
 
+  // Verificar que no haya tenido cita esta semana (lun-dom)
+  const now = new Date(scheduled_at)
+  const dayOfWeek = now.getDay() // 0=dom, 1=lun
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+  const weekStart = new Date(now)
+  weekStart.setDate(now.getDate() + mondayOffset)
+  weekStart.setHours(0, 0, 0, 0)
+  const weekEnd = new Date(weekStart)
+  weekEnd.setDate(weekStart.getDate() + 7)
+
+  const { data: weekAppts } = await supabase
+    .from('appointments')
+    .select('id')
+    .eq('client_id', tokenData.client_id)
+    .in('status', ['scheduled', 'completed'])
+    .gte('scheduled_at', weekStart.toISOString())
+    .lt('scheduled_at', weekEnd.toISOString())
+    .limit(1)
+
+  if (weekAppts && weekAppts.length > 0) {
+    return NextResponse.json({
+      error: 'Solo puede agendar 1 cita por semana. Espere a la siguiente semana para programar una nueva cita.',
+    }, { status: 400 })
+  }
+
   // Verificar que el slot no esté tomado (el unique index en DB también lo previene)
   const { data: slotTaken } = await supabase
     .from('appointments')
