@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { FileText, Upload, CheckCircle, Trash2, Users, Home, FolderOpen, Camera } from 'lucide-react'
+import { FileText, Upload, CheckCircle, Trash2, Users, Home, FolderOpen, Camera, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
@@ -200,39 +200,50 @@ function DocumentCard({
         <div className="mt-2 ml-11 space-y-1.5">
           {uploadedDocs.map(doc => (
             <div key={doc.id} className="flex items-center justify-between gap-2">
-              <p className="text-xs text-gray-500 truncate">
+              <p className="text-xs text-gray-500 truncate flex-1">
                 {doc.name}
                 {doc.file_size ? ` (${(doc.file_size / 1024).toFixed(0)} KB)` : ''}
               </p>
-              <button
-                type="button"
-                disabled={deleting === doc.id}
-                onClick={async () => {
-                  if (!confirm('¿Eliminar este documento?')) return
-                  setDeleting(doc.id)
-                  try {
-                    const res = await fetch('/api/appointments/upload-document', {
-                      method: 'DELETE',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ token, document_id: doc.id }),
-                    })
-                    if (!res.ok) throw new Error()
-                    toast.success('Documento eliminado')
-                    onDelete(doc.id)
-                  } catch {
-                    toast.error('Error al eliminar')
-                  } finally {
-                    setDeleting(null)
-                  }
-                }}
-                className="text-red-400 hover:text-red-600 flex-shrink-0 p-1"
-              >
+              <div className="flex items-center gap-1 flex-shrink-0">
+                <a
+                  href={`/api/client/preview-doc?token=${token}&id=${doc.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:text-blue-600 p-1"
+                  title="Previsualizar"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                </a>
+                <button
+                  type="button"
+                  disabled={deleting === doc.id}
+                  onClick={async () => {
+                    if (!confirm('¿Eliminar este documento?')) return
+                    setDeleting(doc.id)
+                    try {
+                      const res = await fetch('/api/appointments/upload-document', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token, document_id: doc.id }),
+                      })
+                      if (!res.ok) throw new Error()
+                      toast.success('Documento eliminado')
+                      onDelete(doc.id)
+                    } catch {
+                      toast.error('Error al eliminar')
+                    } finally {
+                      setDeleting(null)
+                    }
+                  }}
+                  className="text-red-400 hover:text-red-600 p-1"
+                >
                 {deleting === doc.id ? (
                   <div className="w-3.5 h-3.5 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <Trash2 className="w-3.5 h-3.5" />
                 )}
               </button>
+              </div>
             </div>
           ))}
         </div>
