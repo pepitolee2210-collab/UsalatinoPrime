@@ -268,6 +268,33 @@ export function ClientPortal({
                 ))}
               </div>
             </div>
+
+            {/* Contact cards */}
+            <div className="mt-4 p-3 rounded-2xl" style={{ background: 'linear-gradient(135deg, #001020 0%, #002855 100%)' }}>
+              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2.5">¿Necesita ayuda?</p>
+              <div className="grid grid-cols-2 gap-2">
+                <a href="https://wa.me/573150486059" target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(242,169,0,0.15)' }}>
+                    <svg viewBox="0 0 24 24" className="w-4 h-4 fill-[#F2A900]"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">Diana</p>
+                    <p className="text-[9px] text-white/40">Asesora Legal</p>
+                  </div>
+                </a>
+                <a href="https://wa.me/51908765016" target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(0,212,255,0.15)' }}>
+                    <svg viewBox="0 0 24 24" className="w-4 h-4 fill-[#00d4ff]"><path d="M20 18c1.1 0 1.99-.9 1.99-2L22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H0v2h24v-2h-4zM4 6h16v10H4V6z"/></svg>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">Giuseppe</p>
+                    <p className="text-[9px] text-white/40">Soporte Técnico</p>
+                  </div>
+                </a>
+              </div>
+            </div>
           </div>
         </div>
 
