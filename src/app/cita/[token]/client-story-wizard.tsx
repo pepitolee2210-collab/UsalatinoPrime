@@ -1356,7 +1356,7 @@ function WitnessStep({ witnesses, childNames, onChange }: {
         </div>
       ))}
 
-      {witnesses.length < 3 && (
+      {witnesses.length < 10 && (
         <button
           onClick={() => onChange([...witnesses, { name: '', relationship: '', phone: '', can_testify: '' }])}
           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-[#F2A900] text-sm font-bold text-[#9a6500] bg-[#F2A900]/10"
