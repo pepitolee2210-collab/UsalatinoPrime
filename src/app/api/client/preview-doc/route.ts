@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     .createSignedUrl(doc.file_path, 300)
 
   if (signedData?.signedUrl) {
-    return NextResponse.redirect(signedData.signedUrl)
+    return NextResponse.json({ url: signedData.signedUrl })
   }
 
   return NextResponse.json({ error: 'Error al generar preview' }, { status: 500 })

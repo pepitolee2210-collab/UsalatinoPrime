@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { FileText, Upload, CheckCircle, Trash2, Users, Home, FolderOpen, Camera, Eye } from 'lucide-react'
+import { FileText, Upload, CheckCircle, Trash2, Users, Home, FolderOpen, Camera, Eye, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
@@ -29,12 +29,55 @@ export function DocumentUploadSection({ token, uploadedDocuments }: {
 }) {
   const [uploaded, setUploaded] = useState<UploadedDoc[]>(uploadedDocuments)
   const [uploading, setUploading] = useState<string | null>(null)
+  const [previewDoc, setPreviewDoc] = useState<{ id: string; name: string } | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+
+  async function openPreview(doc: { id: string; name: string }) {
+    setPreviewDoc(doc)
+    setPreviewLoading(true)
+    setPreviewUrl(null)
+    try {
+      const res = await fetch(`/api/client/preview-doc?token=${token}&id=${doc.id}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.url) setPreviewUrl(data.url)
+      }
+    } catch { /* silent */ }
+    finally { setPreviewLoading(false) }
+  }
 
   const totalDocs = DOCUMENT_CATEGORIES.flatMap(c => c.docs).length
   const categoriesWithDocs = new Set(uploaded.map(u => u.document_key)).size
 
   return (
     <div className="space-y-5">
+      {/* Preview Modal */}
+      {previewDoc && (
+        <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'rgba(0,0,0,0.85)' }}
+          onClick={() => { setPreviewDoc(null); setPreviewUrl(null) }}>
+          <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
+            <p className="text-white font-semibold text-sm truncate flex-1 mr-4">{previewDoc.name}</p>
+            <button onClick={() => { setPreviewDoc(null); setPreviewUrl(null) }}
+              className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-opacity hover:opacity-70"
+              style={{ background: 'rgba(255,255,255,0.12)' }}>
+              <X className="w-5 h-5 text-white" />
+            </button>
+          </div>
+          <div className="flex-1 flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
+            {previewLoading ? (
+              <div className="flex flex-col items-center gap-3">
+                <Loader2 className="w-8 h-8 text-[#F2A900] animate-spin" />
+                <p className="text-white/60 text-sm">Cargando documento...</p>
+              </div>
+            ) : previewUrl ? (
+              <iframe src={previewUrl} className="w-full h-full rounded-xl bg-white" style={{ maxHeight: '80vh' }} />
+            ) : (
+              <p className="text-white/60 text-sm">No se pudo cargar el documento.</p>
+            )}
+          </div>
+        </div>
+      )}
       <div>
         <div className="flex items-center gap-2 mb-1">
           <FileText className="w-5 h-5 text-[#002855]" />
@@ -92,6 +135,7 @@ export function DocumentUploadSection({ token, uploadedDocuments }: {
                       if (newDoc) setUploaded(prev => [...prev, newDoc])
                     }}
                     onDelete={(docId) => setUploaded(prev => prev.filter(d => d.id !== docId))}
+                    onPreview={(doc) => openPreview(doc)}
                   />
                 )
               })}
@@ -115,13 +159,14 @@ export function DocumentUploadSection({ token, uploadedDocuments }: {
 
 function DocumentCard({
   docKey, label, required, accept = 'application/pdf', uploadedDocs, isUploading, token,
-  onUploadStart, onUploadEnd, onDelete,
+  onUploadStart, onUploadEnd, onDelete, onPreview,
 }: {
   docKey: string; label: string; required: boolean; accept?: string
   uploadedDocs: UploadedDoc[]; isUploading: boolean; token: string
   onUploadStart: () => void
   onUploadEnd: (doc: UploadedDoc | null) => void
   onDelete: (docId: string) => void
+  onPreview: (doc: { id: string; name: string }) => void
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
@@ -205,15 +250,14 @@ function DocumentCard({
                 {doc.file_size ? ` (${(doc.file_size / 1024).toFixed(0)} KB)` : ''}
               </p>
               <div className="flex items-center gap-1 flex-shrink-0">
-                <a
-                  href={`/api/client/preview-doc?token=${token}&id=${doc.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  type="button"
+                  onClick={() => onPreview({ id: doc.id, name: doc.name })}
                   className="text-blue-400 hover:text-blue-600 p-1"
                   title="Previsualizar"
                 >
                   <Eye className="w-3.5 h-3.5" />
-                </a>
+                </button>
                 <button
                   type="button"
                   disabled={deleting === doc.id}
