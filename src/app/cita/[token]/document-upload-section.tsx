@@ -21,6 +21,7 @@ const CATEGORY_ICONS = {
   home: Home,
   file: FolderOpen,
   camera: Camera,
+  witness: Users,
 } as const
 
 export function DocumentUploadSection({ token, uploadedDocuments }: {

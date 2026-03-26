@@ -37,6 +37,19 @@ export const DOCUMENT_CATEGORIES = [
     ],
   },
   {
+    id: 'testigos',
+    title: 'Documentos de Testigos',
+    icon: 'witness',
+    accept: '.pdf,.jpg,.jpeg,.png,.webp',
+    docs: [
+      { key: 'witness_id_1', label: 'ID o Pasaporte del Testigo 1', required: false },
+      { key: 'witness_id_2', label: 'ID o Pasaporte del Testigo 2', required: false },
+      { key: 'witness_id_3', label: 'ID o Pasaporte del Testigo 3', required: false },
+      { key: 'witness_declaration', label: 'Declaraciones escritas de testigos', required: false },
+      { key: 'witness_other', label: 'Otros documentos de testigos', required: false },
+    ],
+  },
+  {
     id: 'probatorios',
     title: 'Otros Documentos Probatorios',
     icon: 'camera',
