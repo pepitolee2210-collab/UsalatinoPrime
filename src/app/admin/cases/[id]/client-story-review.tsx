@@ -650,9 +650,6 @@ function TutorReviewDetails({ data }: { data: Record<string, unknown> }) {
       {/* Sección 4: Mejor Interés */}
       <ReviewSection title="4. Mejor Interés del Menor" color="bg-amber-50 border-amber-100">
         <DataRow label="Riesgo si es devuelto" value={d.risk_if_returned} />
-        <DataRow label="Cuidador en país de origen" value={d.caretaker_in_country} />
-        <DataRow label="Acceso a servicios en país" value={d.access_to_services} />
-        <DataRow label="Amenazas de pandillas" value={d.gang_threats} />
       </ReviewSection>
 
       {/* Sección 5: Proceso Legal */}
