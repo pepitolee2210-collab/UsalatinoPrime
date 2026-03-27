@@ -210,8 +210,8 @@ const GUARDIAN_RELATIONS: { value: GuardianRelation; label: string }[] = [
   { value: 'tutor_legal', label: 'Tutor legal' }, { value: 'otro', label: 'Otro' },
 ]
 
-const DJ_STEP_LABELS = ['Información Básica', 'Hechos de Maltrato', 'Mejor Interés', 'Testigos', 'Confirmar y Enviar']
-const DJ_TOTAL_STEPS = 5
+const DJ_STEP_LABELS = ['Información Básica', 'Hechos de Maltrato', 'Mejor Interés', 'Confirmar y Enviar']
+const DJ_TOTAL_STEPS = 4
 
 function createEmptyDJ(docs: DJDoc[] = []): DJState {
   return {
@@ -789,9 +789,6 @@ function DJWizard({
           has_another_father: state.hasAnotherFather,
         })
       }
-      if (state.witnesses.some(w => w.name.trim())) {
-        saveDraft('client_witnesses', { witnesses: state.witnesses })
-      }
     }, 4000)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
   }, [state, saveDraft])
@@ -818,10 +815,6 @@ function DJWizard({
       toast.error('Describe por qué el menor tiene miedo de regresar')
       setStep(2); return false
     }
-    if (!state.witnesses.some(w => w.name.trim())) {
-      toast.error('Agrega al menos un testigo')
-      setStep(3); return false
-    }
     return true
   }
 
@@ -840,7 +833,6 @@ function DJWizard({
             has_another_father: state.hasAnotherFather,
           },
         },
-        { form_type: 'client_witnesses', form_data: { witnesses: state.witnesses.filter(w => w.name.trim()) } },
       ]
 
       for (const sub of submissions) {
@@ -927,13 +919,6 @@ function DJWizard({
           />
         )}
         {step === 3 && (
-          <WitnessStep
-            witnesses={state.witnesses}
-            childNames={[state.minorBasic.full_name || 'el menor']}
-            onChange={witnesses => updateState({ witnesses })}
-          />
-        )}
-        {step === 4 && (
           <FinalStep
             djNumber={djNumber}
             state={state}
@@ -1461,8 +1446,6 @@ function FinalStep({ djNumber, state, onEditStep }: {
   state: DJState
   onEditStep: (step: number) => void
 }) {
-  const validWitnesses = state.witnesses.filter(w => w.name.trim())
-
   return (
     <div className="space-y-4">
       <div>
@@ -1503,13 +1486,6 @@ function FinalStep({ djNumber, state, onEditStep }: {
           </p>
         )}
         {state.minorBestInterest.wants_to_stay && <p className="text-sm text-gray-700"><span className="font-medium">Desea quedarse:</span> {state.minorBestInterest.wants_to_stay}</p>}
-      </ReviewCard>
-
-      {/* Witnesses summary */}
-      <ReviewCard title={`Testigos (${validWitnesses.length})`} onEdit={() => onEditStep(3)}>
-        {validWitnesses.map((w, i) => (
-          <p key={i} className="text-sm text-gray-700">{w.name} — <span className="text-gray-500">{w.relationship}</span></p>
-        ))}
       </ReviewCard>
 
       <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl">
