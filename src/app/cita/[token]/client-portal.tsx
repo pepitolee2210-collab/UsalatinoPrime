@@ -273,7 +273,7 @@ export function ClientPortal({
             <div className="mt-4 p-3 rounded-2xl" style={{ background: 'linear-gradient(135deg, #001020 0%, #002855 100%)' }}>
               <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2.5">¿Necesita ayuda?</p>
               <div className="grid grid-cols-2 gap-2">
-                <a href="https://wa.me/573150486059" target="_blank" rel="noopener noreferrer"
+                <a href="https://wa.me/12677874365" target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(242,169,0,0.15)' }}>
                     <svg viewBox="0 0 24 24" className="w-4 h-4 fill-[#F2A900]"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>

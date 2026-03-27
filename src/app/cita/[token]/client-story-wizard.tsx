@@ -811,8 +811,8 @@ function DJWizard({
       toast.error('Describe los hechos de abuso/abandono por al menos un padre')
       setStep(1); return false
     }
-    if (!state.minorBestInterest.fear_of_return.trim()) {
-      toast.error('Describe por qué el menor tiene miedo de regresar')
+    if (!state.minorBestInterest.wants_to_stay.trim()) {
+      toast.error('Describe por qué el menor desea quedarse en EE.UU.')
       setStep(2); return false
     }
     return true

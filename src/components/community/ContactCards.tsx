@@ -6,8 +6,8 @@ const contacts = [
   {
     name: 'Diana',
     role: 'Asesora Legal',
-    phone: '573150486059',
-    phoneDisplay: '+57 315 048 6059',
+    phone: '12677874365',
+    phoneDisplay: '+1 (267) 787-4365',
     description: 'Consultas legales, preguntas sobre su caso, documentos y trámites migratorios.',
     icon: Scale,
     gradient: 'from-[#002855] to-[#001d3d]',

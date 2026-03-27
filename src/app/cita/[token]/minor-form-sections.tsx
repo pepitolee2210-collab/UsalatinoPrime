@@ -217,27 +217,17 @@ export function MinorBestInterestSection({ data, onChange }: { data: MinorBestIn
           <TArea value={data.therapy_details} onChange={v => upd('therapy_details', v)} placeholder="Describa el tratamiento..." rows={3} />
         )}
       </div>
+      <div><YesNo label="20. ¿Hay alguien en su país que pueda cuidarlo/a de manera segura?" value={data.caretaker_in_country} onChange={v => upd('caretaker_in_country', v)} /></div>
       <div>
-        <FieldLabel required>20. ¿Tiene miedo de regresar a su país de origen? ¿Por qué?</FieldLabel>
-        <TAreaAI question="¿Tiene miedo de regresar a su país de origen? ¿Por qué?" value={data.fear_of_return} onChange={v => upd('fear_of_return', v)}
-          placeholder="Explique por qué tiene miedo de volver: violencia, pobreza, amenazas, falta de familia..." rows={5} />
-      </div>
-      <div>
-        <FieldLabel>21. ¿Fue amenazado/a por pandillas, crimen organizado o reclutamiento forzado?</FieldLabel>
-        <TArea value={data.gang_threats} onChange={v => upd('gang_threats', v)}
-          placeholder="Si aplica, describa las amenazas..." rows={3} />
-      </div>
-      <div><YesNo label="22. ¿Hay alguien en su país que pueda cuidarlo/a de manera segura?" value={data.caretaker_in_country} onChange={v => upd('caretaker_in_country', v)} /></div>
-      <div>
-        <FieldLabel>23. ¿Cómo es su vida actual en EE.UU.?</FieldLabel>
+        <FieldLabel>21. ¿Cómo es su vida actual en EE.UU.?</FieldLabel>
         <TArea value={data.current_life_us} onChange={v => upd('current_life_us', v)}
           placeholder="¿Cómo le va? ¿Se siente seguro/a? ¿Tiene amigos? ¿Cómo es su día a día?" rows={3} />
       </div>
       <div><YesNo label="¿Asiste a la escuela?" value={data.attends_school} onChange={v => upd('attends_school', v)} /></div>
-      <div><YesNo label="24. ¿Su guardián/custodio actual le provee un hogar seguro y estable?" value={data.safe_home} onChange={v => upd('safe_home', v)} /></div>
-      <div><YesNo label="25. ¿Ha tenido algún problema legal o ha sido arrestado/a en EE.UU.?" value={data.legal_problems} onChange={v => upd('legal_problems', v)} /></div>
+      <div><YesNo label="22. ¿Su guardián/custodio actual le provee un hogar seguro y estable?" value={data.safe_home} onChange={v => upd('safe_home', v)} /></div>
+      <div><YesNo label="23. ¿Ha tenido algún problema legal o ha sido arrestado/a en EE.UU.?" value={data.legal_problems} onChange={v => upd('legal_problems', v)} /></div>
       <div>
-        <FieldLabel required>26. ¿Desea permanecer en los Estados Unidos? ¿Por qué?</FieldLabel>
+        <FieldLabel required>24. ¿Desea permanecer en los Estados Unidos? ¿Por qué?</FieldLabel>
         <TAreaAI question="¿Desea permanecer en los Estados Unidos? ¿Por qué?" value={data.wants_to_stay} onChange={v => upd('wants_to_stay', v)}
           placeholder="Exprese su deseo de quedarse y las razones: seguridad, educación, familia, oportunidades..." rows={4} />
       </div>
