@@ -2,9 +2,11 @@
 
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Phone, CalendarClock, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { Phone, CalendarClock, Clock, CheckCircle, XCircle, AlertTriangle, Save, Loader2, MessageSquare } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
+import { toast } from 'sonner'
 
 const statusColors: Record<string, string> = {
   scheduled: 'bg-blue-100 text-blue-800',
@@ -27,23 +29,63 @@ const statusIcons: Record<string, typeof Clock> = {
   no_show: AlertTriangle,
 }
 
+function visitLabel(count: number): string {
+  if (count === 0) return '1ra cita'
+  if (count === 1) return '2da cita'
+  if (count === 2) return '3ra cita'
+  return `${count + 1}ta cita`
+}
+
 interface Appointment {
   id: string
+  client_id?: string | null
   scheduled_at: string
   status: string
   guest_name?: string
   notes?: string
+  employee_notes?: string | null
   client?: { first_name: string; last_name: string; phone?: string } | null
   case?: { case_number: string; service?: { name: string } | null } | null
 }
 
 export function EmployeeCitasView({ appointments }: { appointments: Appointment[] }) {
   const [filter, setFilter] = useState<string>('all')
+  const [localNotes, setLocalNotes] = useState<Record<string, string>>({})
+  const [savingId, setSavingId] = useState<string | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  // Build visit counts
+  const completedCounts = new Map<string, number>()
+  const sorted = [...appointments]
+    .filter(a => a.status === 'completed' && a.client_id)
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
+  for (const apt of sorted) {
+    const cid = apt.client_id!
+    completedCounts.set(cid, (completedCounts.get(cid) || 0) + 1)
+  }
 
   const filtered = filter === 'all' ? appointments : appointments.filter(a => a.status === filter)
 
   const scheduled = appointments.filter(a => a.status === 'scheduled').length
   const completed = appointments.filter(a => a.status === 'completed').length
+
+  async function saveNotes(aptId: string) {
+    setSavingId(aptId)
+    try {
+      const res = await fetch('/api/employee/appointment-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ appointment_id: aptId, employee_notes: localNotes[aptId] || '' }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success('Notas guardadas')
+      setEditingId(null)
+    } catch {
+      toast.error('Error al guardar')
+    } finally {
+      setSavingId(null)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -89,18 +131,33 @@ export function EmployeeCitasView({ appointments }: { appointments: Appointment[
           const clientName = apt.client
             ? `${apt.client.first_name} ${apt.client.last_name}`
             : apt.guest_name || 'Sin nombre'
+          const completedCount = apt.client_id ? (completedCounts.get(apt.client_id) || 0) : 0
+          const isEditing = editingId === apt.id
+          const currentNotes = localNotes[apt.id] !== undefined ? localNotes[apt.id] : (apt.employee_notes || '')
 
           return (
             <div key={apt.id} className="bg-white rounded-xl border p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
+                  {/* Client name + visit badge + status */}
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="font-semibold text-gray-900 text-sm">{clientName}</span>
+                    {apt.client_id && (
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                        completedCount === 0
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {visitLabel(completedCount)}
+                      </span>
+                    )}
                     <Badge className={statusColors[apt.status] || ''}>
                       <StatusIcon className="w-3 h-3 mr-1" />
                       {statusLabels[apt.status] || apt.status}
                     </Badge>
                   </div>
+
+                  {/* Date, phone, case */}
                   <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
                     <span className="flex items-center gap-1">
                       <CalendarClock className="w-3 h-3" />
@@ -116,9 +173,60 @@ export function EmployeeCitasView({ appointments }: { appointments: Appointment[
                       <span>#{apt.case.case_number} — {apt.case.service?.name || '—'}</span>
                     )}
                   </div>
+
+                  {/* Henry's notes */}
                   {apt.notes && (
-                    <p className="text-xs text-gray-500 mt-1 bg-gray-50 rounded-lg p-2">{apt.notes}</p>
+                    <p className="text-xs text-gray-500 mt-1.5 bg-gray-50 rounded-lg p-2">{apt.notes}</p>
                   )}
+
+                  {/* Diana's notes */}
+                  <div className="mt-2">
+                    {isEditing ? (
+                      <div className="space-y-2">
+                        <Textarea
+                          value={currentNotes}
+                          onChange={e => setLocalNotes(prev => ({ ...prev, [apt.id]: e.target.value }))}
+                          placeholder="Anota en qué quedaste con el/la cliente para la próxima cita..."
+                          rows={3}
+                          className="text-xs"
+                        />
+                        <div className="flex gap-2">
+                          <button onClick={() => saveNotes(apt.id)}
+                            disabled={savingId === apt.id}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#002855] text-white text-xs font-bold">
+                            {savingId === apt.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                            Guardar
+                          </button>
+                          <button onClick={() => setEditingId(null)}
+                            className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs">
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setEditingId(apt.id)
+                          setLocalNotes(prev => ({ ...prev, [apt.id]: apt.employee_notes || '' }))
+                        }}
+                        className="w-full text-left"
+                      >
+                        {apt.employee_notes ? (
+                          <div className="p-2.5 rounded-xl bg-[#F2A900]/5 border border-[#F2A900]/20">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <MessageSquare className="w-3 h-3 text-[#F2A900]" />
+                              <span className="text-[10px] font-bold text-[#9a6500]">Mis notas</span>
+                            </div>
+                            <p className="text-xs text-gray-700 whitespace-pre-wrap">{apt.employee_notes}</p>
+                          </div>
+                        ) : (
+                          <div className="p-2 rounded-lg border border-dashed border-gray-300 text-center">
+                            <span className="text-xs text-gray-400">+ Agregar notas de seguimiento</span>
+                          </div>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
