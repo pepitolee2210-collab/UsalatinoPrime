@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { Phone, CalendarClock, Clock, CheckCircle, XCircle, AlertTriangle, Save, Loader2, MessageSquare } from 'lucide-react'
+import { Phone, CalendarClock, Clock, CheckCircle, XCircle, AlertTriangle, Save, Loader2, MessageSquare, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { toast } from 'sonner'
@@ -48,11 +48,13 @@ interface Appointment {
   case?: { case_number: string; service?: { name: string } | null } | null
 }
 
-export function EmployeeCitasView({ appointments }: { appointments: Appointment[] }) {
+export function EmployeeCitasView({ appointments: initial }: { appointments: Appointment[] }) {
+  const [appointments, setAppointments] = useState(initial)
   const [filter, setFilter] = useState<string>('all')
   const [localNotes, setLocalNotes] = useState<Record<string, string>>({})
   const [savingId, setSavingId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [viewingNote, setViewingNote] = useState<{ name: string; note: string } | null>(null)
 
   // Build visit counts
   const completedCounts = new Map<string, number>()
@@ -71,13 +73,18 @@ export function EmployeeCitasView({ appointments }: { appointments: Appointment[
 
   async function saveNotes(aptId: string) {
     setSavingId(aptId)
+    const noteText = localNotes[aptId] || ''
     try {
       const res = await fetch('/api/employee/appointment-notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointment_id: aptId, employee_notes: localNotes[aptId] || '' }),
+        body: JSON.stringify({ appointment_id: aptId, employee_notes: noteText }),
       })
       if (!res.ok) throw new Error()
+      // Update local state so the note appears immediately
+      setAppointments(prev => prev.map(a =>
+        a.id === aptId ? { ...a, employee_notes: noteText } : a
+      ))
       toast.success('Notas guardadas')
       setEditingId(null)
     } catch {
@@ -89,6 +96,31 @@ export function EmployeeCitasView({ appointments }: { appointments: Appointment[
 
   return (
     <div className="space-y-4">
+      {/* Note viewing modal */}
+      {viewingNote && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={() => setViewingNote(null)}>
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b">
+              <div>
+                <p className="font-bold text-gray-900 text-sm">{viewingNote.name}</p>
+                <p className="text-xs text-[#9a6500] flex items-center gap-1">
+                  <MessageSquare className="w-3 h-3" /> Notas de seguimiento
+                </p>
+              </div>
+              <button onClick={() => setViewingNote(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 hover:bg-gray-200">
+                <X className="w-4 h-4 text-gray-600" />
+              </button>
+            </div>
+            <div className="p-5">
+              <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{viewingNote.note}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-white rounded-xl border p-3 text-center">
@@ -204,27 +236,31 @@ export function EmployeeCitasView({ appointments }: { appointments: Appointment[
                         </div>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => {
-                          setEditingId(apt.id)
-                          setLocalNotes(prev => ({ ...prev, [apt.id]: apt.employee_notes || '' }))
-                        }}
-                        className="w-full text-left"
-                      >
+                      <div className="flex gap-2">
                         {apt.employee_notes ? (
-                          <div className="p-2.5 rounded-xl bg-[#F2A900]/5 border border-[#F2A900]/20">
+                          <button onClick={() => setViewingNote({ name: clientName, note: apt.employee_notes! })}
+                            className="flex-1 text-left p-2.5 rounded-xl bg-[#F2A900]/5 border border-[#F2A900]/20 hover:bg-[#F2A900]/10 transition-colors">
                             <div className="flex items-center gap-1.5 mb-1">
                               <MessageSquare className="w-3 h-3 text-[#F2A900]" />
                               <span className="text-[10px] font-bold text-[#9a6500]">Mis notas</span>
+                              <span className="text-[10px] text-gray-400 ml-auto">Toca para ver</span>
                             </div>
-                            <p className="text-xs text-gray-700 whitespace-pre-wrap">{apt.employee_notes}</p>
-                          </div>
-                        ) : (
-                          <div className="p-2 rounded-lg border border-dashed border-gray-300 text-center">
-                            <span className="text-xs text-gray-400">+ Agregar notas de seguimiento</span>
-                          </div>
-                        )}
-                      </button>
+                            <p className="text-xs text-gray-700 line-clamp-2">{apt.employee_notes}</p>
+                          </button>
+                        ) : null}
+                        <button
+                          onClick={() => {
+                            setEditingId(apt.id)
+                            setLocalNotes(prev => ({ ...prev, [apt.id]: apt.employee_notes || '' }))
+                          }}
+                          className={apt.employee_notes
+                            ? "flex-shrink-0 px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-500 hover:bg-gray-50"
+                            : "w-full p-2.5 rounded-lg border-2 border-dashed border-[#F2A900]/40 text-center bg-[#F2A900]/5 hover:bg-[#F2A900]/10 transition-colors"
+                          }
+                        >
+                          {apt.employee_notes ? 'Editar' : '+ Agregar notas de seguimiento'}
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
