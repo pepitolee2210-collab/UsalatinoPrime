@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -23,7 +24,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'appointment_id requerido' }, { status: 400 })
   }
 
-  const { error } = await supabase
+  // Use service client — employee only has SELECT on appointments
+  const service = createServiceClient()
+  const { error } = await service
     .from('appointments')
     .update({ employee_notes })
     .eq('id', appointment_id)
