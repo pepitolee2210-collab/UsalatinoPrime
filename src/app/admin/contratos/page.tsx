@@ -237,10 +237,10 @@ export default function ContratosPage() {
           {contracts.map((c) => (
             <Card key={c.id} className="hover:shadow-sm transition-shadow">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-semibold text-sm text-gray-900 truncate">{c.client_full_name}</p>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <p className="font-semibold text-sm text-gray-900">{c.client_full_name}</p>
                       <Badge className={statusColors[c.status] || 'bg-gray-100 text-gray-700'}>
                         {statusLabels[c.status] || c.status}
                       </Badge>
@@ -249,7 +249,7 @@ export default function ContratosPage() {
                       {c.service_name}
                       {c.addon_services?.length > 0 && ` + ${c.addon_services.map((a: any) => a.name).join(' + ')}`}
                     </p>
-                    <div className="flex items-center gap-4 mt-1">
+                    <div className="flex items-center gap-4 mt-1 flex-wrap">
                       <span className="text-sm font-bold text-[#002855]">${Number(c.total_price).toLocaleString()} USD</span>
                       {c.has_installments && (
                         <span className="text-xs text-gray-400">
@@ -268,7 +268,7 @@ export default function ContratosPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     {/* Status quick change */}
                     <select
                       value={c.status}
