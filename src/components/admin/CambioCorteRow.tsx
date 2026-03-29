@@ -269,7 +269,18 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
     normal(11)
     left('Re: Motion to Change Venue'); y += 5
     left(`Applicant: ${s.client_full_name.toUpperCase()}`); y += 5
-    left(`A#: ${s.file_number}`); y += 7
+    left(`A#: ${s.file_number}`); y += 5
+
+    // Beneficiaries / Dependents
+    for (let i = 0; i < bens.length; i++) {
+      bold(11); left(`It Depends ${i + 1}: ${bens[i].full_name.toUpperCase()}`)
+      normal(11)
+      if (bens[i].file_number) {
+        doc.text(`A#: ${bens[i].file_number}`, ml + doc.getTextWidth(`It Depends ${i + 1}: ${bens[i].full_name.toUpperCase()}  `), y)
+      }
+      y += 5
+    }
+    y += 2
 
     // Letter body
     paragraph('Honorable Immigration Judge,', 11)
