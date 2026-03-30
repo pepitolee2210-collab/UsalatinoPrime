@@ -273,14 +273,15 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
 
     // Beneficiaries / Dependents
     for (let i = 0; i < bens.length; i++) {
-      bold(11); left(`It Depends ${i + 1}: ${bens[i].full_name.toUpperCase()}`)
       normal(11)
+      left(`It Depends ${i + 1}: ${bens[i].full_name.toUpperCase()}`)
       if (bens[i].file_number) {
-        doc.text(`A#: ${bens[i].file_number}`, ml + doc.getTextWidth(`It Depends ${i + 1}: ${bens[i].full_name.toUpperCase()}  `), y)
+        y += 4
+        left(`A#: ${bens[i].file_number}`)
       }
       y += 5
     }
-    y += 2
+    if (bens.length > 0) y += 2
 
     // Letter body
     paragraph('Honorable Immigration Judge,', 11)
