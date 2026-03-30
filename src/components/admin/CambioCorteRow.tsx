@@ -333,6 +333,19 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
     left(s.new_court_street, ml + 6); y += 4
     left(s.new_court_city_state_zip, ml + 6); y += 8
 
+    // Remote appearance request
+    const hearingDateFormatted = formatDateEnglish(s.next_hearing_date)
+    const courtCityName = s.current_court_city_state_zip.split(',')[0]?.trim() || s.current_court_city_state_zip
+
+    paragraph(
+      `In the alternative, if the Court does not grant this Motion to Change Venue prior to the hearing currently scheduled for ${hearingDateFormatted}, Respondent respectfully requests permission to appear remotely, via WebEx or telephonically, due to Respondent\u2019s residence in the State of ${s.new_address_state} and the significant hardship that travel to ${courtCityName} would impose. Respondent remains willing to appear in person if so ordered by the Court.`, 11
+    )
+
+    paragraph(
+      `Additionally, Respondent respectfully requests that any future hearings be conducted remotely, if permitted by the Court.`, 11
+    )
+
+    y += 2
     paragraph('Respectfully submitted,', 11)
     y += 10
 
