@@ -390,6 +390,22 @@ export function generateContractPDF(input: ContractPDFInput): jsPDF {
     'consentimiento escrito de EL CONSULTOR.'
   )
 
+  // === CLAUSULA ESPECIAL VISA JUVENIL ===
+  const isVisaJuvenil = serviceName.toLowerCase().includes('visa juvenil') || serviceName.toLowerCase().includes('sijs')
+  if (isVisaJuvenil) {
+    sectionTitle('CL\u00c1USULA ESPECIAL \u2013 VISA JUVENIL (SIJS)')
+    paragraph(
+      'El presente contrato se paralizar\u00e1 autom\u00e1ticamente, incluyendo la obligaci\u00f3n de pagos pendientes, ' +
+      'en caso de que no se obtenga una resoluci\u00f3n favorable de custodia por parte del juez de la corte estatal. ' +
+      'En dicho supuesto, EL CONSULTOR informar\u00e1 a EL CLIENTE sobre las opciones disponibles y los pasos a seguir.'
+    )
+    paragraph(
+      'Los pagos realizados hasta la fecha de la paralizaci\u00f3n corresponden al trabajo ya ejecutado en las etapas ' +
+      'previas del proceso y no ser\u00e1n reembolsables. La reactivaci\u00f3n del contrato quedar\u00e1 sujeta a las condiciones ' +
+      'que ambas partes acuerden por escrito.'
+    )
+  }
+
   // === ACEPTACION Y FIRMAS ===
   sectionTitle('ACEPTACI\u00d3N')
   paragraph(
