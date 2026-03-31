@@ -5,7 +5,7 @@ import { FileText, Upload, CheckCircle, Trash2, Users, Home, FolderOpen, Camera,
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { DOCUMENT_CATEGORIES } from '@/lib/appointments/constants'
+import { getDocumentCategories } from '@/lib/appointments/constants'
 import { uploadDirect } from '@/lib/upload-direct'
 
 interface UploadedDoc {
@@ -24,12 +24,14 @@ const CATEGORY_ICONS = {
   witness: Users,
 } as const
 
-export function DocumentUploadSection({ token, uploadedDocuments }: {
+export function DocumentUploadSection({ token, uploadedDocuments, serviceSlug }: {
   token: string
   uploadedDocuments: UploadedDoc[]
+  serviceSlug?: string
 }) {
   const [uploaded, setUploaded] = useState<UploadedDoc[]>(uploadedDocuments)
   const [uploading, setUploading] = useState<string | null>(null)
+  const categories = getDocumentCategories(serviceSlug)
   const [previewDoc, setPreviewDoc] = useState<{ id: string; name: string } | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
@@ -48,7 +50,7 @@ export function DocumentUploadSection({ token, uploadedDocuments }: {
     finally { setPreviewLoading(false) }
   }
 
-  const totalDocs = DOCUMENT_CATEGORIES.flatMap(c => c.docs).length
+  const totalDocs = categories.flatMap(c => c.docs).length
   const categoriesWithDocs = new Set(uploaded.map(u => u.document_key)).size
 
   return (
@@ -89,35 +91,44 @@ export function DocumentUploadSection({ token, uploadedDocuments }: {
         </p>
       </div>
 
-      {DOCUMENT_CATEGORIES.map(category => {
+      {categories.map(category => {
         const Icon = CATEGORY_ICONS[category.icon as keyof typeof CATEGORY_ICONS] || FileText
+        const isInfoOnly = (category as any).infoOnly
+        const categoryNote = (category as any).note as string | undefined
         const catDocsUploaded = category.docs.filter(d =>
           uploaded.some(u => u.document_key === d.key)
         ).length
-        const isComplete = catDocsUploaded === category.docs.length
+        const isComplete = !isInfoOnly && catDocsUploaded === category.docs.length && category.docs.length > 0
 
         return (
           <div key={category.id} className="rounded-2xl border border-gray-200 overflow-hidden">
             {/* Category header */}
-            <div className={`flex items-center justify-between px-5 py-3.5 ${
-              isComplete ? 'bg-green-50 border-b border-green-100' : 'bg-gray-50 border-b border-gray-100'
+            <div className={`px-5 py-3.5 ${
+              isComplete ? 'bg-green-50 border-b border-green-100' : isInfoOnly ? 'bg-amber-50 border-b border-amber-100' : 'bg-gray-50 border-b border-gray-100'
             }`}>
-              <div className="flex items-center gap-2.5">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                  isComplete ? 'bg-green-100' : 'bg-white border border-gray-200'
-                }`}>
-                  {isComplete
-                    ? <CheckCircle className="w-4 h-4 text-green-600" />
-                    : <Icon className="w-4 h-4 text-[#002855]" />
-                  }
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                    isComplete ? 'bg-green-100' : isInfoOnly ? 'bg-amber-100' : 'bg-white border border-gray-200'
+                  }`}>
+                    {isComplete
+                      ? <CheckCircle className="w-4 h-4 text-green-600" />
+                      : <Icon className="w-4 h-4 text-[#002855]" />
+                    }
+                  </div>
+                  <span className="text-sm font-bold text-gray-900">{category.title}</span>
                 </div>
-                <span className="text-sm font-bold text-gray-900">{category.title}</span>
+                {!isInfoOnly && <span className="text-xs text-gray-400">{catDocsUploaded}/{category.docs.length}</span>}
               </div>
-              <span className="text-xs text-gray-400">{catDocsUploaded}/{category.docs.length}</span>
+              {categoryNote && (
+                <p className={`text-xs mt-2 ml-10 font-medium ${isInfoOnly ? 'text-amber-700' : 'text-red-600'}`}>
+                  ⚠️ {categoryNote}
+                </p>
+              )}
             </div>
 
-            {/* Documents in this category */}
-            <div className="divide-y divide-gray-100">
+            {/* Documents in this category (skip if infoOnly) */}
+            {!isInfoOnly && <div className="divide-y divide-gray-100">
               {category.docs.map(doc => {
                 const existingDocs = uploaded.filter(u => u.document_key === doc.key)
                 return (
@@ -140,7 +151,7 @@ export function DocumentUploadSection({ token, uploadedDocuments }: {
                   />
                 )
               })}
-            </div>
+            </div>}
           </div>
         )
       })}

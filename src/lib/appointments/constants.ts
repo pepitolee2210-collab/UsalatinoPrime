@@ -61,8 +61,71 @@ export const DOCUMENT_CATEGORIES = [
   },
 ]
 
+/** Documentos para Ajuste de Estatus (I-485) */
+export const I485_DOCUMENT_CATEGORIES = [
+  {
+    id: 'identidad_menor',
+    title: 'Identidad del Menor',
+    icon: 'users',
+    docs: [
+      { key: 'i485_passport', label: 'Pasaporte vigente (todas las páginas usadas)', required: true },
+      { key: 'i485_birth_certificate', label: 'Acta de nacimiento (con traducción al inglés)', required: true },
+      { key: 'i485_additional_id', label: 'ID adicional (DNI, cédula, etc.)', required: false },
+    ],
+  },
+  {
+    id: 'entrada_eeuu',
+    title: 'Entrada a EE.UU.',
+    icon: 'file',
+    docs: [
+      { key: 'i485_i94', label: 'I-94 (si ingresó con visa o parole)', required: false },
+      { key: 'i485_cbp_doc', label: 'Documento de CBP', required: false },
+      { key: 'i485_nta', label: 'Notice to Appear (NTA)', required: false },
+      { key: 'i485_parole', label: 'Parole', required: false },
+    ],
+  },
+  {
+    id: 'sij_docs',
+    title: 'Documentos de SIJ (Lo Más Importante)',
+    icon: 'file',
+    note: 'Sin estos documentos NO se puede proceder con el ajuste.',
+    docs: [
+      { key: 'i485_custody_order', label: 'Orden de la corte juvenil (custodia o tutela)', required: true },
+      { key: 'i485_sij_findings', label: 'SIJ Findings Order (abuso/negligencia/abandono + best interest)', required: true },
+      { key: 'i485_i360_approval', label: 'Aprobación de la I-360 (Notice I-797)', required: true },
+    ],
+  },
+  {
+    id: 'examen_medico',
+    title: 'Examen Médico',
+    icon: 'camera',
+    note: 'El formulario I-693 se envía en sobre sellado. NO lo abra. NO lo cargue aquí.',
+    infoOnly: true,
+    docs: [],
+  },
+  {
+    id: 'i485_probatorios',
+    title: 'Otros Documentos de Soporte',
+    icon: 'camera',
+    accept: '.pdf,.jpg,.jpeg,.png,.webp',
+    docs: [
+      { key: 'i485_photos', label: 'Fotos y evidencia adicional', required: false },
+      { key: 'i485_other', label: 'Otros documentos de soporte', required: false },
+    ],
+  },
+]
+
+/** Get document categories based on service slug */
+export function getDocumentCategories(serviceSlug?: string) {
+  if (serviceSlug === 'ajuste-de-estatus') return I485_DOCUMENT_CATEGORIES
+  return DOCUMENT_CATEGORIES
+}
+
 /** Flat list for backward compatibility */
-export const APPOINTMENT_DOCUMENT_KEYS = DOCUMENT_CATEGORIES.flatMap(c =>
+export const APPOINTMENT_DOCUMENT_KEYS = [
+  ...DOCUMENT_CATEGORIES,
+  ...I485_DOCUMENT_CATEGORIES,
+].flatMap(c =>
   c.docs.map(d => ({ key: d.key, label: d.label, required: d.required }))
 )
 

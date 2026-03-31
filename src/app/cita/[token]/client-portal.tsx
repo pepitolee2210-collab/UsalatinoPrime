@@ -344,6 +344,7 @@ export function ClientPortal({
               <DocumentUploadSection
                 token={token}
                 uploadedDocuments={uploadedDocuments.filter(d => !d.direction || d.direction === 'client_to_admin')}
+                serviceSlug={serviceSlug}
               />
             )}
             {activeTab === 'historia' && isVisaJuvenil && (
