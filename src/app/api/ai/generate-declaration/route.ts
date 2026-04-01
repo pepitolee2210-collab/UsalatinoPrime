@@ -4,7 +4,7 @@ import { buildCaseContext } from '@/lib/ai/prompts/chat-system'
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY
 
-type DeclarationType = 'tutor' | 'minor' | 'witness'
+type DeclarationType = 'tutor' | 'minor' | 'witness' | 'parental_consent'
 
 function buildDeclarationPrompt(
   type: DeclarationType,
@@ -37,6 +37,67 @@ CRITICAL RULES:
 - Be detailed, emotional where appropriate (for judges), and legally precise.
 - Include dates, locations, and specific examples whenever the data provides them.
 `
+
+  if (type === 'parental_consent') {
+    // Get absent parent data
+    const absentParent = (ctx.clientAbsentParent || {}) as Record<string, string>
+    const parentName = absentParent.parent_name || tutor?.partner_name as string || '[PARENT NAME]'
+    const parentRelation = absentParent.parent_relationship === 'padre' ? 'father' : 'mother'
+    const childPronoun = parentRelation === 'father' ? 'daughter' : 'son'
+
+    return `You are an expert immigration paralegal. Generate a PARENTAL CONSENT TO TEMPORARY GUARDIANSHIP letter.
+
+Use ONLY the data provided. Search through ALL the documents, forms, and case information to find:
+- The absent parent's full name and passport number
+- The child's full name and date of birth
+- The guardian's full name and address
+- The court jurisdiction
+
+HERE IS THE EXACT FORMAT TO FOLLOW (replace only the bracketed data with real case data):
+
+PARENTAL CONSENT TO TEMPORARY GUARDIANSHIP
+
+I, [ABSENT PARENT FULL NAME], holder of [NATIONALITY] Passport No. [PASSPORT NUMBER], hereby declare the following under oath:
+
+1. I am the biological ${parentRelation} of [CHILD FULL NAME IN CAPS], born on [MONTH DAY, YEAR].
+
+2. I acknowledge that my ${childPronoun} is currently residing in [CITY], [STATE], United States, under the care of [GUARDIAN FULL NAME], who resides at [GUARDIAN FULL ADDRESS].
+
+3. I give my full and voluntary consent for [GUARDIAN FULL NAME] to petition for and be granted temporary legal guardianship of my ${childPronoun} by the [COURT NAME, e.g. Fourth District Juvenile Court of the State of Utah].
+
+4. I understand that this guardianship is part of a legal process intended to provide protection and stability to my ${childPronoun}, and that it does not constitute a permanent termination of my parental rights. However, it does transfer temporary legal authority to the appointed guardian.
+
+5. This decision is made freely, without coercion, and in the best interest of my ${childPronoun}.
+
+Signed in [CITY, STATE], United States, on the [DAY]th day of [MONTH], [YEAR].
+
+
+___________________________
+Signature of ${parentRelation === 'father' ? 'Father' : 'Mother'}
+[ABSENT PARENT FULL NAME]
+
+This document was read and explained to the signer in Spanish before signing.
+
+=== CASE DATA TO USE ===
+Absent parent name: ${parentName}
+Absent parent data: ${JSON.stringify(absentParent)}
+Tutor/Guardian data: ${JSON.stringify(tutor)}
+Children in case:
+${ctx.allMinorStories.map((s, i) => {
+  const mb = (s.formData?.minorBasic || {}) as Record<string, string>
+  return `Child ${i + 1}: ${mb.full_name || 'Unknown'}, DOB: ${mb.dob || 'Unknown'}, Country: ${mb.country || 'Unknown'}`
+}).join('\n')}
+Client story: ${JSON.stringify(ctx.clientStory || {})}
+Documents extracted text: ${ctx.documents.filter(d => d.extracted_text).map(d => `[${d.name}]: ${d.extracted_text?.substring(0, 500)}`).join('\n')}
+
+IMPORTANT:
+- If you find a passport number in the documents or forms, USE IT.
+- If you cannot find a specific piece of data, use [PENDING] as placeholder.
+- Use today's date if no signing date is specified.
+- The court should be in Utah unless case data says otherwise.
+- Output ONLY the letter text, nothing else. No explanations.
+`
+  }
 
   if (type === 'tutor') {
     return `${baseInstructions}

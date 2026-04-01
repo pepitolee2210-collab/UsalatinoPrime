@@ -26,6 +26,7 @@ import { CaseChat } from './case-chat'
 import { ClientStoryReview } from './client-story-review'
 import { I589Review } from './i589-review'
 import { DeclarationGenerator } from './declaration-generator'
+import { ParentalConsentGenerator } from './parental-consent-generator'
 import { uploadDirect } from '@/lib/upload-direct'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -1004,7 +1005,16 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
         )}
 
         {isVisaJuvenil && (
-          <TabsContent value="declaraciones" className="mt-4">
+          <TabsContent value="declaraciones" className="mt-4 space-y-6">
+            {/* 1. Parental Consent */}
+            <ParentalConsentGenerator
+              caseId={caseData.id}
+              clientName={`${caseData.client?.first_name || ''} ${caseData.client?.last_name || ''}`.trim()}
+            />
+
+            <div className="border-t border-gray-200" />
+
+            {/* 2-5. AI-generated declarations */}
             <DeclarationGenerator
               caseId={caseData.id}
               clientName={`${caseData.client?.first_name || ''} ${caseData.client?.last_name || ''}`.trim()}
