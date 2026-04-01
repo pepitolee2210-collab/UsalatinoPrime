@@ -177,42 +177,59 @@ IMPORTANT:
   }
 
   if (type === 'tutor') {
-    return `${baseInstructions}
+    const absentParent = (ctx.clientAbsentParent || {}) as Record<string, string>
+    return `You are an expert immigration paralegal. Generate a SWORN AFFIDAVIT OF THE PARENT/GUARDIAN following this EXACT structure.
 
-GENERATE A SWORN DECLARATION (AFFIDAVIT) OF THE GUARDIAN/PARENT.
+Use ONLY the real data. Write in FIRST PERSON as the parent/guardian speaking. Generate 25-32 NUMBERED paragraphs telling the COMPLETE story chronologically.
 
 DECLARANT: ${tutor?.full_name || clientName}
-RELATIONSHIP TO MINOR: ${tutor?.relationship_to_minor || 'Mother/Guardian'}
+RELATIONSHIP: ${tutor?.relationship_to_minor || 'Mother/Guardian'}
 
-GUARDIAN DATA (from 23-question legal form):
-${JSON.stringify(tutor, null, 2)}
-
-MINOR DECLARATIONS IN THIS CASE:
-${ctx.allMinorStories.map((s, i) => {
+ALL TUTOR DATA (23 questions): ${JSON.stringify(tutor)}
+ABSENT PARENT DATA: ${JSON.stringify(absentParent)}
+CLIENT STORY: ${JSON.stringify(ctx.clientStory || {})}
+CHILDREN: ${ctx.allMinorStories.map((s, i) => {
   const mb = (s.formData?.minorBasic || {}) as Record<string, string>
-  return `Child ${i + 1}: ${mb.full_name || 'Unknown'}, DOB: ${mb.dob || 'Unknown'}, Country: ${mb.country || 'Unknown'}`
+  const ma = (s.formData?.minorAbuse || {}) as Record<string, string>
+  return 'Child ' + (i + 1) + ': ' + JSON.stringify({ basic: mb, abuse: ma })
 }).join('\n')}
+DOCUMENTS: ${ctx.documents.filter(d => d.extracted_text).map(d => '[' + d.name + ']: ' + d.extracted_text?.substring(0, 500)).join('\n')}
 
-ADDITIONAL CONTEXT:
-- Client story: ${JSON.stringify(ctx.clientStory || {})}
-- Absent parent info: ${JSON.stringify(ctx.clientAbsentParent || {})}
+FOLLOW THIS EXACT FORMAT:
 
-FORMAT THE DECLARATION AS:
+AFFIDAVIT OF [PARENT/GUARDIAN FULL NAME IN CAPS]
 
-DECLARATION OF [FULL NAME]
+I, [Full Name], being duly sworn, declare under penalty of perjury that the following statements are true and correct to the best of my knowledge:
 
-I, [FULL NAME], declare under penalty of perjury under the laws of the United States of America and the State of Utah that the following is true and correct:
+1. My name is [Full Name]. I was born on [DOB] in [City, Country]. I am the biological [mother/father] of [CHILD FULL NAME], born on [child DOB] in [city, country].
+2. I currently reside at [address], where I live with my [son/daughter].
+3. The biological [father/mother] of my [son/daughter] is [ABSENT PARENT NAME].
+4. I met [absent parent] in [year] in [place]. [How relationship started].
+5. Our relationship lasted approximately [X years]. During that time, our [son/daughter] was born.
+6-12. [ABUSE/VIOLENCE/NEGLECT details — refused paternity, alcohol, violence, physical assault, confinement, dangerous environment. USE SPECIFIC INCIDENTS from the case data.]
+13-16. [HOW THEY ESCAPED — family help, moved away, protected the child]
+17-18. [Continued harassment, moved to safety]
+19-22. [Attempts to contact father for support — all failed, never helped financially]
+23-24. [Lost all contact, father's current known situation]
+25-26. [Parent has been sole caregiver, came to US seeking safety]
+27-28. [Child's current achievements, character, wellbeing]
+29-30. [Child completely abandoned by father, financially and emotionally]
+31. Due to the father's history of [violence/alcoholism/abandonment/lack of responsibility], it would not be safe or in the best interest of my [son/daughter] to reunify with [his/her] [father/mother].
+32. I respectfully submit this declaration in support of legal proceedings seeking custody and protection of my minor child, and in support of findings that reunification with [his/her] [father/mother] is not viable due to abuse, neglect, and abandonment.
 
-1. My name is [full name]. I am [age] years old...
-2. ...
-[Continue with all relevant facts organized logically: identity, relationship, arrival to US, circumstances of abuse/abandonment/neglect, current care of minor, why reunification is not viable]
+I declare under penalty of perjury under the laws of the United States that the foregoing is true and correct.
 
-I declare under penalty of perjury under the laws of the United States of America that the foregoing is true and correct.
+Signature: _______________________________
+Name: [FULL NAME]
+Date: ___________________
 
-Executed on [DATE]
-
-_______________________
-[FULL NAME]
+IMPORTANT:
+- Generate 25-32 numbered paragraphs minimum.
+- Each paragraph should be ONE specific fact or event.
+- Use the REAL story from the forms — dates, places, incidents.
+- Make it chronological: how they met → relationship → abuse → escape → attempts to contact → current situation.
+- If data is missing, use [PENDING].
+- Output ONLY the affidavit text.
 `
   }
 
