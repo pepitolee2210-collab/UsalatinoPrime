@@ -4,7 +4,7 @@ import { buildCaseContext } from '@/lib/ai/prompts/chat-system'
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY
 
-type DeclarationType = 'tutor' | 'minor' | 'witness' | 'parental_consent'
+type DeclarationType = 'tutor' | 'minor' | 'witness' | 'parental_consent' | 'petition_guardianship'
 
 function buildDeclarationPrompt(
   type: DeclarationType,
@@ -96,6 +96,83 @@ IMPORTANT:
 - Use today's date if no signing date is specified.
 - The court should be in Utah unless case data says otherwise.
 - Output ONLY the letter text, nothing else. No explanations.
+`
+  }
+
+  if (type === 'petition_guardianship') {
+    const absentParent = (ctx.clientAbsentParent || {}) as Record<string, string>
+
+    return `You are an expert immigration paralegal. Generate a PETITION FOR TEMPORARY GUARDIANSHIP.
+
+Use ONLY the data provided. Search through ALL documents, forms, and case information to find every relevant detail.
+
+HERE IS THE EXACT STRUCTURE TO FOLLOW:
+
+PETITION FOR TEMPORARY GUARDIANSHIP OF [CHILD FULL NAME IN CAPS]
+
+TO THE [COURT NAME, e.g. FOURTH DISTRICT JUVENILE COURT OF THE STATE OF UTAH – AMERICAN FORK LOCATION]
+
+I, [GUARDIAN FULL NAME IN CAPS], of legal age, [NATIONALITY] national, residing at [GUARDIAN FULL ADDRESS], respectfully request this Honorable Court to grant me temporary guardianship of [CHILD FULL NAME IN CAPS], based on the following considerations:
+
+I. IDENTIFICATION OF THE YOUTH
+
+- Full Name: [Child full name]
+- Date of Birth: [Month Day, Year]
+- Current Age: [X] years old
+- Citizenship: [Country/Countries]
+- Current Address: [Address where child lives]
+
+II. BASIS FOR THE PETITION
+
+[Generate 5-7 numbered paragraphs based on the case data. Each paragraph should cover ONE aspect:]
+1. How/when the child entered the United States and current residence
+2. History of abandonment and neglect by biological parent(s) — use specific details from the forms
+3. Details about the mother's behavior/situation (if applicable)
+4. Details about the father's behavior/situation (if applicable)
+5. Lack of other responsible family members
+6. How the guardian came to care for the child — the relationship and trust
+7. Any additional relevant facts from the case
+
+USE THE ACTUAL STORY FROM THE FORMS — improve the language but keep all facts.
+
+III. FORMAL REQUEST
+
+I respectfully request that this Honorable Court:
+
+1. Appoint me as temporary legal guardian of [CHILD FULL NAME], to ensure [his/her] personal, emotional, and legal well-being.
+2. Issue a judicial order establishing that:
+   - [Child name] cannot be reunified with [his/her] biological parents due to abandonment and neglect.
+   - It is not in [Child name]'s best interest to return to [country of origin].
+   - [He/She] is eligible to apply for Special Immigrant Juvenile Status (SIJS) under U.S. federal law.
+
+I declare that this petition is submitted in good faith, with the sole intention of protecting [Child name] from further harm and providing [him/her] with a safe and dignified environment while [he/she] regularizes [his/her] immigration status.
+
+In [City, State], on [Month Day, Year].
+
+
+
+_______________________________
+[GUARDIAN FULL NAME IN CAPS]
+Petitioner
+
+=== CASE DATA TO USE ===
+Guardian/Tutor data: ${JSON.stringify(tutor)}
+Absent parent data: ${JSON.stringify(absentParent)}
+Children:
+${ctx.allMinorStories.map((s, i) => {
+  const mb = (s.formData?.minorBasic || {}) as Record<string, string>
+  const ma = (s.formData?.minorAbuse || {}) as Record<string, string>
+  const mbi = (s.formData?.minorBestInterest || {}) as Record<string, string>
+  return `Child ${i + 1}: ${JSON.stringify({ basic: mb, abuse: ma, bestInterest: mbi })}`
+}).join('\n')}
+Client story: ${JSON.stringify(ctx.clientStory || {})}
+Documents extracted text: ${ctx.documents.filter(d => d.extracted_text).map(d => `[${d.name}]: ${d.extracted_text?.substring(0, 500)}`).join('\n')}
+
+IMPORTANT:
+- Generate for child index ${index} (or first child if only one).
+- Use [PENDING] for any data you cannot find.
+- Output ONLY the petition text, no explanations.
+- The narrative in Section II must use REAL facts from the case, improved with legal language.
 `
   }
 

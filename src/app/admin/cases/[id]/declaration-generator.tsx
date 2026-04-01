@@ -30,7 +30,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
   const tutorName = (tutorData?.full_name as string) || clientName
   const witnesses = ((tutorData?.witnesses as Array<Record<string, string>>) || []).filter(w => w.name?.trim())
 
-  async function generate(type: 'tutor' | 'minor' | 'witness', index: number, label: string) {
+  async function generate(type: 'tutor' | 'minor' | 'witness' | 'petition_guardianship', index: number, label: string) {
     const key = `${type}-${index}`
     setGenerating(key)
     try {
@@ -113,6 +113,27 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
         La IA toma los datos del caso y genera declaraciones listas para imprimir. Cada documento se genera en inglés con formato legal.
       </p>
 
+      {/* Petition for Guardianship — per minor */}
+      {minorStories.map((story, i) => {
+        const mb = (story.formData?.minorBasic || {}) as Record<string, string>
+        const name = mb.full_name || `Hijo/a ${i + 1}`
+        return (
+          <DocCard
+            key={`petition-${i}`}
+            icon={<FileText className="w-4 h-4 text-emerald-600" />}
+            title="Petición de Tutela"
+            subtitle={`Petition for Guardianship — ${name}`}
+            color="emerald"
+            generating={generating === `petition_guardianship-${i}`}
+            generated={!!getDoc('petition_guardianship', i)}
+            onGenerate={() => generate('petition_guardianship', i, `Petición ${name}`)}
+            onPreview={() => setPreviewDoc(getDoc('petition_guardianship', i)!)}
+            onCopy={() => copyToClipboard(getDoc('petition_guardianship', i)!.content)}
+            onDownload={() => downloadAsText(getDoc('petition_guardianship', i)!)}
+          />
+        )
+      })}
+
       {/* Tutor Declaration */}
       <DocCard
         icon={<Users className="w-4 h-4 text-blue-600" />}
@@ -175,6 +196,10 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
           className="w-full bg-[#002855] hover:bg-[#001d3d] h-12"
           disabled={!!generating}
           onClick={async () => {
+            for (let i = 0; i < minorStories.length; i++) {
+              const mb = (minorStories[i].formData?.minorBasic || {}) as Record<string, string>
+              await generate('petition_guardianship', i, `Petición ${mb.full_name || `Hijo/a ${i + 1}`}`)
+            }
             await generate('tutor', 0, tutorName)
             for (let i = 0; i < minorStories.length; i++) {
               const mb = (minorStories[i].formData?.minorBasic || {}) as Record<string, string>
@@ -200,9 +225,10 @@ function DocCard({ icon, title, subtitle, color, generating, generated, onGenera
   onGenerate: () => void; onPreview: () => void; onCopy: () => void; onDownload: () => void
 }) {
   const colorMap: Record<string, { bg: string; border: string; badge: string }> = {
-    blue:   { bg: 'bg-blue-50',   border: 'border-blue-200',   badge: 'bg-blue-100 text-blue-700' },
-    amber:  { bg: 'bg-amber-50',  border: 'border-amber-200',  badge: 'bg-amber-100 text-amber-700' },
-    purple: { bg: 'bg-purple-50', border: 'border-purple-200', badge: 'bg-purple-100 text-purple-700' },
+    blue:    { bg: 'bg-blue-50',    border: 'border-blue-200',    badge: 'bg-blue-100 text-blue-700' },
+    amber:   { bg: 'bg-amber-50',   border: 'border-amber-200',   badge: 'bg-amber-100 text-amber-700' },
+    purple:  { bg: 'bg-purple-50',  border: 'border-purple-200',  badge: 'bg-purple-100 text-purple-700' },
+    emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', badge: 'bg-emerald-100 text-emerald-700' },
   }
   const c = colorMap[color] || colorMap.blue
 
