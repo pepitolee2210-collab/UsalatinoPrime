@@ -218,43 +218,71 @@ _______________________
 
   if (type === 'minor') {
     const minorName = minorBasic.full_name || 'the minor'
-    return `${baseInstructions}
+    const absentParent = (ctx.clientAbsentParent || {}) as Record<string, string>
+    return `You are an expert immigration paralegal. Generate a SWORN DECLARATION OF THE MINOR following this EXACT structure.
 
-GENERATE A SWORN DECLARATION (AFFIDAVIT) OF THE MINOR CHILD.
+Use ONLY the real data provided. Write in FIRST PERSON as the minor speaking. Be emotionally impactful for the judge while maintaining factual accuracy. Improve simple words into professional legal language WITHOUT changing the facts.
 
 MINOR: ${minorName}
 DOB: ${minorBasic.dob || 'Unknown'}
 COUNTRY: ${minorBasic.country || 'Unknown'}
 
-MINOR'S RESPONSES (from 24-question legal form):
+MINOR'S RESPONSES (24-question form):
 Basic Info: ${JSON.stringify(minorBasic)}
 Abuse/Neglect: ${JSON.stringify(minorAbuse)}
 Best Interest: ${JSON.stringify(minorBestInterest)}
 
-GUARDIAN INFO: ${tutor?.full_name || clientName} (${tutor?.relationship_to_minor || 'guardian'})
+GUARDIAN: ${tutor?.full_name || clientName} (${tutor?.relationship_to_minor || 'guardian'})
+GUARDIAN DATA: ${JSON.stringify(tutor)}
+ABSENT PARENT: ${JSON.stringify(absentParent)}
+CLIENT STORY: ${JSON.stringify(ctx.clientStory || {})}
+DOCUMENTS: ${ctx.documents.filter(d => d.extracted_text).map(d => '[' + d.name + ']: ' + d.extracted_text?.substring(0, 500)).join('\n')}
 
-ADDITIONAL CONTEXT:
-- Client story: ${JSON.stringify(ctx.clientStory || {})}
-- Absent parent: ${JSON.stringify(ctx.clientAbsentParent || {})}
+FOLLOW THIS EXACT FORMAT:
 
-FORMAT THE DECLARATION AS:
+DECLARACIÓN JURADA DE [MINOR FULL NAME IN CAPS]
 
-DECLARATION OF [MINOR FULL NAME]
+Yo, [MINOR FULL NAME IN CAPS], [age description], identificada/o con [document type from country], bajo pena de perjurio, declaro lo siguiente:
 
-I, [MINOR FULL NAME], declare under penalty of perjury under the laws of the United States of America and the State of Utah that the following is true and correct:
+I. DATOS PERSONALES
 
-1. My name is [name]. I am [age] years old...
-2. ...
-[Cover: identity, life in country of origin, abuse by father/mother, physical/emotional abuse, neglect, abandonment, arrival to US, current life, fear of return, desire to stay]
+Mi nombre completo es [FULL NAME IN CAPS]. Nací el [date] en [city, country]. Actualmente tengo [X] años y soy ciudadana/o de [country]. [How they entered the US and when].
 
-Write with sensitivity — this is a child's perspective. Make it emotionally impactful for the judge while maintaining factual accuracy.
+II. SITUACIÓN FAMILIAR
 
-I declare under penalty of perjury under the laws of the United States of America that the foregoing is true and correct.
+Soy hija/o de [FATHER NAME] y de [MOTHER NAME]. [Brief overview of the dysfunctional family situation based on the case data].
 
-Executed on [DATE]
+III. RELACIÓN CON MI MADRE
 
-_______________________
-[MINOR FULL NAME]
+[Detailed paragraph about the relationship with the mother — use the abuse_by_mother data, emotional abuse, negligence. Include specific incidents, dates, locations. Write with emotion from the minor's perspective.]
+
+IV. RELACIÓN CON MI PADRE
+
+[Detailed paragraph about the relationship with the father — use the abuse_by_father data, abandonment, neglect. Include specific incidents, dates, locations. Write with emotion from the minor's perspective.]
+
+V. RAZONES POR LAS QUE NO PUEDO REGRESAR A [COUNTRY]
+
+[Why the minor cannot return — no protection from either parent, abuse/neglect environment, no safe family networks. Request Utah's legal protection.]
+
+VI. SITUACIÓN ACTUAL
+
+[Current living situation with the guardian. Address, stability, how the guardian cares for them. End with the formal request for protective order/custody and SIJS special findings.]
+
+Declaro que todo lo escrito en esta declaración es veraz, correcto y reflejo de mi historia personal.
+
+Firmado en: [City, State]
+Fecha: [Date]
+
+
+
+_____________________________
+[MINOR FULL NAME IN CAPS]
+
+IMPORTANT:
+- Use [PENDING] for data you cannot find.
+- Output ONLY the declaration text.
+- Make sections III and IV the most detailed — these are the heart of the case.
+- If only one parent abused/abandoned, focus more on that parent and adapt the other section accordingly.
 `
   }
 
