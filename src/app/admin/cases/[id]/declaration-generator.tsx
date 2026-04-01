@@ -59,15 +59,43 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
     toast.success('Copiado al portapapeles')
   }
 
-  function downloadAsText(doc: GeneratedDoc) {
-    const blob = new Blob([doc.content], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `Declaracion-${doc.label.replace(/\s+/g, '_')}.txt`
-    a.click()
-    URL.revokeObjectURL(url)
-    toast.success('Archivo descargado')
+  async function downloadAsPDF(doc: GeneratedDoc) {
+    try {
+      const { default: jsPDF } = await import('jspdf')
+      const pdf = new jsPDF('p', 'mm', 'letter')
+      const pw = pdf.internal.pageSize.getWidth()
+      const ml = 25
+      const contentWidth = pw - ml - 25
+      let y = 25
+
+      // Title — first line of content or doc label
+      const lines = doc.content.split('\n')
+      const titleLine = lines[0]?.trim() || doc.label
+      pdf.setFont('helvetica', 'bold')
+      pdf.setFontSize(13)
+      const titleWrapped = pdf.splitTextToSize(titleLine, contentWidth)
+      titleWrapped.forEach((line: string) => {
+        pdf.text(line, pw / 2, y, { align: 'center' })
+        y += 6
+      })
+      y += 6
+
+      // Body
+      pdf.setFont('helvetica', 'normal')
+      pdf.setFontSize(11)
+      const bodyText = lines.slice(1).join('\n').trim()
+      const bodyLines = pdf.splitTextToSize(bodyText, contentWidth)
+      for (const line of bodyLines) {
+        if (y > 260) { pdf.addPage(); y = 25 }
+        pdf.text(line, ml, y)
+        y += 4.5
+      }
+
+      pdf.save(`${doc.label.replace(/\s+/g, '_')}.pdf`)
+      toast.success('PDF descargado')
+    } catch {
+      toast.error('Error al generar PDF')
+    }
   }
 
   const getDoc = (type: string, index: number) => docs.find(d => d.type === type && d.index === index)
@@ -89,7 +117,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
                 <Button size="sm" variant="outline" onClick={() => copyToClipboard(previewDoc.content)}>
                   <Copy className="w-3 h-3 mr-1" /> Copiar
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => downloadAsText(previewDoc)}>
+                <Button size="sm" variant="outline" onClick={() => downloadAsPDF(previewDoc)}>
                   <Download className="w-3 h-3 mr-1" /> Descargar
                 </Button>
                 <button onClick={() => setPreviewDoc(null)}
@@ -129,7 +157,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
             onGenerate={() => generate('petition_guardianship', i, `Petición ${name}`)}
             onPreview={() => setPreviewDoc(getDoc('petition_guardianship', i)!)}
             onCopy={() => copyToClipboard(getDoc('petition_guardianship', i)!.content)}
-            onDownload={() => downloadAsText(getDoc('petition_guardianship', i)!)}
+            onDownload={() => downloadAsPDF(getDoc('petition_guardianship', i)!)}
           />
         )
       })}
@@ -145,7 +173,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
         onGenerate={() => generate('tutor', 0, tutorName)}
         onPreview={() => setPreviewDoc(getDoc('tutor', 0)!)}
         onCopy={() => copyToClipboard(getDoc('tutor', 0)!.content)}
-        onDownload={() => downloadAsText(getDoc('tutor', 0)!)}
+        onDownload={() => downloadAsPDF(getDoc('tutor', 0)!)}
       />
 
       {/* Minor Declarations */}
@@ -164,7 +192,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
             onGenerate={() => generate('minor', i, name)}
             onPreview={() => setPreviewDoc(getDoc('minor', i)!)}
             onCopy={() => copyToClipboard(getDoc('minor', i)!.content)}
-            onDownload={() => downloadAsText(getDoc('minor', i)!)}
+            onDownload={() => downloadAsPDF(getDoc('minor', i)!)}
           />
         )
       })}
@@ -182,7 +210,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
           onGenerate={() => generate('witness', i, w.name)}
           onPreview={() => setPreviewDoc(getDoc('witness', i)!)}
           onCopy={() => copyToClipboard(getDoc('witness', i)!.content)}
-          onDownload={() => downloadAsText(getDoc('witness', i)!)}
+          onDownload={() => downloadAsPDF(getDoc('witness', i)!)}
         />
       ))}
 
