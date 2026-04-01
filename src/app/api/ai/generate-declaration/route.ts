@@ -309,43 +309,72 @@ IMPORTANT:
     return `${baseInstructions}\nERROR: No witness found at index ${index}. Available witnesses: ${witnesses.length}`
   }
 
-  return `${baseInstructions}
+  const absentParent = (ctx.clientAbsentParent || {}) as Record<string, string>
+  return `You are an expert immigration paralegal. Generate a SWORN AFFIDAVIT OF A WITNESS following this EXACT structure.
 
-GENERATE A SWORN DECLARATION (AFFIDAVIT) OF A WITNESS.
+Use ONLY the real data. Write in FIRST PERSON as the witness speaking. Use narrative paragraphs (NOT numbered). Each paragraph covers one aspect of the testimony.
 
 WITNESS: ${witness.name}
-RELATIONSHIP: ${witness.relationship}
-PHONE: ${witness.phone || 'N/A'}
+RELATIONSHIP TO FAMILY: ${witness.relationship}
 ADDRESS: ${witness.address || 'N/A'}
 WHAT THEY CAN TESTIFY: ${witness.can_testify}
 
-THIS DECLARATION IS IN SUPPORT OF: ${tutor?.full_name || clientName} (guardian) and their minor child(ren).
-
-GUARDIAN INFO:
-${JSON.stringify(tutor, null, 2)}
-
-MINOR(S) IN THE CASE:
-${ctx.allMinorStories.map((s, i) => {
+GUARDIAN/PARENT: ${tutor?.full_name || clientName} (${tutor?.relationship_to_minor || 'guardian'})
+ABSENT PARENT: ${absentParent.parent_name || '[PENDING]'}
+TUTOR DATA: ${JSON.stringify(tutor)}
+ABSENT PARENT DATA: ${JSON.stringify(absentParent)}
+CHILDREN: ${ctx.allMinorStories.map((s, i) => {
   const mb = (s.formData?.minorBasic || {}) as Record<string, string>
-  return `Child ${i + 1}: ${mb.full_name || 'Unknown'}`
-}).join('\n')}
+  return 'Child ' + (i + 1) + ': ' + (mb.full_name || 'Unknown')
+}).join(', ')}
+CLIENT STORY: ${JSON.stringify(ctx.clientStory || {})}
+DOCUMENTS: ${ctx.documents.filter(d => d.extracted_text).map(d => '[' + d.name + ']: ' + d.extracted_text?.substring(0, 300)).join('\n')}
 
-FORMAT THE DECLARATION AS:
+FOLLOW THIS EXACT FORMAT:
 
-DECLARATION OF [WITNESS FULL NAME]
+AFFIDAVIT OF WITNESS
+[WITNESS FULL NAME IN CAPS]
+[ID Type] No. [ID Number if available]
 
-I, [WITNESS FULL NAME], declare under penalty of perjury under the laws of the United States of America and the State of Utah that the following is true and correct:
+I, [WITNESS FULL NAME IN CAPS], an adult of [nationality] nationality, identified with [ID type and number], hereby declare under oath as follows:
 
-1. My name is [name]. I am [relationship] of [guardian name]...
-2. ...
-[Use the witness's testimony ("what they can testify") and expand it into a detailed, credible declaration. Include: how they know the family, what they witnessed regarding abuse/abandonment/neglect, the impact on the minor, and why reunification with the absent parent is not viable.]
+[Paragraph 1: Who I am and my relationship to the family. How I know them and for how long.]
 
-I declare under penalty of perjury under the laws of the United States of America that the foregoing is true and correct.
+[Paragraph 2: What I know about the relationship between the parent and the absent parent. The conflict, abuse, violence.]
 
-Executed on [DATE]
+[Paragraph 3: What I witnessed — specific incidents of psychological abuse, physical abuse, violent environment.]
 
-_______________________
-[WITNESS FULL NAME]
+[Paragraph 4: How the violence affected the child — exposed to arguments, shouting, emotionally harmful situations.]
+
+[Paragraph 5: How the parent decided to separate/leave to protect the child.]
+
+[Paragraph 6: After separation — the absent parent abandoned their role, no financial support, no emotional involvement.]
+
+[Paragraph 7: Vulnerable situation — forced to leave home, lost property, difficult conditions.]
+
+[Paragraph 8: Since separation — the parent has been sole caregiver, providing stability, protection, education.]
+
+[Paragraph 9: The child's achievements and character — good behavior, academic performance, maturity.]
+
+[Paragraph 10: The absent parent has no active presence — sporadic contact at best, no meaningful parental role.]
+
+[Paragraph 11: Reunification is not viable or safe due to history of violence, abandonment, lack of protection. Guardianship in favor of the parent is necessary and in the best interest of the child.]
+
+I declare that all statements made herein are true and correct, and I affirm this declaration under penalty of perjury in accordance with applicable law.
+
+Date: ___________________________
+
+___________________________
+[WITNESS FULL NAME IN CAPS]
+[ID Type and Number]
+Signature
+
+IMPORTANT:
+- Expand the witness's testimony into 10-12 detailed paragraphs.
+- Use what they said they can testify ("can_testify" field) as the BASE and expand it.
+- Add details from the case data that the witness would reasonably know.
+- Use [PENDING] for data you cannot find (like ID numbers).
+- Output ONLY the affidavit text.
 `
 }
 
