@@ -17,12 +17,14 @@ interface CaseContext {
   clientStory: Record<string, unknown> | null
   clientWitnesses: Record<string, unknown> | null
   clientAbsentParent: Record<string, unknown> | null
+  tutorGuardian: Record<string, unknown> | null
+  allMinorStories: { minorIndex: number; formData: Record<string, unknown>; status: string }[]
 }
 
 export async function buildCaseContext(caseId: string): Promise<CaseContext> {
   const supabase = createServiceClient()
 
-  const [caseRes, docsRes, storyRes, witnessRes, parentRes] = await Promise.all([
+  const [caseRes, docsRes, storyRes, witnessRes, parentRes, tutorRes, allStoriesRes] = await Promise.all([
     supabase
       .from('cases')
       .select('*, client:profiles(first_name, last_name, email, phone), service:service_catalog(name, slug)')
@@ -51,6 +53,20 @@ export async function buildCaseContext(caseId: string): Promise<CaseContext> {
       .eq('case_id', caseId)
       .eq('form_type', 'client_absent_parent')
       .single(),
+    // New: tutor_guardian (30 questions)
+    supabase
+      .from('case_form_submissions')
+      .select('form_data, status')
+      .eq('case_id', caseId)
+      .eq('form_type', 'tutor_guardian')
+      .single(),
+    // New: ALL client_story submissions (multiple children)
+    supabase
+      .from('case_form_submissions')
+      .select('form_data, status, minor_index')
+      .eq('case_id', caseId)
+      .eq('form_type', 'client_story')
+      .order('minor_index', { ascending: true }),
   ])
 
   const caseData = caseRes.data
@@ -74,6 +90,12 @@ export async function buildCaseContext(caseId: string): Promise<CaseContext> {
     clientStory: storyRes.data?.form_data || null,
     clientWitnesses: witnessRes.data?.form_data || null,
     clientAbsentParent: parentRes.data?.form_data || null,
+    tutorGuardian: tutorRes.data?.form_data || null,
+    allMinorStories: (allStoriesRes.data || []).map(s => ({
+      minorIndex: s.minor_index,
+      formData: s.form_data,
+      status: s.status,
+    })),
   }
 }
 

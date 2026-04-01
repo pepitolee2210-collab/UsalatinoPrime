@@ -25,6 +25,7 @@ import { APPOINTMENT_DOCUMENT_KEYS, DOCUMENT_CATEGORIES } from '@/lib/appointmen
 import { CaseChat } from './case-chat'
 import { ClientStoryReview } from './client-story-review'
 import { I589Review } from './i589-review'
+import { DeclarationGenerator } from './declaration-generator'
 import { uploadDirect } from '@/lib/upload-direct'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -396,6 +397,12 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               {(aiSubmissions || []).some((s: { form_type: string; status: string }) => s.form_type === 'i589_part_b1' && s.status === 'submitted') && (
                 <span className="w-2 h-2 rounded-full bg-yellow-500" />
               )}
+            </TabsTrigger>
+          )}
+          {isVisaJuvenil && (
+            <TabsTrigger value="declaraciones" className="flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-[#F2A900]" />
+              Declaraciones
             </TabsTrigger>
           )}
           {isVisaJuvenil && (
@@ -992,6 +999,21 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               submissions={(aiSubmissions || []).filter((s: { form_type: string }) =>
                 ['i589_part_b1', 'i589_part_b2', 'i589_part_c1', 'i589_part_c2'].includes(s.form_type)
               )}
+            />
+          </TabsContent>
+        )}
+
+        {isVisaJuvenil && (
+          <TabsContent value="declaraciones" className="mt-4">
+            <DeclarationGenerator
+              caseId={caseData.id}
+              clientName={`${caseData.client?.first_name || ''} ${caseData.client?.last_name || ''}`.trim()}
+              tutorData={(aiSubmissions || []).find((s: any) => s.form_type === 'tutor_guardian')?.form_data || null}
+              minorStories={(aiSubmissions || [])
+                .filter((s: any) => s.form_type === 'client_story')
+                .sort((a: any, b: any) => (a.minor_index || 0) - (b.minor_index || 0))
+                .map((s: any) => ({ minorIndex: s.minor_index || 0, formData: s.form_data }))
+              }
             />
           </TabsContent>
         )}
