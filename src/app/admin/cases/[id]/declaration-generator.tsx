@@ -20,6 +20,7 @@ interface GeneratedDoc {
   index: number
   label: string
   content: string
+  contentES?: string
 }
 
 export function DeclarationGenerator({ caseId, clientName, tutorData, minorStories }: DeclarationGeneratorProps) {
@@ -34,19 +35,29 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
     const key = `${type}-${index}`
     setGenerating(key)
     try {
-      const res = await fetch('/api/ai/generate-declaration', {
+      // Generate English
+      const resEN = await fetch('/api/ai/generate-declaration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ case_id: caseId, type, index }),
+        body: JSON.stringify({ case_id: caseId, type, index, lang: 'en' }),
       })
-      if (!res.ok) throw new Error()
-      const { declaration } = await res.json()
+      if (!resEN.ok) throw new Error()
+      const dataEN = await resEN.json()
+
+      // Generate Spanish
+      const resES = await fetch('/api/ai/generate-declaration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ case_id: caseId, type, index, lang: 'es' }),
+      })
+      if (!resES.ok) throw new Error()
+      const dataES = await resES.json()
 
       setDocs(prev => {
         const filtered = prev.filter(d => !(d.type === type && d.index === index))
-        return [...filtered, { type, index, label, content: declaration }]
+        return [...filtered, { type, index, label, content: dataEN.declaration, contentES: dataES.declaration }]
       })
-      toast.success(`Declaración de ${label} generada`)
+      toast.success(`${label} generado en inglés y español`)
     } catch {
       toast.error('Error al generar. Intente de nuevo.')
     } finally {
@@ -99,6 +110,14 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
   }
 
   const getDoc = (type: string, index: number) => docs.find(d => d.type === type && d.index === index)
+
+  function previewES(doc: GeneratedDoc) {
+    if (doc.contentES) setPreviewDoc({ ...doc, content: doc.contentES, label: doc.label + ' (Español)' })
+  }
+
+  function downloadES(doc: GeneratedDoc) {
+    if (doc.contentES) downloadAsPDF({ ...doc, content: doc.contentES, label: doc.label + '_ES' })
+  }
 
   return (
     <div className="space-y-4">
@@ -158,6 +177,8 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
             onPreview={() => setPreviewDoc(getDoc('petition_guardianship', i)!)}
             onCopy={() => copyToClipboard(getDoc('petition_guardianship', i)!.content)}
             onDownload={() => downloadAsPDF(getDoc('petition_guardianship', i)!)}
+            onPreviewES={() => previewES(getDoc('petition_guardianship', i)!)}
+            onDownloadES={() => downloadES(getDoc('petition_guardianship', i)!)}
           />
         )
       })}
@@ -174,6 +195,8 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
         onPreview={() => setPreviewDoc(getDoc('tutor', 0)!)}
         onCopy={() => copyToClipboard(getDoc('tutor', 0)!.content)}
         onDownload={() => downloadAsPDF(getDoc('tutor', 0)!)}
+        onPreviewES={() => previewES(getDoc('tutor', 0)!)}
+        onDownloadES={() => downloadES(getDoc('tutor', 0)!)}
       />
 
       {/* Minor Declarations */}
@@ -193,6 +216,8 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
             onPreview={() => setPreviewDoc(getDoc('minor', i)!)}
             onCopy={() => copyToClipboard(getDoc('minor', i)!.content)}
             onDownload={() => downloadAsPDF(getDoc('minor', i)!)}
+            onPreviewES={() => previewES(getDoc('minor', i)!)}
+            onDownloadES={() => downloadES(getDoc('minor', i)!)}
           />
         )
       })}
@@ -211,6 +236,8 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
           onPreview={() => setPreviewDoc(getDoc('witness', i)!)}
           onCopy={() => copyToClipboard(getDoc('witness', i)!.content)}
           onDownload={() => downloadAsPDF(getDoc('witness', i)!)}
+          onPreviewES={() => previewES(getDoc('witness', i)!)}
+          onDownloadES={() => downloadES(getDoc('witness', i)!)}
         />
       ))}
 
@@ -247,10 +274,10 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
   )
 }
 
-function DocCard({ icon, title, subtitle, color, generating, generated, onGenerate, onPreview, onCopy, onDownload }: {
+function DocCard({ icon, title, subtitle, color, generating, generated, onGenerate, onPreview, onPreviewES, onCopy, onDownload, onDownloadES }: {
   icon: React.ReactNode; title: string; subtitle: string; color: string
   generating: boolean; generated: boolean
-  onGenerate: () => void; onPreview: () => void; onCopy: () => void; onDownload: () => void
+  onGenerate: () => void; onPreview: () => void; onPreviewES?: () => void; onCopy: () => void; onDownload: () => void; onDownloadES?: () => void
 }) {
   const colorMap: Record<string, { bg: string; border: string; badge: string }> = {
     blue:    { bg: 'bg-blue-50',    border: 'border-blue-200',    badge: 'bg-blue-100 text-blue-700' },
@@ -279,11 +306,12 @@ function DocCard({ icon, title, subtitle, color, generating, generated, onGenera
             <span className="text-xs text-[#9a6500] font-medium">Henry está generando...</span>
           </div>
         ) : generated ? (
-          <div className="flex items-center gap-1.5">
-            <Badge className="bg-green-100 text-green-700">Generado</Badge>
-            <Button size="sm" variant="ghost" onClick={onPreview} title="Ver"><Eye className="w-3.5 h-3.5" /></Button>
-            <Button size="sm" variant="ghost" onClick={onCopy} title="Copiar"><Copy className="w-3.5 h-3.5" /></Button>
-            <Button size="sm" variant="ghost" onClick={onDownload} title="Descargar"><Download className="w-3.5 h-3.5" /></Button>
+          <div className="flex items-center gap-1 flex-wrap">
+            <Badge className="bg-green-100 text-green-700">✓</Badge>
+            <Button size="sm" variant="outline" onClick={onPreview} title="Ver EN"><Eye className="w-3 h-3 mr-1" />EN</Button>
+            {onPreviewES && <Button size="sm" variant="outline" onClick={onPreviewES} title="Ver ES"><Eye className="w-3 h-3 mr-1" />ES</Button>}
+            <Button size="sm" variant="ghost" onClick={onDownload} title="PDF EN"><Download className="w-3 h-3" /></Button>
+            {onDownloadES && <Button size="sm" variant="ghost" onClick={onDownloadES} title="PDF ES"><Download className="w-3 h-3" /></Button>}
           </div>
         ) : (
           <Button size="sm" className="bg-[#F2A900] hover:bg-[#D4940A] text-[#001020] font-bold"

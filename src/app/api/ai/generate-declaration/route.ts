@@ -323,10 +323,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
-  const { case_id, type, index = 0 } = await request.json() as {
+  const { case_id, type, index = 0, lang = 'en' } = await request.json() as {
     case_id: string
     type: DeclarationType
     index?: number
+    lang?: 'en' | 'es'
   }
 
   if (!case_id || !type) {
@@ -335,7 +336,11 @@ export async function POST(request: NextRequest) {
 
   // Build context
   const ctx = await buildCaseContext(case_id)
-  const prompt = buildDeclarationPrompt(type, ctx, index)
+  const basePrompt = buildDeclarationPrompt(type, ctx, index)
+  const langInstruction = lang === 'es'
+    ? '\n\nIMPORTANT: Generate the ENTIRE document in SPANISH. Translate all legal terms and content to Spanish. Keep the same structure and format but write everything in Spanish.'
+    : ''
+  const prompt = basePrompt + langInstruction
 
   try {
     const res = await fetch(
