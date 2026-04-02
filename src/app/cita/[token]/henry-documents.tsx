@@ -1,9 +1,6 @@
 'use client'
 
-import { useState } from 'react'
-import { Download, FileText, Loader2, CheckCircle, Users, User, Shield, BookOpen } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
+import { Download, FileText, CheckCircle, Users, User, Shield, BookOpen } from 'lucide-react'
 
 interface HenryDoc {
   id: string
@@ -75,28 +72,8 @@ const COLOR_MAP: Record<string, { bg: string; border: string; iconBg: string }> 
 }
 
 export function HenryDocuments({ token, documents }: { token: string; documents: HenryDoc[] }) {
-  const [downloading, setDownloading] = useState<string | null>(null)
-
-  async function handleDownload(doc: HenryDoc) {
-    setDownloading(doc.id)
-    try {
-      const res = await fetch(`/api/client-documents/download?token=${token}&document_id=${doc.id}`)
-      if (!res.ok) throw new Error()
-      const { url } = await res.json()
-      // Use <a> tag instead of window.open — works on iPhone/Safari
-      const a = document.createElement('a')
-      a.href = url
-      a.target = '_blank'
-      a.rel = 'noopener noreferrer'
-      a.setAttribute('download', doc.name)
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-    } catch {
-      toast.error('No se pudo descargar el documento')
-    } finally {
-      setDownloading(null)
-    }
+  function getDownloadUrl(docId: string) {
+    return `/api/client-documents/download?token=${token}&document_id=${docId}`
   }
 
   // Categorize documents
@@ -157,10 +134,10 @@ export function HenryDocuments({ token, documents }: { token: string; documents:
                         <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
                       </div>
                     </div>
-                    <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50 flex-shrink-0"
-                      disabled={downloading === doc.id} onClick={() => handleDownload(doc)}>
-                      {downloading === doc.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Download className="w-4 h-4 mr-1" /> Descargar</>}
-                    </Button>
+                    <a href={getDownloadUrl(doc.id)}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50">
+                      <Download className="w-4 h-4" /> Descargar
+                    </a>
                   </div>
                 ))}
 
@@ -178,10 +155,10 @@ export function HenryDocuments({ token, documents }: { token: string; documents:
                         <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
                       </div>
                     </div>
-                    <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50 flex-shrink-0"
-                      disabled={downloading === doc.id} onClick={() => handleDownload(doc)}>
-                      {downloading === doc.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Download className="w-4 h-4 mr-1" /> Descargar</>}
-                    </Button>
+                    <a href={getDownloadUrl(doc.id)}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50">
+                      <Download className="w-4 h-4" /> Descargar
+                    </a>
                   </div>
                 ))}
 
@@ -194,10 +171,10 @@ export function HenryDocuments({ token, documents }: { token: string; documents:
                         <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
                       </div>
                     </div>
-                    <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50 flex-shrink-0"
-                      disabled={downloading === doc.id} onClick={() => handleDownload(doc)}>
-                      {downloading === doc.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Download className="w-4 h-4 mr-1" /> Descargar</>}
-                    </Button>
+                    <a href={getDownloadUrl(doc.id)}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-600 border border-blue-200 rounded-md hover:bg-blue-50">
+                      <Download className="w-4 h-4" /> Descargar
+                    </a>
                   </div>
                 ))}
               </div>
