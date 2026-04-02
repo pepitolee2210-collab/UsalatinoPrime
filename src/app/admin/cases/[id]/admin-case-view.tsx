@@ -760,38 +760,43 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
                         <Badge className={cat.color + ' text-[10px]'}>{cat.label}</Badge>
                         {catDocs.length > 0 && <CheckCircle className="w-3.5 h-3.5 text-green-500" />}
                       </div>
-                      <label className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded-md cursor-pointer text-[10px] font-bold hover:bg-blue-700">
-                        <Upload className="w-3 h-3" /> Subir
-                        <input type="file" accept="application/pdf,.doc,.docx,.jpg,.jpeg,.png" multiple className="hidden"
-                          disabled={uploadingForClient}
-                          onChange={async (e) => {
-                            const files = Array.from(e.target.files || [])
-                            if (!files.length) return
-                            setUploadingForClient(true)
-                            try {
-                              for (const file of files) {
-                                const res = await fetch('/api/admin/client-documents', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ case_id: caseData.id, client_id: caseData.client_id, file_name: file.name, file_size: file.size, document_key: cat.key }),
-                                })
-                                if (!res.ok) throw new Error()
-                                const { token: uploadToken, filePath } = await res.json()
-                                const supabaseClient = createClient()
-                                await supabaseClient.storage.from('case-documents').uploadToSignedUrl(filePath, uploadToken, file)
-                                await fetch('/api/admin/client-documents', {
-                                  method: 'PATCH',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({ case_id: caseData.id, client_id: caseData.client_id, file_path: filePath, file_name: file.name, file_size: file.size, document_key: cat.key }),
-                                })
-                              }
-                              toast.success(`${files.length} archivo${files.length > 1 ? 's' : ''} subido${files.length > 1 ? 's' : ''}`)
-                              router.refresh()
-                            } catch { toast.error('Error al subir') }
-                            finally { setUploadingForClient(false); e.target.value = '' }
-                          }}
-                        />
-                      </label>
+                      <div className="flex gap-1">
+                        {['EN', 'ES'].map(lang => (
+                          <label key={lang} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md cursor-pointer text-[10px] font-bold ${lang === 'EN' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-amber-500 text-white hover:bg-amber-600'}`}>
+                            <Upload className="w-3 h-3" /> {lang}
+                            <input type="file" accept="application/pdf,.doc,.docx" multiple className="hidden"
+                              disabled={uploadingForClient}
+                              onChange={async (e) => {
+                                const files = Array.from(e.target.files || [])
+                                if (!files.length) return
+                                setUploadingForClient(true)
+                                const docKey = `${cat.key}_${lang.toLowerCase()}`
+                                try {
+                                  for (const file of files) {
+                                    const res = await fetch('/api/admin/client-documents', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ case_id: caseData.id, client_id: caseData.client_id, file_name: file.name, file_size: file.size, document_key: docKey }),
+                                    })
+                                    if (!res.ok) throw new Error()
+                                    const { token: uploadToken, filePath } = await res.json()
+                                    const supabaseClient = createClient()
+                                    await supabaseClient.storage.from('case-documents').uploadToSignedUrl(filePath, uploadToken, file)
+                                    await fetch('/api/admin/client-documents', {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ case_id: caseData.id, client_id: caseData.client_id, file_path: filePath, file_name: file.name, file_size: file.size, document_key: docKey }),
+                                    })
+                                  }
+                                  toast.success(`${lang} — ${files.length} archivo${files.length > 1 ? 's' : ''} subido${files.length > 1 ? 's' : ''}`)
+                                  router.refresh()
+                                } catch { toast.error('Error al subir') }
+                                finally { setUploadingForClient(false); e.target.value = '' }
+                              }}
+                            />
+                          </label>
+                        ))}
+                      </div>
                     </div>
                     {catDocs.map((doc: any) => (
                       <div key={doc.id} className="flex items-center justify-between py-1.5">
