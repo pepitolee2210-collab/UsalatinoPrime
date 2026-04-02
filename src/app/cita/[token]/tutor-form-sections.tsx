@@ -154,8 +154,41 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
         </div>
       </Section>
 
-      {/* Sección 3: Hechos de Maltrato */}
-      <Section title="Hechos de Maltrato" number={3}>
+      {/* Sección 2.5: Datos del Padre/Madre Ausente */}
+      <Section title="Datos del Padre/Madre Ausente" number={3}>
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
+          Estos datos son necesarios para generar los documentos legales (declaraciones juradas, carta de renuncia).
+        </div>
+        <div>
+          <FieldLabel>Nombre completo del padre/madre ausente</FieldLabel>
+          <TInput value={data.absent_parent_name as string || ''} onChange={v => upd('absent_parent_name', v)} placeholder="Nombre y apellidos completos" />
+        </div>
+        <div>
+          <FieldLabel>Nacionalidad del padre/madre ausente</FieldLabel>
+          <TInput value={data.absent_parent_nationality as string || ''} onChange={v => upd('absent_parent_nationality', v)} placeholder="Ej: Colombiana, Peruana, Mexicana..." />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <FieldLabel>Número de pasaporte del padre/madre ausente</FieldLabel>
+            <TInput value={data.absent_parent_passport as string || ''} onChange={v => upd('absent_parent_passport', v)} placeholder="Número de pasaporte (si lo tiene)" />
+          </div>
+          <div>
+            <FieldLabel>Número de ID/Cédula del padre/madre ausente</FieldLabel>
+            <TInput value={data.absent_parent_id as string || ''} onChange={v => upd('absent_parent_id', v)} placeholder="Cédula, DNI u otro documento" />
+          </div>
+        </div>
+        <div>
+          <FieldLabel>País de residencia actual del padre/madre ausente</FieldLabel>
+          <TInput value={data.absent_parent_country as string || ''} onChange={v => upd('absent_parent_country', v)} placeholder="Ej: Colombia, Ecuador, EE.UU..." />
+        </div>
+        <div>
+          <FieldLabel>Ciudad/Estado donde reside (si lo sabe)</FieldLabel>
+          <TInput value={data.absent_parent_location as string || ''} onChange={v => upd('absent_parent_location', v)} placeholder="Ej: Quito, Ecuador / Port St. Lucie, Florida" />
+        </div>
+      </Section>
+
+      {/* Sección 4: Hechos de Maltrato */}
+      <Section title="Hechos de Maltrato" number={4}>
         <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
           Esta sección es la más importante para el caso. Describa con el mayor detalle posible: nombres, fechas, lugares y circunstancias.
         </div>
@@ -207,7 +240,7 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
       </Section>
 
       {/* Sección 4: Mejor Interés */}
-      <Section title="Mejor Interés del Menor" number={4}>
+      <Section title="Mejor Interés del Menor" number={5}>
         <div>
           <FieldLabel required>19. ¿Existe riesgo para el menor de ser devuelto a su país de origen? Describa.</FieldLabel>
           <TAreaAI question="¿Existe riesgo para el menor de ser devuelto a su país de origen?" value={data.risk_if_returned as string || ''} onChange={v => upd('risk_if_returned', v)}
@@ -216,7 +249,7 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
       </Section>
 
       {/* Sección 5: Proceso Legal */}
-      <Section title="Proceso Legal" number={5}>
+      <Section title="Proceso Legal" number={6}>
         <div>
           <FieldLabel>20. ¿El guardián/custodio propuesto tiene antecedentes penales?</FieldLabel>
           <YesNo value={data.guardian_criminal_record as string || ''} onChange={v => upd('guardian_criminal_record', v)} />
@@ -241,7 +274,7 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
       </Section>
 
       {/* Testigos */}
-      <Section title="Testigos" number={6}>
+      <Section title="Testigos" number={7}>
         <p className="text-sm text-gray-500 mb-2">
           Personas que conocen su situación y pueden confirmar los hechos declarados.
         </p>
@@ -259,8 +292,12 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
               <div><FieldLabel>Relación</FieldLabel><TInput value={w.relationship} onChange={v => { const ws = [...witnesses]; ws[i] = { ...ws[i], relationship: v }; onChange({ ...data, witnesses: ws }) }} placeholder="Ej: Hermana, vecina" /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
+              <div><FieldLabel>Nacionalidad</FieldLabel><TInput value={(w as any).nationality || ''} onChange={v => { const ws = [...witnesses]; ws[i] = { ...ws[i], nationality: v } as any; onChange({ ...data, witnesses: ws }) }} placeholder="Ej: Colombiana" /></div>
+              <div><FieldLabel>Nº de ID / Cédula</FieldLabel><TInput value={(w as any).id_number || ''} onChange={v => { const ws = [...witnesses]; ws[i] = { ...ws[i], id_number: v } as any; onChange({ ...data, witnesses: ws }) }} placeholder="Número de documento" /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div><FieldLabel>Teléfono</FieldLabel><TInput value={w.phone} onChange={v => { const ws = [...witnesses]; ws[i] = { ...ws[i], phone: v }; onChange({ ...data, witnesses: ws }) }} placeholder="Número" /></div>
-              <div><FieldLabel>Dirección</FieldLabel><TInput value={w.address} onChange={v => { const ws = [...witnesses]; ws[i] = { ...ws[i], address: v }; onChange({ ...data, witnesses: ws }) }} placeholder="Ciudad, Estado" /></div>
+              <div><FieldLabel>Dirección</FieldLabel><TInput value={w.address} onChange={v => { const ws = [...witnesses]; ws[i] = { ...ws[i], address: v }; onChange({ ...data, witnesses: ws }) }} placeholder="Ciudad, Estado, País" /></div>
             </div>
             <div>
               <FieldLabel>¿Qué puede declarar?</FieldLabel>
