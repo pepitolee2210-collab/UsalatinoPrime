@@ -92,18 +92,6 @@ export function HenryDocuments({ token, documents }: { token: string; documents:
 
   const hasAnyDoc = documents.length > 0
 
-  if (!hasAnyDoc) {
-    return (
-      <div className="text-center py-12">
-        <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-        <h3 className="text-sm font-medium text-gray-600 mb-1">Sin documentos aún</h3>
-        <p className="text-xs text-gray-400">
-          Su consultor subirá documentos aquí cuando estén listos para usted.
-        </p>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-4">
       <div>
@@ -118,7 +106,6 @@ export function HenryDocuments({ token, documents }: { token: string; documents:
 
       {DOC_CATEGORIES.map(cat => {
         const catDocs = getCategoryDocs(cat)
-        if (catDocs.length === 0) return null
         const Icon = cat.icon
         const colors = COLOR_MAP[cat.color] || COLOR_MAP.blue
 
@@ -133,51 +120,33 @@ export function HenryDocuments({ token, documents }: { token: string; documents:
                 <p className="text-[10px] text-gray-500">{cat.subtitle}</p>
               </div>
             </div>
-            <div className="divide-y divide-gray-100">
-              {catDocs.map(doc => (
-                <div key={doc.id} className="flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
-                      {doc.file_size && <p className="text-[10px] text-gray-400">{(doc.file_size / 1024 / 1024).toFixed(1)} MB</p>}
+            {catDocs.length > 0 ? (
+              <div className="divide-y divide-gray-100">
+                {catDocs.map(doc => (
+                  <div key={doc.id} className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
+                        {doc.file_size && <p className="text-[10px] text-gray-400">{(doc.file_size / 1024 / 1024).toFixed(1)} MB</p>}
+                      </div>
                     </div>
+                    <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50 flex-shrink-0"
+                      disabled={downloading === doc.id} onClick={() => handleDownload(doc)}>
+                      {downloading === doc.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Download className="w-4 h-4 mr-1" /> Descargar</>}
+                    </Button>
                   </div>
-                  <Button size="sm" variant="outline" className="text-blue-600 border-blue-200 hover:bg-blue-50 flex-shrink-0"
-                    disabled={downloading === doc.id} onClick={() => handleDownload(doc)}>
-                    {downloading === doc.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Download className="w-4 h-4 mr-1" /> Descargar</>}
-                  </Button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="px-4 py-3 text-center">
+                <p className="text-xs text-gray-400">Pendiente — su consultor aún no ha subido este documento</p>
+              </div>
+            )}
           </div>
         )
       })}
 
-      {/* Uncategorized docs */}
-      {uncategorized.length > 0 && (
-        <div className="rounded-2xl border border-gray-200 overflow-hidden">
-          <div className="px-4 py-3 bg-gray-50 flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
-              <FileText className="w-4 h-4 text-gray-500" />
-            </div>
-            <p className="text-sm font-bold text-gray-900">Otros Documentos</p>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {uncategorized.map(doc => (
-              <div key={doc.id} className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
-                </div>
-                <Button size="sm" variant="outline" disabled={downloading === doc.id} onClick={() => handleDownload(doc)}>
-                  {downloading === doc.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Download className="w-4 h-4 mr-1" /> Descargar</>}
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
