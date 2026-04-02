@@ -379,7 +379,11 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
         <TabsList>
           <TabsTrigger value="form">Formulario</TabsTrigger>
           <TabsTrigger value="payments">Pagos ({payments.length})</TabsTrigger>
-          <TabsTrigger value="documents">Documentos ({documents.length})</TabsTrigger>
+          <TabsTrigger value="documents">Documentos ({documents.filter((d: any) => d.direction !== 'admin_to_client').length})</TabsTrigger>
+          <TabsTrigger value="client-docs" className="flex items-center gap-1.5">
+            <Download className="w-3.5 h-3.5 text-blue-600" />
+            Para el Cliente
+          </TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="notes">Notas</TabsTrigger>
           {isVisaJuvenil && (
@@ -733,7 +737,9 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               </Card>
             )}
 
-            {/* Documents FOR the client (admin_to_client) — segmented by 5 types */}
+          </div>
+
+          <TabsContent value="client-docs" className="mt-4">
             <div className="border-2 border-blue-200 rounded-xl bg-blue-50/30 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -823,7 +829,7 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               })}
 
             </div>
-          </div>
+          </TabsContent>
 
           {/* Rename Dialog */}
           <Dialog open={renamingDoc !== null} onOpenChange={(open) => { if (!open) setRenamingDoc(null) }}>
