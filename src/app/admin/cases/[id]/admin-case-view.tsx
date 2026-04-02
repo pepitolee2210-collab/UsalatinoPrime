@@ -375,16 +375,14 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
         </div>
       </div>
 
-      <Tabs defaultValue="form">
+      <Tabs defaultValue="payments">
         <TabsList>
-          <TabsTrigger value="form">Formulario</TabsTrigger>
           <TabsTrigger value="payments">Pagos ({payments.length})</TabsTrigger>
           <TabsTrigger value="documents">Documentos ({documents.filter((d: any) => d.direction !== 'admin_to_client').length})</TabsTrigger>
           <TabsTrigger value="client-docs" className="flex items-center gap-1.5">
             <Download className="w-3.5 h-3.5 text-blue-600" />
             Para el Cliente
           </TabsTrigger>
-          <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="notes">Notas</TabsTrigger>
           {isVisaJuvenil && (
             <TabsTrigger value="client-story" className="flex items-center gap-1.5">
@@ -410,27 +408,7 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               Declaraciones
             </TabsTrigger>
           )}
-          {isVisaJuvenil && (
-            <TabsTrigger value="chat-ia" className="flex items-center gap-1.5">
-              <MessageSquare className="w-3.5 h-3.5 text-[#F2A900]" />
-              Chat IA
-            </TabsTrigger>
-          )}
-          <TabsTrigger value="employee" className="flex items-center gap-1.5">
-            <Briefcase className="w-3.5 h-3.5 text-[#F2A900]" />
-            Empleado
-            {empAssignment?.submissions?.some(s => s.status === 'submitted') && (
-              <span className="w-2 h-2 rounded-full bg-purple-500" />
-            )}
-          </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="form" className="mt-4">
-          <CaseFormViewer
-            serviceSlug={caseData.service?.slug || ''}
-            formData={caseData.form_data || {}}
-          />
-        </TabsContent>
 
         <TabsContent value="payments" className="mt-4">
           <div className="space-y-4">
@@ -738,8 +716,9 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
             )}
 
           </div>
+        </TabsContent>
 
-          <TabsContent value="client-docs" className="mt-4">
+        <TabsContent value="client-docs" className="mt-4">
             <div className="border-2 border-blue-200 rounded-xl bg-blue-50/30 p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -829,7 +808,7 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               })}
 
             </div>
-          </TabsContent>
+        </TabsContent>
 
           {/* Rename Dialog */}
           <Dialog open={renamingDoc !== null} onOpenChange={(open) => { if (!open) setRenamingDoc(null) }}>
@@ -891,32 +870,6 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               )}
             </DialogContent>
           </Dialog>
-        </TabsContent>
-
-        <TabsContent value="timeline" className="mt-4">
-          <Card>
-            <CardContent className="p-6">
-              {activities.length > 0 ? (
-                <div className="space-y-4">
-                  {activities.map((a: any) => (
-                    <div key={a.id} className="flex gap-3">
-                      <div className="w-2 h-2 rounded-full bg-blue-500 mt-2 shrink-0" />
-                      <div>
-                        <p className="text-sm">{a.description}</p>
-                        <p className="text-xs text-gray-500">
-                          {a.actor?.first_name ? `${a.actor.first_name} ${a.actor.last_name} \u2014 ` : ''}
-                          {format(new Date(a.created_at), "d 'de' MMMM yyyy, h:mm a", { locale: es })}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">No hay actividad.</p>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="notes" className="mt-4">
           <Card>
@@ -1001,271 +954,9 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
           </TabsContent>
         )}
 
-        {isVisaJuvenil && (
-          <TabsContent value="chat-ia" className="mt-4">
-            <CaseChat
-              caseId={caseData.id}
-              clientName={`${caseData.client?.first_name || ''} ${caseData.client?.last_name || ''}`.trim()}
-              serviceName={caseData.service?.name || ''}
-              documentCount={documents.length}
-            />
-          </TabsContent>
-        )}
-        <TabsContent value="employee" className="mt-4 space-y-4">
-          {!empAssignment ? (
-            /* No assignment yet — show assign button */
-            <div className="text-center py-12">
-              <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                <Briefcase className="w-8 h-8 text-gray-300" />
-              </div>
-              <h4 className="font-semibold text-gray-700 mb-1">Sin asignación</h4>
-              <p className="text-sm text-gray-500 mb-4">Este caso no ha sido asignado a ningún empleado.</p>
-              <Dialog open={assignDialog} onOpenChange={setAssignDialog}>
-                <DialogTrigger asChild>
-                  <Button className="bg-[#002855]">
-                    <UserPlus className="w-4 h-4 mr-2" />
-                    Asignar a Empleado
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Asignar Caso a Empleado</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 pt-2">
-                    {employees.length > 0 ? (
-                      <div className="space-y-2">
-                        <Label>Empleado</Label>
-                        <Select value={assignEmployee} onValueChange={setAssignEmployee}>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            {employees.map(emp => (
-                              <SelectItem key={emp.id} value={emp.id}>
-                                {emp.first_name} {emp.last_name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    ) : (
-                      <p className="text-sm text-red-500">No hay empleados registrados en el sistema.</p>
-                    )}
-                    <div className="space-y-2">
-                      <Label>Instrucciones</Label>
-                      <Textarea
-                        value={assignTask}
-                        onChange={e => setAssignTask(e.target.value)}
-                        placeholder="Ej: Revisar documentos y redactar la proyección de apelación..."
-                        rows={4}
-                      />
-                    </div>
-                    <Button
-                      className="w-full bg-[#002855]"
-                      disabled={assignLoading || !assignEmployee || employees.length === 0}
-                      onClick={async () => {
-                        setAssignLoading(true)
-                        try {
-                          const res = await fetch('/api/admin/assign-employee', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              case_id: caseData.id,
-                              employee_id: assignEmployee,
-                              task_description: assignTask.trim() || null,
-                            }),
-                          })
-                          if (!res.ok) throw new Error('Error al asignar')
-                          const { assignment } = await res.json()
-                          const emp = employees.find(e => e.id === assignEmployee)
-                          setEmpAssignment({
-                            ...assignment,
-                            employee: { first_name: emp?.first_name || '', last_name: emp?.last_name || '' },
-                            submissions: [],
-                          })
-                          setAssignDialog(false)
-                          setAssignTask('')
-                          toast.success('Caso asignado al empleado')
-                        } catch {
-                          toast.error('Error al asignar caso')
-                        } finally {
-                          setAssignLoading(false)
-                        }
-                      }}
-                    >
-                      {assignLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                      Asignar
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-          ) : (
-            /* Has assignment — show status + submissions */
-            <div className="space-y-4">
-              {/* Assignment info */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">
-                      Asignado a: {empAssignment.employee.first_name} {empAssignment.employee.last_name}
-                    </CardTitle>
-                    <Badge className={
-                      empAssignment.status === 'approved' ? 'bg-green-100 text-green-700' :
-                      empAssignment.status === 'submitted' ? 'bg-purple-100 text-purple-700' :
-                      empAssignment.status === 'needs_correction' ? 'bg-red-100 text-red-700' :
-                      'bg-blue-100 text-blue-700'
-                    }>
-                      {empAssignment.status === 'assigned' && 'Asignado'}
-                      {empAssignment.status === 'in_progress' && 'En progreso'}
-                      {empAssignment.status === 'submitted' && 'Enviado'}
-                      {empAssignment.status === 'needs_correction' && 'Correcciones'}
-                      {empAssignment.status === 'approved' && 'Aprobado'}
-                      {empAssignment.status === 'completed' && 'Completado'}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {empAssignment.task_description && (
-                    <div className="p-3 bg-[#F2A900]/5 border border-[#F2A900]/20 rounded-xl mb-3">
-                      <p className="text-xs font-bold text-[#9a6500] mb-1">Instrucciones:</p>
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{empAssignment.task_description}</p>
-                    </div>
-                  )}
-                  <p className="text-xs text-gray-400">
-                    Asignado {new Date(empAssignment.assigned_at).toLocaleDateString('es-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Submissions */}
-              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">
-                Envíos del empleado ({empAssignment.submissions?.length || 0})
-              </h3>
-
-              {(!empAssignment.submissions || empAssignment.submissions.length === 0) ? (
-                <p className="text-sm text-gray-400 text-center py-6">El empleado aún no ha enviado trabajo.</p>
-              ) : (
-                empAssignment.submissions.map(sub => (
-                  <Card key={sub.id}>
-                    <CardContent className="pt-5 space-y-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="font-semibold text-gray-900 text-sm">{sub.title || 'Sin título'}</p>
-                          <p className="text-[11px] text-gray-400">
-                            {new Date(sub.created_at).toLocaleDateString('es-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                        <Badge className={
-                          sub.status === 'approved' ? 'bg-green-100 text-green-700' :
-                          sub.status === 'needs_correction' ? 'bg-red-100 text-red-700' :
-                          sub.status === 'submitted' ? 'bg-purple-100 text-purple-700' :
-                          'bg-gray-100 text-gray-600'
-                        }>
-                          {sub.status === 'submitted' && 'Pendiente de revisión'}
-                          {sub.status === 'approved' && 'Aprobado'}
-                          {sub.status === 'needs_correction' && 'Correcciones enviadas'}
-                          {sub.status === 'draft' && 'Borrador'}
-                        </Badge>
-                      </div>
-
-                      {sub.content && (
-                        <p className="text-sm text-gray-600 whitespace-pre-wrap bg-gray-50 p-3 rounded-xl border">{sub.content}</p>
-                      )}
-
-                      {sub.file_name && sub.file_url && (
-                        <a href={sub.file_url} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
-                          <FileText className="w-4 h-4" />
-                          {sub.file_name}
-                          <Download className="w-3.5 h-3.5" />
-                        </a>
-                      )}
-
-                      {sub.admin_notes && (
-                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                          <p className="text-xs font-bold text-amber-700 mb-1">Tu nota:</p>
-                          <p className="text-sm text-amber-800">{sub.admin_notes}</p>
-                        </div>
-                      )}
-
-                      {/* Review actions */}
-                      {sub.status === 'submitted' && (
-                        reviewingSubId === sub.id ? (
-                          <div className="space-y-2 pt-2 border-t">
-                            <Textarea
-                              value={subNotes}
-                              onChange={e => setSubNotes(e.target.value)}
-                              placeholder="Notas o correcciones para el empleado..."
-                              rows={3}
-                            />
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                className="bg-green-600 hover:bg-green-700"
-                                disabled={subActionLoading}
-                                onClick={async () => {
-                                  setSubActionLoading(true)
-                                  await updateSubStatus(sub.id, 'approved', subNotes)
-                                  setSubActionLoading(false)
-                                }}
-                              >
-                                <CheckCircle className="w-3 h-3 mr-1" /> Aprobar
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                disabled={subActionLoading || !subNotes.trim()}
-                                onClick={async () => {
-                                  setSubActionLoading(true)
-                                  await updateSubStatus(sub.id, 'needs_correction', subNotes)
-                                  setSubActionLoading(false)
-                                }}
-                              >
-                                <AlertCircle className="w-3 h-3 mr-1" /> Pedir correcciones
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => setReviewingSubId(null)}>
-                                Cancelar
-                              </Button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex gap-2 pt-2 border-t">
-                            <Button size="sm" variant="outline" onClick={() => { setReviewingSubId(sub.id); setSubNotes('') }}>
-                              <Eye className="w-3 h-3 mr-1" /> Revisar
-                            </Button>
-                          </div>
-                        )
-                      )}
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </div>
-          )}
-        </TabsContent>
       </Tabs>
     </div>
   )
 
-  async function updateSubStatus(subId: string, newStatus: string, notes: string) {
-    try {
-      const res = await fetch('/api/admin/review-submission', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ submission_id: subId, status: newStatus, admin_notes: notes.trim() || null }),
-      })
-      if (!res.ok) throw new Error()
-      setEmpAssignment(prev => prev ? {
-        ...prev,
-        status: newStatus === 'needs_correction' ? 'needs_correction' : prev.status,
-        submissions: prev.submissions.map(s =>
-          s.id === subId ? { ...s, status: newStatus, admin_notes: notes.trim() || s.admin_notes } : s
-        ),
-      } : null)
-      setReviewingSubId(null)
-      setSubNotes('')
-      toast.success(newStatus === 'approved' ? 'Aprobado' : 'Correcciones enviadas al empleado')
-    } catch {
-      toast.error('Error al actualizar')
-    }
-  }
 }
+
