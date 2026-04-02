@@ -23,6 +23,17 @@ export function CasesView({ cases }: CasesViewProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('table')
   const [search, setSearch] = useState('')
   const [activeLetter, setActiveLetter] = useState<string | null>(null)
+  const [activeService, setActiveService] = useState<string | null>(null)
+
+  // Get unique services from cases
+  const services = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const c of cases) {
+      const name = (c.service as any)?.name || 'Sin servicio'
+      map.set(name, (map.get(name) || 0) + 1)
+    }
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1])
+  }, [cases])
 
   useEffect(() => {
     const saved = localStorage.getItem('henryflow-cases-view')
@@ -71,15 +82,23 @@ export function CasesView({ cases }: CasesViewProps) {
       })
     }
 
+    if (activeService) {
+      result = result.filter(c => {
+        const name = (c.service as any)?.name || 'Sin servicio'
+        return name === activeService
+      })
+    }
+
     return result
-  }, [cases, search, activeLetter])
+  }, [cases, search, activeLetter, activeService])
 
   function clearFilters() {
     setSearch('')
     setActiveLetter(null)
+    setActiveService(null)
   }
 
-  const hasFilters = search.trim() || activeLetter
+  const hasFilters = search.trim() || activeLetter || activeService
 
   return (
     <div className="space-y-4">
@@ -108,6 +127,26 @@ export function CasesView({ cases }: CasesViewProps) {
             <LayoutGrid className="w-4 h-4 mr-1" /> Kanban
           </Button>
         </div>
+      </div>
+
+      {/* Service filter */}
+      <div className="flex flex-wrap gap-2">
+        {services.map(([name, count]) => {
+          const isActive = activeService === name
+          return (
+            <button key={name} onClick={() => setActiveService(isActive ? null : name)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 ${
+                isActive
+                  ? 'bg-[#F2A900] text-[#001020] shadow-sm'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:border-[#F2A900] hover:text-[#9a6500]'
+              }`}>
+              {name}
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                isActive ? 'bg-[#001020]/20 text-[#001020]' : 'bg-gray-100 text-gray-500'
+              }`}>{count}</span>
+            </button>
+          )
+        })}
       </div>
 
       {/* Alphabet filter */}
@@ -142,6 +181,9 @@ export function CasesView({ cases }: CasesViewProps) {
           </span>
           {activeLetter && (
             <Badge letter={activeLetter} onRemove={() => setActiveLetter(null)} />
+          )}
+          {activeService && (
+            <Badge letter={activeService} onRemove={() => setActiveService(null)} />
           )}
           {search.trim() && (
             <Badge letter={`"${search}"`} onRemove={() => setSearch('')} />
