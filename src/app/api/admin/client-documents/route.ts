@@ -50,7 +50,7 @@ export async function PATCH(req: NextRequest) {
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (profile?.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
-  const { case_id, client_id, file_path, file_name, file_size } = await req.json()
+  const { case_id, client_id, file_path, file_name, file_size, document_key } = await req.json()
   if (!case_id || !client_id || !file_path || !file_name) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest) {
     .insert({
       case_id,
       client_id,
-      document_key: 'henry_document',
+      document_key: document_key || 'henry_document',
       name: file_name,
       file_path,
       file_size: file_size || 0,
