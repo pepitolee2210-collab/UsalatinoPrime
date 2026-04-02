@@ -83,7 +83,15 @@ export function HenryDocuments({ token, documents }: { token: string; documents:
       const res = await fetch(`/api/client-documents/download?token=${token}&document_id=${doc.id}`)
       if (!res.ok) throw new Error()
       const { url } = await res.json()
-      window.open(url, '_blank')
+      // Use <a> tag instead of window.open — works on iPhone/Safari
+      const a = document.createElement('a')
+      a.href = url
+      a.target = '_blank'
+      a.rel = 'noopener noreferrer'
+      a.setAttribute('download', doc.name)
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
     } catch {
       toast.error('No se pudo descargar el documento')
     } finally {
