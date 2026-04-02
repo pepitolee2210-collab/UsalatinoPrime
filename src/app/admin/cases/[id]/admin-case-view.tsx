@@ -733,26 +733,113 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               </Card>
             )}
 
-            {/* Documents FOR the client (admin_to_client) */}
-            <Card className="border-blue-200 bg-blue-50/30">
+            {/* Documents FOR the client (admin_to_client) — segmented by 5 types */}
+            <div className="border-2 border-blue-200 rounded-xl bg-blue-50/30 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Download className="w-5 h-5 text-blue-800" />
+                  <span className="text-sm font-bold text-blue-800">Documentos para el Cliente</span>
+                  <Badge variant="outline" className="text-blue-700 border-blue-300">
+                    {documents.filter(d => d.direction === 'admin_to_client').length}
+                  </Badge>
+                </div>
+              </div>
+
+              {[
+                { key: 'parental_consent', label: '1. Carta de Renuncia', color: 'bg-blue-100 text-blue-700' },
+                { key: 'petition_guardianship', label: '2. Petición de Tutela', color: 'bg-emerald-100 text-emerald-700' },
+                { key: 'minor_declaration', label: '3. Declaración del Menor', color: 'bg-amber-100 text-amber-700' },
+                { key: 'tutor_declaration', label: '4. Declaración del Tutor', color: 'bg-indigo-100 text-indigo-700' },
+                { key: 'witness_declaration', label: '5. Declaración de Testigos', color: 'bg-purple-100 text-purple-700' },
+              ].map(cat => {
+                const catDocs = documents.filter((d: any) => d.direction === 'admin_to_client' && d.document_key?.includes(cat.key))
+                return (
+                  <div key={cat.key} className="bg-white rounded-xl border border-gray-200 p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Badge className={cat.color + ' text-[10px]'}>{cat.label}</Badge>
+                        {catDocs.length > 0 && <CheckCircle className="w-3.5 h-3.5 text-green-500" />}
+                      </div>
+                      <label className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white rounded-md cursor-pointer text-[10px] font-bold hover:bg-blue-700">
+                        <Upload className="w-3 h-3" /> Subir
+                        <input type="file" accept="application/pdf,.doc,.docx" className="hidden"
+                          disabled={uploadingForClient}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            setUploadingForClient(true)
+                            try {
+                              const res = await fetch('/api/admin/client-documents', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ case_id: caseData.id, client_id: caseData.client_id, file_name: file.name, file_size: file.size, document_key: cat.key }),
+                              })
+                              if (!res.ok) throw new Error()
+                              const { signedUrl, token: uploadToken, filePath } = await res.json()
+                              const supabaseClient = createClient()
+                              await supabaseClient.storage.from('case-documents').uploadToSignedUrl(filePath, uploadToken, file)
+                              await fetch('/api/admin/client-documents', {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ case_id: caseData.id, client_id: caseData.client_id, file_path: filePath, file_name: file.name, file_size: file.size, document_key: cat.key }),
+                              })
+                              toast.success(`${cat.label} subido para el cliente`)
+                              router.refresh()
+                            } catch { toast.error('Error al subir') }
+                            finally { setUploadingForClient(false); e.target.value = '' }
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {catDocs.map((doc: any) => (
+                      <div key={doc.id} className="flex items-center justify-between py-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <FileText className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                          <p className="text-xs font-medium text-gray-800 truncate">{doc.name}</p>
+                        </div>
+                        <div className="flex gap-0.5">
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={async () => {
+                            const { data } = await supabase.storage.from('case-documents').createSignedUrl(doc.file_path, 300)
+                            if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+                          }}><Download className="w-3 h-3" /></Button>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400" onClick={async () => {
+                            if (!confirm('¿Eliminar?')) return
+                            await fetch('/api/admin/upload-document', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ document_id: doc.id }) })
+                            toast.success('Eliminado'); router.refresh()
+                          }}><Trash2 className="w-3 h-3" /></Button>
+                        </div>
+                      </div>
+                    ))}
+                    {catDocs.length === 0 && <p className="text-[10px] text-gray-400 text-center">Sin documento</p>}
+                  </div>
+                )
+              })}
+
+              {/* Other uncategorized client docs */}
+              {documents.filter((d: any) => d.direction === 'admin_to_client' && !['parental_consent','petition_guardianship','minor_declaration','tutor_declaration','witness_declaration'].some(k => d.document_key?.includes(k))).length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-200 p-3">
+                  <Badge className="bg-gray-100 text-gray-600 text-[10px] mb-2">Otros</Badge>
+                  {documents.filter((d: any) => d.direction === 'admin_to_client' && !['parental_consent','petition_guardianship','minor_declaration','tutor_declaration','witness_declaration'].some(k => d.document_key?.includes(k))).map((doc: any) => (
+                    <div key={doc.id} className="flex items-center justify-between py-1.5">
+                      <p className="text-xs text-gray-800 truncate">{doc.name}</p>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={async () => {
+                        const { data } = await supabase.storage.from('case-documents').createSignedUrl(doc.file_path, 300)
+                        if (data?.signedUrl) window.open(data.signedUrl, '_blank')
+                      }}><Download className="w-3 h-3" /></Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Legacy upload button for general docs */}
+            <Card className="border-gray-200">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-blue-800">
-                    <Download className="w-4 h-4" />
-                    Documentos para el Cliente
-                    {documents.filter(d => d.direction === 'admin_to_client').length > 0 && (
-                      <Badge variant="outline" className="text-blue-700 border-blue-300 ml-1">
-                        {documents.filter(d => d.direction === 'admin_to_client').length}
-                      </Badge>
-                    )}
-                  </CardTitle>
-                  <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded-md cursor-pointer text-xs hover:bg-blue-700 transition-colors">
-                    {uploadingForClient ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Upload className="w-3.5 h-3.5" />
-                    )}
-                    {uploadingForClient ? 'Subiendo...' : 'Subir para el cliente'}
+                  <CardTitle className="text-sm font-semibold text-gray-700">Subir Otro Documento</CardTitle>
+                  <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-600 text-white rounded-md cursor-pointer text-xs hover:bg-gray-700">
+                    {uploadingForClient ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                    {uploadingForClient ? 'Subiendo...' : 'Subir'}
                     <input
                       type="file"
                       accept="application/pdf,.doc,.docx,.jpg,.jpeg,.png"
