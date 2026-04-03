@@ -19,12 +19,13 @@ interface CaseContext {
   clientAbsentParent: Record<string, unknown> | null
   tutorGuardian: Record<string, unknown> | null
   allMinorStories: { minorIndex: number; formData: Record<string, unknown>; status: string }[]
+  supplementaryData: Record<string, unknown> | null
 }
 
 export async function buildCaseContext(caseId: string): Promise<CaseContext> {
   const supabase = createServiceClient()
 
-  const [caseRes, docsRes, storyRes, witnessRes, parentRes, tutorRes, allStoriesRes] = await Promise.all([
+  const [caseRes, docsRes, storyRes, witnessRes, parentRes, tutorRes, allStoriesRes, supplementaryRes] = await Promise.all([
     supabase
       .from('cases')
       .select('*, client:profiles(first_name, last_name, email, phone), service:service_catalog(name, slug)')
@@ -67,6 +68,13 @@ export async function buildCaseContext(caseId: string): Promise<CaseContext> {
       .eq('case_id', caseId)
       .eq('form_type', 'client_story')
       .order('minor_index', { ascending: true }),
+    // Admin supplementary data (passport numbers, court info, etc.)
+    supabase
+      .from('case_form_submissions')
+      .select('form_data')
+      .eq('case_id', caseId)
+      .eq('form_type', 'admin_supplementary')
+      .single(),
   ])
 
   const caseData = caseRes.data
@@ -96,6 +104,7 @@ export async function buildCaseContext(caseId: string): Promise<CaseContext> {
       formData: s.form_data,
       status: s.status,
     })),
+    supplementaryData: supplementaryRes.data?.form_data || null,
   }
 }
 

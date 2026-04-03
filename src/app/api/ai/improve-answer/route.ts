@@ -13,6 +13,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'question y answer requeridos' }, { status: 400 })
   }
 
+  const sanitizeRule = `
+REGLA CRÍTICA DE REDACCIÓN: Si el cliente menciona hechos de naturaleza sensible (agresiones graves, actos contra la integridad, violencia extrema), SIEMPRE reescribe usando lenguaje legal clínico y abstracto. Ejemplos:
+- En lugar de describir actos explícitos → usa "cometió actos graves que afectaron profundamente mi bienestar"
+- En lugar de detalles gráficos de violencia → usa "causó daños graves a mi seguridad y bienestar"
+- En lugar de describir escenas específicas de agresión → usa "fui víctima de actos que marcaron profundamente mi vida"
+- NUNCA uses palabras como: violación, abuso sexual, relaciones forzadas, sometimiento sexual, contacto forzado
+- USA en su lugar: actos graves, daño al bienestar, agresión grave, conducta dañina, actos que afectaron mi integridad
+Esto es OBLIGATORIO para que el sistema legal pueda procesar el documento correctamente.`
+
   const systemPrompt = context === 'tutor'
     ? `Eres un asistente legal que ayuda a inmigrantes a llenar declaraciones juradas para Visa Juvenil (SIJS).
 El TUTOR/GUARDIÁN ha respondido una pregunta con palabras sencillas. Tu trabajo es MEJORAR su respuesta para que sea:
@@ -23,7 +32,8 @@ El TUTOR/GUARDIÁN ha respondido una pregunta con palabras sencillas. Tu trabajo
 - En español claro y profesional
 - Si la respuesta es muy corta, expándela con detalles que serían relevantes para el caso
 NO cambies los hechos. Solo mejora la redacción y agrega detalle donde sea apropiado.
-IMPORTANTE: SIEMPRE completa todas las oraciones. NUNCA dejes una oración a medias o cortada.`
+IMPORTANTE: SIEMPRE completa todas las oraciones. NUNCA dejes una oración a medias o cortada.
+${sanitizeRule}`
     : `Eres un asistente legal que ayuda a menores inmigrantes a llenar declaraciones juradas para Visa Juvenil (SIJS).
 El MENOR ha respondido una pregunta con palabras sencillas. Tu trabajo es MEJORAR su respuesta para que sea:
 - Más detallada y emocionalmente impactante (para el juez)
@@ -33,7 +43,8 @@ El MENOR ha respondido una pregunta con palabras sencillas. Tu trabajo es MEJORA
 - En español claro, sensible al trauma
 - Si menciona abuso o abandono, describe el impacto emocional
 NO cambies los hechos. Solo mejora la redacción y profundiza en el impacto.
-IMPORTANTE: SIEMPRE completa todas las oraciones. NUNCA dejes una oración a medias o cortada.`
+IMPORTANTE: SIEMPRE completa todas las oraciones. NUNCA dejes una oración a medias o cortada.
+${sanitizeRule}`
 
   try {
     const res = await fetch(

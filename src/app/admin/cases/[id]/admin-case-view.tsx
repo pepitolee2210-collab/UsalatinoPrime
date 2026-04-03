@@ -27,6 +27,7 @@ import { ClientStoryReview } from './client-story-review'
 import { I589Review } from './i589-review'
 import { DeclarationGenerator } from './declaration-generator'
 import { ParentalConsentGenerator } from './parental-consent-generator'
+import { SupplementaryDataForm } from './supplementary-data-form'
 import { uploadDirect } from '@/lib/upload-direct'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -932,6 +933,21 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
 
         {isVisaJuvenil && (
           <TabsContent value="declaraciones" className="mt-4 space-y-6">
+            {/* Supplementary data for filling [PENDING] fields */}
+            <SupplementaryDataForm
+              caseId={caseData.id}
+              tutorData={(aiSubmissions || []).find((s: any) => s.form_type === 'tutor_guardian')?.form_data || null}
+              minorStories={(aiSubmissions || [])
+                .filter((s: any) => s.form_type === 'client_story')
+                .sort((a: any, b: any) => (a.minor_index || 0) - (b.minor_index || 0))
+                .map((s: any) => ({ minorIndex: s.minor_index || 0, formData: s.form_data }))
+              }
+              absentParents={(aiSubmissions || [])
+                .filter((s: any) => s.form_type === 'client_absent_parent')
+                .map((s: any) => ({ formData: s.form_data }))
+              }
+            />
+
             {/* 1. Parental Consent */}
             <ParentalConsentGenerator
               caseId={caseData.id}

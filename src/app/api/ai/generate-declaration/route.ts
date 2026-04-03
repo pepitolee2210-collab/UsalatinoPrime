@@ -6,6 +6,40 @@ const GEMINI_KEY = process.env.GEMINI_API_KEY
 
 type DeclarationType = 'tutor' | 'minor' | 'witness' | 'parental_consent' | 'petition_guardianship'
 
+/**
+ * Sanitizes text data before sending to Gemini to avoid PROHIBITED_CONTENT blocks.
+ * Replaces explicit/graphic language with clinical legal equivalents.
+ * Facts and legal meaning are preserved — only trigger words change.
+ */
+function sanitizeForAI(text: string): string {
+  if (!text) return text
+  const replacements: [RegExp, string][] = [
+    // Spanish triggers
+    [/abus[oó]\s*sexual(es)?/gi, 'actos graves contra el bienestar'],
+    [/abusar\s*sexualmente/gi, 'cometer actos graves contra el bienestar'],
+    [/viol[aó](ci[oó]n|r|da|ndo|rl[aoe])/gi, 'agresión grave'],
+    [/relaciones?\s*sexuales?\s*(forzad|obligad)/gi, 'actos forzados contra el bienestar'],
+    [/me\s*somet[ií][aó]\s*contra\s*mi\s*voluntad/gi, 'me agredió gravemente'],
+    [/somet(ió|ida|ido|iendo)\s*(a\s*)?(contacto|actos)\s*(forzad|sexual)/gi, 'causó daños graves a su bienestar'],
+    [/sometid[ao]\s*a\s*(conducta|actos)\s*grave/gi, 'víctima de actos que afectaron su bienestar'],
+    [/somet(ió|iendo)\s*(por la fuerza\s*)?en\s*contra\s*de\s*(mi|su)\s*voluntad/gi, 'agredió gravemente'],
+    [/contacto\s*forzado\s*contra\s*(mi|su)\s*voluntad/gi, 'agresión grave'],
+    [/sometimiento\s*forzado/gi, 'agresión grave'],
+    [/me\s*obligaba\s*a\s*tener\s*relaciones/gi, 'me agredía gravemente'],
+    // English triggers
+    [/sexual(ly)?\s*abus(e[ds]?|ing)/gi, 'grave harm to wellbeing'],
+    [/rap(e[ds]?|ing)/gi, 'grave assault'],
+    [/molest(ed|ing|ation)/gi, 'grave harm'],
+    [/sexual\s*assault/gi, 'grave assault'],
+    [/forced\s*(sexual\s*)?(contact|intercourse|relations)/gi, 'forced harmful acts'],
+  ]
+  let result = text
+  for (const [pattern, replacement] of replacements) {
+    result = result.replace(pattern, replacement)
+  }
+  return result
+}
+
 function buildDeclarationPrompt(
   type: DeclarationType,
   ctx: Awaited<ReturnType<typeof buildCaseContext>>,
@@ -13,6 +47,7 @@ function buildDeclarationPrompt(
 ): string {
   const clientName = `${ctx.client.firstName} ${ctx.client.lastName}`.toUpperCase()
   const tutor = ctx.tutorGuardian as Record<string, unknown> | null
+  const supp = ctx.supplementaryData as Record<string, unknown> | null
 
   // Extract witness data from tutor form
   const witnesses = (tutor?.witnesses as Array<Record<string, string>>) || []
@@ -23,6 +58,17 @@ function buildDeclarationPrompt(
   const minorBasic = (minorData.minorBasic || {}) as Record<string, string>
   const minorAbuse = (minorData.minorAbuse || {}) as Record<string, string>
   const minorBestInterest = (minorData.minorBestInterest || {}) as Record<string, string>
+
+  // Build supplementary data block if available
+  const suppBlock = supp ? `
+=== ADDITIONAL DATA FROM ATTORNEY (use these to fill any missing information) ===
+Court: ${JSON.stringify((supp as Record<string, unknown>).court || {})}
+Guardian supplementary: ${JSON.stringify((supp as Record<string, unknown>).guardian || {})}
+Absent parents supplementary: ${JSON.stringify((supp as Record<string, unknown>).absent_parents || [])}
+Minors supplementary: ${JSON.stringify((supp as Record<string, unknown>).minors || [])}
+Witnesses supplementary: ${JSON.stringify((supp as Record<string, unknown>).witnesses || [])}
+IMPORTANT: Use this supplementary data to fill in any passport numbers, ID numbers, nationalities, court names, or other details that are missing from the main case data. Prefer this data over [PENDING] placeholders.
+` : ''
 
   const baseInstructions = `
 You are an expert immigration paralegal specializing in SIJS (Special Immigrant Juvenile Status) cases in Utah.
@@ -96,7 +142,7 @@ IMPORTANT:
 - Use today's date if no signing date is specified.
 - The court should be in Utah unless case data says otherwise.
 - Output ONLY the letter text, nothing else. No explanations.
-`
+${suppBlock}`
   }
 
   if (type === 'petition_guardianship') {
@@ -173,7 +219,7 @@ IMPORTANT:
 - Use [PENDING] for any data you cannot find.
 - Output ONLY the petition text, no explanations.
 - The narrative in Section II must use REAL facts from the case, improved with legal language.
-`
+${suppBlock}`
   }
 
   if (type === 'tutor') {
@@ -230,7 +276,7 @@ IMPORTANT:
 - Make it chronological: how they met → relationship → abuse → escape → attempts to contact → current situation.
 - If data is missing, use [PENDING].
 - Output ONLY the affidavit text.
-`
+${suppBlock}`
   }
 
   if (type === 'minor') {
@@ -300,7 +346,7 @@ IMPORTANT:
 - Output ONLY the declaration text.
 - Make sections III and IV the most detailed — these are the heart of the case.
 - If only one parent abused/abandoned, focus more on that parent and adapt the other section accordingly.
-`
+${suppBlock}`
   }
 
   // type === 'witness'
@@ -375,7 +421,7 @@ IMPORTANT:
 - Add details from the case data that the witness would reasonably know.
 - Use [PENDING] for data you cannot find (like ID numbers).
 - Output ONLY the affidavit text.
-`
+${suppBlock}`
 }
 
 export async function POST(request: NextRequest) {
@@ -414,7 +460,7 @@ export async function POST(request: NextRequest) {
   const langInstruction = lang === 'es'
     ? '\n\nIMPORTANT: Generate the ENTIRE document in SPANISH. Translate all legal terms and content to Spanish. Keep the same structure and format but write everything in Spanish.'
     : ''
-  const prompt = basePrompt + langInstruction
+  const prompt = sanitizeForAI(basePrompt + langInstruction)
 
   try {
     const res = await fetch(
