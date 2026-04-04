@@ -59,6 +59,23 @@ function buildDeclarationPrompt(
   const minorAbuse = (minorData.minorAbuse || {}) as Record<string, string>
   const minorBestInterest = (minorData.minorBestInterest || {}) as Record<string, string>
 
+  // Calculate correct age from DOB
+  function calcAge(dob: string): number {
+    if (!dob) return 0
+    const birth = new Date(dob)
+    const now = new Date()
+    let age = now.getFullYear() - birth.getFullYear()
+    const m = now.getMonth() - birth.getMonth()
+    if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--
+    return age
+  }
+  const minorAge = calcAge(minorBasic.dob)
+  const minorAgeStr = minorAge > 0 ? `${minorAge} years old (DOB: ${minorBasic.dob})` : ''
+
+  // Determine which absent parent belongs to THIS minor based on children array
+  const childrenArr = (minorData.children as Array<Record<string, string>>) || []
+  const hasAnotherFather = minorData.has_another_father
+
   // Build supplementary data block if available
   const suppBlock = supp ? `
 === ADDITIONAL DATA FROM ATTORNEY (use these to fill any missing information) ===
@@ -85,8 +102,8 @@ CRITICAL RULES:
 `
 
   if (type === 'parental_consent') {
-    // Get absent parent data
-    const absentParent = (ctx.clientAbsentParent || {}) as Record<string, string>
+    // Get absent parent for THIS specific child
+    const absentParent = (ctx.allAbsentParents[index] || ctx.clientAbsentParent || {}) as Record<string, string>
     const parentName = absentParent.parent_name || tutor?.partner_name as string || '[PARENT NAME]'
     const parentRelation = absentParent.parent_relationship === 'padre' ? 'father' : 'mother'
     const childPronoun = parentRelation === 'father' ? 'daughter' : 'son'
@@ -140,13 +157,13 @@ IMPORTANT:
 - If you find a passport number in the documents or forms, USE IT.
 - If you cannot find a specific piece of data, use [PENDING] as placeholder.
 - Use today's date if no signing date is specified.
-- The court should be in Utah unless case data says otherwise.
+- Use the court name from the supplementary data if provided. Do NOT default to Utah.
 - Output ONLY the letter text, nothing else. No explanations.
 ${suppBlock}`
   }
 
   if (type === 'petition_guardianship') {
-    const absentParent = (ctx.clientAbsentParent || {}) as Record<string, string>
+    const absentParent = (ctx.allAbsentParents[index] || ctx.clientAbsentParent || {}) as Record<string, string>
 
     return `You are an expert immigration paralegal. Generate a PETITION FOR TEMPORARY GUARDIANSHIP.
 
@@ -201,24 +218,42 @@ _______________________________
 [GUARDIAN FULL NAME IN CAPS]
 Petitioner
 
-=== CASE DATA TO USE ===
-Guardian/Tutor data: ${JSON.stringify(tutor)}
+=== CASE DATA FOR THIS SPECIFIC CHILD ===
+THIS PETITION IS ONLY FOR: ${minorBasic.full_name || 'Unknown'}, Age: ${minorAgeStr}
+
+THIS child's form data ONLY:
+Basic Info: ${JSON.stringify(minorBasic)}
+Abuse/Neglect (from THIS child's form): ${JSON.stringify(minorAbuse)}
+Best Interest: ${JSON.stringify(minorBestInterest)}
+
+Guardian/Tutor name and address: ${tutor?.full_name || clientName}, ${tutor?.full_address || ''}, Relationship: ${tutor?.relationship_to_minor || 'Mother'}
+Guardian country of birth: ${tutor?.country_of_birth || ''}
+Guardian journey to US: ${tutor?.journey_to_us || ''}
+Guardian hardships: ${tutor?.hardships || ''}
+Guardian how caring children: ${tutor?.how_caring_children || ''}
+Guardian current situation: ${tutor?.current_situation || ''}
+Guardian caretaker in country: ${tutor?.caretaker_in_country || ''}
+Why this child cannot reunify: ${tutor?.why_cannot_reunify || ''}
+Risk if returned: ${tutor?.risk_if_returned || ''}
+
 Absent parent data: ${JSON.stringify(absentParent)}
-Children:
-${ctx.allMinorStories.map((s, i) => {
-  const mb = (s.formData?.minorBasic || {}) as Record<string, string>
-  const ma = (s.formData?.minorAbuse || {}) as Record<string, string>
-  const mbi = (s.formData?.minorBestInterest || {}) as Record<string, string>
-  return `Child ${i + 1}: ${JSON.stringify({ basic: mb, abuse: ma, bestInterest: mbi })}`
-}).join('\n')}
-Client story: ${JSON.stringify(ctx.clientStory || {})}
 Documents extracted text: ${ctx.documents.filter(d => d.extracted_text).map(d => `[${d.name}]: ${d.extracted_text?.substring(0, 500)}`).join('\n')}
 
-IMPORTANT:
-- Generate for child index ${index} (or first child if only one).
+The guardian also has these other children (mention them ONLY if relevant, do NOT mix their stories):
+${ctx.allMinorStories.filter((_, i) => i !== index).map((s) => {
+  const mb = (s.formData?.minorBasic || {}) as Record<string, string>
+  return `Sibling: ${mb.full_name || 'Unknown'}, DOB: ${mb.dob || 'Unknown'}`
+}).join('\n')}
+
+CRITICAL RULES:
+- This petition is EXCLUSIVELY about ${minorBasic.full_name || 'this child'}. Do NOT include abuse stories or details from OTHER children's forms.
+- Use ONLY the abuse/neglect data from THIS child's form above.
+- The father of THIS child may be different from the father of siblings. Do NOT confuse them.
+- Current age is ${minorAgeStr}. Use this exact age, do NOT calculate differently.
 - Use [PENDING] for any data you cannot find.
 - Output ONLY the petition text, no explanations.
-- The narrative in Section II must use REAL facts from the case, improved with legal language.
+- The narrative in Section II must use REAL facts from THIS child's form, improved with legal language.
+- CRITICAL WRITING RULE: When describing harmful acts, use ONLY abstract legal language such as "acts that gravely affected the minor's wellbeing". Do NOT elaborate or specify the nature of the acts. Focus on EMOTIONAL IMPACT and LEGAL CONSEQUENCES, not on describing events in detail.
 ${suppBlock}`
   }
 
@@ -234,11 +269,14 @@ RELATIONSHIP: ${tutor?.relationship_to_minor || 'Mother/Guardian'}
 ALL TUTOR DATA (23 questions): ${JSON.stringify(tutor)}
 ABSENT PARENT DATA: ${JSON.stringify(absentParent)}
 CLIENT STORY: ${JSON.stringify(ctx.clientStory || {})}
-CHILDREN: ${ctx.allMinorStories.map((s, i) => {
+CHILDREN (each has a DIFFERENT father — do NOT mix their stories):
+${ctx.allMinorStories.map((s, i) => {
   const mb = (s.formData?.minorBasic || {}) as Record<string, string>
   const ma = (s.formData?.minorAbuse || {}) as Record<string, string>
-  return 'Child ' + (i + 1) + ': ' + JSON.stringify({ basic: mb, abuse: ma })
+  const age = calcAge(mb.dob)
+  return 'Child ' + (i + 1) + ': ' + mb.full_name + ', Age: ' + age + ' years old, DOB: ' + mb.dob + '\n  Abuse data: ' + JSON.stringify(ma)
 }).join('\n')}
+${supp && (supp as Record<string, unknown>).additional_children ? `Additional children: ${JSON.stringify((supp as Record<string, unknown>).additional_children)}` : ''}
 DOCUMENTS: ${ctx.documents.filter(d => d.extracted_text).map(d => '[' + d.name + ']: ' + d.extracted_text?.substring(0, 500)).join('\n')}
 
 FOLLOW THIS EXACT FORMAT:
@@ -274,32 +312,42 @@ IMPORTANT:
 - Each paragraph should be ONE specific fact or event.
 - Use the REAL story from the forms — dates, places, incidents.
 - Make it chronological: how they met → relationship → abuse → escape → attempts to contact → current situation.
+- MENTION ALL CHILDREN including any additional children listed above. The declarant has ALL these children.
+- Each child has a DIFFERENT biological father. Clearly distinguish which father did what to which child. Do NOT mix their stories.
+- Use the CORRECT ages calculated from each child's DOB and today's date.
 - If data is missing, use [PENDING].
 - Output ONLY the affidavit text.
+- CRITICAL WRITING RULE: When describing harmful acts against any child, use ONLY abstract legal language such as "committed acts that gravely affected the child's wellbeing" or "caused grave harm". Do NOT elaborate, describe, or specify the nature of harmful acts. Focus on EMOTIONAL IMPACT and LEGAL CONSEQUENCES only.
 ${suppBlock}`
   }
 
   if (type === 'minor') {
     const minorName = minorBasic.full_name || 'the minor'
-    const absentParent = (ctx.clientAbsentParent || {}) as Record<string, string>
+    const absentParent = (ctx.allAbsentParents[index] || ctx.clientAbsentParent || {}) as Record<string, string>
     return `You are an expert immigration paralegal. Generate a SWORN DECLARATION OF THE MINOR following this EXACT structure.
 
 Use ONLY the real data provided. Write in FIRST PERSON as the minor speaking. Be emotionally impactful for the judge while maintaining factual accuracy. Improve simple words into professional legal language WITHOUT changing the facts.
 
 MINOR: ${minorName}
 DOB: ${minorBasic.dob || 'Unknown'}
+CURRENT AGE: ${minorAgeStr}
 COUNTRY: ${minorBasic.country || 'Unknown'}
 
-MINOR'S RESPONSES (24-question form):
+THIS MINOR'S FORM RESPONSES ONLY (24-question form):
 Basic Info: ${JSON.stringify(minorBasic)}
 Abuse/Neglect: ${JSON.stringify(minorAbuse)}
 Best Interest: ${JSON.stringify(minorBestInterest)}
 
 GUARDIAN: ${tutor?.full_name || clientName} (${tutor?.relationship_to_minor || 'guardian'})
-GUARDIAN DATA: ${JSON.stringify(tutor)}
-ABSENT PARENT: ${JSON.stringify(absentParent)}
-CLIENT STORY: ${JSON.stringify(ctx.clientStory || {})}
+GUARDIAN ADDRESS: ${tutor?.full_address || ''}
+ABSENT PARENT FOR THIS CHILD: ${JSON.stringify(absentParent)}
 DOCUMENTS: ${ctx.documents.filter(d => d.extracted_text).map(d => '[' + d.name + ']: ' + d.extracted_text?.substring(0, 500)).join('\n')}
+
+The guardian has other children too (mention ONLY if the minor references siblings):
+${ctx.allMinorStories.filter((_, i) => i !== index).map((s) => {
+  const mb = (s.formData?.minorBasic || {}) as Record<string, string>
+  return `Sibling: ${mb.full_name || 'Unknown'}`
+}).join(', ')}
 
 FOLLOW THIS EXACT FORMAT:
 
@@ -342,10 +390,15 @@ _____________________________
 [MINOR FULL NAME IN CAPS]
 
 IMPORTANT:
+- This declaration is EXCLUSIVELY for ${minorName}. Use ONLY data from THIS minor's form above.
+- Do NOT include stories, abuse details, or facts from other children's forms.
+- The father of THIS child may be different from fathers of siblings. Use ONLY the absent parent data provided above.
+- Current age is ${minorAgeStr}. Use this EXACT age.
 - Use [PENDING] for data you cannot find.
 - Output ONLY the declaration text.
 - Make sections III and IV the most detailed — these are the heart of the case.
 - If only one parent abused/abandoned, focus more on that parent and adapt the other section accordingly.
+- CRITICAL WRITING RULE: When describing harmful acts against the minor, use ONLY abstract legal language such as "actos que afectaron gravemente mi bienestar" or "daño grave a mi persona". Do NOT elaborate, describe, or specify the nature of the acts. Keep the description of harmful events brief and abstract. Focus on the EMOTIONAL IMPACT and CONSEQUENCES rather than describing what happened. This is required for proper legal processing.
 ${suppBlock}`
   }
 
@@ -474,6 +527,12 @@ export async function POST(request: NextRequest) {
             temperature: 0.7,
             maxOutputTokens: 8192,
           },
+          safetySettings: [
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+          ],
         }),
       }
     )
@@ -485,9 +544,21 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await res.json()
+
+    // Check for block reason
+    const blockReason = data.promptFeedback?.blockReason
+    const finishReason = data.candidates?.[0]?.finishReason
+    if (blockReason || finishReason === 'SAFETY') {
+      console.error('Gemini BLOCKED:', JSON.stringify({ blockReason, finishReason, safetyRatings: data.candidates?.[0]?.safetyRatings || data.promptFeedback?.safetyRatings }))
+      return NextResponse.json({
+        error: `Contenido bloqueado por filtro de seguridad (${blockReason || finishReason}). Contacte al administrador.`
+      }, { status: 500 })
+    }
+
     const declaration = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
 
     if (!declaration) {
+      console.error('Gemini empty response:', JSON.stringify(data))
       return NextResponse.json({ error: 'Sin respuesta de IA' }, { status: 500 })
     }
 
@@ -499,6 +570,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (err) {
     console.error('AI error:', err)
-    return NextResponse.json({ error: 'Error de conexión con IA' }, { status: 500 })
+    return NextResponse.json({ error: `Error: ${err instanceof Error ? err.message : String(err)}` }, { status: 500 })
   }
 }

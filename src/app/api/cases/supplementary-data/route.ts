@@ -54,10 +54,22 @@ export async function POST(req: NextRequest) {
       .eq('id', existing.id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   } else {
+    // Get client_id from the case (required column)
+    const { data: caseData } = await supabase
+      .from('cases')
+      .select('client_id')
+      .eq('id', case_id)
+      .single()
+
+    if (!caseData?.client_id) {
+      return NextResponse.json({ error: 'Caso no encontrado' }, { status: 404 })
+    }
+
     const { error } = await supabase
       .from('case_form_submissions')
       .insert({
         case_id,
+        client_id: caseData.client_id,
         form_type: 'admin_supplementary',
         form_data: data,
         status: 'submitted',

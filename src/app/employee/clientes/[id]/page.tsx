@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { redirect, notFound } from 'next/navigation'
 import { EmployeeClientDetail } from './employee-client-detail'
 
@@ -25,8 +26,11 @@ export default async function EmployeeClientDetailPage({ params }: { params: Pro
 
   if (!client) notFound()
 
+  // Use service client for case data (employee role already verified above)
+  const service = createServiceClient()
+
   // Get cases, documents, and form submissions
-  const { data: cases } = await supabase
+  const { data: cases } = await service
     .from('cases')
     .select('id, case_number, service:service_catalog(name)')
     .eq('client_id', id)
@@ -36,11 +40,11 @@ export default async function EmployeeClientDetailPage({ params }: { params: Pro
 
   const [docsRes, formsRes] = await Promise.all([
     caseIds.length > 0
-      ? supabase.from('documents').select('id, case_id, document_key, name, file_size, file_path, created_at')
+      ? service.from('documents').select('id, case_id, document_key, name, file_size, file_path, created_at')
           .in('case_id', caseIds).order('created_at', { ascending: false })
       : Promise.resolve({ data: [] }),
     caseIds.length > 0
-      ? supabase.from('case_form_submissions').select('form_type, form_data, status, updated_at, case_id, minor_index')
+      ? service.from('case_form_submissions').select('form_type, form_data, status, updated_at, case_id, minor_index')
           .in('case_id', caseIds).order('updated_at', { ascending: false })
       : Promise.resolve({ data: [] }),
   ])

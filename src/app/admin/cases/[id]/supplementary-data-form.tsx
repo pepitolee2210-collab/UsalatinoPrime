@@ -13,12 +13,11 @@ interface SupplementaryDataFormProps {
 }
 
 interface SupplementaryData {
-  court: { name: string; location: string }
   signing_date: string
-  guardian: { passport: string; id_number: string; immigration_status: string; date_of_birth: string }
-  absent_parents: { name: string; nationality: string; passport: string; id_number: string; country: string }[]
-  minors: { name: string; nationality: string; arrival_date: string; birth_city: string; id_type: string; id_number: string }[]
-  witnesses: { name: string; nationality: string; id_type: string; id_number: string }[]
+  guardian: { date_of_birth: string }
+  absent_parents: { name: string; nationality: string; passport: string }[]
+  minors: { name: string; birth_city: string; id_type: string; id_number: string }[]
+  witnesses: { name: string; id_type: string; id_number: string }[]
 }
 
 function emptyData(
@@ -28,19 +27,18 @@ function emptyData(
 ): SupplementaryData {
   const witnesses = ((tutorData?.witnesses as Array<Record<string, string>>) || []).filter(w => w.name?.trim())
   return {
-    court: { name: '', location: '' },
     signing_date: '',
-    guardian: { passport: '', id_number: '', immigration_status: '', date_of_birth: '' },
+    guardian: { date_of_birth: '' },
     absent_parents: absentParents.map(ap => ({
       name: (ap.formData as Record<string, string>)?.parent_name || '',
-      nationality: '', passport: '', id_number: '', country: '',
+      nationality: '', passport: '',
     })),
     minors: minorStories.map(s => {
       const mb = (s.formData?.minorBasic || {}) as Record<string, string>
-      return { name: mb.full_name || '', nationality: '', arrival_date: '', birth_city: '', id_type: '', id_number: '' }
+      return { name: mb.full_name || '', birth_city: '', id_type: '', id_number: '' }
     }),
     witnesses: witnesses.map(w => ({
-      name: w.name || '', nationality: '', id_type: '', id_number: '',
+      name: w.name || '', id_type: '', id_number: '',
     })),
   }
 }
@@ -81,7 +79,6 @@ export function SupplementaryDataForm({ caseId, tutorData, minorStories, absentP
           const base = emptyData(tutorData, minorStories, absentParents)
           const saved = json.data as Partial<SupplementaryData>
           setData({
-            court: { ...base.court, ...saved.court },
             signing_date: saved.signing_date || base.signing_date,
             guardian: { ...base.guardian, ...saved.guardian },
             absent_parents: base.absent_parents.map((ap, i) => ({
@@ -126,10 +123,10 @@ export function SupplementaryDataForm({ caseId, tutorData, minorStories, absentP
   }
 
   const hasEmptyFields = !data.guardian.date_of_birth ||
+    !data.signing_date ||
     data.absent_parents.some(p => !p.passport || !p.nationality) ||
-    data.minors.some(m => !m.birth_city || !m.id_number) ||
-    data.witnesses.some(w => !w.id_number) ||
-    !data.signing_date
+    data.minors.some(m => !m.birth_city) ||
+    data.witnesses.some(w => !w.id_number)
 
   if (!loaded) return null
 
@@ -141,7 +138,7 @@ export function SupplementaryDataForm({ caseId, tutorData, minorStories, absentP
       >
         <div className="flex items-center gap-2">
           <AlertCircle className="w-4 h-4 text-amber-600" />
-          <span className="text-sm font-bold text-gray-900">Datos Complementarios</span>
+          <span className="text-sm font-bold text-gray-900">Datos Complementarios para Documentos</span>
           {hasEmptyFields && (
             <span className="text-[10px] bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full font-medium">
               Campos por llenar
@@ -154,39 +151,18 @@ export function SupplementaryDataForm({ caseId, tutorData, minorStories, absentP
       {open && (
         <div className="px-4 pb-4 space-y-5">
           <p className="text-xs text-gray-500">
-            Complete estos datos para eliminar los [PENDING] de los documentos generados.
+            Llene estos datos para eliminar los [PENDING] de los documentos generados por la IA.
           </p>
 
-          {/* Court + Signing Date */}
-          <Section title="Corte / Tribunal y Fecha">
-            <div className="grid grid-cols-3 gap-3">
-              <Input label="Nombre del Tribunal" value={data.court.name}
-                onChange={v => setData(d => ({ ...d, court: { ...d.court, name: v } }))}
-                placeholder="Juvenile Court of the State of Tennessee" />
-              <Input label="Ubicación" value={data.court.location}
-                onChange={v => setData(d => ({ ...d, court: { ...d.court, location: v } }))}
-                placeholder="Jackson, Madison County" />
-              <Input label="Fecha de Firma" value={data.signing_date}
+          {/* General + Guardian */}
+          <Section title={`General y Tutor — ${tutorName}`}>
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="Fecha de Firma de Documentos" value={data.signing_date}
                 onChange={v => setData(d => ({ ...d, signing_date: v }))}
                 placeholder="Ej: 2 de abril de 2026" />
-            </div>
-          </Section>
-
-          {/* Guardian */}
-          <Section title={`Tutor/Guardián — ${tutorName}`}>
-            <div className="grid grid-cols-2 gap-3">
-              <Input label="Pasaporte No." value={data.guardian.passport}
-                onChange={v => setData(d => ({ ...d, guardian: { ...d.guardian, passport: v } }))}
-                placeholder="Número de pasaporte" />
-              <Input label="Cédula / ID" value={data.guardian.id_number}
-                onChange={v => setData(d => ({ ...d, guardian: { ...d.guardian, id_number: v } }))}
-                placeholder="Número de identificación" />
-              <Input label="Estatus Migratorio" value={data.guardian.immigration_status}
-                onChange={v => setData(d => ({ ...d, guardian: { ...d.guardian, immigration_status: v } }))}
-                placeholder="Ej: Solicitante de asilo" />
-              <Input label="Fecha de Nacimiento" value={data.guardian.date_of_birth}
+              <Input label="Fecha de Nacimiento del Tutor" value={data.guardian.date_of_birth}
                 onChange={v => setData(d => ({ ...d, guardian: { ...d.guardian, date_of_birth: v } }))}
-                placeholder="Ej: 1990-05-15" />
+                placeholder="Ej: 15 de marzo de 1990" />
             </div>
           </Section>
 
@@ -201,27 +177,13 @@ export function SupplementaryDataForm({ caseId, tutorData, minorStories, absentP
                     return { ...d, absent_parents: arr }
                   })}
                   placeholder="Ej: Ecuatoriana" />
-                <Input label="Pasaporte No." value={parent.passport}
+                <Input label="No. Pasaporte" value={parent.passport}
                   onChange={v => setData(d => {
                     const arr = [...d.absent_parents]
                     arr[i] = { ...arr[i], passport: v }
                     return { ...d, absent_parents: arr }
                   })}
                   placeholder="Número de pasaporte" />
-                <Input label="Cédula / ID" value={parent.id_number}
-                  onChange={v => setData(d => {
-                    const arr = [...d.absent_parents]
-                    arr[i] = { ...arr[i], id_number: v }
-                    return { ...d, absent_parents: arr }
-                  })}
-                  placeholder="Número de identificación" />
-                <Input label="País de Residencia" value={parent.country}
-                  onChange={v => setData(d => {
-                    const arr = [...d.absent_parents]
-                    arr[i] = { ...arr[i], country: v }
-                    return { ...d, absent_parents: arr }
-                  })}
-                  placeholder="Ej: Ecuador" />
               </div>
             </Section>
           ))}
@@ -229,7 +191,7 @@ export function SupplementaryDataForm({ caseId, tutorData, minorStories, absentP
           {/* Minors */}
           {data.minors.map((minor, i) => (
             <Section key={`minor-${i}`} title={`Menor — ${minor.name || `#${i + 1}`}`}>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <Input label="Ciudad de Nacimiento" value={minor.birth_city}
                   onChange={v => setData(d => {
                     const arr = [...d.minors]
@@ -237,20 +199,13 @@ export function SupplementaryDataForm({ caseId, tutorData, minorStories, absentP
                     return { ...d, minors: arr }
                   })}
                   placeholder="Ej: Guayaquil" />
-                <Input label="Nacionalidad" value={minor.nationality}
-                  onChange={v => setData(d => {
-                    const arr = [...d.minors]
-                    arr[i] = { ...arr[i], nationality: v }
-                    return { ...d, minors: arr }
-                  })}
-                  placeholder="Ej: Ecuatoriana" />
                 <Input label="Tipo de Documento" value={minor.id_type}
                   onChange={v => setData(d => {
                     const arr = [...d.minors]
                     arr[i] = { ...arr[i], id_type: v }
                     return { ...d, minors: arr }
                   })}
-                  placeholder="Ej: Pasaporte, Certificado de nacimiento" />
+                  placeholder="Ej: Pasaporte" />
                 <Input label="No. de Documento" value={minor.id_number}
                   onChange={v => setData(d => {
                     const arr = [...d.minors]
@@ -265,14 +220,7 @@ export function SupplementaryDataForm({ caseId, tutorData, minorStories, absentP
           {/* Witnesses */}
           {data.witnesses.map((witness, i) => (
             <Section key={`witness-${i}`} title={`Testigo ${i + 1} — ${witness.name || ''}`}>
-              <div className="grid grid-cols-3 gap-3">
-                <Input label="Nacionalidad" value={witness.nationality}
-                  onChange={v => setData(d => {
-                    const arr = [...d.witnesses]
-                    arr[i] = { ...arr[i], nationality: v }
-                    return { ...d, witnesses: arr }
-                  })}
-                  placeholder="Ej: Ecuatoriana" />
+              <div className="grid grid-cols-2 gap-3">
                 <Input label="Tipo de ID" value={witness.id_type}
                   onChange={v => setData(d => {
                     const arr = [...d.witnesses]

@@ -41,8 +41,8 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ case_id: caseId, type, index, lang: 'en' }),
       })
-      if (!resEN.ok) throw new Error()
       const dataEN = await resEN.json()
+      if (!resEN.ok) throw new Error(dataEN.error || 'Error EN')
 
       // Generate Spanish
       const resES = await fetch('/api/ai/generate-declaration', {
@@ -50,16 +50,16 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ case_id: caseId, type, index, lang: 'es' }),
       })
-      if (!resES.ok) throw new Error()
       const dataES = await resES.json()
+      if (!resES.ok) throw new Error(dataES.error || 'Error ES')
 
       setDocs(prev => {
         const filtered = prev.filter(d => !(d.type === type && d.index === index))
         return [...filtered, { type, index, label, content: dataEN.declaration, contentES: dataES.declaration }]
       })
       toast.success(`${label} generado en inglés y español`)
-    } catch {
-      toast.error('Error al generar. Intente de nuevo.')
+    } catch (e) {
+      toast.error(e instanceof Error && e.message ? e.message : 'Error al generar. Intente de nuevo.')
     } finally {
       setGenerating(null)
     }

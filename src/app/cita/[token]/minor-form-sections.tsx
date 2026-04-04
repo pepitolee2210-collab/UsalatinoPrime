@@ -78,6 +78,7 @@ function Section({ title, number, children }: { title: string; number: number; c
 
 export interface MinorBasicData {
   full_name: string; dob: string; country: string; nationality: string
+  birth_city: string; id_type: string; id_number: string
   civil_status: string; in_us: string; address: string
   lives_with: string; lives_with_relationship: string
   how_arrived: string; arrival_date: string; accompanied_by: string
@@ -119,6 +120,11 @@ export function MinorBasicSection({ data, onChange }: { data: MinorBasicData; on
       <div className="grid grid-cols-2 gap-3">
         <div><FieldLabel required>2. Fecha de nacimiento</FieldLabel><TInput type="date" value={data.dob} onChange={v => upd('dob', v)} /></div>
         <div><FieldLabel>3. País de nacimiento</FieldLabel><TInput value={data.country} onChange={v => upd('country', v)} placeholder="Ej: Honduras" /></div>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div><FieldLabel>Ciudad de nacimiento</FieldLabel><TInput value={data.birth_city} onChange={v => upd('birth_city', v)} placeholder="Ej: Guayaquil" /></div>
+        <div><FieldLabel>Tipo de documento</FieldLabel><TInput value={data.id_type} onChange={v => upd('id_type', v)} placeholder="Ej: Pasaporte" /></div>
+        <div><FieldLabel>No. de documento</FieldLabel><TInput value={data.id_number} onChange={v => upd('id_number', v)} placeholder="Número de documento" /></div>
       </div>
       <div>
         <FieldLabel>4. Estado civil actual</FieldLabel>

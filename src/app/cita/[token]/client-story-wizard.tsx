@@ -26,6 +26,7 @@ interface ChildInfo {
 // Minor declaration data — 30 questions organized in sections
 interface MinorBasicData {
   full_name: string; dob: string; country: string; nationality: string
+  birth_city: string; id_type: string; id_number: string
   civil_status: string; in_us: string; address: string
   lives_with: string; lives_with_relationship: string
   how_arrived: string; arrival_date: string; accompanied_by: string
@@ -62,6 +63,7 @@ interface StoryData {
 
 interface ParentData {
   situation: ParentSituation; parent_name: string; parent_relationship: string
+  parent_nationality: string; parent_passport: string; parent_id_number: string; parent_country: string
   parent_phone: string; parent_email: string; willing_to_sign: string
   last_contact_date: string; last_contact_description: string
   reason_absent: string; efforts_to_find: string
@@ -150,6 +152,7 @@ const EMPTY_STORY: StoryData = {
 
 const EMPTY_PARENT: ParentData = {
   situation: '', parent_name: '', parent_relationship: 'padre',
+  parent_nationality: '', parent_passport: '', parent_id_number: '', parent_country: '',
   parent_phone: '', parent_email: '', willing_to_sign: '',
   last_contact_date: '', last_contact_description: '',
   reason_absent: '', efforts_to_find: '',
@@ -171,7 +174,9 @@ const EMPTY_TUTOR: TutorData = {
 }
 
 const EMPTY_MINOR_BASIC: MinorBasicData = {
-  full_name: '', dob: '', country: '', nationality: '', civil_status: 'soltero',
+  full_name: '', dob: '', country: '', nationality: '',
+  birth_city: '', id_type: '', id_number: '',
+  civil_status: 'soltero',
   in_us: 'si', address: '', lives_with: '', lives_with_relationship: '',
   how_arrived: '', arrival_date: '', accompanied_by: '',
   detained_by_immigration: '', released_by_orr: '', orr_sponsor: '',
@@ -210,8 +215,8 @@ const GUARDIAN_RELATIONS: { value: GuardianRelation; label: string }[] = [
   { value: 'tutor_legal', label: 'Tutor legal' }, { value: 'otro', label: 'Otro' },
 ]
 
-const DJ_STEP_LABELS = ['Información Básica', 'Hechos de Maltrato', 'Mejor Interés', 'Confirmar y Enviar']
-const DJ_TOTAL_STEPS = 4
+const DJ_STEP_LABELS = ['Información Básica', 'Hechos de Maltrato', 'Mejor Interés', 'Padre/Madre Ausente', 'Confirmar y Enviar']
+const DJ_TOTAL_STEPS = 5
 
 function createEmptyDJ(docs: DJDoc[] = []): DJState {
   return {
@@ -788,6 +793,9 @@ function DJWizard({
           children: state.children,
           has_another_father: state.hasAnotherFather,
         })
+        if (state.parent.parent_name.trim()) {
+          saveDraft('client_absent_parent', state.parent)
+        }
       }
     }, 4000)
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
@@ -832,6 +840,10 @@ function DJWizard({
             children: state.children.filter(c => c.name.trim()),
             has_another_father: state.hasAnotherFather,
           },
+        },
+        {
+          form_type: 'client_absent_parent',
+          form_data: state.parent,
         },
       ]
 
@@ -919,6 +931,13 @@ function DJWizard({
           />
         )}
         {step === 3 && (
+          <ParentStep
+            parent={state.parent}
+            childNames={[state.minorBasic.full_name].filter(Boolean)}
+            onChange={parent => updateState({ parent })}
+          />
+        )}
+        {step === 4 && (
           <FinalStep
             djNumber={djNumber}
             state={state}
@@ -1247,7 +1266,14 @@ function ParentStep({ parent, childNames, onChange }: {
         <div className="space-y-3 p-4 bg-blue-50 rounded-xl">
           <p className="text-sm font-medium text-blue-800">Información de contacto</p>
           <div><FieldLabel required>Nombre completo</FieldLabel><TextInput value={parent.parent_name} onChange={v => set('parent_name', v)} placeholder="Nombre completo" /></div>
-          <div><FieldLabel>Teléfono</FieldLabel><TextInput value={parent.parent_phone} onChange={v => set('parent_phone', v)} placeholder="+1 (000) 000-0000" /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><FieldLabel>Nacionalidad</FieldLabel><TextInput value={parent.parent_nationality} onChange={v => set('parent_nationality', v)} placeholder="Ej: Ecuatoriano" /></div>
+            <div><FieldLabel>No. Pasaporte o Cédula</FieldLabel><TextInput value={parent.parent_passport} onChange={v => set('parent_passport', v)} placeholder="Número de documento" /></div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><FieldLabel>País de residencia</FieldLabel><TextInput value={parent.parent_country} onChange={v => set('parent_country', v)} placeholder="Ej: Ecuador" /></div>
+            <div><FieldLabel>Teléfono</FieldLabel><TextInput value={parent.parent_phone} onChange={v => set('parent_phone', v)} placeholder="+1 (000) 000-0000" /></div>
+          </div>
           <div><FieldLabel>Email</FieldLabel><TextInput value={parent.parent_email} onChange={v => set('parent_email', v)} placeholder="email@ejemplo.com" /></div>
           <div>
             <FieldLabel>¿Dispuesto/a a firmar la renuncia?</FieldLabel>
@@ -1264,6 +1290,10 @@ function ParentStep({ parent, childNames, onChange }: {
       {parent.situation === 'absent' && (
         <div className="space-y-3 p-4 bg-orange-50 rounded-xl">
           <div><FieldLabel>Nombre completo (si lo sabe)</FieldLabel><TextInput value={parent.parent_name} onChange={v => set('parent_name', v)} placeholder="Nombre completo" /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><FieldLabel>Nacionalidad</FieldLabel><TextInput value={parent.parent_nationality} onChange={v => set('parent_nationality', v)} placeholder="Ej: Ecuatoriano" /></div>
+            <div><FieldLabel>País de residencia</FieldLabel><TextInput value={parent.parent_country} onChange={v => set('parent_country', v)} placeholder="Ej: Ecuador" /></div>
+          </div>
           <div><FieldLabel>¿Cuándo fue el último contacto?</FieldLabel><TextInput value={parent.last_contact_date} onChange={v => set('last_contact_date', v)} placeholder="Ej: Hace 5 años, en 2018" /></div>
           <div><FieldLabel>¿Cómo fue ese contacto?</FieldLabel><TextArea value={parent.last_contact_description} onChange={v => set('last_contact_description', v)} placeholder="Describe cómo fue..." /></div>
           <div><FieldLabel required>¿Por qué está ausente?</FieldLabel><TextArea value={parent.reason_absent} onChange={v => set('reason_absent', v)} placeholder="Ej: Nos abandonó, no quiso saber de nosotros..." rows={4} /></div>

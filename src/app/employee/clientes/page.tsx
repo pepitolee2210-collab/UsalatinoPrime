@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import { EmployeeClientesView } from './employee-clientes-view'
 
@@ -14,14 +15,16 @@ export default async function EmployeeClientesPage() {
     .single()
   if (profile?.role !== 'employee') redirect('/employee')
 
-  const { data: clients } = await supabase
+  const service = createServiceClient()
+
+  const { data: clients } = await service
     .from('profiles')
     .select('id, first_name, last_name, email, phone, created_at')
     .eq('role', 'client')
     .order('created_at', { ascending: false })
 
   // Get case count per client
-  const { data: cases } = await supabase
+  const { data: cases } = await service
     .from('cases')
     .select('client_id, service:service_catalog(name)')
 
