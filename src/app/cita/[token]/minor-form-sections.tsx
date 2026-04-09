@@ -83,6 +83,9 @@ export interface MinorBasicData {
   lives_with: string; lives_with_relationship: string
   how_arrived: string; arrival_date: string; accompanied_by: string
   detained_by_immigration: string; released_by_orr: string; orr_sponsor: string
+  // I-360 immigration fields
+  a_number: string; ssn: string; i94_number: string
+  nonimmigrant_status: string; court_order_date: string
 }
 
 export interface MinorAbuseData {
@@ -144,6 +147,23 @@ export function MinorBasicSection({ data, onChange }: { data: MinorBasicData; on
       </div>
       <div><FieldLabel>7. ¿Cómo llegó a los Estados Unidos?</FieldLabel><TArea value={data.how_arrived} onChange={v => upd('how_arrived', v)} placeholder="Fecha aproximada y circunstancias del viaje" rows={3} /></div>
       <div><FieldLabel>8. ¿Vino solo/a o acompañado/a? ¿Por quién?</FieldLabel><TInput value={data.accompanied_by} onChange={v => upd('accompanied_by', v)} placeholder="Solo/a, con su madre, con un coyote..." /></div>
+
+      {/* Immigration details for I-360 */}
+      <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-xs text-indigo-800 mt-2">
+        Datos migratorios — Si tiene esta información disponible, por favor complétela. Es necesaria para el formulario I-360.
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div><FieldLabel>A-Number (si tiene)</FieldLabel><TInput value={data.a_number} onChange={v => upd('a_number', v)} placeholder="Ej: A-123456789" /></div>
+        <div><FieldLabel>Social Security (si tiene)</FieldLabel><TInput value={data.ssn} onChange={v => upd('ssn', v)} placeholder="Ej: 123-45-6789" /></div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div><FieldLabel>Número I-94</FieldLabel><TInput value={data.i94_number} onChange={v => upd('i94_number', v)} placeholder="Número de registro de llegada" /></div>
+        <div><FieldLabel>Estatus migratorio actual</FieldLabel><TInput value={data.nonimmigrant_status} onChange={v => upd('nonimmigrant_status', v)} placeholder="Ej: Solicitante de asilo, Parolee" /></div>
+      </div>
+      <div>
+        <FieldLabel>Fecha de la orden de la corte juvenil (si ya tiene)</FieldLabel>
+        <TInput type="date" value={data.court_order_date} onChange={v => upd('court_order_date', v)} />
+      </div>
     </Section>
   )
 }

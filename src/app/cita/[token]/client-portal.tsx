@@ -10,6 +10,7 @@ import { DocumentUploadSection } from './document-upload-section'
 import { HenryDocuments } from './henry-documents'
 import { ClientStoryWizard } from './client-story-wizard'
 import { I589Wizard } from './i589-wizard'
+import { I360Wizard } from './i360-wizard'
 import { CommunityPortal } from './community-portal'
 import type { Appointment } from '@/types/database'
 
@@ -62,6 +63,7 @@ const TABS = {
   cita:       { label: 'Cita',            shortLabel: 'Cita',      icon: CalendarClock },
   documentos: { label: 'Mis Documentos',  shortLabel: 'Documentos', icon: FileUp },
   historia:   { label: 'Mi Historia',     shortLabel: 'Historia',   icon: BookOpen },
+  i360:       { label: 'I-360',           shortLabel: 'I-360',     icon: ClipboardList },
   i589:       { label: 'I-589',           shortLabel: 'I-589',     icon: ClipboardList },
   consultor:  { label: 'Del Consultor',   shortLabel: 'Consultor',  icon: Download },
   comunidad:  { label: 'Comunidad',       shortLabel: 'Comunidad',  icon: Users },
@@ -92,9 +94,12 @@ export function ClientPortal({
   const hasSubmittedI589 = formSubmissions.some(f =>
     f.form_type === 'i589_part_b1' && (f.status === 'submitted' || f.status === 'approved')
   )
+  const hasSubmittedI360 = formSubmissions.some(f =>
+    f.form_type === 'i360_sijs' && (f.status === 'submitted' || f.status === 'approved')
+  )
 
   const steps = isVisaJuvenil
-    ? [{ done: hasAppointment, label: 'Cita' }, { done: hasClientDocs, label: 'Documentos' }, { done: hasSubmittedStory, label: 'Historia' }, { done: hasHenryDocs, label: 'Consultor' }]
+    ? [{ done: hasAppointment, label: 'Cita' }, { done: hasClientDocs, label: 'Documentos' }, { done: hasSubmittedStory, label: 'Historia' }, { done: hasSubmittedI360, label: 'I-360' }, { done: hasHenryDocs, label: 'Consultor' }]
     : isAsilo
     ? [{ done: hasAppointment, label: 'Cita' }, { done: hasClientDocs, label: 'Documentos' }, { done: hasSubmittedI589, label: 'I-589' }, { done: hasHenryDocs, label: 'Consultor' }]
     : [{ done: hasAppointment, label: 'Cita' }, { done: hasClientDocs, label: 'Documentos' }, { done: hasHenryDocs, label: 'Consultor' }]
@@ -103,7 +108,7 @@ export function ClientPortal({
   const progressPct = Math.round((completedSteps / steps.length) * 100)
 
   const visibleTabs: TabId[] = isVisaJuvenil
-    ? ['cita', 'documentos', 'historia', 'comunidad', 'consultor']
+    ? ['cita', 'documentos', 'historia', 'i360', 'comunidad', 'consultor']
     : isAsilo
     ? ['cita', 'documentos', 'i589', 'comunidad', 'consultor']
     : ['cita', 'documentos', 'comunidad', 'consultor']
@@ -349,6 +354,9 @@ export function ClientPortal({
             )}
             {activeTab === 'historia' && isVisaJuvenil && (
               <ClientStoryWizard token={token} clientName={clientName} declarationDocs={declarationDocs} />
+            )}
+            {activeTab === 'i360' && isVisaJuvenil && (
+              <I360Wizard token={token} clientName={clientName} />
             )}
             {activeTab === 'i589' && isAsilo && (
               <I589Wizard token={token} clientName={clientName} />

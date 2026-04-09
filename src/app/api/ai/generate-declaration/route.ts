@@ -351,38 +351,38 @@ ${ctx.allMinorStories.filter((_, i) => i !== index).map((s) => {
 
 FOLLOW THIS EXACT FORMAT:
 
-DECLARACIÓN JURADA DE [MINOR FULL NAME IN CAPS]
+SWORN DECLARATION OF [MINOR FULL NAME IN CAPS]
 
-Yo, [MINOR FULL NAME IN CAPS], [age description], identificada/o con [document type from country], bajo pena de perjurio, declaro lo siguiente:
+I, [MINOR FULL NAME IN CAPS], [age description], identified with [document type from country], under penalty of perjury, declare the following:
 
-I. DATOS PERSONALES
+I. PERSONAL INFORMATION
 
-Mi nombre completo es [FULL NAME IN CAPS]. Nací el [date] en [city, country]. Actualmente tengo [X] años y soy ciudadana/o de [country]. [How they entered the US and when].
+My full name is [FULL NAME IN CAPS]. I was born on [date] in [city, country]. I am currently [X] years old and a citizen of [country]. [How they entered the US and when].
 
-II. SITUACIÓN FAMILIAR
+II. FAMILY SITUATION
 
-Soy hija/o de [FATHER NAME] y de [MOTHER NAME]. [Brief overview of the dysfunctional family situation based on the case data].
+I am the daughter/son of [FATHER NAME] and [MOTHER NAME]. [Brief overview of the dysfunctional family situation based on the case data].
 
-III. RELACIÓN CON MI MADRE
+III. RELATIONSHIP WITH MY MOTHER
 
 [Detailed paragraph about the relationship with the mother — use the abuse_by_mother data, emotional abuse, negligence. Include specific incidents, dates, locations. Write with emotion from the minor's perspective.]
 
-IV. RELACIÓN CON MI PADRE
+IV. RELATIONSHIP WITH MY FATHER
 
 [Detailed paragraph about the relationship with the father — use the abuse_by_father data, abandonment, neglect. Include specific incidents, dates, locations. Write with emotion from the minor's perspective.]
 
-V. RAZONES POR LAS QUE NO PUEDO REGRESAR A [COUNTRY]
+V. REASONS WHY I CANNOT RETURN TO [COUNTRY]
 
-[Why the minor cannot return — no protection from either parent, abuse/neglect environment, no safe family networks. Request Utah's legal protection.]
+[Why the minor cannot return — no protection from either parent, abuse/neglect environment, no safe family networks. Request the court's legal protection.]
 
-VI. SITUACIÓN ACTUAL
+VI. CURRENT SITUATION
 
 [Current living situation with the guardian. Address, stability, how the guardian cares for them. End with the formal request for protective order/custody and SIJS special findings.]
 
-Declaro que todo lo escrito en esta declaración es veraz, correcto y reflejo de mi historia personal.
+I declare that everything written in this declaration is truthful, correct, and a reflection of my personal history.
 
-Firmado en: [City, State]
-Fecha: [Date]
+Signed in: [City, State]
+Date: [Date]
 
 
 

@@ -31,6 +31,8 @@ interface MinorBasicData {
   lives_with: string; lives_with_relationship: string
   how_arrived: string; arrival_date: string; accompanied_by: string
   detained_by_immigration: string; released_by_orr: string; orr_sponsor: string
+  a_number: string; ssn: string; i94_number: string
+  nonimmigrant_status: string; court_order_date: string
 }
 
 interface MinorAbuseData {
@@ -180,6 +182,8 @@ const EMPTY_MINOR_BASIC: MinorBasicData = {
   in_us: 'si', address: '', lives_with: '', lives_with_relationship: '',
   how_arrived: '', arrival_date: '', accompanied_by: '',
   detained_by_immigration: '', released_by_orr: '', orr_sponsor: '',
+  a_number: '', ssn: '', i94_number: '',
+  nonimmigrant_status: '', court_order_date: '',
 }
 
 const EMPTY_MINOR_ABUSE: MinorAbuseData = {
