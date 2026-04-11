@@ -1,4 +1,4 @@
-import { PDFDocument } from 'pdf-lib'
+import { PDFDocument, PDFTextField, PDFCheckBox } from 'pdf-lib'
 
 // ============================================================================
 // HELPERS DE NORMALIZACIÓN
@@ -174,6 +174,22 @@ export async function generateI360PDF(
 
   const pdfDoc = await PDFDocument.load(templateBytes)
   const form = pdfDoc.getForm()
+
+  // --- 0. Limpiar TODOS los campos del template antes de escribir ---
+  // El PDF template puede tener valores por defecto (placeholders usados durante
+  // la edición del PDF). Los vaciamos todos primero para que solo aparezca lo
+  // que el cliente realmente llenó. Los campos sin dato quedan en blanco.
+  for (const field of form.getFields()) {
+    try {
+      if (field instanceof PDFTextField) {
+        field.setText('')
+      } else if (field instanceof PDFCheckBox) {
+        field.uncheck()
+      }
+    } catch {
+      // Ignorar campos que no soporten el método (ej: read-only)
+    }
+  }
 
   // --- 1. Campos de texto ---
   for (const [pdfName, entry] of Object.entries(TEXT_FIELD_MAP)) {
