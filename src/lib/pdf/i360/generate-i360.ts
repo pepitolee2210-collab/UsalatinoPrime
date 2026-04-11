@@ -1,84 +1,167 @@
 import { PDFDocument } from 'pdf-lib'
 
-type FieldEntry = {
+// ============================================================================
+// HELPERS DE NORMALIZACIÓN
+// ============================================================================
+
+/** Extrae solo dígitos (para SSN, A-Number, I-94 Number). */
+const digitsOnly = (v: any): string => String(v ?? '').replace(/\D/g, '')
+
+/**
+ * Tolera múltiples formatos de valor "Sí":
+ * 'Sí', 'Si', 'sí', 'si', 'yes', 'Yes', 'true', true, 1, '1'.
+ * El wizard guarda 'Sí' pero defendemos contra futuros cambios de formato.
+ */
+function isYes(v: any): boolean {
+  if (v === true || v === 1) return true
+  const s = String(v ?? '').trim().toLowerCase()
+  return s === 'sí' || s === 'si' || s === 'yes' || s === 'true' || s === '1'
+}
+
+/** Tolera múltiples formatos de valor "No". */
+function isNo(v: any): boolean {
+  if (v === false || v === 0) return true
+  const s = String(v ?? '').trim().toLowerCase()
+  return s === 'no' || s === 'false' || s === '0'
+}
+
+// ============================================================================
+// MAPEO DE CAMPOS DE TEXTO (46 campos)
+// Casi todos son 1:1 con las claves del form_data porque los nombres del PDF
+// fueron renombrados para coincidir. Solo hay algunas excepciones.
+// ============================================================================
+
+type TextFieldEntry = {
   dataKey: string
   transform?: (value: any) => string
 }
 
-/**
- * Helper: extrae solo los dígitos de un valor (para SSN, A-Number, etc.)
- */
-const digitsOnly = (v: any): string => String(v ?? '').replace(/\D/g, '')
+const TEXT_FIELD_MAP: Record<string, TextFieldEntry> = {
+  // Part 1 — Peticionario
+  last_name:          { dataKey: 'petitioner_last_name' },
+  first_name:         { dataKey: 'petitioner_first_name' },
+  middle_name:        { dataKey: 'petitioner_middle_name' },
+  ssn:                { dataKey: 'petitioner_ssn',      transform: digitsOnly },
+  arn:                { dataKey: 'petitioner_a_number', transform: digitsOnly },
+  petitioner_address: { dataKey: 'petitioner_address' },
+  petitioner_city:    { dataKey: 'petitioner_city' },
+  petitioner_state:   { dataKey: 'petitioner_state' },
+  petitioner_zip:     { dataKey: 'petitioner_zip' },
 
-/**
- * Mapeo: nombre del campo AcroForm en el PDF → clave en form_data (I360Data)
- *
- * Las claves son los IDs actuales de los campos en el PDF template.
- * Los nombres aleatorios (text_XXyyyy) deberían ser renombrados en el PDF
- * a nombres descriptivos. Mientras tanto, este mapeo traduce los IDs al
- * campo de la base de datos correspondiente.
- */
-const FIELD_MAP: Record<string, FieldEntry> = {
-  // ==================== PÁGINA 1 — PART 1: PETICIONARIO ====================
-  'last_name':   { dataKey: 'petitioner_last_name' },   // Family Name
-  'first_name':  { dataKey: 'petitioner_first_name' },  // Given Name
-  'middle_name': { dataKey: 'petitioner_middle_name' }, // Middle Name
-  'ssn':         { dataKey: 'petitioner_ssn',      transform: digitsOnly }, // 9 dígitos
-  'arn':         { dataKey: 'petitioner_a_number', transform: digitsOnly }, // 9 dígitos
-  'text_6mtkf':  { dataKey: 'petitioner_address' },     // Dirección (street) - sugerido renombrar a "petitioner_address"
-  'text_7aisj':  { dataKey: 'petitioner_city' },        // Ciudad - sugerido "petitioner_city"
-  'text_8vdmy':  { dataKey: 'petitioner_state' },       // Estado (2 letras) - sugerido "petitioner_state"
-  'text_9tisb':  { dataKey: 'petitioner_zip' },         // ZIP - sugerido "petitioner_zip"
+  // Part 1 cont — Dirección segura
+  safe_mailing_name:    { dataKey: 'safe_mailing_name' },
+  safe_mailing_address: { dataKey: 'safe_mailing_address' },
+  safe_mailing_city:    { dataKey: 'safe_mailing_city' },
+  safe_mailing_state:   { dataKey: 'safe_mailing_state' },
+  safe_mailing_zip:     { dataKey: 'safe_mailing_zip' },
 
-  // ==================== PÁGINA 2 — PART 1 cont: DIRECCIÓN SEGURA ====================
-  'text_10bvqh': { dataKey: 'safe_mailing_name' },    // "In Care Of Name" - sugerido "safe_mailing_name"
-  'text_11uczc': { dataKey: 'safe_mailing_address' }, // Street address segura - sugerido "safe_mailing_address"
-  'text_12jvrz': { dataKey: 'safe_mailing_city' },    // Ciudad segura - sugerido "safe_mailing_city"
-  'text_13gtui': { dataKey: 'safe_mailing_state' },   // Estado seguro - sugerido "safe_mailing_state"
-  'text_14gdza': { dataKey: 'safe_mailing_zip' },     // ZIP seguro - sugerido "safe_mailing_zip"
+  // Part 3 — Beneficiario (menor)
+  beneficiary_last_name:           { dataKey: 'beneficiary_last_name' },
+  beneficiary_first_name:          { dataKey: 'beneficiary_first_name' },
+  beneficiary_middle_name:         { dataKey: 'beneficiary_middle_name' },
+  other_names:                     { dataKey: 'other_names' },
+  beneficiary_address:             { dataKey: 'beneficiary_address' },
+  beneficiary_city:                { dataKey: 'beneficiary_city' },
+  beneficiary_state:               { dataKey: 'beneficiary_state' },
+  beneficiary_zip:                 { dataKey: 'beneficiary_zip' },
+  beneficiary_dob:                 { dataKey: 'beneficiary_dob' },
+  beneficiary_country_birth:       { dataKey: 'beneficiary_country_birth' },
+  beneficiary_ssn:                 { dataKey: 'beneficiary_ssn',      transform: digitsOnly },
+  beneficiary_a_number:            { dataKey: 'beneficiary_a_number', transform: digitsOnly },
+  beneficiary_city_birth:          { dataKey: 'beneficiary_city_birth' },
+  beneficiary_i94_number:          { dataKey: 'beneficiary_i94_number', transform: digitsOnly },
+  beneficiary_passport_number:     { dataKey: 'beneficiary_passport_number' },
+  beneficiary_passport_country:    { dataKey: 'beneficiary_passport_country' },
+  beneficiary_nonimmigrant_status: { dataKey: 'beneficiary_nonimmigrant_status' },
+  beneficiary_passport_expiry:     { dataKey: 'beneficiary_passport_expiry' },
+  beneficiary_status_expiry:       { dataKey: 'beneficiary_status_expiry' },
 
-  // ==================== PÁGINA 3 — PART 3: BENEFICIARIO (MENOR) ====================
-  'text_15icyi': { dataKey: 'beneficiary_last_name' },        // sugerido "beneficiary_last_name"
-  'text_16ccgi': { dataKey: 'beneficiary_first_name' },       // sugerido "beneficiary_first_name"
-  'text_17dfu':  { dataKey: 'beneficiary_middle_name' },      // sugerido "beneficiary_middle_name"
-  'text_18ezby': { dataKey: 'other_names' },                  // Otros nombres usados - sugerido "other_names"
-  'text_19oyca': { dataKey: 'beneficiary_address' },          // Dirección del menor - sugerido "beneficiary_address"
-  'text_20jbkf': { dataKey: 'beneficiary_city' },             // Ciudad - sugerido "beneficiary_city"
-  'text_23rdoo': { dataKey: 'beneficiary_state' },            // Estado - sugerido "beneficiary_state"
-  'text_24ncxy': { dataKey: 'beneficiary_zip' },              // ZIP - sugerido "beneficiary_zip"
-  'text_25wcdm': { dataKey: 'beneficiary_dob' },              // Fecha nac. - sugerido "beneficiary_dob"
-  'text_26ibbd': { dataKey: 'beneficiary_country_birth' },    // País nac. - sugerido "beneficiary_country_birth"
-  'text_27boat': { dataKey: 'beneficiary_ssn',      transform: digitsOnly }, // 9 dígitos - sugerido "beneficiary_ssn"
-  'text_28xvqk': { dataKey: 'beneficiary_a_number', transform: digitsOnly }, // 9 dígitos - sugerido "beneficiary_a_number"
-  'text_29bxao': { dataKey: 'beneficiary_city_birth' },       // Ciudad nac. - sugerido "beneficiary_city_birth"
-  'text_30xece': { dataKey: 'beneficiary_i94_number', transform: digitsOnly }, // 11 dígitos - sugerido "beneficiary_i94_number"
-  'text_31ubma': { dataKey: 'beneficiary_passport_number' },  // Núm. pasaporte - sugerido "beneficiary_passport_number"
-  'text_32cidv': { dataKey: 'beneficiary_passport_country' }, // País pasaporte - sugerido "beneficiary_passport_country"
-  'text_33trwg': { dataKey: 'beneficiary_nonimmigrant_status' }, // Status - sugerido "beneficiary_nonimmigrant_status"
-  'text_34egnj': { dataKey: 'beneficiary_passport_expiry' },  // Exp. pasaporte - sugerido "beneficiary_passport_expiry"
-  'text_35tgqr': { dataKey: 'beneficiary_status_expiry' },    // Exp. status - sugerido "beneficiary_status_expiry"
+  // Part 4 — Padre/Madre extranjero
+  foreign_parent_last_name:   { dataKey: 'foreign_parent_last_name' },
+  foreign_parent_first_name:  { dataKey: 'foreign_parent_first_name' },
+  foreign_parent_middle_name: { dataKey: 'foreign_parent_middle_name' },
+  foreign_parent_address:     { dataKey: 'foreign_parent_address' },
+  foreign_parent_city:        { dataKey: 'foreign_parent_city' },
+  foreign_parent_province:    { dataKey: 'foreign_parent_province' },
+  foreign_parent_postal:      { dataKey: 'foreign_parent_postal' },
+  foreign_parent_country:     { dataKey: 'foreign_parent_country' },
 
-  // ==================== PÁGINA 4 — PART 4: PROCESAMIENTO (PADRE EXTRANJERO) ====================
-  'text_36mxxm': { dataKey: 'foreign_parent_last_name' },   // sugerido "foreign_parent_last_name"
-  'text_37gc':   { dataKey: 'foreign_parent_first_name' },  // sugerido "foreign_parent_first_name"
-  'text_40byag': { dataKey: 'foreign_parent_middle_name' }, // sugerido "foreign_parent_middle_name"
-  'text_41bdlw': { dataKey: 'foreign_parent_country' },     // País - sugerido "foreign_parent_country"
-  'text_42ipfd': { dataKey: 'foreign_parent_address' },     // Dirección - sugerido "foreign_parent_address"
-  'text_43insh': { dataKey: 'foreign_parent_city' },        // Ciudad - sugerido "foreign_parent_city"
-  'text_44fqva': { dataKey: 'foreign_parent_province' },    // Provincia - sugerido "foreign_parent_province"
-  'text_45mpsb': { dataKey: 'foreign_parent_postal' },      // Código postal - sugerido "foreign_parent_postal"
+  // Part 8 — SIJS (2B. Nombre de la agencia estatal/corte)
+  // El campo PDF se llama "department_juice" (nombre interno) pero contiene
+  // el dato de state_agency_name del wizard.
+  department_juice: { dataKey: 'state_agency_name' },
 
-  // ==================== PÁGINA 8 — (sin usar aún) ====================
-  // 'text_46ureh': ??? Campo por identificar - ver nota al final del archivo
+  // Part 11 — Contacto
+  petitioner_phone:  { dataKey: 'petitioner_phone' },
+  petitioner_mobile: { dataKey: 'petitioner_mobile' },
+  petitioner_email:  { dataKey: 'petitioner_email' },
 
-  // ==================== PÁGINA 15 — PART 11/15: CONTACTO ====================
-  'text_47jbv':  { dataKey: 'petitioner_phone' },  // Teléfono daytime - sugerido "petitioner_phone"
-  'text_48pahb': { dataKey: 'petitioner_email' },  // Email - sugerido "petitioner_email"
-  'text_49nltd': { dataKey: 'petitioner_mobile' }, // Celular - sugerido "petitioner_mobile"
-
-  // ==================== PÁGINA 19 — INFORMACIÓN ADICIONAL ====================
-  'textarea_50lmlg': { dataKey: 'additional_info' }, // sugerido "additional_info"
+  // Info adicional (textarea final)
+  additional_info: { dataKey: 'additional_info' },
 }
+
+// ============================================================================
+// CHECKBOXES YES/NO (11 pares = 22 checkboxes)
+// Formato: [nombrePDF_Sí, nombrePDF_No, claveEnFormData]
+// ============================================================================
+
+const YES_NO_MAP: Array<[string, string, string]> = [
+  ['in_removal_yes',               'in_removal_no',               'in_removal_proceedings'],
+  ['other_petitions_yes',          'other_petitions_no',          'other_petitions'],
+  ['worked_without_permission_yes','worked_without_permission_no','worked_without_permission'],
+  ['adjustment_attached_yes',      'adjustment_attached_no',      'adjustment_attached'],
+  ['children_filed_yes',           'children_filed_no',           'children_filed_separate'],
+  ['declared_dependent_yes',       'declared_dependent_no',       'declared_dependent_court'],
+  ['under_jurisdiction_yes',       'under_jurisdiction_no',       'currently_under_jurisdiction'],
+  ['court_placement_yes',          'court_placement_no',          'in_court_ordered_placement'],
+  ['best_interest_return_yes',     'best_interest_return_no',     'best_interest_not_return'],
+  ['hhs_custody_yes',              'hhs_custody_no',              'previously_hhs_custody'],
+  ['interpreter_yes',              'interpreter_no',              'interpreter_needed'],
+]
+
+// ============================================================================
+// CHECKBOXES RADIO-LIKE (solo uno marcado por grupo)
+// ============================================================================
+
+/** Sexo — 2 opciones mutuamente exclusivas. */
+const SEX_MAP: Record<string, string> = {
+  Masculino: 'sex_male',
+  Femenino:  'sex_female',
+}
+
+/** Estado civil — 4 opciones mutuamente exclusivas. */
+const MARITAL_MAP: Record<string, string> = {
+  'Soltero/a':    'marital_single',
+  'Casado/a':     'marital_married',
+  'Divorciado/a': 'marital_divorced',
+  'Viudo/a':      'marital_widowed',
+}
+
+// ============================================================================
+// PARSER DE REUNIFICACIÓN SIJS (5 checkboxes)
+// El wizard guarda reunification_not_viable_reason como CSV estructurado:
+//   "Uno de mis padres, Abuse, Neglect"
+//   "Ambos padres, Abandonment"
+// ============================================================================
+
+function parseReunificationReason(raw: any): Set<string> {
+  const result = new Set<string>()
+  if (!raw) return result
+
+  const parts = String(raw).split(',').map((s) => s.trim())
+
+  if (parts.includes('Uno de mis padres')) result.add('juvenile_court_one')
+  if (parts.includes('Ambos padres'))      result.add('juvenile_court_both')
+  if (parts.includes('Abuse'))             result.add('juvenile_court_abuse')
+  if (parts.includes('Neglect'))           result.add('juvenile_court_neglect')
+  if (parts.includes('Abandonment'))       result.add('juvenile_court_abandonment')
+
+  return result
+}
+
+// ============================================================================
+// FUNCIÓN PRINCIPAL
+// ============================================================================
 
 export async function generateI360PDF(
   formData: Record<string, any>,
@@ -92,24 +175,65 @@ export async function generateI360PDF(
   const pdfDoc = await PDFDocument.load(templateBytes)
   const form = pdfDoc.getForm()
 
-  for (const [pdfFieldName, entry] of Object.entries(FIELD_MAP)) {
-    const rawValue = formData[entry.dataKey]
-    if (rawValue == null || rawValue === '') continue
+  // --- 1. Campos de texto ---
+  for (const [pdfName, entry] of Object.entries(TEXT_FIELD_MAP)) {
+    const raw = formData[entry.dataKey]
+    if (raw == null || raw === '') continue
 
-    const value = entry.transform ? entry.transform(rawValue) : String(rawValue)
+    const value = entry.transform ? entry.transform(raw) : String(raw)
     if (!value) continue
 
     try {
-      const textField = form.getTextField(pdfFieldName)
-      // Respeta el maxLength del campo PDF para evitar errores
-      const maxLength = textField.getMaxLength()
+      const field = form.getTextField(pdfName)
+      const maxLength = field.getMaxLength()
       const finalValue = maxLength != null ? value.substring(0, maxLength) : value
-      textField.setText(finalValue)
+      field.setText(finalValue)
     } catch (err: any) {
-      console.warn(`No se pudo llenar el campo PDF "${pdfFieldName}": ${err.message}`)
+      console.warn(`No se llenó el campo texto "${pdfName}": ${err.message}`)
     }
   }
 
+  // --- Helper para marcar checkboxes con logging tolerante ---
+  const checkBox = (name: string): void => {
+    try {
+      form.getCheckBox(name).check()
+    } catch (err: any) {
+      console.warn(`No se marcó el checkbox "${name}": ${err.message}`)
+    }
+  }
+
+  // --- 2. Checkboxes Yes/No (11 pares) ---
+  for (const [yesName, noName, dataKey] of YES_NO_MAP) {
+    const v = formData[dataKey]
+    if (isYes(v)) checkBox(yesName)
+    else if (isNo(v)) checkBox(noName)
+  }
+
+  // --- 3. Sexo (radio-like) ---
+  const sexField = SEX_MAP[formData.beneficiary_sex]
+  if (sexField) checkBox(sexField)
+
+  // --- 4. Estado civil (radio-like) ---
+  const maritalField = MARITAL_MAP[formData.beneficiary_marital_status]
+  if (maritalField) checkBox(maritalField)
+
+  // --- 5. Reunificación SIJS (5 checkboxes parseados de un CSV) ---
+  const reunifSet = parseReunificationReason(formData.reunification_not_viable_reason)
+  reunifSet.forEach(checkBox)
+
+  // --- 6. Aplanar y guardar ---
   form.flatten()
   return pdfDoc.save()
 }
+
+// ============================================================================
+// NOTA: Campos del wizard que NO tienen campo en el PDF actual
+// ============================================================================
+// Estos datos los llena el cliente en el wizard pero no se escriben en el PDF
+// porque no existe el campo correspondiente en el template. Agregarlos en el
+// PDF editor si se necesitan:
+//   - petitioner_country, language_understood, other_petitions_count
+//   - beneficiary_last_arrival_date, beneficiary_i94_expiry
+//   - placement_reason, parent_names_not_viable, hhs_court_order
+//   - spouse_child_1_* (last_name, first_name, middle_name, dob, country,
+//                       relationship, a_number)
