@@ -179,6 +179,16 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
             <TInput value={data.city_of_birth as string || ''} onChange={v => upd('city_of_birth', v)} placeholder="Ej: Guayaquil" />
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <FieldLabel>No. de documento de identidad (Pasaporte, Cédula o DNI)</FieldLabel>
+            <TInput value={data.id_number as string || ''} onChange={v => upd('id_number', v)} placeholder="Número de documento" />
+          </div>
+          <div>
+            <FieldLabel>Nacionalidad</FieldLabel>
+            <TInput value={data.nationality as string || ''} onChange={v => upd('nationality', v)} placeholder="Ej: Ecuatoriana" />
+          </div>
+        </div>
         <div>
           <FieldLabel>6. ¿Cuánto tiempo ha residido en este estado?</FieldLabel>
           <TInput value={data.time_in_state as string || ''} onChange={v => upd('time_in_state', v)} placeholder="Ej: 3 años / Desde 2021" />
