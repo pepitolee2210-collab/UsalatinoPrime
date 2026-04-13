@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export async function GET(req: NextRequest) {
   const caseId = req.nextUrl.searchParams.get('case_id')
@@ -9,7 +10,8 @@ export async function GET(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  const { data } = await supabase
+  const service = createServiceClient()
+  const { data } = await service
     .from('case_form_submissions')
     .select('form_data')
     .eq('case_id', caseId)
@@ -39,8 +41,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'case_id y data requeridos' }, { status: 400 })
   }
 
+  const service = createServiceClient()
+
   // Upsert: update if exists, insert if not
-  const { data: existing } = await supabase
+  const { data: existing } = await service
     .from('case_form_submissions')
     .select('id')
     .eq('case_id', case_id)
@@ -48,14 +52,13 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (existing) {
-    const { error } = await supabase
+    const { error } = await service
       .from('case_form_submissions')
       .update({ form_data: data, submitted_at: new Date().toISOString() })
       .eq('id', existing.id)
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   } else {
-    // Get client_id from the case (required column)
-    const { data: caseData } = await supabase
+    const { data: caseData } = await service
       .from('cases')
       .select('client_id')
       .eq('id', case_id)
@@ -65,7 +68,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Caso no encontrado' }, { status: 404 })
     }
 
-    const { error } = await supabase
+    const { error } = await service
       .from('case_form_submissions')
       .insert({
         case_id,
