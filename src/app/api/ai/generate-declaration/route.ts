@@ -149,11 +149,11 @@ I, [ABSENT PARENT FULL NAME], holder of [NATIONALITY] ${parentDocLabel} No. ${pa
 
 5. This decision is made freely, without coercion, and in the best interest of my ${childPronoun}.
 
-Signed in [CITY, STATE], United States, on the [DAY]th day of [MONTH], [YEAR].
+Signed in _________________________, United States, on the _______ day of _______________, ________.
 
 
 ___________________________
-Signature of ${parentRelation === 'father' ? 'Father' : 'Mother'}
+Signature of ${parentRelationEN === 'father' ? 'Father' : 'Mother'}
 [ABSENT PARENT FULL NAME]
 
 This document was read and explained to the signer in Spanish before signing.
