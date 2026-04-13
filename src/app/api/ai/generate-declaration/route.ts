@@ -84,11 +84,11 @@ Guardian supplementary: ${JSON.stringify((supp as Record<string, unknown>).guard
 Absent parents supplementary: ${JSON.stringify((supp as Record<string, unknown>).absent_parents || [])}
 Minors supplementary: ${JSON.stringify((supp as Record<string, unknown>).minors || [])}
 Witnesses supplementary: ${JSON.stringify((supp as Record<string, unknown>).witnesses || [])}
-IMPORTANT: Use this supplementary data to fill in any passport numbers, ID numbers, nationalities, court names, or other details that are missing from the main case data. Prefer this data over [PENDING] placeholders.
+IMPORTANT: Use this supplementary data to fill in any passport numbers, ID numbers, nationalities, court names, or other details that are missing from the main case data. Prefer this data over missing field placeholders.
 ` : ''
 
   const baseInstructions = `
-You are an expert immigration paralegal specializing in SIJS (Special Immigrant Juvenile Status) cases in Utah.
+You are an expert immigration paralegal specializing in SIJS (Special Immigrant Juvenile Status) cases.
 You generate SWORN DECLARATIONS (affidavits) in ENGLISH that are ready to file in U.S. state court.
 CRITICAL RULES:
 - Use ONLY the real data provided. NEVER invent names, dates, or facts.
@@ -99,12 +99,21 @@ CRITICAL RULES:
 - Improve the client's simple words into professional legal language WITHOUT changing the facts.
 - Be detailed, emotional where appropriate (for judges), and legally precise.
 - Include dates, locations, and specific examples whenever the data provides them.
+- ALWAYS include the declarant's ID document (passport number, cedula, or ID number) in the opening paragraph. If no ID is provided, write [FALTA: Número de documento de identidad del declarante].
+- NEVER use [PENDING] as placeholder. Instead, describe what data is missing in Spanish inside brackets. Examples:
+  [FALTA: Nombre del padre ausente]
+  [FALTA: Número de pasaporte]
+  [FALTA: Fecha de nacimiento del tutor]
+  [FALTA: Ciudad de nacimiento]
+  [FALTA: Fecha de firma]
+  [FALTA: Nombre del tribunal]
+  [FALTA: Número de documento de identidad]
 `
 
   if (type === 'parental_consent') {
     // Get absent parent for THIS specific child
     const absentParent = (ctx.allAbsentParents[index] || ctx.clientAbsentParent || {}) as Record<string, string>
-    const parentName = absentParent.parent_name || tutor?.partner_name as string || '[PARENT NAME]'
+    const parentName = absentParent.parent_name || tutor?.partner_name as string || '[FALTA: Nombre completo del padre ausente]'
     const parentRelation = absentParent.parent_relationship === 'padre' ? 'father' : 'mother'
     const childPronoun = parentRelation === 'father' ? 'daughter' : 'son'
 
@@ -155,7 +164,7 @@ Documents extracted text: ${ctx.documents.filter(d => d.extracted_text).map(d =>
 
 IMPORTANT:
 - If you find a passport number in the documents or forms, USE IT.
-- If you cannot find a specific piece of data, use [PENDING] as placeholder.
+- If you cannot find a specific piece of data, write what is missing in Spanish: [FALTA: descripción del dato].
 - Use today's date if no signing date is specified.
 - Use the court name from the supplementary data if provided. Do NOT default to Utah.
 - Output ONLY the letter text, nothing else. No explanations.
@@ -250,7 +259,7 @@ CRITICAL RULES:
 - Use ONLY the abuse/neglect data from THIS child's form above.
 - The father of THIS child may be different from the father of siblings. Do NOT confuse them.
 - Current age is ${minorAgeStr}. Use this exact age, do NOT calculate differently.
-- Use [PENDING] for any data you cannot find.
+- If data is missing, write [FALTA: descripción del dato que falta] instead of leaving blank or using PENDING.
 - Output ONLY the petition text, no explanations.
 - The narrative in Section II must use REAL facts from THIS child's form, improved with legal language.
 - CRITICAL WRITING RULE: When describing harmful acts, use ONLY abstract legal language such as "acts that gravely affected the minor's wellbeing". Do NOT elaborate or specify the nature of the acts. Focus on EMOTIONAL IMPACT and LEGAL CONSEQUENCES, not on describing events in detail.
@@ -315,7 +324,7 @@ IMPORTANT:
 - MENTION ALL CHILDREN including any additional children listed above. The declarant has ALL these children.
 - Each child has a DIFFERENT biological father. Clearly distinguish which father did what to which child. Do NOT mix their stories.
 - Use the CORRECT ages calculated from each child's DOB and today's date.
-- If data is missing, use [PENDING].
+- If data is missing, write [FALTA: descripción del dato] in Spanish.
 - Output ONLY the affidavit text.
 - CRITICAL WRITING RULE: When describing harmful acts against any child, use ONLY abstract legal language such as "committed acts that gravely affected the child's wellbeing" or "caused grave harm". Do NOT elaborate, describe, or specify the nature of harmful acts. Focus on EMOTIONAL IMPACT and LEGAL CONSEQUENCES only.
 ${suppBlock}`
@@ -394,7 +403,7 @@ IMPORTANT:
 - Do NOT include stories, abuse details, or facts from other children's forms.
 - The father of THIS child may be different from fathers of siblings. Use ONLY the absent parent data provided above.
 - Current age is ${minorAgeStr}. Use this EXACT age.
-- Use [PENDING] for data you cannot find.
+- If data is missing, write [FALTA: descripción del dato] in Spanish.
 - Output ONLY the declaration text.
 - Make sections III and IV the most detailed — these are the heart of the case.
 - If only one parent abused/abandoned, focus more on that parent and adapt the other section accordingly.
@@ -419,7 +428,7 @@ ADDRESS: ${witness.address || 'N/A'}
 WHAT THEY CAN TESTIFY: ${witness.can_testify}
 
 GUARDIAN/PARENT: ${tutor?.full_name || clientName} (${tutor?.relationship_to_minor || 'guardian'})
-ABSENT PARENT: ${absentParent.parent_name || '[PENDING]'}
+ABSENT PARENT: ${absentParent.parent_name || '[FALTA: Nombre del padre ausente]'}
 TUTOR DATA: ${JSON.stringify(tutor)}
 ABSENT PARENT DATA: ${JSON.stringify(absentParent)}
 CHILDREN: ${ctx.allMinorStories.map((s, i) => {
@@ -472,7 +481,7 @@ IMPORTANT:
 - Expand the witness's testimony into 10-12 detailed paragraphs.
 - Use what they said they can testify ("can_testify" field) as the BASE and expand it.
 - Add details from the case data that the witness would reasonably know.
-- Use [PENDING] for data you cannot find (like ID numbers).
+- If data is missing (like ID numbers), write [FALTA: descripción del dato] in Spanish.
 - Output ONLY the affidavit text.
 ${suppBlock}`
 }
