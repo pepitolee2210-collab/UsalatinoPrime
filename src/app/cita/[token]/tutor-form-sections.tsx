@@ -165,14 +165,18 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
           <FieldLabel required>3. Dirección actual completa de residencia en EE.UU.</FieldLabel>
           <TInput value={data.full_address as string || ''} onChange={v => upd('full_address', v)} placeholder="Calle, ciudad, estado, código postal" />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div>
-            <FieldLabel required>4. Fecha de nacimiento del declarante</FieldLabel>
+            <FieldLabel required>4. Fecha de nacimiento</FieldLabel>
             <TInput value={data.date_of_birth as string || ''} onChange={v => upd('date_of_birth', v)} placeholder="Ej: 13/11/1986" />
           </div>
           <div>
             <FieldLabel>5. País de nacimiento</FieldLabel>
             <TInput value={data.country_of_birth as string || ''} onChange={v => upd('country_of_birth', v)} placeholder="Ej: Ecuador" />
+          </div>
+          <div>
+            <FieldLabel>Ciudad de nacimiento</FieldLabel>
+            <TInput value={data.city_of_birth as string || ''} onChange={v => upd('city_of_birth', v)} placeholder="Ej: Guayaquil" />
           </div>
         </div>
         <div>
