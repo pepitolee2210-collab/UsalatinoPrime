@@ -83,22 +83,40 @@ export function SupplementaryDataForm({ caseId, tutorData, minorStories, absentP
     fields.push({ key: 'guardian_dob', label: 'Fecha de Nacimiento del Tutor', placeholder: 'Ej: 15 de marzo de 1990', section: 'guardian', sectionLabel: `Tutor — ${tutorName}`, value: tutorDob, source: tutorData?.date_of_birth ? 'form' : 'supplementary' })
 
     // === ABSENT PARENTS ===
-    absentParents.forEach((ap, i) => {
-      const apData = ap.formData as Record<string, string>
-      const name = apData?.parent_name || `Padre ${i + 1}`
-      const suppParent = suppData?.absent_parents?.[i] || {}
+    // Data can be in client_absent_parent OR in tutor_guardian (absent_parent_* fields)
+    const tutorAbsentName = (tutorData?.absent_parent_name as string) || ''
+    const tutorAbsentNationality = (tutorData?.absent_parent_nationality as string) || ''
+    const tutorAbsentPassport = (tutorData?.absent_parent_passport as string) || ''
+    const tutorAbsentId = (tutorData?.absent_parent_id as string) || ''
 
-      const nationality = apData?.parent_nationality || apData?.absent_parent_nationality || suppParent.nationality || ''
-      fields.push({ key: `parent_${i}_nationality`, label: 'Nacionalidad', placeholder: 'Ej: Ecuatoriano', section: `parent_${i}`, sectionLabel: `Padre Ausente — ${name}`, value: nationality, source: apData?.parent_nationality ? 'form' : 'supplementary' })
+    if (absentParents.length > 0) {
+      absentParents.forEach((ap, i) => {
+        const apData = ap.formData as Record<string, string>
+        const name = apData?.parent_name || tutorAbsentName || `Padre ${i + 1}`
+        const suppParent = suppData?.absent_parents?.[i] || {}
 
-      const passport = apData?.parent_passport || apData?.absent_parent_passport || suppParent.passport || ''
-      fields.push({ key: `parent_${i}_passport`, label: 'No. Pasaporte/Cédula', placeholder: 'Número de documento', section: `parent_${i}`, sectionLabel: `Padre Ausente — ${name}`, value: passport, source: apData?.parent_passport ? 'form' : 'supplementary' })
-    })
+        const nationality = apData?.parent_nationality || apData?.absent_parent_nationality || tutorAbsentNationality || suppParent.nationality || ''
+        fields.push({ key: `parent_${i}_nationality`, label: 'Nacionalidad', placeholder: 'Ej: Ecuatoriano', section: `parent_${i}`, sectionLabel: `Padre Ausente — ${name}`, value: nationality, source: (apData?.parent_nationality || tutorAbsentNationality) ? 'form' : 'supplementary' })
+
+        const passport = apData?.parent_passport || apData?.absent_parent_passport || tutorAbsentPassport || tutorAbsentId || suppParent.passport || ''
+        fields.push({ key: `parent_${i}_passport`, label: 'No. Pasaporte/Cédula', placeholder: 'Número de documento', section: `parent_${i}`, sectionLabel: `Padre Ausente — ${name}`, value: passport, source: (apData?.parent_passport || tutorAbsentPassport || tutorAbsentId) ? 'form' : 'supplementary' })
+      })
+    } else if (tutorAbsentName) {
+      // No client_absent_parent record but tutor has absent parent data
+      const suppParent = suppData?.absent_parents?.[0] || {}
+      const nationality = tutorAbsentNationality || suppParent.nationality || ''
+      fields.push({ key: 'parent_0_nationality', label: 'Nacionalidad', placeholder: 'Ej: Ecuatoriano', section: 'parent_0', sectionLabel: `Padre Ausente — ${tutorAbsentName}`, value: nationality, source: tutorAbsentNationality ? 'form' : 'supplementary' })
+
+      const passport = tutorAbsentPassport || tutorAbsentId || suppParent.passport || ''
+      fields.push({ key: 'parent_0_passport', label: 'No. Pasaporte/Cédula', placeholder: 'Número de documento', section: 'parent_0', sectionLabel: `Padre Ausente — ${tutorAbsentName}`, value: passport, source: (tutorAbsentPassport || tutorAbsentId) ? 'form' : 'supplementary' })
+    }
 
     // === MINORS ===
     minorStories.forEach((s, i) => {
+      // Support both formats: minorBasic (new) and minor_info (old)
       const mb = (s.formData?.minorBasic || {}) as Record<string, string>
-      const name = mb.full_name || `Menor ${i + 1}`
+      const mi = (s.formData?.minor_info || {}) as Record<string, string>
+      const name = mb.full_name || mi.name || `Menor ${i + 1}`
       const suppMinor = suppData?.minors?.[i] || {}
 
       const birthCity = mb.birth_city || suppMinor.birth_city || ''
@@ -115,11 +133,22 @@ export function SupplementaryDataForm({ caseId, tutorData, minorStories, absentP
     witnesses.forEach((w, i) => {
       const suppWitness = suppData?.witnesses?.[i] || {}
 
-      const idType = w.id_type || suppWitness.id_type || ''
-      fields.push({ key: `witness_${i}_id_type`, label: 'Tipo de ID', placeholder: 'Ej: Cédula', section: `witness_${i}`, sectionLabel: `Testigo ${i + 1} — ${w.name}`, value: idType, source: w.id_type ? 'form' : 'supplementary' })
-
+      // Check nationality (from form) and id_number (from form)
+      const nationality = w.nationality || suppWitness.nationality || ''
       const idNumber = w.id_number || suppWitness.id_number || ''
-      fields.push({ key: `witness_${i}_id_number`, label: 'Número de ID', placeholder: 'Número', section: `witness_${i}`, sectionLabel: `Testigo ${i + 1} — ${w.name}`, value: idNumber, source: w.id_number ? 'form' : 'supplementary' })
+
+      // Only show id_number as missing if it's truly empty
+      if (!idNumber) {
+        fields.push({ key: `witness_${i}_id_number`, label: 'Número de ID', placeholder: 'Número', section: `witness_${i}`, sectionLabel: `Testigo ${i + 1} — ${w.name}`, value: '', source: 'supplementary' })
+      } else {
+        fields.push({ key: `witness_${i}_id_number`, label: 'Número de ID', placeholder: 'Número', section: `witness_${i}`, sectionLabel: `Testigo ${i + 1} — ${w.name}`, value: idNumber, source: w.id_number ? 'form' : 'supplementary' })
+      }
+
+      if (!nationality) {
+        fields.push({ key: `witness_${i}_nationality`, label: 'Nacionalidad', placeholder: 'Ej: Peruana', section: `witness_${i}`, sectionLabel: `Testigo ${i + 1} — ${w.name}`, value: '', source: 'supplementary' })
+      } else {
+        fields.push({ key: `witness_${i}_nationality`, label: 'Nacionalidad', placeholder: 'Ej: Peruana', section: `witness_${i}`, sectionLabel: `Testigo ${i + 1} — ${w.name}`, value: nationality, source: w.nationality ? 'form' : 'supplementary' })
+      }
     })
 
     const missing = fields.filter(f => !f.value.trim())
@@ -178,7 +207,7 @@ export function SupplementaryDataForm({ caseId, tutorData, minorStories, absentP
       witnesses.forEach((w, i) => {
         if (!updated.witnesses) updated.witnesses = []
         if (!updated.witnesses[i]) updated.witnesses[i] = { name: w.name || '' }
-        if (localValues[`witness_${i}_id_type`] !== undefined) updated.witnesses[i].id_type = localValues[`witness_${i}_id_type`]
+        if (localValues[`witness_${i}_nationality`] !== undefined) updated.witnesses[i].nationality = localValues[`witness_${i}_nationality`]
         if (localValues[`witness_${i}_id_number`] !== undefined) updated.witnesses[i].id_number = localValues[`witness_${i}_id_number`]
       })
 
