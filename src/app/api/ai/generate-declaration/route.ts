@@ -113,14 +113,22 @@ CRITICAL RULES:
   if (type === 'parental_consent') {
     // Get absent parent for THIS specific child
     const absentParent = (ctx.allAbsentParents[index] || ctx.clientAbsentParent || {}) as Record<string, string>
-    const parentName = absentParent.parent_name || tutor?.partner_name as string || '[FALTA: Nombre completo del padre ausente]'
-    const parentRelation = absentParent.parent_relationship === 'padre' ? 'father' : 'mother'
-    const childPronoun = parentRelation === 'father' ? 'daughter' : 'son'
+    const parentName = absentParent.parent_name || (tutor?.absent_parent_name as string) || '[FALTA: Nombre completo del padre ausente]'
+    const parentRelation = absentParent.parent_relationship || (tutor?.absent_parent_relationship as string) || 'padre'
+    const parentRelationEN = parentRelation === 'madre' ? 'mother' : 'father'
+    const childPronoun = parentRelationEN === 'father' ? 'daughter' : 'son'
+
+    // Find the best ID document available (passport OR cedula/DNI)
+    const parentPassport = absentParent.parent_passport || (tutor?.absent_parent_passport as string) || ''
+    const parentId = absentParent.parent_id_number || (tutor?.absent_parent_id as string) || ''
+    const parentNationality = absentParent.parent_nationality || absentParent.nationality || (tutor?.absent_parent_nationality as string) || ''
+    const parentDocLabel = parentPassport ? 'Passport' : parentId ? 'ID/Cédula' : '[FALTA: Tipo de documento]'
+    const parentDocNumber = parentPassport || parentId || '[FALTA: Número de documento de identidad del padre ausente]'
 
     return `You are an expert immigration paralegal. Generate a PARENTAL CONSENT TO TEMPORARY GUARDIANSHIP letter.
 
 Use ONLY the data provided. Search through ALL the documents, forms, and case information to find:
-- The absent parent's full name and passport number
+- The absent parent's full name and ID document (passport, cedula, or DNI)
 - The child's full name and date of birth
 - The guardian's full name and address
 - The court jurisdiction
@@ -129,13 +137,13 @@ HERE IS THE EXACT FORMAT TO FOLLOW (replace only the bracketed data with real ca
 
 PARENTAL CONSENT TO TEMPORARY GUARDIANSHIP
 
-I, [ABSENT PARENT FULL NAME], holder of [NATIONALITY] Passport No. [PASSPORT NUMBER], hereby declare the following under oath:
+I, [ABSENT PARENT FULL NAME], holder of [NATIONALITY] ${parentDocLabel} No. ${parentDocNumber}, hereby declare the following under oath:
 
 1. I am the biological ${parentRelation} of [CHILD FULL NAME IN CAPS], born on [MONTH DAY, YEAR].
 
 2. I acknowledge that my ${childPronoun} is currently residing in [CITY], [STATE], United States, under the care of [GUARDIAN FULL NAME], who resides at [GUARDIAN FULL ADDRESS].
 
-3. I give my full and voluntary consent for [GUARDIAN FULL NAME] to petition for and be granted temporary legal guardianship of my ${childPronoun} by the [COURT NAME, e.g. Fourth District Juvenile Court of the State of Utah].
+3. I give my full and voluntary consent for [GUARDIAN FULL NAME] to petition for and be granted temporary legal guardianship of my ${childPronoun} by the [COURT NAME from supplementary data].
 
 4. I understand that this guardianship is part of a legal process intended to provide protection and stability to my ${childPronoun}, and that it does not constitute a permanent termination of my parental rights. However, it does transfer temporary legal authority to the appointed guardian.
 
@@ -152,8 +160,12 @@ This document was read and explained to the signer in Spanish before signing.
 
 === CASE DATA TO USE ===
 Absent parent name: ${parentName}
+Absent parent nationality: ${parentNationality}
+Absent parent document type: ${parentDocLabel}
+Absent parent document number: ${parentDocNumber}
 Absent parent data: ${JSON.stringify(absentParent)}
-Tutor/Guardian data: ${JSON.stringify(tutor)}
+Tutor/Guardian name: ${tutor?.full_name || ''}
+Tutor/Guardian address: ${tutor?.full_address || ''}
 Children in case:
 ${ctx.allMinorStories.map((s, i) => {
   const mb = (s.formData?.minorBasic || {}) as Record<string, string>

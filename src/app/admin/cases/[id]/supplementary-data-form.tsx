@@ -98,8 +98,8 @@ export function SupplementaryDataForm({ caseId, tutorData, minorStories, absentP
         const nationality = apData?.parent_nationality || apData?.absent_parent_nationality || tutorAbsentNationality || suppParent.nationality || ''
         fields.push({ key: `parent_${i}_nationality`, label: 'Nacionalidad', placeholder: 'Ej: Ecuatoriano', section: `parent_${i}`, sectionLabel: `Padre Ausente — ${name}`, value: nationality, source: (apData?.parent_nationality || tutorAbsentNationality) ? 'form' : 'supplementary' })
 
-        const passport = apData?.parent_passport || apData?.absent_parent_passport || tutorAbsentPassport || tutorAbsentId || suppParent.passport || ''
-        fields.push({ key: `parent_${i}_passport`, label: 'No. Pasaporte/Cédula', placeholder: 'Número de documento', section: `parent_${i}`, sectionLabel: `Padre Ausente — ${name}`, value: passport, source: (apData?.parent_passport || tutorAbsentPassport || tutorAbsentId) ? 'form' : 'supplementary' })
+        const passport = apData?.parent_passport || apData?.parent_id_number || apData?.absent_parent_passport || apData?.absent_parent_id || tutorAbsentPassport || tutorAbsentId || suppParent.passport || ''
+        fields.push({ key: `parent_${i}_passport`, label: 'No. Pasaporte/Cédula/DNI', placeholder: 'Número de documento', section: `parent_${i}`, sectionLabel: `Padre Ausente — ${name}`, value: passport, source: (apData?.parent_passport || apData?.parent_id_number || tutorAbsentPassport || tutorAbsentId) ? 'form' : 'supplementary' })
       })
     } else if (tutorAbsentName) {
       // No client_absent_parent record but tutor has absent parent data

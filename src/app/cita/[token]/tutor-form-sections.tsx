@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, UserPlus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, UserPlus, Trash2, User } from 'lucide-react'
 import { AIImproveButton } from '@/components/ai-improve-button'
 
 // Reusable field components
@@ -77,7 +77,65 @@ function Section({ title, number, children }: { title: string; number: number; c
 interface TutorWitness { name: string; relationship: string; phone: string; address: string; can_testify: string }
 
 interface TutorFormData {
-  [key: string]: string | TutorWitness[]
+  [key: string]: string | TutorWitness[] | Array<Record<string, string>>
+}
+
+function MinorBlock({ index, data, onChange }: {
+  index: number
+  data: Record<string, string>
+  onChange: (field: string, value: string) => void
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 mb-1">
+        <User className="w-4 h-4 text-[#F2A900]" />
+        <span className="text-sm font-bold text-gray-700">Menor {index + 1}</span>
+      </div>
+      <div>
+        <FieldLabel required>Nombre completo del menor</FieldLabel>
+        <TInput value={data.name || ''} onChange={v => onChange('name', v)} placeholder="Nombre y apellidos completos" />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <FieldLabel required>Fecha de nacimiento</FieldLabel>
+          <TInput type="date" value={data.dob || ''} onChange={v => onChange('dob', v)} />
+        </div>
+        <div>
+          <FieldLabel>País de nacimiento</FieldLabel>
+          <TInput value={data.country || ''} onChange={v => onChange('country', v)} placeholder="Ej: Venezuela, Perú..." />
+        </div>
+      </div>
+      <div>
+        <FieldLabel>Ciudad de nacimiento</FieldLabel>
+        <TInput value={data.city || ''} onChange={v => onChange('city', v)} placeholder="Ej: Lima, Guayaquil, Tegucigalpa..." />
+      </div>
+      <div>
+        <FieldLabel>Estado civil</FieldLabel>
+        <div className="flex gap-2">
+          {['Soltero/a', 'Casado/a'].map(opt => (
+            <button key={opt} type="button" onClick={() => onChange('civil_status', opt)}
+              className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                data.civil_status === opt ? 'border-[#F2A900] bg-[#F2A900]/10 text-[#9a6500]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+              }`}>{opt}</button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <FieldLabel>Dirección actual del menor</FieldLabel>
+        <TInput value={data.location || ''} onChange={v => onChange('location', v)} placeholder="Dirección completa en EE.UU." />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <FieldLabel>¿Con quién vive?</FieldLabel>
+          <TInput value={data.lives_with || ''} onChange={v => onChange('lives_with', v)} placeholder="Nombre y relación" />
+        </div>
+        <div>
+          <FieldLabel>¿Desde cuándo?</FieldLabel>
+          <TInput value={data.lives_with_since || ''} onChange={v => onChange('lives_with_since', v)} placeholder="Ej: Desde 2022" />
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function TutorFormSections({ data, onChange }: { data: TutorFormData; onChange: (d: TutorFormData) => void }) {
@@ -123,45 +181,67 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
         </div>
       </Section>
 
-      {/* Sección 2: Sobre el Menor */}
-      <Section title="Información del Menor" number={2}>
-        <div>
-          <FieldLabel required>5. Nombre completo del menor</FieldLabel>
-          <TInput value={data.minor_full_name as string || ''} onChange={v => upd('minor_full_name', v)} placeholder="Nombre completo del menor" />
+      {/* Sección 2: Sobre los Menores */}
+      <Section title="Información de los Menores" number={2}>
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800 mb-2">
+          Complete la información de cada menor. Si tiene más de un hijo/a en este caso, use el botón "Agregar otro menor".
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <FieldLabel required>6. Fecha de nacimiento del menor</FieldLabel>
-            <TInput type="date" value={data.minor_dob as string || ''} onChange={v => upd('minor_dob', v)} />
+
+        {/* Primer menor (siempre visible) */}
+        <MinorBlock
+          index={0}
+          data={{
+            name: data.minor_full_name as string || '',
+            dob: data.minor_dob as string || '',
+            country: data.minor_country as string || '',
+            city: data.minor_city as string || '',
+            civil_status: data.minor_civil_status as string || '',
+            location: data.minor_location as string || '',
+            lives_with: data.minor_lives_with as string || '',
+            lives_with_since: data.minor_lives_with_since as string || '',
+          }}
+          onChange={(field, value) => {
+            const fieldMap: Record<string, string> = {
+              name: 'minor_full_name', dob: 'minor_dob', country: 'minor_country',
+              city: 'minor_city', civil_status: 'minor_civil_status',
+              location: 'minor_location', lives_with: 'minor_lives_with',
+              lives_with_since: 'minor_lives_with_since',
+            }
+            upd(fieldMap[field], value)
+          }}
+        />
+
+        {/* Additional minors */}
+        {((data.additional_minors || []) as Array<Record<string, string>>).map((minor, i) => (
+          <div key={i} className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold text-gray-500">Menor {i + 2}</span>
+              <button type="button" onClick={() => {
+                const minors = [...((data.additional_minors || []) as Array<Record<string, string>>)]
+                minors.splice(i, 1)
+                upd('additional_minors', minors as any)
+              }} className="text-xs text-red-500 hover:text-red-700">Eliminar</button>
+            </div>
+            <MinorBlock
+              index={i + 1}
+              data={minor}
+              onChange={(field, value) => {
+                const minors = [...((data.additional_minors || []) as Array<Record<string, string>>)]
+                minors[i] = { ...minors[i], [field]: value }
+                upd('additional_minors', minors as any)
+              }}
+            />
           </div>
-          <div>
-            <FieldLabel>7. País de nacimiento del menor</FieldLabel>
-            <TInput value={data.minor_country as string || ''} onChange={v => upd('minor_country', v)} placeholder="Ej: Honduras, Guatemala..." />
-          </div>
-        </div>
-        <div>
-          <FieldLabel>8. Estado civil actual del menor</FieldLabel>
-          <div className="flex gap-2">
-            {['Soltero/a', 'Casado/a'].map(opt => (
-              <button key={opt} type="button" onClick={() => upd('minor_civil_status', opt)}
-                className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                  data.minor_civil_status === opt ? 'border-[#F2A900] bg-[#F2A900]/10 text-[#9a6500]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                }`}>{opt}</button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <FieldLabel>9. ¿Dónde se encuentra actualmente el menor? (dirección completa)</FieldLabel>
-          <TInput value={data.minor_location as string || ''} onChange={v => upd('minor_location', v)} placeholder="Dirección completa en EE.UU." />
-        </div>
-        <div>
-          <FieldLabel>10. ¿Con quién vive actualmente el menor?</FieldLabel>
-          <TInput value={data.minor_lives_with as string || ''} onChange={v => upd('minor_lives_with', v)} placeholder="Nombre y relación" />
-        </div>
-        <div>
-          <FieldLabel>11. ¿Desde cuándo vive el menor con esta persona?</FieldLabel>
-          <TInput value={data.minor_lives_with_since as string || ''} onChange={v => upd('minor_lives_with_since', v)} placeholder="Ej: Desde 2022 / Desde su nacimiento" />
-        </div>
+        ))}
+
+        <button type="button" onClick={() => {
+          const minors = [...((data.additional_minors || []) as Array<Record<string, string>>)]
+          minors.push({ name: '', dob: '', country: '', city: '', civil_status: 'Soltero/a', location: '', lives_with: '', lives_with_since: '' })
+          upd('additional_minors', minors as any)
+        }}
+          className="mt-3 w-full py-2 border-2 border-dashed border-gray-300 rounded-xl text-sm font-medium text-gray-500 hover:border-[#F2A900] hover:text-[#9a6500] transition-colors flex items-center justify-center gap-2">
+          <UserPlus className="w-4 h-4" /> Agregar otro menor
+        </button>
       </Section>
 
       {/* Sección 2.5: Datos del Padre/Madre Ausente */}
