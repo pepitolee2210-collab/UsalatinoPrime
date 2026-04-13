@@ -1,24 +1,25 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import {
   ArrowLeft, FileText, Download, Send, Loader2,
-  CheckCircle, AlertTriangle, Clock, Upload, Trash2,
-  User, Briefcase, MessageSquare, BookOpen,
+  CheckCircle, AlertTriangle, Clock, Upload,
+  User, BookOpen, Eye, X, MessageSquare,
 } from 'lucide-react'
 import Link from 'next/link'
+import { DeclarationGenerator } from '@/app/admin/cases/[id]/declaration-generator'
+import { ParentalConsentGenerator } from '@/app/admin/cases/[id]/parental-consent-generator'
+import { SupplementaryDataForm } from '@/app/admin/cases/[id]/supplementary-data-form'
 
 interface CaseData {
   id: string
   case_number: string
   client: { first_name: string; last_name: string; email: string; phone: string }
-  service: { name: string }
+  service: { name: string; slug: string }
 }
 
 interface Assignment {
@@ -42,6 +43,7 @@ interface FormSubmission {
   form_data: Record<string, unknown>
   status: string
   updated_at: string
+  minor_index: number
 }
 
 interface Submission {
@@ -56,409 +58,341 @@ interface Submission {
   updated_at: string
 }
 
-const SUB_STATUS: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  draft:            { label: 'Borrador',     color: 'bg-gray-100 text-gray-600',   icon: Clock },
-  submitted:        { label: 'Enviado',      color: 'bg-purple-100 text-purple-700', icon: Send },
-  needs_correction: { label: 'Correcciones', color: 'bg-red-100 text-red-700',     icon: AlertTriangle },
-  approved:         { label: 'Aprobado',     color: 'bg-green-100 text-green-700', icon: CheckCircle },
-}
+type TabId = 'docs' | 'client-docs' | 'notas' | 'historia' | 'declaraciones' | 'i360' | 'mi-trabajo'
 
-export function EmployeeCaseView({ caseData, assignment, documents, formSubmissions = [], submissions }: {
+export function EmployeeCaseView({ caseData, assignment, documents, henryDocuments, formSubmissions = [], submissions, henryNotes }: {
   caseData: CaseData
   assignment: Assignment
   documents: Doc[]
+  henryDocuments: Doc[]
   formSubmissions?: FormSubmission[]
   submissions: Submission[]
+  henryNotes: string
 }) {
-  const [currentAssignment, setCurrentAssignment] = useState(assignment)
-  const [subs, setSubs] = useState(submissions)
-  const [title, setTitle] = useState('')
-  const [content, setContent] = useState('')
-  const [file, setFile] = useState<File | null>(null)
-  const [sending, setSending] = useState(false)
-  const [statusLoading, setStatusLoading] = useState(false)
-  const [tab, setTab] = useState<'docs' | 'forms' | 'workspace'>('docs')
-  const i589Subs = formSubmissions.filter(s => s.form_type.startsWith('i589_'))
-  const storySubs = formSubmissions.filter(s => ['client_story', 'client_witnesses', 'client_absent_parent', 'tutor_guardian'].includes(s.form_type))
-  const hasFormData = i589Subs.length > 0 || storySubs.length > 0
-  const fileRef = useRef<HTMLInputElement>(null)
-  const router = useRouter()
+  const [tab, setTab] = useState<TabId>('docs')
+  const [previewDoc, setPreviewDoc] = useState<Doc | null>(null)
 
-  async function updateMyStatus(newStatus: string) {
-    setStatusLoading(true)
-    try {
-      const res = await fetch('/api/employee/update-status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assignment_id: currentAssignment.id, status: newStatus }),
-      })
-      if (!res.ok) throw new Error()
-      setCurrentAssignment(prev => ({ ...prev, status: newStatus }))
-      toast.success('Estado actualizado')
-    } catch {
-      toast.error('Error al actualizar')
-    } finally {
-      setStatusLoading(false)
-    }
-  }
+  const clientName = `${caseData.client?.first_name || ''} ${caseData.client?.last_name || ''}`.trim()
+  const isVisaJuvenil = caseData.service?.slug === 'visa-juvenil'
 
-  async function handleSubmit() {
-    if (!content.trim() && !file) {
-      toast.error('Escribe algo o adjunta un archivo')
-      return
-    }
+  const aiSubmissions = formSubmissions
+  const tutorData = aiSubmissions.find(s => s.form_type === 'tutor_guardian')?.form_data || null
+  const minorStories = aiSubmissions
+    .filter(s => s.form_type === 'client_story')
+    .sort((a, b) => (a.minor_index || 0) - (b.minor_index || 0))
+    .map(s => ({ minorIndex: s.minor_index || 0, formData: s.form_data }))
+  const absentParents = aiSubmissions
+    .filter(s => s.form_type === 'client_absent_parent')
+    .sort((a, b) => (a.minor_index || 0) - (b.minor_index || 0))
+    .map(s => ({ formData: s.form_data }))
 
-    setSending(true)
-    try {
-      const fd = new FormData()
-      fd.append('assignment_id', assignment.id)
-      fd.append('title', title.trim() || 'Sin título')
-      fd.append('content', content)
-      if (file) fd.append('file', file)
+  const i360Sub = aiSubmissions.find(s => s.form_type === 'i360_sijs')
 
-      const res = await fetch('/api/employee/submit-work', { method: 'POST', body: fd })
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error || 'Error al enviar')
-      }
-      const { submission } = await res.json()
-      setSubs(prev => [submission, ...prev])
-      setTitle('')
-      setContent('')
-      setFile(null)
-      toast.success('Trabajo enviado al abogado para revisión')
-      router.refresh()
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Error al enviar'
-      toast.error(message)
-    } finally {
-      setSending(false)
-    }
-  }
+  const isPDF = (name: string) => name.toLowerCase().endsWith('.pdf')
+
+  const tabs: { id: TabId; label: string; count?: number }[] = [
+    { id: 'docs', label: 'Documentos', count: documents.length },
+    { id: 'client-docs', label: 'Para el Cliente', count: henryDocuments.length },
+    { id: 'notas', label: 'Notas' },
+    { id: 'historia', label: 'Historia' },
+    ...(isVisaJuvenil ? [
+      { id: 'declaraciones' as TabId, label: 'Declaraciones' },
+      { id: 'i360' as TabId, label: 'I-360' },
+    ] : []),
+    { id: 'mi-trabajo', label: 'Mi Trabajo', count: submissions.length },
+  ]
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-start gap-3">
-        <Link href="/employee/dashboard">
-          <Button variant="ghost" size="icon" className="mt-0.5">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-900">
-            {caseData.client.first_name} {caseData.client.last_name}
-          </h1>
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            <span className="text-xs text-gray-400">#{caseData.case_number}</span>
-            <Badge variant="secondary" className="text-[10px]">{caseData.service.name}</Badge>
+      {/* Preview Modal */}
+      {previewDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={() => setPreviewDoc(null)}>
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-4 border-b">
+              <p className="font-bold text-gray-900 truncate flex-1">{previewDoc.name}</p>
+              <div className="flex items-center gap-2 ml-3">
+                <a href={`/api/employee/download-case-doc?id=${previewDoc.id}`} target="_blank" rel="noopener noreferrer">
+                  <Button size="sm" variant="outline"><Download className="w-3 h-3 mr-1" /> Descargar</Button>
+                </a>
+                <button onClick={() => setPreviewDoc(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 hover:bg-gray-200"><X className="w-4 h-4" /></button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-hidden bg-gray-100">
+              {isPDF(previewDoc.name) ? (
+                <iframe src={`/api/employee/download-case-doc?id=${previewDoc.id}`} className="w-full h-[75vh]" title={previewDoc.name} />
+              ) : (
+                <div className="flex items-center justify-center h-[50vh]">
+                  <div className="text-center">
+                    <FileText className="w-16 h-16 text-gray-300 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500">Vista previa no disponible</p>
+                    <a href={`/api/employee/download-case-doc?id=${previewDoc.id}`} target="_blank" rel="noopener noreferrer" className="text-sm text-[#F2A900] hover:underline mt-2 inline-block">Descargar</a>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
-
-      {/* Status selector */}
-      <div className="p-3 rounded-xl bg-gray-50 border border-gray-200">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Estado de la tarea</p>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { value: 'in_progress', label: 'En progreso', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
-            { value: 'submitted', label: 'Enviado a revisión', color: 'bg-purple-100 text-purple-700 border-purple-300' },
-          ].map(s => (
-            <button key={s.value} onClick={() => updateMyStatus(s.value)}
-              disabled={statusLoading || currentAssignment.status === s.value}
-              className={`px-3 py-2 rounded-xl text-xs font-bold border-2 transition-all ${
-                currentAssignment.status === s.value
-                  ? s.color + ' ring-2 ring-offset-1 ring-gray-300'
-                  : 'border-gray-200 text-gray-400 hover:border-gray-300'
-              }`}>
-              {s.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Task from Henry */}
-      {assignment.task_description && (
-        <div className="p-4 rounded-2xl border-2 border-[#F2A900]/30 bg-[#F2A900]/5">
-          <div className="flex items-center gap-2 mb-2">
-            <MessageSquare className="w-4 h-4 text-[#F2A900]" />
-            <span className="text-xs font-bold text-[#9a6500] uppercase tracking-wider">Instrucciones del Abogado</span>
-          </div>
-          <p className="text-sm text-gray-800 whitespace-pre-wrap">{assignment.task_description}</p>
-          <p className="text-[11px] text-gray-400 mt-2">
-            Asignado {new Date(assignment.assigned_at).toLocaleDateString('es-US', { day: 'numeric', month: 'short', year: 'numeric' })}
-          </p>
         </div>
       )}
 
-      {/* Client info card */}
-      <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200">
-        <div className="flex items-center gap-2 mb-2">
-          <User className="w-4 h-4 text-gray-400" />
-          <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Cliente</span>
-        </div>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div>
-            <span className="text-gray-400 text-xs">Nombre</span>
-            <p className="font-medium text-gray-800">{caseData.client.first_name} {caseData.client.last_name}</p>
+      {/* Header */}
+      <div className="flex items-start gap-3">
+        <Link href="/employee/dashboard"><Button variant="ghost" size="icon"><ArrowLeft className="w-5 h-5" /></Button></Link>
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">{clientName}</h1>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge variant="secondary" className="text-[10px]">#{caseData.case_number}</Badge>
+            <Badge variant="secondary" className="text-[10px]">{caseData.service?.name}</Badge>
           </div>
-          <div>
-            <span className="text-gray-400 text-xs">Teléfono</span>
-            <p className="font-medium text-gray-800">{caseData.client.phone || '—'}</p>
+          <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+            <span>{caseData.client?.phone}</span>
+            <span>{caseData.client?.email}</span>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
-        <button onClick={() => setTab('docs')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold transition-colors ${
-            tab === 'docs' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-          }`}>
-          <FileText className="w-4 h-4" /> Docs ({documents.length})
-        </button>
-        {hasFormData && (
-          <button onClick={() => setTab('forms')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold transition-colors ${
-              tab === 'forms' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+      <div className="flex gap-1 overflow-x-auto pb-1" style={{ borderBottom: '1px solid #f0f1f3' }}>
+        {tabs.map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold whitespace-nowrap rounded-t-lg transition-colors ${
+              tab === t.id ? 'bg-white text-gray-900 border border-b-0 border-gray-200' : 'text-gray-500 hover:text-gray-700'
             }`}>
-            <BookOpen className="w-4 h-4" /> Formularios ({i589Subs.length + storySubs.length})
+            {t.label}
+            {t.count !== undefined && <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">{t.count}</span>}
           </button>
-        )}
-        <button onClick={() => setTab('workspace')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-semibold transition-colors ${
-            tab === 'workspace' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-          }`}>
-          <Briefcase className="w-4 h-4" /> Mi Trabajo ({subs.length})
-        </button>
+        ))}
       </div>
 
-      {/* Documents tab */}
+      {/* === DOCUMENTOS TAB === */}
       {tab === 'docs' && (
         <div className="space-y-2">
-          {documents.length === 0 ? (
-            <p className="text-center text-gray-400 py-8 text-sm">No hay documentos aún.</p>
-          ) : (
-            documents.map(doc => (
-              <div key={doc.id} className="flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-200">
-                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-5 h-5 text-blue-500" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
-                  <p className="text-[11px] text-gray-400">
-                    {doc.file_size ? `${(doc.file_size / 1024).toFixed(0)} KB` : ''}
-                    {' · '}
-                    {new Date(doc.created_at).toLocaleDateString('es-US', { day: 'numeric', month: 'short' })}
-                  </p>
-                </div>
-                <a
-                  href={`/api/employee/download-case-doc?id=${doc.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <Download className="w-4 h-4 text-gray-500" />
-                </a>
-              </div>
-            ))
-          )}
+          {documents.length === 0 ? <p className="text-center text-gray-400 py-8 text-sm">No hay documentos.</p> : documents.map(doc => (
+            <DocRow key={doc.id} doc={doc} onPreview={() => setPreviewDoc(doc)} isPDF={isPDF(doc.name)} />
+          ))}
         </div>
       )}
 
-      {/* Forms tab — I-589, historia, tutor */}
-      {tab === 'forms' && (
+      {/* === PARA EL CLIENTE TAB === */}
+      {tab === 'client-docs' && (
+        <div className="space-y-2">
+          {henryDocuments.length === 0 ? <p className="text-center text-gray-400 py-8 text-sm">No hay documentos para el cliente.</p> : henryDocuments.map(doc => (
+            <DocRow key={doc.id} doc={doc} onPreview={() => setPreviewDoc(doc)} isPDF={isPDF(doc.name)} />
+          ))}
+        </div>
+      )}
+
+      {/* === NOTAS TAB === */}
+      {tab === 'notas' && (
         <div className="space-y-3">
-          {/* I-589 submissions */}
-          {i589Subs.length > 0 && (
-            <div className="rounded-2xl border border-indigo-200 overflow-hidden">
-              <div className="px-4 py-3 bg-indigo-50">
-                <p className="text-sm font-bold text-indigo-900">Formulario I-589 — Asilo</p>
-                <p className="text-xs text-indigo-600">{i589Subs.length} sección{i589Subs.length !== 1 ? 'es' : ''} completada{i589Subs.length !== 1 ? 's' : ''}</p>
-              </div>
-              <div className="divide-y divide-indigo-100">
-                {i589Subs.map(sub => {
-                  const d = sub.form_data as Record<string, string>
-                  const label = sub.form_type === 'i589_part_b1' ? 'Parte B1' : sub.form_type === 'i589_part_b2' ? 'Parte B2' : sub.form_type === 'i589_part_c1' ? 'Parte C1' : 'Parte C2'
-                  return (
-                    <div key={sub.form_type} className="px-4 py-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-indigo-700">{label}</span>
-                        <Badge className={sub.status === 'submitted' ? 'bg-purple-100 text-purple-700' : sub.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}>
-                          {sub.status === 'submitted' ? 'Enviado' : sub.status === 'approved' ? 'Aprobado' : sub.status}
-                        </Badge>
-                      </div>
-                      <div className="grid gap-1.5">
-                        {Object.entries(d).filter(([, v]) => v && typeof v === 'string' && v.trim()).slice(0, 8).map(([k, v]) => (
-                          <div key={k}>
-                            <span className="text-[10px] font-medium text-gray-400">{k.replace(/_/g, ' ')}</span>
-                            <p className="text-xs text-gray-700 line-clamp-3">{v as string}</p>
-                          </div>
-                        ))}
-                        {Object.entries(d).filter(([, v]) => v && typeof v === 'string' && (v as string).trim()).length > 8 && (
-                          <p className="text-[10px] text-indigo-500">+{Object.entries(d).filter(([, v]) => v && typeof v === 'string' && (v as string).trim()).length - 8} campos más</p>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+          {henryNotes ? (
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+              <p className="text-xs font-bold text-yellow-700 mb-2">Notas del Abogado</p>
+              <p className="text-sm text-gray-800 whitespace-pre-wrap">{henryNotes}</p>
             </div>
+          ) : (
+            <p className="text-center text-gray-400 py-8 text-sm">No hay notas.</p>
           )}
-
-          {/* Story / tutor submissions */}
-          {storySubs.length > 0 && (
-            <div className="rounded-2xl border border-blue-200 overflow-hidden">
-              <div className="px-4 py-3 bg-blue-50">
-                <p className="text-sm font-bold text-blue-900">Historia del Cliente</p>
-                <p className="text-xs text-blue-600">{storySubs.length} formulario{storySubs.length !== 1 ? 's' : ''}</p>
-              </div>
-              <div className="divide-y divide-blue-100">
-                {storySubs.map(sub => {
-                  const d = sub.form_data as Record<string, unknown>
-                  const label = sub.form_type === 'tutor_guardian' ? 'Declaración del Tutor' : sub.form_type === 'client_story' ? 'Historia del Menor' : sub.form_type === 'client_witnesses' ? 'Testigos' : 'Padre Ausente'
-                  return (
-                    <div key={sub.form_type + sub.updated_at} className="px-4 py-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-blue-700">{label}</span>
-                        <Badge className={sub.status === 'submitted' ? 'bg-purple-100 text-purple-700' : sub.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}>
-                          {sub.status === 'submitted' ? 'Enviado' : sub.status === 'approved' ? 'Aprobado' : sub.status}
-                        </Badge>
-                      </div>
-                      <div className="grid gap-1.5">
-                        {Object.entries(d).filter(([, v]) => v && typeof v === 'string' && (v as string).trim()).slice(0, 6).map(([k, v]) => (
-                          <div key={k}>
-                            <span className="text-[10px] font-medium text-gray-400">{k.replace(/_/g, ' ')}</span>
-                            <p className="text-xs text-gray-700 line-clamp-3">{v as string}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+          {assignment.task_description && (
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+              <p className="text-xs font-bold text-blue-700 mb-2">Instrucciones de la tarea</p>
+              <p className="text-sm text-gray-800 whitespace-pre-wrap">{assignment.task_description}</p>
             </div>
-          )}
-
-          {!hasFormData && (
-            <p className="text-center text-gray-400 py-8 text-sm">No hay formularios completados para este caso.</p>
           )}
         </div>
       )}
 
-      {/* Workspace tab */}
-      {tab === 'workspace' && (
+      {/* === HISTORIA TAB === */}
+      {tab === 'historia' && (
+        <div className="space-y-3">
+          {aiSubmissions.filter(s => ['tutor_guardian', 'client_story', 'client_witnesses', 'client_absent_parent'].includes(s.form_type)).map((sub, i) => {
+            const labels: Record<string, string> = {
+              tutor_guardian: 'Declaración del Tutor',
+              client_story: `Historia del Menor ${sub.minor_index + 1}`,
+              client_witnesses: 'Testigos',
+              client_absent_parent: `Padre Ausente ${sub.minor_index + 1}`,
+            }
+            return (
+              <FormSection key={sub.form_type + sub.minor_index + i} title={labels[sub.form_type] || sub.form_type} status={sub.status} data={sub.form_data} />
+            )
+          })}
+          {aiSubmissions.filter(s => ['tutor_guardian', 'client_story'].includes(s.form_type)).length === 0 && (
+            <p className="text-center text-gray-400 py-8 text-sm">El cliente no ha llenado la historia.</p>
+          )}
+        </div>
+      )}
+
+      {/* === DECLARACIONES TAB === */}
+      {tab === 'declaraciones' && isVisaJuvenil && (
         <div className="space-y-4">
-          {/* New submission form */}
-          <div className="p-5 rounded-2xl border-2 border-dashed border-gray-300 bg-white space-y-3">
-            <h3 className="text-sm font-bold text-gray-900">Nuevo envío</h3>
+          <SupplementaryDataForm
+            caseId={caseData.id}
+            tutorData={tutorData}
+            minorStories={minorStories}
+            absentParents={absentParents}
+          />
+          <ParentalConsentGenerator caseId={caseData.id} clientName={clientName} />
+          <div className="border-t border-gray-200" />
+          <DeclarationGenerator
+            caseId={caseData.id}
+            clientName={clientName}
+            tutorData={tutorData}
+            minorStories={minorStories}
+          />
+        </div>
+      )}
 
-            <Input
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              placeholder="Título del documento (ej: Proyección de Apelación)"
-              className="h-11"
-            />
+      {/* === I-360 TAB === */}
+      {tab === 'i360' && isVisaJuvenil && (
+        <I360ReviewSection submission={i360Sub} />
+      )}
 
-            <Textarea
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              placeholder="Escribe aquí tu redacción, notas, o proyección..."
-              rows={8}
-              className="resize-none"
-            />
-
-            {/* File attach */}
-            <div className="flex items-center gap-3">
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".pdf,.doc,.docx"
-                className="hidden"
-                onChange={e => {
-                  const f = e.target.files?.[0]
-                  if (f && f.size > 40 * 1024 * 1024) {
-                    toast.error('Máximo 40MB')
-                    return
-                  }
-                  setFile(f || null)
-                }}
-              />
-              {file ? (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-700 flex-1">
-                  <FileText className="w-4 h-4 flex-shrink-0" />
-                  <span className="truncate">{file.name}</span>
-                  <button onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = '' }}>
-                    <Trash2 className="w-3.5 h-3.5 text-red-400 hover:text-red-600" />
-                  </button>
+      {/* === MI TRABAJO TAB === */}
+      {tab === 'mi-trabajo' && (
+        <div className="space-y-3">
+          {submissions.length === 0 ? <p className="text-center text-gray-400 py-8 text-sm">No hay trabajos enviados.</p> : submissions.map(sub => (
+            <div key={sub.id} className="p-4 bg-white border border-gray-200 rounded-xl">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-semibold text-gray-900">{sub.title || 'Sin título'}</p>
+                <Badge className={sub.status === 'approved' ? 'bg-green-100 text-green-700' : sub.status === 'submitted' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}>
+                  {sub.status === 'submitted' ? 'Enviado' : sub.status === 'approved' ? 'Aprobado' : sub.status}
+                </Badge>
+              </div>
+              {sub.content && <p className="text-xs text-gray-600 line-clamp-3">{sub.content}</p>}
+              {sub.admin_notes && (
+                <div className="mt-2 p-2 bg-yellow-50 rounded-lg">
+                  <p className="text-[10px] font-bold text-yellow-700">Notas del abogado:</p>
+                  <p className="text-xs text-yellow-800">{sub.admin_notes}</p>
                 </div>
-              ) : (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileRef.current?.click()}
-                >
-                  <Upload className="w-4 h-4 mr-1" />
-                  Adjuntar PDF
-                </Button>
               )}
             </div>
-
-            <Button
-              onClick={handleSubmit}
-              disabled={sending || (!content.trim() && !file)}
-              className="bg-[#002855] hover:bg-[#001d3d]"
-            >
-              {sending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-              Enviar al Abogado
-            </Button>
-          </div>
-
-          {/* Previous submissions */}
-          {subs.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Envíos anteriores</h3>
-              {subs.map(sub => {
-                const sc = SUB_STATUS[sub.status] || SUB_STATUS.draft
-                const Icon = sc.icon
-                return (
-                  <div key={sub.id} className="p-4 rounded-2xl bg-white border border-gray-200">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <p className="font-semibold text-gray-900 text-sm">{sub.title || 'Sin título'}</p>
-                      <Badge className={sc.color}>
-                        <Icon className="w-3 h-3 mr-1" />
-                        {sc.label}
-                      </Badge>
-                    </div>
-
-                    {sub.content && (
-                      <p className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-4 mb-2">{sub.content}</p>
-                    )}
-
-                    {sub.file_name && (
-                      <div className="flex items-center gap-2 text-xs text-blue-600 mb-2">
-                        <FileText className="w-3.5 h-3.5" />
-                        {sub.file_name}
-                      </div>
-                    )}
-
-                    {sub.admin_notes && (
-                      <div className="mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200">
-                        <p className="text-xs font-bold text-amber-700 mb-1">Notas del Abogado:</p>
-                        <p className="text-sm text-amber-800">{sub.admin_notes}</p>
-                      </div>
-                    )}
-
-                    <p className="text-[11px] text-gray-400 mt-2">
-                      {new Date(sub.created_at).toLocaleDateString('es-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+          ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// === HELPER COMPONENTS ===
+
+function DocRow({ doc, onPreview, isPDF }: { doc: Doc; onPreview: () => void; isPDF: boolean }) {
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-xl bg-white border border-gray-200 hover:border-gray-300 transition-colors">
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${isPDF ? 'bg-red-50' : 'bg-blue-50'}`}>
+        <FileText className={`w-4 h-4 ${isPDF ? 'text-red-500' : 'text-blue-500'}`} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
+        <p className="text-[10px] text-gray-400">
+          {doc.file_size ? `${(doc.file_size / 1024).toFixed(0)} KB · ` : ''}
+          {new Date(doc.created_at).toLocaleDateString('es-US', { day: 'numeric', month: 'short' })}
+        </p>
+      </div>
+      <div className="flex items-center gap-1">
+        {isPDF && (
+          <button onClick={onPreview} className="p-2 rounded-lg hover:bg-gray-100" title="Vista previa"><Eye className="w-4 h-4 text-gray-500" /></button>
+        )}
+        <a href={`/api/employee/download-case-doc?id=${doc.id}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-gray-100" title="Descargar">
+          <Download className="w-4 h-4 text-gray-500" />
+        </a>
+      </div>
+    </div>
+  )
+}
+
+function FormSection({ title, status, data }: { title: string; status: string; data: Record<string, unknown> }) {
+  const [open, setOpen] = useState(false)
+  const entries = Object.entries(data).filter(([, v]) => v && ((typeof v === 'string' && v.trim()) || typeof v === 'object'))
+
+  return (
+    <div className="rounded-xl border border-gray-200 overflow-hidden">
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100">
+        <span className="text-sm font-bold text-gray-700">{title}</span>
+        <div className="flex items-center gap-2">
+          <Badge className={status === 'submitted' ? 'bg-purple-100 text-purple-700' : status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}>
+            {status === 'submitted' ? 'Enviado' : status === 'approved' ? 'Aprobado' : status}
+          </Badge>
+          <span className="text-xs text-gray-400">{open ? '▲' : '▼'}</span>
+        </div>
+      </button>
+      {open && (
+        <div className="p-4 space-y-2">
+          {entries.map(([key, value]) => {
+            if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
+              const nested = value as Record<string, string>
+              const filled = Object.entries(nested).filter(([, v]) => v && typeof v === 'string' && v.trim())
+              if (!filled.length) return null
+              return (
+                <div key={key} className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase mb-1">{key.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ')}</p>
+                  {filled.map(([k, v]) => (
+                    <div key={k}><span className="text-[10px] text-gray-400 capitalize">{k.replace(/_/g, ' ')}</span><p className="text-xs text-gray-700">{v}</p></div>
+                  ))}
+                </div>
+              )
+            }
+            if (Array.isArray(value)) {
+              return (
+                <div key={key} className="p-3 bg-gray-50 rounded-lg">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase">{key.replace(/_/g, ' ')} ({value.length})</p>
+                  {value.filter(v => typeof v === 'object' && v.name).map((item: any, i: number) => (
+                    <p key={i} className="text-xs text-gray-700">{item.name} {item.relationship ? `— ${item.relationship}` : ''}</p>
+                  ))}
+                </div>
+              )
+            }
+            return (
+              <div key={key}><span className="text-[10px] text-gray-400 capitalize">{key.replace(/_/g, ' ')}</span><p className="text-xs text-gray-700">{value as string}</p></div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function I360ReviewSection({ submission }: { submission?: FormSubmission }) {
+  if (!submission) return <p className="text-center text-gray-400 py-8 text-sm">El cliente aún no ha llenado el formulario I-360.</p>
+
+  const d = submission.form_data as Record<string, string>
+  const sections = [
+    { title: 'Part 1 — Peticionario', fields: [
+      ['Nombre', `${d.petitioner_first_name || ''} ${d.petitioner_last_name || ''}`.trim()],
+      ['SSN', d.petitioner_ssn], ['A-Number', d.petitioner_a_number],
+      ['Dirección', `${d.petitioner_address || ''} ${d.petitioner_city || ''} ${d.petitioner_state || ''} ${d.petitioner_zip || ''}`],
+    ]},
+    { title: 'Part 3 — Beneficiario', fields: [
+      ['Nombre', `${d.beneficiary_first_name || ''} ${d.beneficiary_last_name || ''}`.trim()],
+      ['DOB', d.beneficiary_dob], ['País', d.beneficiary_country_birth],
+      ['Pasaporte', d.beneficiary_passport_number], ['I-94', d.beneficiary_i94_number],
+      ['Status', d.beneficiary_nonimmigrant_status],
+    ]},
+    { title: 'Part 8 — SIJS', fields: [
+      ['Dependiente de corte', d.declared_dependent_court],
+      ['Corte', d.state_agency_name],
+      ['Bajo jurisdicción', d.currently_under_jurisdiction],
+      ['Reunificación no viable', d.reunification_not_viable_reason],
+      ['Mejor interés', d.best_interest_not_return],
+    ]},
+  ]
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="font-bold text-gray-900">Formulario I-360</h3>
+        <Badge className={submission.status === 'submitted' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}>
+          {submission.status === 'submitted' ? 'Enviado' : submission.status}
+        </Badge>
+      </div>
+      {sections.map(s => (
+        <div key={s.title} className="rounded-xl border border-gray-200 overflow-hidden">
+          <div className="px-4 py-2 bg-gray-50"><span className="text-xs font-bold text-gray-600 uppercase">{s.title}</span></div>
+          <div className="p-4 grid grid-cols-2 gap-2">
+            {s.fields.filter(([, v]) => v && (v as string).trim()).map(([label, value]) => (
+              <div key={label as string}><span className="text-[10px] text-gray-400">{label as string}</span><p className="text-sm text-gray-900">{value as string}</p></div>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

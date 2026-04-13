@@ -27,6 +27,18 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
   const [generating, setGenerating] = useState<string | null>(null)
   const [docs, setDocs] = useState<GeneratedDoc[]>([])
   const [previewDoc, setPreviewDoc] = useState<GeneratedDoc | null>(null)
+  const [loaded, setLoaded] = useState(false)
+
+  // Load saved declarations on mount
+  if (!loaded) {
+    setLoaded(true)
+    fetch(`/api/cases/saved-declarations?case_id=${caseId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.declarations?.length) setDocs(data.declarations)
+      })
+      .catch(() => {})
+  }
 
   const tutorName = (tutorData?.full_name as string) || clientName
   const witnesses = ((tutorData?.witnesses as Array<Record<string, string>>) || []).filter(w => w.name?.trim())
@@ -53,9 +65,17 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
       const dataES = await resES.json()
       if (!resES.ok) throw new Error(dataES.error || 'Error ES')
 
+      const newDoc = { type, index, label, content: dataEN.declaration, contentES: dataES.declaration }
       setDocs(prev => {
         const filtered = prev.filter(d => !(d.type === type && d.index === index))
-        return [...filtered, { type, index, label, content: dataEN.declaration, contentES: dataES.declaration }]
+        const updated = [...filtered, newDoc]
+        // Save to DB
+        fetch('/api/cases/saved-declarations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ case_id: caseId, declarations: updated }),
+        }).catch(() => {})
+        return updated
       })
       toast.success(`${label} generado en inglés y español`)
     } catch (e) {

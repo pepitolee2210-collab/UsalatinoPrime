@@ -16,7 +16,6 @@ export default async function EmployeeClientDetailPage({ params }: { params: Pro
     .single()
   if (profile?.role !== 'employee') redirect('/employee')
 
-  // Get client info
   const { data: client } = await supabase
     .from('profiles')
     .select('id, first_name, last_name, email, phone')
@@ -26,30 +25,36 @@ export default async function EmployeeClientDetailPage({ params }: { params: Pro
 
   if (!client) notFound()
 
-  // Use service client for case data (employee role already verified above)
   const service = createServiceClient()
 
-  // Get cases, documents, and form submissions
+  // Get cases with slug
   const { data: cases } = await service
     .from('cases')
-    .select('id, case_number, service:service_catalog(name)')
+    .select('id, case_number, henry_notes, pipeline_status, service:service_catalog(name, slug)')
     .eq('client_id', id)
     .order('created_at', { ascending: false })
 
   const caseIds = (cases || []).map((c: any) => c.id)
 
-  const [docsRes, formsRes] = await Promise.all([
+  const [docsRes, henryDocsRes, formsRes, appointmentsRes] = await Promise.all([
     caseIds.length > 0
-      ? service.from('documents').select('id, case_id, document_key, name, file_size, file_path, created_at')
+      ? service.from('documents').select('id, case_id, document_key, name, file_size, file_path, created_at, direction')
           .in('case_id', caseIds).order('created_at', { ascending: false })
       : Promise.resolve({ data: [] }),
     caseIds.length > 0
+      ? service.from('documents').select('id, case_id, document_key, name, file_size, file_path, created_at')
+          .in('case_id', caseIds).eq('direction', 'admin_to_client').order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] }),
+    caseIds.length > 0
       ? service.from('case_form_submissions').select('form_type, form_data, status, updated_at, case_id, minor_index')
-          .in('case_id', caseIds).order('updated_at', { ascending: false })
+          .in('case_id', caseIds).order('minor_index', { ascending: true })
+      : Promise.resolve({ data: [] }),
+    caseIds.length > 0
+      ? service.from('appointments').select('id, case_id, status')
+          .in('case_id', caseIds)
       : Promise.resolve({ data: [] }),
   ])
 
-  // Normalize cases
   const normalizedCases = (cases || []).map((c: any) => ({
     ...c,
     service: Array.isArray(c.service) ? c.service[0] : c.service,
@@ -59,8 +64,10 @@ export default async function EmployeeClientDetailPage({ params }: { params: Pro
     <EmployeeClientDetail
       client={client}
       cases={normalizedCases}
-      documents={docsRes.data || []}
+      documents={(docsRes.data || []).filter((d: any) => !d.direction || d.direction === 'client_to_admin')}
+      henryDocuments={henryDocsRes.data || []}
       formSubmissions={formsRes.data || []}
+      appointments={appointmentsRes.data || []}
     />
   )
 }

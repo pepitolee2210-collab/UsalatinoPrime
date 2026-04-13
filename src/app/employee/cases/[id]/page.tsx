@@ -23,23 +23,29 @@ export default async function EmployeeCasePage({ params }: { params: Promise<{ i
   // Use service client to bypass RLS for case data (assignment already verified above)
   const service = createServiceClient()
 
-  // Fetch case info, documents, form submissions, and employee submissions
-  const [caseRes, docsRes, formSubsRes, subsRes] = await Promise.all([
+  // Fetch case info, documents, form submissions, henry notes, and employee submissions
+  const [caseRes, docsRes, henryDocsRes, formSubsRes, subsRes] = await Promise.all([
     service
       .from('cases')
-      .select('id, case_number, client:profiles(first_name, last_name, email, phone), service:service_catalog(name, slug)')
+      .select('id, case_number, henry_notes, client:profiles(first_name, last_name, email, phone), service:service_catalog(name, slug)')
       .eq('id', id)
       .single(),
     service
       .from('documents')
-      .select('id, document_key, name, file_size, status, created_at')
+      .select('id, document_key, name, file_size, status, created_at, direction')
       .eq('case_id', id)
       .order('created_at', { ascending: false }),
     service
-      .from('case_form_submissions')
-      .select('form_type, form_data, status, updated_at')
+      .from('documents')
+      .select('id, document_key, name, file_size, status, created_at')
       .eq('case_id', id)
-      .order('updated_at', { ascending: false }),
+      .eq('direction', 'admin_to_client')
+      .order('created_at', { ascending: false }),
+    service
+      .from('case_form_submissions')
+      .select('form_type, form_data, status, updated_at, minor_index')
+      .eq('case_id', id)
+      .order('minor_index', { ascending: true }),
     supabase
       .from('employee_submissions')
       .select('*')
@@ -63,9 +69,11 @@ export default async function EmployeeCasePage({ params }: { params: Promise<{ i
     <EmployeeCaseView
       caseData={caseData}
       assignment={assignment}
-      documents={docsRes.data || []}
+      documents={(docsRes.data || []).filter((d: any) => !d.direction || d.direction === 'client_to_admin')}
+      henryDocuments={henryDocsRes.data || []}
       formSubmissions={formSubsRes.data || []}
       submissions={subsRes.data || []}
+      henryNotes={raw.henry_notes || ''}
     />
   )
 }

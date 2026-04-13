@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
   // Check admin role
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  if (profile?.role !== 'admin' && profile?.role !== 'employee') return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { case_id, client_id, file_name, file_size } = await req.json()
   if (!case_id || !client_id || !file_name) {
@@ -48,7 +48,7 @@ export async function PATCH(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
 
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+  if (profile?.role !== 'admin' && profile?.role !== 'employee') return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
 
   const { case_id, client_id, file_path, file_name, file_size, document_key } = await req.json()
   if (!case_id || !client_id || !file_path || !file_name) {

@@ -28,6 +28,7 @@ import { I589Review } from './i589-review'
 import { DeclarationGenerator } from './declaration-generator'
 import { ParentalConsentGenerator } from './parental-consent-generator'
 import { SupplementaryDataForm } from './supplementary-data-form'
+import { CasePipeline } from '@/components/case-pipeline'
 import { uploadDirect } from '@/lib/upload-direct'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -375,6 +376,24 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
           </Button>
         </div>
       </div>
+
+      {/* Pipeline Tracker */}
+      {isVisaJuvenil && (
+        <CasePipeline
+          caseId={caseData.id}
+          hasAppointment={true /* appointments loaded separately */}
+          hasDocuments={documents.filter((d: any) => d.direction !== 'admin_to_client').length >= 3}
+          hasHistory={(aiSubmissions || []).some((s: any) => s.form_type === 'client_story' && (s.status === 'submitted' || s.status === 'approved'))}
+          hasDeclarations={(aiSubmissions || []).some((s: any) => s.form_type === 'tutor_guardian' && s.status === 'submitted')}
+          hasClientDocs={documents.filter((d: any) => d.direction === 'admin_to_client').length > 0}
+          hasI360={(aiSubmissions || []).some((s: any) => s.form_type === 'i360_sijs' && (s.status === 'submitted' || s.status === 'approved'))}
+          manualStages={{
+            henry_reviewed: !!(caseData.pipeline_status as any)?.henry_reviewed,
+            presented_to_court: !!(caseData.pipeline_status as any)?.presented_to_court,
+          }}
+          canEdit={true}
+        />
+      )}
 
       <Tabs defaultValue="payments">
         <TabsList>
