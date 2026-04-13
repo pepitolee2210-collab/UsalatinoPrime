@@ -149,6 +149,8 @@ I, [ABSENT PARENT FULL NAME], holder of [NATIONALITY] ${parentDocLabel} No. ${pa
 
 5. This decision is made freely, without coercion, and in the best interest of my ${childPronoun}.
 
+Signed in the country __________________ city __________________ on the ______ day of __________________ year ________
+
 Firmado en el país __________________ de la ciudad __________________ el día ______ del mes __________________ del año ________
 
 
@@ -158,7 +160,7 @@ Signature of ${parentRelationEN === 'father' ? 'Father' : 'Mother'}
 
 This document was read and explained to the signer in Spanish before signing.
 
-CRITICAL: The "Firmado en el país..." line MUST remain EXACTLY as shown above with blank underlines. Do NOT fill in any country, city, day, month, or year. The signer will fill these fields by hand. Copy this line character by character without changes.
+CRITICAL: BOTH signature lines (English AND Spanish) MUST remain EXACTLY as shown above with blank underlines. Do NOT fill in any country, city, day, month, or year. The signer will fill these fields by hand. Include BOTH lines in the document regardless of the language version.
 
 === CASE DATA TO USE ===
 Absent parent name: ${parentName}
