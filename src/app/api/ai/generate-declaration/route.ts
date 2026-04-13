@@ -149,7 +149,7 @@ I, [ABSENT PARENT FULL NAME], holder of [NATIONALITY] ${parentDocLabel} No. ${pa
 
 5. This decision is made freely, without coercion, and in the best interest of my ${childPronoun}.
 
-Signed in _________________________, United States, on the _______ day of _______________, ________.
+Signed in _________________________, on _________________________.
 
 
 ___________________________
@@ -157,6 +157,8 @@ Signature of ${parentRelationEN === 'father' ? 'Father' : 'Mother'}
 [ABSENT PARENT FULL NAME]
 
 This document was read and explained to the signer in Spanish before signing.
+
+CRITICAL: The "Signed in" line MUST remain exactly as shown above with blank underlines. Do NOT fill in a city, country, or date. Do NOT write "United States", "Estados Unidos", or any date. The signer will fill these by hand. Leave the underlines EMPTY.
 
 === CASE DATA TO USE ===
 Absent parent name: ${parentName}
