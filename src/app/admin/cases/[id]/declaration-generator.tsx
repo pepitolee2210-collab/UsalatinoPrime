@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import {
-  FileText, Loader2, Download, Copy, CheckCircle, Users, User, Eye, X,
+  FileText, Loader2, Download, Copy, CheckCircle, Users, User, Eye, X, RotateCw,
 } from 'lucide-react'
 
 interface DeclarationGeneratorProps {
@@ -299,6 +299,8 @@ function DocCard({ icon, title, subtitle, color, generating, generated, onGenera
   generating: boolean; generated: boolean
   onGenerate: () => void; onPreview: () => void; onPreviewES?: () => void; onCopy: () => void; onDownload: () => void; onDownloadES?: () => void
 }) {
+  void onCopy
+
   const colorMap: Record<string, { bg: string; border: string; badge: string }> = {
     blue:    { bg: 'bg-blue-50',    border: 'border-blue-200',    badge: 'bg-blue-100 text-blue-700' },
     amber:   { bg: 'bg-amber-50',   border: 'border-amber-200',   badge: 'bg-amber-100 text-amber-700' },
@@ -332,6 +334,10 @@ function DocCard({ icon, title, subtitle, color, generating, generated, onGenera
             {onPreviewES && <Button size="sm" variant="outline" onClick={onPreviewES} title="Ver ES"><Eye className="w-3 h-3 mr-1" />ES</Button>}
             <Button size="sm" variant="ghost" onClick={onDownload} title="PDF EN"><Download className="w-3 h-3" /></Button>
             {onDownloadES && <Button size="sm" variant="ghost" onClick={onDownloadES} title="PDF ES"><Download className="w-3 h-3" /></Button>}
+            <Button size="sm" variant="outline" onClick={onGenerate} title="Volver a generar" className="border-[#F2A900] text-[#9a6500] hover:bg-amber-50">
+              <RotateCw className="w-3 h-3 mr-1" />
+              Regenerar
+            </Button>
           </div>
         ) : (
           <Button size="sm" className="bg-[#F2A900] hover:bg-[#D4940A] text-[#001020] font-bold"
