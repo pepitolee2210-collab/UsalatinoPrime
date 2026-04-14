@@ -26,6 +26,19 @@ function sanitizeForAI(text: string): string {
     [/contacto\s*forzado\s*contra\s*(mi|su)\s*voluntad/gi, 'agresión grave'],
     [/sometimiento\s*forzado/gi, 'agresión grave'],
     [/me\s*obligaba\s*a\s*tener\s*relaciones/gi, 'me agredía gravemente'],
+    // Suicide - explicit method (Spanish)
+    [/se\s*quit[óo]\s*la\s*vida\s*con\s*una\s*soga/gi, 'falleció por causas no naturales'],
+    [/atando\s*una\s*soga\s*a\s*una\s*viga\s*y\s*en\s*el\s*cuello/gi, 'por medios no naturales'],
+    [/se\s*quit[óo]\s*la\s*vida/gi, 'falleció por causas no naturales'],
+    [/se\s*suicid[óo]/gi, 'falleció por causas no naturales'],
+    [/colg[óo]\s*del\s*cuello/gi, 'falleció por causas no naturales'],
+    [/ahorc[óo]/gi, 'falleció por causas no naturales'],
+    // Suicide (English)
+    [/hanged?\s*himself/gi, 'passed away by non-natural causes'],
+    [/hanged?\s*herself/gi, 'passed away by non-natural causes'],
+    [/commit(ed|ted)?\s*suicide/gi, 'passed away by non-natural causes'],
+    [/took\s*his\s*(own\s*)?life/gi, 'passed away by non-natural causes'],
+    [/took\s*her\s*(own\s*)?life/gi, 'passed away by non-natural causes'],
     // English triggers
     [/sexual(ly)?\s*abus(e[ds]?|ing)/gi, 'grave harm to wellbeing'],
     [/rap(e[ds]?|ing)/gi, 'grave assault'],
