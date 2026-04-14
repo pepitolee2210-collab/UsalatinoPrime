@@ -1,16 +1,12 @@
-import { PDFDocument, PDFTextField, PDFCheckBox, PDFName } from 'pdf-lib'
+import { PDFDocument, PDFTextField, PDFCheckBox, PDFName, StandardFonts, rgb } from 'pdf-lib'
 
 // ============================================================================
 // HELPERS
 // ============================================================================
 
-/** Extrae solo dígitos (para SSN, A-Number, I-94 Number). */
 const digitsOnly = (v: any): string => String(v ?? '').replace(/\D/g, '')
 
-/**
- * Convierte fecha ISO yyyy-mm-dd → mm/dd/yyyy (formato USCIS).
- * Si el valor ya está en otro formato, lo devuelve tal cual.
- */
+/** yyyy-mm-dd → mm/dd/yyyy (formato USCIS). */
 function formatDate(v: any): string {
   const s = String(v ?? '')
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
@@ -18,14 +14,12 @@ function formatDate(v: any): string {
   return s
 }
 
-/** Tolera múltiples formatos de "Sí": 'Sí','Si','sí','yes','true',true,1. */
 function isYes(v: any): boolean {
   if (v === true || v === 1) return true
   const s = String(v ?? '').trim().toLowerCase()
   return s === 'sí' || s === 'si' || s === 'yes' || s === 'true' || s === '1'
 }
 
-/** Tolera múltiples formatos de "No": 'No','no','false',false,0. */
 function isNo(v: any): boolean {
   if (v === false || v === 0) return true
   const s = String(v ?? '').trim().toLowerCase()
@@ -36,13 +30,10 @@ function isNo(v: any): boolean {
 // MAPEO DE CAMPOS DE TEXTO (46 campos)
 // ============================================================================
 
-type TextFieldEntry = {
-  dataKey: string
-  transform?: (value: any) => string
-}
+type TextFieldEntry = { dataKey: string; transform?: (value: any) => string }
 
 const TEXT_FIELD_MAP: Record<string, TextFieldEntry> = {
-  // ---- Pág.1 — Part 1: Peticionario ----
+  // Pág.1 — Part 1: Peticionario
   last_name:          { dataKey: 'petitioner_last_name' },
   first_name:         { dataKey: 'petitioner_first_name' },
   middle_name:        { dataKey: 'petitioner_middle_name' },
@@ -52,15 +43,13 @@ const TEXT_FIELD_MAP: Record<string, TextFieldEntry> = {
   petitioner_city:    { dataKey: 'petitioner_city' },
   petitioner_state:   { dataKey: 'petitioner_state' },
   petitioner_zip:     { dataKey: 'petitioner_zip' },
-
-  // ---- Pág.2 — Dirección segura ----
+  // Pág.2 — Dirección segura
   safe_mailing_name:    { dataKey: 'safe_mailing_name' },
   safe_mailing_address: { dataKey: 'safe_mailing_address' },
   safe_mailing_city:    { dataKey: 'safe_mailing_city' },
   safe_mailing_state:   { dataKey: 'safe_mailing_state' },
   safe_mailing_zip:     { dataKey: 'safe_mailing_zip' },
-
-  // ---- Pág.3 — Part 3: Beneficiario (menor) ----
+  // Pág.3 — Part 3: Beneficiario
   beneficiary_last_name:           { dataKey: 'beneficiary_last_name' },
   beneficiary_first_name:          { dataKey: 'beneficiary_first_name' },
   beneficiary_middle_name:         { dataKey: 'beneficiary_middle_name' },
@@ -69,23 +58,18 @@ const TEXT_FIELD_MAP: Record<string, TextFieldEntry> = {
   beneficiary_city:                { dataKey: 'beneficiary_city' },
   beneficiary_state:               { dataKey: 'beneficiary_state' },
   beneficiary_zip:                 { dataKey: 'beneficiary_zip' },
-  beneficiary_dob:                 { dataKey: 'beneficiary_dob',             transform: formatDate },
+  beneficiary_dob:                 { dataKey: 'beneficiary_dob',               transform: formatDate },
   beneficiary_country_birth:       { dataKey: 'beneficiary_country_birth' },
-  beneficiary_ssn:                 { dataKey: 'beneficiary_ssn',             transform: digitsOnly },
-  beneficiary_a_number:            { dataKey: 'beneficiary_a_number',        transform: digitsOnly },
-  // FIX: El campo PDF "beneficiary_city_birth" está posicionado donde va
-  //      "Fecha de última llegada" en el formulario oficial I-360.
+  beneficiary_ssn:                 { dataKey: 'beneficiary_ssn',               transform: digitsOnly },
+  beneficiary_a_number:            { dataKey: 'beneficiary_a_number',          transform: digitsOnly },
   beneficiary_city_birth:          { dataKey: 'beneficiary_last_arrival_date', transform: formatDate },
-  beneficiary_i94_number:          { dataKey: 'beneficiary_i94_number',      transform: digitsOnly },
+  beneficiary_i94_number:          { dataKey: 'beneficiary_i94_number',        transform: digitsOnly },
   beneficiary_passport_number:     { dataKey: 'beneficiary_passport_number' },
   beneficiary_passport_country:    { dataKey: 'beneficiary_passport_country' },
-  beneficiary_passport_expiry:     { dataKey: 'beneficiary_passport_expiry', transform: formatDate },
+  beneficiary_passport_expiry:     { dataKey: 'beneficiary_passport_expiry',   transform: formatDate },
   beneficiary_nonimmigrant_status: { dataKey: 'beneficiary_nonimmigrant_status' },
-  // FIX: El campo PDF "beneficiary_status_expiry" está posicionado donde va
-  //      "I-94 expira" en el formulario oficial I-360.
-  beneficiary_status_expiry:       { dataKey: 'beneficiary_i94_expiry',      transform: formatDate },
-
-  // ---- Pág.4 — Part 4: Padre/Madre extranjero ----
+  beneficiary_status_expiry:       { dataKey: 'beneficiary_i94_expiry',        transform: formatDate },
+  // Pág.4 — Part 4: Padre extranjero
   foreign_parent_last_name:   { dataKey: 'foreign_parent_last_name' },
   foreign_parent_first_name:  { dataKey: 'foreign_parent_first_name' },
   foreign_parent_middle_name: { dataKey: 'foreign_parent_middle_name' },
@@ -94,21 +78,70 @@ const TEXT_FIELD_MAP: Record<string, TextFieldEntry> = {
   foreign_parent_province:    { dataKey: 'foreign_parent_province' },
   foreign_parent_postal:      { dataKey: 'foreign_parent_postal' },
   foreign_parent_country:     { dataKey: 'foreign_parent_country' },
-
-  // ---- Pág.8 — Part 8: SIJS ----
+  // Pág.8 — Part 8: SIJS
   department_juice: { dataKey: 'state_agency_name' },
-
-  // ---- Pág.15 — Part 11: Contacto ----
+  // Pág.15 — Part 11: Contacto
   petitioner_phone:  { dataKey: 'petitioner_phone' },
   petitioner_mobile: { dataKey: 'petitioner_mobile' },
   petitioner_email:  { dataKey: 'petitioner_email' },
-
-  // ---- Pág.19 — Información adicional ----
+  // Pág.19
   additional_info: { dataKey: 'additional_info' },
 }
 
 // ============================================================================
-// CHECKBOXES YES/NO (11 pares = 22 checkboxes)
+// CHECKBOXES — POSICIONES FÍSICAS EN EL PDF
+// ============================================================================
+//
+// form.flatten() de pdf-lib NO renderiza correctamente los checkboxes creados
+// con export values personalizados (ej: "sex_male_value" en vez de "Yes").
+// La solución probada y usada en el I-589 del mismo proyecto: dibujar "X"
+// directamente en la página con page.drawText() en las coordenadas del checkbox.
+
+type CheckboxPos = { page: number; x: number; y: number; w: number; h: number }
+
+const CHECKBOX_POS: Record<string, CheckboxPos> = {
+  // Pág.3 (index 2) — Estado civil
+  marital_single:   { page: 2, x: 137, y: 378, w: 8, h: 8 },
+  marital_married:  { page: 2, x: 195, y: 379, w: 8, h: 8 },
+  marital_divorced: { page: 2, x: 259, y: 378, w: 8, h: 8 },
+  marital_widowed:  { page: 2, x: 330, y: 378, w: 8, h: 8 },
+  // Pág.4 (index 3) — Sexo + Yes/No de Part 4/5
+  sex_male:                        { page: 3, x: 178, y: 501, w: 8, h: 8 },
+  sex_female:                      { page: 3, x: 225, y: 501, w: 8, h: 8 },
+  in_removal_yes:                  { page: 3, x: 487, y: 478, w: 8, h: 8 },
+  in_removal_no:                   { page: 3, x: 528, y: 478, w: 8, h: 8 },
+  other_petitions_yes:             { page: 3, x: 487, y: 414, w: 8, h: 8 },
+  other_petitions_no:              { page: 3, x: 529, y: 414, w: 8, h: 8 },
+  worked_without_permission_yes:   { page: 3, x: 488, y: 390, w: 8, h: 8 },
+  worked_without_permission_no:    { page: 3, x: 528, y: 390, w: 8, h: 8 },
+  adjustment_attached_yes:         { page: 3, x: 488, y: 361, w: 8, h: 8 },
+  adjustment_attached_no:          { page: 3, x: 529, y: 361, w: 8, h: 8 },
+  children_filed_yes:              { page: 3, x: 488, y: 262, w: 8, h: 8 },
+  children_filed_no:               { page: 3, x: 528, y: 261, w: 8, h: 8 },
+  // Pág.8 (index 7) — Part 8 SIJS
+  declared_dependent_yes:  { page: 7, x: 488, y: 201, w: 8, h: 8 },
+  declared_dependent_no:   { page: 7, x: 529, y: 201, w: 8, h: 8 },
+  under_jurisdiction_yes:  { page: 7, x: 488, y: 113, w: 8, h: 8 },
+  under_jurisdiction_no:   { page: 7, x: 528, y: 113, w: 8, h: 8 },
+  // Pág.9 (index 8) — Part 8 cont.
+  court_placement_yes:         { page: 8, x: 488, y: 714, w: 8, h: 8 },
+  court_placement_no:          { page: 8, x: 528, y: 714, w: 8, h: 8 },
+  juvenile_court_one:          { page: 8, x: 302, y: 606, w: 8, h: 8 },
+  juvenile_court_both:         { page: 8, x: 354, y: 606, w: 8, h: 8 },
+  juvenile_court_abuse:        { page: 8, x:  77, y: 586, w: 8, h: 8 },
+  juvenile_court_neglect:      { page: 8, x: 136, y: 586, w: 8, h: 8 },
+  juvenile_court_abandonment:  { page: 8, x: 200, y: 586, w: 8, h: 8 },
+  best_interest_return_yes:    { page: 8, x: 488, y: 510, w: 8, h: 8 },
+  best_interest_return_no:     { page: 8, x: 528, y: 510, w: 8, h: 8 },
+  hhs_custody_yes:             { page: 8, x: 488, y: 481, w: 8, h: 8 },
+  hhs_custody_no:              { page: 8, x: 528, y: 481, w: 8, h: 8 },
+  // Pág.15 (index 14) — Intérprete
+  interpreter_yes: { page: 14, x: 78, y: 136, w: 8, h: 8 },
+  interpreter_no:  { page: 14, x: 78, y: 107, w: 8, h: 8 },
+}
+
+// ============================================================================
+// LÓGICA DE CHECKBOXES — qué campo de datos marca cuál checkbox
 // ============================================================================
 
 const YES_NO_MAP: Array<[string, string, string]> = [
@@ -125,25 +158,12 @@ const YES_NO_MAP: Array<[string, string, string]> = [
   ['interpreter_yes',              'interpreter_no',              'interpreter_needed'],
 ]
 
-// ============================================================================
-// CHECKBOXES RADIO-LIKE
-// ============================================================================
-
-const SEX_MAP: Record<string, string> = {
-  Masculino: 'sex_male',
-  Femenino:  'sex_female',
-}
+const SEX_MAP: Record<string, string> = { Masculino: 'sex_male', Femenino: 'sex_female' }
 
 const MARITAL_MAP: Record<string, string> = {
-  'Soltero/a':    'marital_single',
-  'Casado/a':     'marital_married',
-  'Divorciado/a': 'marital_divorced',
-  'Viudo/a':      'marital_widowed',
+  'Soltero/a': 'marital_single', 'Casado/a': 'marital_married',
+  'Divorciado/a': 'marital_divorced', 'Viudo/a': 'marital_widowed',
 }
-
-// ============================================================================
-// PARSER DE REUNIFICACIÓN SIJS
-// ============================================================================
 
 function parseReunificationReason(raw: any): Set<string> {
   const result = new Set<string>()
@@ -155,55 +175,6 @@ function parseReunificationReason(raw: any): Set<string> {
   if (parts.includes('Neglect'))           result.add('juvenile_court_neglect')
   if (parts.includes('Abandonment'))       result.add('juvenile_court_abandonment')
   return result
-}
-
-// ============================================================================
-// HELPER DE CHECKBOX: usa el custom "on" export value del PDF
-// ============================================================================
-//
-// Los checkboxes del PDF fueron creados con export values personalizados
-// (ej: "sex_male_value" en vez de "Yes"). El método check() de pdf-lib
-// setea el valor a "Yes" pero la apariencia visual del checkbox está ligada
-// al export value personalizado, así que la X no se muestra.
-//
-// Esta función lee la apariencia /AP → /N del widget, encuentra la key que
-// NO es "Off" (esa es el "on" state), y la setea en /V y /AS para que
-// la X se renderice correctamente.
-
-function checkBoxSafe(
-  form: ReturnType<PDFDocument['getForm']>,
-  doc: PDFDocument,
-  name: string,
-): void {
-  try {
-    const cb = form.getCheckBox(name)
-    const widgets = cb.acroField.getWidgets()
-    if (widgets.length === 0) return
-
-    const ap = widgets[0].dict.lookup(PDFName.of('AP'))
-    if (!ap) { cb.check(); return }
-
-    const normalAp = (ap as any).lookup(PDFName.of('N'))
-    if (!normalAp || !normalAp.entries) { cb.check(); return }
-
-    let onValue: string | null = null
-    for (const [key] of normalAp.entries()) {
-      const k = key.toString()
-      if (k !== '/Off') {
-        onValue = k.replace('/', '')
-        break
-      }
-    }
-
-    if (onValue) {
-      cb.acroField.dict.set(PDFName.of('V'), PDFName.of(onValue))
-      widgets[0].dict.set(PDFName.of('AS'), PDFName.of(onValue))
-    } else {
-      cb.check()
-    }
-  } catch (err: any) {
-    console.warn(`No se marcó checkbox "${name}": ${err.message}`)
-  }
 }
 
 // ============================================================================
@@ -220,23 +191,20 @@ export async function generateI360PDF(
 
   const pdfDoc = await PDFDocument.load(await response.arrayBuffer())
   const form = pdfDoc.getForm()
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+  const pages = pdfDoc.getPages()
 
-  // --- 0. Limpiar TODOS los campos (eliminar placeholders del template) ---
+  // --- 0. Limpiar TODOS los campos del template ---
   for (const field of form.getFields()) {
     try {
       if (field instanceof PDFTextField) {
         field.setText('')
       } else if (field instanceof PDFCheckBox) {
-        // Usar el mismo approach directo para limpiar custom states
         const w = field.acroField.getWidgets()
-        if (w.length > 0) {
-          w[0].dict.set(PDFName.of('AS'), PDFName.of('Off'))
-        }
+        if (w.length > 0) w[0].dict.set(PDFName.of('AS'), PDFName.of('Off'))
         field.acroField.dict.set(PDFName.of('V'), PDFName.of('Off'))
       }
-    } catch {
-      // Ignorar campos que no soporten limpieza
-    }
+    } catch { /* ignorar */ }
   }
 
   // --- 1. Campos de texto ---
@@ -254,36 +222,51 @@ export async function generateI360PDF(
     }
   }
 
-  // --- 2. Checkboxes Yes/No ---
+  // --- 2. Determinar qué checkboxes marcar ---
+  const toMark = new Set<string>()
+
+  // Yes/No
   for (const [yesName, noName, dataKey] of YES_NO_MAP) {
     const v = formData[dataKey]
-    if (isYes(v)) checkBoxSafe(form, pdfDoc, yesName)
-    else if (isNo(v)) checkBoxSafe(form, pdfDoc, noName)
+    if (isYes(v)) toMark.add(yesName)
+    else if (isNo(v)) toMark.add(noName)
   }
 
-  // --- 3. Sexo ---
-  const sexField = SEX_MAP[formData.beneficiary_sex]
-  if (sexField) checkBoxSafe(form, pdfDoc, sexField)
+  // Sexo
+  const sexCb = SEX_MAP[formData.beneficiary_sex]
+  if (sexCb) toMark.add(sexCb)
 
-  // --- 4. Estado civil ---
-  const maritalField = MARITAL_MAP[formData.beneficiary_marital_status]
-  if (maritalField) checkBoxSafe(form, pdfDoc, maritalField)
+  // Estado civil
+  const maritalCb = MARITAL_MAP[formData.beneficiary_marital_status]
+  if (maritalCb) toMark.add(maritalCb)
 
-  // --- 5. Reunificación SIJS ---
-  const reunifSet = parseReunificationReason(formData.reunification_not_viable_reason)
-  reunifSet.forEach((name) => checkBoxSafe(form, pdfDoc, name))
+  // Reunificación SIJS
+  parseReunificationReason(formData.reunification_not_viable_reason).forEach((n) => toMark.add(n))
 
-  // --- 6. Aplanar y guardar ---
+  // --- 3. Dibujar "X" directamente en cada página ---
+  // Usamos drawText en vez del mecanismo AcroForm porque form.flatten()
+  // de pdf-lib no renderiza checkboxes con custom export values.
+  for (const name of toMark) {
+    const pos = CHECKBOX_POS[name]
+    if (!pos) { console.warn(`Checkbox "${name}" sin posición definida`); continue }
+    if (pos.page >= pages.length) continue
+
+    const page = pages[pos.page]
+    const fontSize = Math.min(pos.w, pos.h) - 1
+    const textWidth = font.widthOfTextAtSize('X', fontSize)
+    const xOffset = (pos.w - textWidth) / 2
+    const yOffset = (pos.h - fontSize) / 2 + 1
+
+    page.drawText('X', {
+      x: pos.x + xOffset,
+      y: pos.y + yOffset,
+      size: fontSize,
+      font,
+      color: rgb(0, 0, 0),
+    })
+  }
+
+  // --- 4. Aplanar y guardar ---
   form.flatten()
   return pdfDoc.save()
 }
-
-// ============================================================================
-// Campos del wizard que NO tienen campo en el PDF
-// ============================================================================
-//   - petitioner_country, language_understood, other_petitions_count
-//   - beneficiary_city_birth, beneficiary_status_expiry (posiciones usadas
-//     para beneficiary_last_arrival_date y beneficiary_i94_expiry)
-//   - placement_reason, parent_names_not_viable, hhs_court_order
-//   - spouse_child_1_* (last_name, first_name, middle_name, dob, country,
-//                       relationship, a_number)
