@@ -525,6 +525,8 @@ function AdminBookForm({ activeCases, onSuccess }: { activeCases: ActiveCase[]; 
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [blocked, setBlocked] = useState(false)
   const [booking, setBooking] = useState(false)
+  const [clientSearch, setClientSearch] = useState('')
+  const [dropdownOpen, setDropdownOpen] = useState(false)
 
   const selectedCase = activeCases.find(c => c.id === selectedCaseId)
 
@@ -586,25 +588,62 @@ function AdminBookForm({ activeCases, onSuccess }: { activeCases: ActiveCase[]; 
 
   return (
     <div className="space-y-4">
-      {/* Selector de cliente/caso */}
+      {/* Selector de cliente/caso con buscador */}
       <div className="space-y-1.5">
         <Label className="text-sm font-medium">Cliente / Caso</Label>
-        <Select value={selectedCaseId} onValueChange={setSelectedCaseId}>
-          <SelectTrigger>
-            <SelectValue placeholder="Seleccionar cliente..." />
-          </SelectTrigger>
-          <SelectContent>
-            {activeCases.map(c => {
-              const client = resolveJoin<{ first_name: string; last_name: string; phone?: string }>(c.client)
-              const service = resolveJoin<{ name: string }>(c.service)
-              return (
-                <SelectItem key={c.id} value={c.id}>
-                  {client?.first_name} {client?.last_name} — #{c.case_number} ({service?.name || 'Sin servicio'})
-                </SelectItem>
-              )
-            })}
-          </SelectContent>
-        </Select>
+        <div className="relative">
+          <input
+            type="text"
+            value={selectedCaseId
+              ? (() => {
+                  const c = activeCases.find(ac => ac.id === selectedCaseId)
+                  const client = c ? resolveJoin<{ first_name: string; last_name: string }>(c.client) : null
+                  return c ? `${client?.first_name || ''} ${client?.last_name || ''} — #${c.case_number}` : ''
+                })()
+              : clientSearch}
+            onChange={e => {
+              if (selectedCaseId) setSelectedCaseId('')
+              setClientSearch(e.target.value)
+              setDropdownOpen(true)
+            }}
+            onFocus={() => setDropdownOpen(true)}
+            onBlur={() => setTimeout(() => setDropdownOpen(false), 200)}
+            placeholder="Buscar cliente por nombre..."
+            className="w-full h-10 px-3 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40 focus:border-[#F2A900]"
+          />
+          {selectedCaseId && (
+            <button type="button" onClick={() => { setSelectedCaseId(''); setClientSearch('') }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs">✕</button>
+          )}
+          {dropdownOpen && !selectedCaseId && (
+            <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg">
+              {(() => {
+                const filtered = activeCases.filter(c => {
+                  if (!clientSearch.trim()) return true
+                  const client = resolveJoin<{ first_name: string; last_name: string }>(c.client)
+                  const service = resolveJoin<{ name: string }>(c.service)
+                  const q = clientSearch.toLowerCase()
+                  return `${client?.first_name || ''} ${client?.last_name || ''}`.toLowerCase().includes(q) ||
+                    c.case_number.toLowerCase().includes(q) ||
+                    (service?.name || '').toLowerCase().includes(q)
+                })
+                if (filtered.length === 0) return <div className="p-3 text-xs text-gray-400 text-center">Sin resultados</div>
+                return filtered.map(c => {
+                  const client = resolveJoin<{ first_name: string; last_name: string }>(c.client)
+                  const service = resolveJoin<{ name: string }>(c.service)
+                  return (
+                    <button key={c.id} type="button"
+                      onMouseDown={e => { e.preventDefault(); setSelectedCaseId(c.id); setClientSearch(''); setDropdownOpen(false) }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-amber-50 transition-colors border-b border-gray-100 last:border-b-0">
+                      <p className="font-medium text-gray-900">{client?.first_name} {client?.last_name}</p>
+                      <p className="text-xs text-gray-500">#{c.case_number} — {service?.name || 'Sin servicio'}</p>
+                    </button>
+                  )
+                })
+              })()}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Info del cliente seleccionado */}

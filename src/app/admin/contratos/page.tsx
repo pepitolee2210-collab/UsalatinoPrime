@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { QuickContractGenerator } from '@/components/admin/QuickContractGenerator'
-import { FileText, Plus, Pencil, Download, Trash2, ChevronLeft, Send, Link2, CheckCircle } from 'lucide-react'
+import { FileText, Plus, Pencil, Download, Trash2, ChevronLeft, Send, Link2, CheckCircle, Search } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface ContractRow {
@@ -61,7 +61,16 @@ export default function ContratosPage() {
   const [loading, setLoading] = useState(true)
   const [editingContract, setEditingContract] = useState<ContractRow | null>(null)
   const [showGenerator, setShowGenerator] = useState(false)
+  const [search, setSearch] = useState('')
   const supabase = createClient()
+
+  const filteredContracts = contracts.filter(c => {
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    return c.client_full_name.toLowerCase().includes(q) ||
+      c.service_name.toLowerCase().includes(q) ||
+      (c.client_passport || '').toLowerCase().includes(q)
+  })
 
   async function loadContracts() {
     setLoading(true)
@@ -219,6 +228,25 @@ export default function ContratosPage() {
         </Button>
       </div>
 
+      {/* Buscador */}
+      {contracts.length > 0 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar cliente por nombre, servicio o pasaporte..."
+            className="w-full pl-10 pr-4 h-11 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40 focus:border-[#F2A900]"
+          />
+          {search && (
+            <p className="text-xs text-gray-400 mt-2">
+              {filteredContracts.length} resultado{filteredContracts.length !== 1 ? 's' : ''} de {contracts.length}
+            </p>
+          )}
+        </div>
+      )}
+
       {loading ? (
         <p className="text-sm text-gray-500">Cargando contratos...</p>
       ) : contracts.length === 0 ? (
@@ -232,9 +260,11 @@ export default function ContratosPage() {
             </Button>
           </CardContent>
         </Card>
+      ) : filteredContracts.length === 0 ? (
+        <p className="text-center text-gray-400 py-8 text-sm">No se encontraron contratos con &quot;{search}&quot;.</p>
       ) : (
         <div className="space-y-3">
-          {contracts.map((c) => (
+          {filteredContracts.map((c) => (
             <Card key={c.id} className="hover:shadow-sm transition-shadow">
               <CardContent className="p-4">
                 <div className="space-y-3">
