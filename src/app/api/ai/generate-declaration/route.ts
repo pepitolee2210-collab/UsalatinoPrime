@@ -119,8 +119,12 @@ CRITICAL RULES:
     const childPronoun = parentRelationEN === 'father' ? 'daughter' : 'son'
 
     // Find the best ID document available (passport OR cedula/DNI)
-    const parentPassport = absentParent.parent_passport || (tutor?.absent_parent_passport as string) || ''
-    const parentId = absentParent.parent_id_number || (tutor?.absent_parent_id as string) || ''
+    // Filter out bogus values like "00000", "0", empty strings
+    const isBogus = (v: string) => !v || v.trim().length < 3 || /^0+$/.test(v.trim())
+    const cleanPassport = (v: string) => isBogus(v) ? '' : v.trim()
+
+    const parentPassport = cleanPassport(absentParent.parent_passport || '') || cleanPassport((tutor?.absent_parent_passport as string) || '')
+    const parentId = cleanPassport(absentParent.parent_id_number || '') || cleanPassport((tutor?.absent_parent_id as string) || '')
     const parentNationality = absentParent.parent_nationality || absentParent.nationality || (tutor?.absent_parent_nationality as string) || ''
     const parentDocLabel = parentPassport ? 'Passport' : parentId ? 'ID/Cédula' : '[FALTA: Tipo de documento]'
     const parentDocNumber = parentPassport || parentId || '[FALTA: Número de documento de identidad del padre ausente]'
@@ -434,6 +438,12 @@ ${suppBlock}`
   }
 
   const absentParent = (ctx.clientAbsentParent || {}) as Record<string, string>
+
+  // Validate witness ID and nationality (avoid bogus values like "00000")
+  const isBogus = (v: string) => !v || v.trim().length < 3 || /^0+$/.test(v.trim())
+  const witnessIdNumber = !isBogus(witness.id_number || '') ? witness.id_number : ''
+  const witnessNationality = witness.nationality || ''
+
   return `You are an expert immigration paralegal. Generate a SWORN AFFIDAVIT OF A WITNESS following this EXACT structure.
 
 Use ONLY the real data. Write in FIRST PERSON as the witness speaking. Use narrative paragraphs (NOT numbered). Each paragraph covers one aspect of the testimony.
@@ -441,7 +451,11 @@ Use ONLY the real data. Write in FIRST PERSON as the witness speaking. Use narra
 WITNESS: ${witness.name}
 RELATIONSHIP TO FAMILY: ${witness.relationship}
 ADDRESS: ${witness.address || 'N/A'}
+NATIONALITY: ${witnessNationality || '[FALTA: Nacionalidad del testigo]'}
+ID NUMBER: ${witnessIdNumber || '[FALTA: Número de documento de identidad del testigo]'}
 WHAT THEY CAN TESTIFY: ${witness.can_testify}
+
+CRITICAL: Include the witness's ID number (${witnessIdNumber || 'as indicated above'}) and nationality (${witnessNationality || 'as indicated above'}) in the opening paragraph of the affidavit. Do NOT leave these blank.
 
 GUARDIAN/PARENT: ${tutor?.full_name || clientName} (${tutor?.relationship_to_minor || 'guardian'})
 ABSENT PARENT: ${absentParent.parent_name || '[FALTA: Nombre del padre ausente]'}
@@ -536,7 +550,7 @@ export async function POST(request: NextRequest) {
   const ctx = await buildCaseContext(case_id)
   const basePrompt = buildDeclarationPrompt(type, ctx, index)
   const langInstruction = lang === 'es'
-    ? '\n\nIMPORTANT: Generate the ENTIRE document in SPANISH. Translate all legal terms and content to Spanish. Keep the same structure and format but write everything in Spanish.'
+    ? '\n\nIMPORTANT: Generate the ENTIRE document in SPANISH. Translate all legal terms and content to Spanish. Keep the same structure and format but write everything in Spanish. CRITICAL: Use ALL the same data (names, dates, cities, countries, ID numbers) as the English version. Do NOT omit any fact in the Spanish version that appears in the English version. Both versions must contain the EXACT SAME INFORMATION, only translated.'
     : ''
   const prompt = sanitizeForAI(basePrompt + langInstruction)
 
