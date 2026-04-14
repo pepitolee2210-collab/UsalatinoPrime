@@ -145,7 +145,7 @@ I, [ABSENT PARENT FULL NAME], holder of [NATIONALITY] ${parentDocLabel} No. ${pa
 
 1. I am the biological ${parentRelation} of [CHILD FULL NAME IN CAPS], born on [MONTH DAY, YEAR].
 
-2. I acknowledge that my ${childPronoun} is currently residing in [CITY], [STATE], United States, under the care of [GUARDIAN FULL NAME], who resides at [GUARDIAN FULL ADDRESS].
+2. I acknowledge that my ${childPronoun} is currently residing at [FULL ADDRESS OF CHILD — use the child's full address or the guardian's full address if same], under the care of [GUARDIAN FULL NAME].
 
 3. I give my full and voluntary consent for [GUARDIAN FULL NAME] to petition for and be granted temporary legal guardianship of my ${childPronoun} in accordance with applicable law.
 
@@ -174,6 +174,7 @@ Absent parent document number: ${parentDocNumber}
 Absent parent data: ${JSON.stringify(absentParent)}
 Tutor/Guardian name: ${tutor?.full_name || ''}
 Tutor/Guardian address: ${tutor?.full_address || ''}
+Child's current address: ${(ctx.allMinorStories[index]?.formData?.minorBasic as Record<string, string>)?.address || tutor?.minor_location || tutor?.full_address || '[FALTA: Dirección actual del menor]'}
 Children in case:
 ${ctx.allMinorStories.map((s, i) => {
   const mb = (s.formData?.minorBasic || {}) as Record<string, string>
