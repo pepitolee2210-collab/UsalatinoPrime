@@ -59,6 +59,7 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
   const [loading, setLoading] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [i589Loading, setI589Loading] = useState(false)
+  const [i360Loading, setI360Loading] = useState(false)
   const [markPaidLoading, setMarkPaidLoading] = useState<string | null>(null)
   const [planDialogOpen, setPlanDialogOpen] = useState(false)
   const [planLoading, setPlanLoading] = useState(false)
@@ -127,6 +128,35 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
       toast.error('Error al actualizar')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleDownloadI360() {
+    if (i360Loading) return
+    setI360Loading(true)
+    try {
+      const i360Sub = (aiSubmissions || []).find((s: any) => s.form_type === 'i360_sijs')
+      if (!i360Sub) {
+        toast.error('No hay datos I-360 para descargar')
+        return
+      }
+      const { generateI360PDF } = await import('@/lib/pdf/i360')
+      const pdfBytes = await generateI360PDF(i360Sub.form_data || {})
+      const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `I-360-${caseData.case_number}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      toast.success('I-360 descargado')
+    } catch (error: any) {
+      console.error('I-360 generation error:', error)
+      toast.error(`Error al generar I-360: ${error.message}`)
+    } finally {
+      setI360Loading(false)
     }
   }
 
@@ -1002,7 +1032,7 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
         {/* I-360 Tab */}
         {isVisaJuvenil && (
           <TabsContent value="i360" className="mt-4">
-            <I360Review submissions={(aiSubmissions || []).filter((s: any) => s.form_type === 'i360_sijs')} />
+            <I360Review submissions={(aiSubmissions || []).filter((s: any) => s.form_type === 'i360_sijs')} onDownload={handleDownloadI360} downloading={i360Loading} />
           </TabsContent>
         )}
 
@@ -1012,7 +1042,7 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
 
 }
 
-function I360Review({ submissions }: { submissions: any[] }) {
+function I360Review({ submissions, onDownload, downloading }: { submissions: any[]; onDownload: () => void; downloading: boolean }) {
   const sub = submissions[0]
 
   if (!sub) return (
@@ -1095,13 +1125,23 @@ function I360Review({ submissions }: { submissions: any[] }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-bold text-gray-900">Formulario I-360 — SIJS</h3>
-        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-          status === 'submitted' ? 'bg-purple-100 text-purple-700' :
-          status === 'approved' ? 'bg-green-100 text-green-700' :
-          'bg-gray-100 text-gray-600'
-        }`}>
-          {status === 'submitted' ? 'Enviado por el cliente' : status === 'approved' ? 'Aprobado' : status === 'draft' ? 'Borrador' : status}
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onDownload}
+            disabled={downloading}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+          >
+            {downloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+            Descargar I-360
+          </button>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+            status === 'submitted' ? 'bg-purple-100 text-purple-700' :
+            status === 'approved' ? 'bg-green-100 text-green-700' :
+            'bg-gray-100 text-gray-600'
+          }`}>
+            {status === 'submitted' ? 'Enviado por el cliente' : status === 'approved' ? 'Aprobado' : status === 'draft' ? 'Borrador' : status}
+          </span>
+        </div>
       </div>
 
       {sections.map(section => {
