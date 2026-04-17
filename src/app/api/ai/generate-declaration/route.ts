@@ -90,15 +90,53 @@ function buildDeclarationPrompt(
   const hasAnotherFather = minorData.has_another_father
 
   // Build supplementary data block if available
-  const suppBlock = supp ? `
-=== ADDITIONAL DATA FROM ATTORNEY (use these to fill any missing information) ===
-Court: ${JSON.stringify((supp as Record<string, unknown>).court || {})}
-Guardian supplementary: ${JSON.stringify((supp as Record<string, unknown>).guardian || {})}
-Absent parents supplementary: ${JSON.stringify((supp as Record<string, unknown>).absent_parents || [])}
-Minors supplementary: ${JSON.stringify((supp as Record<string, unknown>).minors || [])}
-Witnesses supplementary: ${JSON.stringify((supp as Record<string, unknown>).witnesses || [])}
-IMPORTANT: Use this supplementary data to fill in any passport numbers, ID numbers, nationalities, court names, or other details that are missing from the main case data. Prefer this data over missing field placeholders.
-` : ''
+  const suppBlock = supp ? (() => {
+    const s = supp as Record<string, any>
+    const guardian = s.guardian || {}
+    const court = s.court || {}
+    const signingDate = s.signing_date || ''
+    const absentParentsList = (s.absent_parents || []) as Array<Record<string, string>>
+    const minorsList = (s.minors || []) as Array<Record<string, string>>
+    const witnessesList = (s.witnesses || []) as Array<Record<string, string>>
+
+    const parts: string[] = ['', '=== SUPPLEMENTARY DATA (PRIORITY - USE THESE VALUES) ===']
+    if (court.name) parts.push(`Court name: ${court.name}`)
+    if (signingDate) parts.push(`Signing date: ${signingDate}`)
+
+    // Guardian
+    if (guardian.date_of_birth) parts.push(`Guardian date of birth: ${guardian.date_of_birth}`)
+    if (guardian.country_of_birth) parts.push(`Guardian country of birth: ${guardian.country_of_birth}`)
+    if (guardian.city_of_birth) parts.push(`Guardian city of birth: ${guardian.city_of_birth}`)
+    if (guardian.nationality) parts.push(`Guardian nationality: ${guardian.nationality}`)
+    if (guardian.id_number) parts.push(`Guardian ID/Passport number: ${guardian.id_number}`)
+
+    // Absent parents
+    absentParentsList.forEach((ap, i) => {
+      if (ap.name) parts.push(`Absent parent #${i + 1} name: ${ap.name}`)
+      if (ap.nationality) parts.push(`Absent parent #${i + 1} nationality: ${ap.nationality}`)
+      if (ap.passport) parts.push(`Absent parent #${i + 1} passport/ID: ${ap.passport}`)
+      if (ap.country) parts.push(`Absent parent #${i + 1} country: ${ap.country}`)
+    })
+
+    // Minors
+    minorsList.forEach((m, i) => {
+      if (m.birth_city) parts.push(`Minor #${i + 1} city of birth: ${m.birth_city}`)
+      if (m.country) parts.push(`Minor #${i + 1} country of birth: ${m.country}`)
+      if (m.dob) parts.push(`Minor #${i + 1} date of birth: ${m.dob}`)
+      if (m.id_type) parts.push(`Minor #${i + 1} document type: ${m.id_type}`)
+      if (m.id_number) parts.push(`Minor #${i + 1} document number: ${m.id_number}`)
+      if (m.address) parts.push(`Minor #${i + 1} current address: ${m.address}`)
+    })
+
+    // Witnesses
+    witnessesList.forEach((w, i) => {
+      if (w.nationality) parts.push(`Witness #${i + 1} nationality: ${w.nationality}`)
+      if (w.id_number) parts.push(`Witness #${i + 1} ID/Cedula number: ${w.id_number}`)
+    })
+
+    parts.push('CRITICAL: Use these values instead of leaving fields blank. These are authoritative data provided by the attorney.')
+    return parts.join('\n')
+  })() : ''
 
   const baseInstructions = `
 You are an expert immigration paralegal specializing in SIJS (Special Immigrant Juvenile Status) cases.
