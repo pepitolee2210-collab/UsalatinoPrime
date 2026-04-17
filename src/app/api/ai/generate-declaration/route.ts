@@ -4,7 +4,7 @@ import { buildCaseContext } from '@/lib/ai/prompts/chat-system'
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY
 
-type DeclarationType = 'tutor' | 'minor' | 'witness' | 'parental_consent' | 'petition_guardianship'
+type DeclarationType = 'tutor' | 'minor' | 'witness' | 'parental_consent' | 'parental_consent_collaborative' | 'petition_guardianship'
 
 /**
  * Sanitizes text data before sending to Gemini to avoid PROHIBITED_CONTENT blocks.
@@ -56,7 +56,8 @@ function sanitizeForAI(text: string): string {
 function buildDeclarationPrompt(
   type: DeclarationType,
   ctx: Awaited<ReturnType<typeof buildCaseContext>>,
-  index: number
+  index: number,
+  lang: 'en' | 'es' = 'en'
 ): string {
   const clientName = `${ctx.client.firstName} ${ctx.client.lastName}`.toUpperCase()
   const tutor = ctx.tutorGuardian as Record<string, unknown> | null
@@ -240,6 +241,118 @@ IMPORTANT:
 - Use today's date if no signing date is specified.
 - Use the court name from the supplementary data if provided. Do NOT default to Utah.
 - Output ONLY the letter text, nothing else. No explanations.
+${suppBlock}`
+  }
+
+  if (type === 'parental_consent_collaborative') {
+    // COLLABORATIVE VERSION — the absent parent voluntarily signs accepting fault/negligence.
+    // Does NOT mention the SIJ declaration or juvenile court proceedings.
+    // Written in FIRST PERSON from the absent parent's perspective.
+    const absentParent = (ctx.allAbsentParents[index] || ctx.clientAbsentParent || {}) as Record<string, string>
+    const parentName = absentParent.parent_name || (tutor?.absent_parent_name as string) || '[FALTA: Nombre completo del padre ausente]'
+    const parentRelation = absentParent.parent_relationship || (tutor?.absent_parent_relationship as string) || 'padre'
+    const parentRelationEN = parentRelation === 'madre' ? 'mother' : 'father'
+    const childPronoun = parentRelationEN === 'father' ? 'daughter' : 'son'
+    const childPronounES = parentRelationEN === 'father' ? 'hija' : 'hijo'
+    const otherParentEN = parentRelationEN === 'father' ? 'mother' : 'father'
+    const otherParentES = parentRelationEN === 'father' ? 'madre' : 'padre'
+
+    const isBogus = (v: string) => !v || v.trim().length < 3 || /^0+$/.test(v.trim())
+    const cleanPassport = (v: string) => isBogus(v) ? '' : v.trim()
+
+    const parentPassport = cleanPassport(absentParent.parent_passport || '') || cleanPassport((tutor?.absent_parent_passport as string) || '')
+    const parentId = cleanPassport(absentParent.parent_id_number || '') || cleanPassport((tutor?.absent_parent_id as string) || '')
+    const parentNationality = absentParent.parent_nationality || absentParent.nationality || (tutor?.absent_parent_nationality as string) || ''
+    const parentCountry = absentParent.parent_country || (tutor?.absent_parent_country as string) || ''
+    const parentLocation = absentParent.parent_location || (tutor?.absent_parent_location as string) || ''
+    const parentDocLabel = parentPassport ? 'Passport' : parentId ? 'National Identity Document (DNI)' : '[FALTA: Tipo de documento]'
+    const parentDocNumber = parentPassport || parentId || '[FALTA: Número de documento de identidad del padre ausente]'
+
+    const tutorName = (tutor?.full_name as string) || ''
+    const tutorAddress = (tutor?.full_address as string) || ''
+    const childInfo = (ctx.allMinorStories[index]?.formData?.minorBasic as Record<string, string>) || {}
+
+    const langHeader = lang === 'en'
+      ? 'Generate the ENTIRE document in ENGLISH. Every word must be in formal legal English suitable for court filings.'
+      : 'Genera TODO el documento en ESPAÑOL formal y legal. Cada palabra debe estar en español jurídico apto para presentación ante autoridades.'
+
+    return `You are an expert immigration paralegal. Generate a VOLUNTARY RELINQUISHMENT OF PARENTAL CUSTODY letter — the COLLABORATIVE version where the absent parent chooses to cooperate and voluntarily signs a letter acknowledging his/her own fault and negligence.
+
+${langHeader}
+
+CRITICAL RULES FOR THIS DOCUMENT:
+- Written in FIRST PERSON as the absent ${parentRelationEN} speaking.
+- The ${parentRelationEN} ACKNOWLEDGES his/her own guilt, negligence, and emotional absence throughout the child's life.
+- The ${parentRelationEN} ASSUMES full responsibility for the abandonment and the emotional harm caused.
+- The ${parentRelationEN} voluntarily RELINQUISHES custody in favor of the other ${otherParentEN}.
+- DO NOT mention the SIJ declaration, Special Immigrant Juvenile Status, juvenile court proceedings, or the child's immigration case.
+- DO NOT mention that the ${parentRelationEN} is aware of any pending immigration proceedings.
+- The tone is one of genuine remorse and acceptance of responsibility.
+- Use the REAL story from the case data — reference the specific incidents of negligence (missed birthdays, unfulfilled promises, ignored calls, absence at school events, etc.) — but REWRITTEN in first person from the ${parentRelationEN}'s perspective acknowledging fault.
+- The ${parentRelationEN} must accept that it was his/her own decision not to be present, and that the bond with the child has been broken by his/her own conduct.
+
+HERE IS THE EXACT STRUCTURE TO FOLLOW:
+
+${lang === 'en' ? 'VOLUNTARY RELINQUISHMENT OF PARENTAL CUSTODY' : 'RENUNCIA VOLUNTARIA DE PATRIA POTESTAD Y CUSTODIA'}
+
+${lang === 'en' ? '(For guardianship proceedings in the United States of America)' : '(Para proceso de tutela ante la corte juvenil en los Estados Unidos de América)'}
+
+${lang === 'en' ? 'I,' : 'Yo,'} [ABSENT ${parentRelationEN.toUpperCase()} FULL NAME IN CAPS], ${lang === 'en' ? 'identified with' : 'identificado/a con'} [NATIONALITY] ${parentDocLabel} ${lang === 'en' ? 'No.' : 'N°'} ${parentDocNumber}, ${lang === 'en' ? 'of' : 'de nacionalidad'} [NATIONALITY] ${lang === 'en' ? 'nationality, currently residing in' : ', actualmente residiendo en'} [LOCATION], ${lang === 'en' ? 'being of sound mind and acting freely, voluntarily, knowingly, and without any form of coercion, pressure, deceit, or violence, hereby state and affirm the following:' : 'encontrándome en pleno uso de mis facultades mentales y actuando de manera libre, voluntaria, consciente y sin ningún tipo de coacción, presión, engaño ni violencia, por medio del presente documento manifiesto y declaro lo siguiente:'}
+
+${lang === 'en' ? 'I DECLARE AND STATE:' : 'DECLARO Y MANIFIESTO:'}
+
+[Generate 9 NUMBERED paragraphs following EXACTLY this structure:]
+
+1. ${lang === 'en' ? `That I am the biological ${parentRelationEN} of the minor [CHILD FULL NAME IN CAPS], born on [DOB], in [CITY, COUNTRY], as recorded in his/her birth certificate.` : `Que soy el/la ${parentRelation} biológico/a del/la menor [NOMBRE COMPLETO DEL/LA MENOR EN MAYÚSCULAS], nacido/a el [FECHA DE NACIMIENTO] en [CIUDAD, PAÍS], conforme consta en su respectiva partida de nacimiento.`}
+
+2. ${lang === 'en' ? `That the biological ${otherParentEN} of my ${childPronoun} is [OTHER PARENT FULL NAME], with whom I had a sentimental relationship from which our ${childPronoun} was born, and who I know currently resides together with our minor ${childPronoun} at [GUARDIAN FULL ADDRESS], United States of America.` : `Que el/la ${otherParentES} biológico/a de mi ${childPronounES} es [NOMBRE COMPLETO DEL OTRO PROGENITOR], con quien tuve una relación sentimental de la cual nació nuestro/a ${childPronounES}, y de quien conozco que actualmente reside junto a nuestro/a menor ${childPronounES} en [DIRECCIÓN COMPLETA DEL TUTOR], Estados Unidos de América.`}
+
+3. ${lang === 'en' ? `That, with a deep sense of guilt and remorse, I acknowledge before the competent authorities that, from the moment I learned of the pregnancy and from the birth of my ${childPronoun}, I voluntarily distanced myself from my parental duties and did not assume the moral, emotional, or financial responsibilities that corresponded to me. I honestly admit that my absence was constant, prolonged, and absolute throughout my ${childPronoun}'s childhood and adolescence.` : `Que, con profundo sentimiento de culpa y arrepentimiento, reconozco ante las autoridades competentes que, desde que tuve conocimiento del embarazo y desde el nacimiento de mi ${childPronounES}, me aparté voluntariamente de mis deberes paternos y no asumí las responsabilidades morales, afectivas ni económicas que me correspondían. Admito con honestidad que mi ausencia fue constante, prolongada y absoluta durante toda la niñez y adolescencia de mi ${childPronounES}.`}
+
+4. ${lang === 'en' ? `That I acknowledge having incurred in a serious and repeated parental negligence. I accept that it was I, and only I, who decided not to be present in the important moments of my ${childPronoun}'s life. [Include 2-3 specific examples of negligence from the case data, rewritten in first person from the absent ${parentRelationEN}'s perspective — e.g., missed birthdays, unkept promises, ignored calls, absence at school events, failure to provide financial support]. I recognize that my conduct was that of an absent and negligent ${parentRelationEN}, and that through it I caused profound emotional harm that I now deeply regret.` : `Que reconozco haber incurrido en una grave y reiterada negligencia paterna. Acepto que fui yo, y solo yo, quien decidió no estar presente en los momentos importantes de la vida de mi ${childPronounES}. [Incluir 2-3 ejemplos específicos de negligencia extraídos de los datos del caso, reescritos en primera persona desde la perspectiva del/la ${parentRelation} ausente — p.ej., cumpleaños ausentes, promesas incumplidas, llamadas ignoradas, ausencia en eventos escolares, falta de sostén económico]. Reconozco que mi conducta fue la de un/a ${parentRelation} ausente y negligente, y que con ella causé un profundo daño emocional que hoy lamento.`}
+
+5. ${lang === 'en' ? `That I acknowledge and accept that, throughout the entire life of my ${childPronoun}, it has been [OTHER PARENT FULL NAME], the biological ${otherParentEN}, who has exclusively, fully, and continuously assumed all emotional, affective, financial, and caregiving burdens related to our ${childPronoun}. She/He has been his/her sole provider, his/her sole support, and the only truly present parental figure in his/her life.` : `Que reconozco y acepto que, durante toda la vida de mi ${childPronounES}, ha sido [NOMBRE COMPLETO DEL OTRO PROGENITOR], ${otherParentES} biológico/a, quien ha asumido de manera exclusiva, íntegra y constante todas las cargas emocionales, afectivas, económicas y de cuidado de nuestro/a ${childPronounES}. Ella/Él ha sido su único/a sostén, su único/a apoyo y la única figura parental verdaderamente presente en su vida.`}
+
+6. ${lang === 'en' ? `That, for the reasons set forth above, and by virtue of my own negligent conduct over the years, I accept that I am not in a moral or material position to exercise parental authority, custody, or care over my ${childPronoun}. I likewise acknowledge that the parent-child bond between him/her and me has been irreparably broken due to my own responsibility and my own decision not to have been present.` : `Que, por las razones anteriormente expuestas, y en virtud de mi propia conducta negligente a lo largo de los años, acepto que no me encuentro en condiciones morales ni materiales para ejercer la patria potestad, la custodia ni el cuidado de mi ${childPronounES}. Reconozco igualmente que el vínculo paterno-filial entre él/ella y yo se encuentra irreparablemente quebrantado por mi propia responsabilidad y por mi propia decisión de no haber estado presente.`}
+
+7. ${lang === 'en' ? `That, consequently, freely, voluntarily, permanently, and irrevocably, I RELINQUISH all of my parental rights, physical custody, and legal custody over my ${childPronoun} [CHILD FULL NAME IN CAPS], recognizing that sole custody must rest with his/her biological ${otherParentEN}, [OTHER PARENT FULL NAME].` : `Que, en consecuencia, de manera libre, voluntaria, permanente e irrevocable, RENUNCIO a todos mis derechos de patria potestad, custodia física y custodia legal sobre mi ${childPronounES} [NOMBRE COMPLETO DEL/LA MENOR EN MAYÚSCULAS], reconociendo que la custodia exclusiva debe recaer en su ${otherParentES} biológico/a, [NOMBRE COMPLETO DEL OTRO PROGENITOR].`}
+
+8. ${lang === 'en' ? `That I have no objection whatsoever and, on the contrary, I hereby express my full consent and agreement for [OTHER PARENT FULL NAME] to exercise, exclusively and entirely, the legal guardianship, custody, and care of our minor ${childPronoun}, as well as to make, in his/her sole name, all decisions relating to his/her education, health, well-being, residence, protection, and integral development, in accordance with applicable law.` : `Que no tengo objeción alguna y, por el contrario, manifiesto mi total conformidad y consentimiento para que [NOMBRE COMPLETO DEL OTRO PROGENITOR] ejerza de manera exclusiva, total e íntegra la tutela legal, la custodia y la guarda de nuestro/a menor ${childPronounES}, así como para que tome en su exclusivo nombre todas las decisiones relativas a su educación, salud, bienestar, residencia, protección y desarrollo integral, conforme a la legislación aplicable.`}
+
+9. ${lang === 'en' ? `That I make this decision fully assuming responsibility for my past conduct, and in the best interest of my ${childPronoun}, with the sole purpose of guaranteeing his/her protection, his/her emotional stability, his/her academic continuity, and his/her overall well-being.` : `Que tomo esta decisión asumiendo plenamente la responsabilidad por mi conducta pasada, y en el mejor interés superior de mi ${childPronounES}, con la única finalidad de garantizar su protección, su estabilidad emocional, su continuidad académica y su bienestar general.`}
+
+${lang === 'en' ? 'THEREFORE, I sign this document in full understanding of its contents and of the legal consequences that may derive therefrom, intending it to take effect before all appropriate authorities.' : 'POR LO TANTO, firmo el presente documento en pleno conocimiento de su contenido y de las consecuencias legales que del mismo se deriven, con la intención de que surta todos sus efectos ante las autoridades correspondientes.'}
+
+${lang === 'en' ? 'In the city of ____________________, on this _____ day of _______________, of the year _________.' : 'En la ciudad de ____________________, el día _____ del mes de _______________ del año _________.'}
+
+
+${lang === 'en' ? 'Signature' : 'Firma'}: ____________________________________
+[ABSENT ${parentRelationEN.toUpperCase()} FULL NAME IN CAPS]
+${parentDocLabel} ${lang === 'en' ? 'No.' : 'N°'} ${parentDocNumber}
+
+=== CASE DATA TO USE ===
+Absent ${parentRelationEN} name: ${parentName}
+Absent ${parentRelationEN} nationality: ${parentNationality}
+Absent ${parentRelationEN} country: ${parentCountry}
+Absent ${parentRelationEN} location/province: ${parentLocation}
+Absent ${parentRelationEN} document type: ${parentDocLabel}
+Absent ${parentRelationEN} document number: ${parentDocNumber}
+Absent ${parentRelationEN} raw data: ${JSON.stringify(absentParent)}
+Other parent (guardian) name: ${tutorName}
+Other parent (guardian) full address: ${tutorAddress}
+Child full name: ${childInfo.full_name || '[FALTA: Nombre del menor]'}
+Child date of birth: ${childInfo.dob || '[FALTA: Fecha de nacimiento del menor]'}
+Child city of birth: ${childInfo.birth_city || childInfo.country || ''}
+Child country of birth: ${childInfo.country || ''}
+Child current address: ${childInfo.address || tutorAddress || '[FALTA: Dirección actual del menor]'}
+Narrative from guardian (rewrite key negligence events in first person from absent ${parentRelationEN}): ${JSON.stringify({ why_cannot_reunify: tutor?.why_cannot_reunify, abuse_description: tutor?.abuse_description, ...(ctx.clientStory || {}) })}
+
+IMPORTANT:
+- Output ONLY the letter text, nothing else. No explanations, no markdown.
+- Leave the signing line BLANK (the signer will fill city, day, month, year by hand).
+- Do NOT mention the SIJ declaration, the juvenile court, or the immigration case.
+- Extract 2-3 specific negligence incidents from the narrative above and rewrite them in paragraph 4 in FIRST PERSON from the absent ${parentRelationEN}'s perspective (admitting it was him/her who failed).
+- If a specific piece of data is missing, write [FALTA: descripción del dato] in Spanish.
 ${suppBlock}`
   }
 
@@ -600,7 +713,7 @@ export async function POST(request: NextRequest) {
 
   // Build context
   const ctx = await buildCaseContext(case_id)
-  const basePrompt = buildDeclarationPrompt(type, ctx, index)
+  const basePrompt = buildDeclarationPrompt(type, ctx, index, lang)
   const langInstruction = lang === 'es'
     ? '\n\nIMPORTANT: Generate the ENTIRE document in SPANISH. Translate all legal terms and content to Spanish. Keep the same structure and format but write everything in Spanish. CRITICAL: Use ALL the same data (names, dates, cities, countries, ID numbers) as the English version. Do NOT omit any fact in the Spanish version that appears in the English version. Both versions must contain the EXACT SAME INFORMATION, only translated.'
     : '\n\nIMPORTANT: Generate the ENTIRE document in ENGLISH. ALL text must be in English (legal terms, descriptions, paragraphs). Even if the source data contains Spanish text (names, testimonies, etc.), translate the narrative content to English while preserving proper nouns (names, cities) in their original form. Do NOT write any sentence or paragraph in Spanish. The document must be 100% in English.'

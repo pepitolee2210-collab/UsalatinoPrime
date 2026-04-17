@@ -16,35 +16,43 @@ interface ExtractedData {
   document_type?: string
 }
 
-async function extractFromImage(base64: string, mimeType: string, prompt: string): Promise<string> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: prompt },
-            { inline_data: { mime_type: mimeType, data: base64 } },
+async function extractFromImage(base64: string, mimeType: string, prompt: string): Promise<{ text: string; error?: string }> {
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: mimeType, data: base64 } },
+            ],
+          }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+          safetySettings: [
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
           ],
-        }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
-        safetySettings: [
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-        ],
-      }),
+        }),
+      }
+    )
+    if (!res.ok) {
+      const err = await res.text()
+      return { text: '', error: `HTTP ${res.status}: ${err.substring(0, 200)}` }
     }
-  )
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`Gemini error: ${err}`)
+    const data = await res.json()
+    const blockReason = data.promptFeedback?.blockReason
+    if (blockReason) return { text: '', error: `Blocked: ${blockReason}` }
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    if (!text) return { text: '', error: 'Empty response' }
+    return { text }
+  } catch (e) {
+    return { text: '', error: e instanceof Error ? e.message : 'Network error' }
   }
-  const data = await res.json()
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
 }
 
 function parseExtractedJSON(text: string): ExtractedData {
@@ -132,13 +140,17 @@ export async function POST(req: NextRequest) {
 Document context: filename is "${doc.name}", category is "${doc.document_key}".
 Output ONLY valid JSON, no markdown, no explanations.`
 
-      const text = await extractFromImage(base64, mimeType, prompt)
-      const extracted = parseExtractedJSON(text)
+      const result = await extractFromImage(base64, mimeType, prompt)
+      if (result.error) {
+        errors.push(`${doc.name}: ${result.error}`)
+        continue
+      }
+      const extracted = parseExtractedJSON(result.text)
 
       // Save extracted_text for future reference
       await service
         .from('documents')
-        .update({ extracted_text: text.substring(0, 5000) })
+        .update({ extracted_text: result.text.substring(0, 5000) })
         .eq('id', doc.id)
 
       // Apply to supplementary data based on document_key
