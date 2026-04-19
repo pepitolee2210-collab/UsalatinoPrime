@@ -21,13 +21,16 @@ export async function GET() {
   const todayEnd = new Date()
   todayEnd.setHours(23, 59, 59, 999)
 
-  const [citasRes, visaRes, asiloRes, ajusteRes, renunciaRes, cambioRes, agendaRes] = await Promise.all([
+  // The /admin/citas view excludes voice-agent bookings, so the dashboard
+  // counter here does the same — leads show up in `prospectosPending` instead.
+  const [citasRes, visaRes, asiloRes, ajusteRes, renunciaRes, cambioRes, agendaRes, prospectosRes] = await Promise.all([
     supabase
       .from('appointments')
       .select('*', { count: 'exact', head: true })
       .eq('status', 'scheduled')
       .gte('scheduled_at', todayStart.toISOString())
-      .lte('scheduled_at', todayEnd.toISOString()),
+      .lte('scheduled_at', todayEnd.toISOString())
+      .or('source.is.null,source.neq.voice-agent'),
     supabase
       .from('visa_juvenil_submissions')
       .select('*', { count: 'exact', head: true })
@@ -52,6 +55,13 @@ export async function GET() {
       .from('callback_requests')
       .select('*', { count: 'exact', head: true })
       .in('status', ['pending', 'follow_up']),
+    // Upcoming voice-agent prospects — today and forward, still scheduled.
+    supabase
+      .from('appointments')
+      .select('*', { count: 'exact', head: true })
+      .eq('source', 'voice-agent')
+      .eq('status', 'scheduled')
+      .gte('scheduled_at', todayStart.toISOString()),
   ])
 
   const formsPending = (visaRes.count || 0) + (asiloRes.count || 0) + (ajusteRes.count || 0) + (renunciaRes.count || 0) + (cambioRes.count || 0)
@@ -60,5 +70,6 @@ export async function GET() {
     citasToday: citasRes.count || 0,
     formsPending,
     agendaPending: agendaRes.count || 0,
+    prospectosPending: prospectosRes.count || 0,
   })
 }

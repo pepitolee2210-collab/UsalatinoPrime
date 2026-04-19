@@ -19,6 +19,7 @@ import { ErrorBoundary } from '@/components/error-boundary'
 const navItems = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, badgeKey: null },
   { href: '/admin/citas', label: 'Citas', icon: CalendarClock, badgeKey: 'citasToday' as const },
+  { href: '/admin/prospectos-citas', label: 'Prospectos IA', icon: Bot, badgeKey: 'prospectosPending' as const },
   { href: '/admin/cases', label: 'Casos', icon: FileText, badgeKey: null },
   { href: '/admin/clients', label: 'Clientes', icon: Users, badgeKey: null },
   { href: '/admin/payments', label: 'Pagos', icon: CreditCard, badgeKey: null },
@@ -30,11 +31,11 @@ const navItems = [
   { href: '/admin/comunidad', label: 'Comunidad', icon: MessageSquare, badgeKey: null },
 ]
 
-type BadgeCounts = { citasToday: number; formsPending: number; agendaPending: number; employeePending: number }
+type BadgeCounts = { citasToday: number; formsPending: number; agendaPending: number; employeePending: number; prospectosPending: number }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [counts, setCounts] = useState<BadgeCounts>({ citasToday: 0, formsPending: 0, agendaPending: 0, employeePending: 0 })
+  const [counts, setCounts] = useState<BadgeCounts>({ citasToday: 0, formsPending: 0, agendaPending: 0, employeePending: 0, prospectosPending: 0 })
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()

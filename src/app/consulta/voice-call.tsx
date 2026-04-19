@@ -52,6 +52,13 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
   const [statusText, setStatusText] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [audioLevel, setAudioLevel] = useState(0)
+  // Live captioning — chunks as they arrive from Gemini (no wait for finished).
+  const [liveUserText, setLiveUserText] = useState('')
+  const [liveAssistantText, setLiveAssistantText] = useState('')
+  // Orb visual state derived from conversation flow.
+  const [orbState, setOrbState] = useState<'idle' | 'connecting' | 'active' | 'error' | 'listening' | 'speaking' | 'processing'>('idle')
+  // Confirmation displayed after a successful book_appointment.
+  const [appointmentConfirmed, setAppointmentConfirmed] = useState<{ date: string; time: string } | null>(null)
 
   const sessionRef = useRef<LiveSession | null>(null)
   const aliveRef = useRef(false)
@@ -91,6 +98,10 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
   // In-flight transcription fragments (Gemini emits chunks until finished=true).
   const pendingUserTextRef = useRef('')
   const pendingAssistantTextRef = useRef('')
+  // Tracks whether the model is currently speaking (for orb visual state).
+  // We consider the model "speaking" while audio chunks arrive + 300ms tail.
+  const modelSpeakingUntilRef = useRef<number>(0)
+  const pendingToolCallsRef = useRef<number>(0)
 
   const reportCallClose = useCallback((endReason: string, errorMessage?: string) => {
     if (closedRef.current || !callIdRef.current) return
@@ -194,6 +205,32 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
       audioLevelRef.current *= 0.85
       setAudioLevel(audioLevelRef.current)
     }, 50)
+    return () => clearInterval(interval)
+  }, [callState])
+
+  // Derive orb visual state from live conversation signals. Runs while the
+  // call is active; priority: speaking > processing (tool call) > listening
+  // (user talking) > active (quiet). We poll refs at 150ms which is smooth
+  // enough for visual feedback without being wasteful.
+  useEffect(() => {
+    if (callState !== 'active') {
+      // The orb doesn't have an 'ended' visual — fall back to idle so the
+      // static ring is shown while the confirmation/error card takes focus.
+      setOrbState(callState === 'ended' ? 'idle' : callState)
+      return
+    }
+    const interval = setInterval(() => {
+      const now = Date.now()
+      if (modelSpeakingUntilRef.current > now) {
+        setOrbState('speaking')
+      } else if (pendingToolCallsRef.current > 0) {
+        setOrbState('processing')
+      } else if (audioLevelRef.current > 0.04 && !mutedRef.current) {
+        setOrbState('listening')
+      } else {
+        setOrbState('active')
+      }
+    }, 150)
     return () => clearInterval(interval)
   }, [callState])
 
@@ -317,30 +354,47 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
           const modelTurn = serverContent?.modelTurn as { parts?: Array<{ inlineData?: { data?: string } }> } | undefined
           if (modelTurn?.parts) {
             for (const part of modelTurn.parts) {
-              if (part.inlineData?.data) queueAudio(part.inlineData.data)
+              if (part.inlineData?.data) {
+                queueAudio(part.inlineData.data)
+                // Model is actively speaking; extend the speaking window.
+                modelSpeakingUntilRef.current = Date.now() + 400
+              }
             }
           }
 
           // Capture transcriptions (both the user's speech and the model's
           // replies). Gemini emits chunks until `finished: true`, so we
-          // buffer fragments and commit to history on finish.
+          // buffer fragments and commit to history on finish. We ALSO push
+          // the partial text to state so captions render live as Gemini
+          // streams — better UX than waiting until the turn ends.
           if (serverContent) {
             const input = serverContent.inputTranscription as { text?: string; finished?: boolean } | undefined
             if (input) {
-              if (input.text) pendingUserTextRef.current += input.text
+              if (input.text) {
+                pendingUserTextRef.current += input.text
+                setLiveUserText(pendingUserTextRef.current)
+                setLiveAssistantText('') // user took the floor; clear AI caption
+              }
               if (input.finished) {
                 const text = pendingUserTextRef.current.trim()
                 if (text) conversationHistoryRef.current.push({ role: 'user', text })
                 pendingUserTextRef.current = ''
+                // Keep the final text visible for a moment, then clear.
+                setTimeout(() => setLiveUserText(''), 1500)
               }
             }
             const output = serverContent.outputTranscription as { text?: string; finished?: boolean } | undefined
             if (output) {
-              if (output.text) pendingAssistantTextRef.current += output.text
+              if (output.text) {
+                pendingAssistantTextRef.current += output.text
+                setLiveAssistantText(pendingAssistantTextRef.current)
+                setLiveUserText('')
+              }
               if (output.finished) {
                 const text = pendingAssistantTextRef.current.trim()
                 if (text) conversationHistoryRef.current.push({ role: 'assistant', text })
                 pendingAssistantTextRef.current = ''
+                setTimeout(() => setLiveAssistantText(''), 1500)
               }
             }
           }
@@ -454,6 +508,11 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
     sessionHandleRef.current = null
     pendingUserTextRef.current = ''
     pendingAssistantTextRef.current = ''
+    modelSpeakingUntilRef.current = 0
+    pendingToolCallsRef.current = 0
+    setLiveUserText('')
+    setLiveAssistantText('')
+    setAppointmentConfirmed(null)
 
     try {
       const tokenRes = await fetch('/api/chatbot/token', { method: 'POST' })
@@ -595,6 +654,8 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
     for (const fc of functionCalls) {
       log('function call', fc.name, fc.args)
       const tStart = Date.now()
+      // Count in-flight tool calls so the orb can show "processing".
+      pendingToolCallsRef.current += 1
 
       if (fc.name === 'create_lead') {
         const args = fc.args || {}
@@ -618,6 +679,7 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
           toolsInvokedRef.current.push({ name: 'create_lead', at: tStart, ok: false })
           safeSendToolResponse(fc.id, 'create_lead', { error: 'No se pudo registrar' })
         }
+        pendingToolCallsRef.current = Math.max(0, pendingToolCallsRef.current - 1)
         continue
       }
 
@@ -633,6 +695,7 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
           toolsInvokedRef.current.push({ name: 'get_available_slots', at: tStart, ok: false })
           safeSendToolResponse(fc.id, 'get_available_slots', { error: 'No se pudieron obtener los horarios' })
         }
+        pendingToolCallsRef.current = Math.max(0, pendingToolCallsRef.current - 1)
         continue
       }
 
@@ -653,16 +716,26 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
           })
           const result = await res.json()
           if (result?.appointment?.id) appointmentIdRef.current = result.appointment.id
+          // If the booking succeeded, capture the confirmation details so we
+          // can show a big "Tu cita está agendada" screen after the call ends.
+          if (result?.success && result?.confirmation) {
+            setAppointmentConfirmed({
+              date: String(result.confirmation.date || ''),
+              time: String(result.confirmation.time || ''),
+            })
+          }
           toolsInvokedRef.current.push({ name: 'book_appointment', at: tStart, ok: !!result?.success })
           safeSendToolResponse(fc.id, 'book_appointment', result)
         } catch {
           toolsInvokedRef.current.push({ name: 'book_appointment', at: tStart, ok: false })
           safeSendToolResponse(fc.id, 'book_appointment', { error: 'No se pudo agendar' })
         }
+        pendingToolCallsRef.current = Math.max(0, pendingToolCallsRef.current - 1)
         continue
       }
 
       warn('unknown function', fc.name)
+      pendingToolCallsRef.current = Math.max(0, pendingToolCallsRef.current - 1)
     }
   }
 
@@ -689,12 +762,6 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
     return `${m}:${s.toString().padStart(2, '0')}`
   }
 
-  const orbState =
-    callState === 'connecting' ? 'connecting' :
-    callState === 'error' ? 'error' :
-    callState === 'active' ? 'active' :
-    'idle'
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4">
       <button
@@ -704,6 +771,35 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
         <ArrowLeft className="w-4 h-4" /> Volver
       </button>
 
+      {/* Successful-booking confirmation screen — replaces the generic
+          "llamada finalizada" view when the IA actually agendaron la cita. */}
+      {callState === 'ended' && appointmentConfirmed ? (
+        <div className="flex flex-col items-center max-w-md text-center">
+          <div className="w-20 h-20 rounded-full bg-emerald-500/15 ring-2 ring-emerald-400/40 flex items-center justify-center mb-6">
+            <svg className="w-10 h-10 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <h2 className="text-white text-2xl font-bold tracking-tight mb-2">
+            Tu cita está agendada
+          </h2>
+          <p className="text-emerald-300 text-lg font-semibold mb-1">
+            {appointmentConfirmed.date}
+          </p>
+          <p className="text-white/70 text-base mb-6">
+            a las {appointmentConfirmed.time}
+          </p>
+          <p className="text-white/50 text-sm leading-relaxed mb-8 max-w-sm">
+            Henry te llamará al número que nos diste. Recibirás un recordatorio una hora antes de la cita.
+          </p>
+          <button
+            onClick={() => { setCallState('idle'); setCallDuration(0); setErrorMessage(''); setAudioLevel(0); closedRef.current = false; setAppointmentConfirmed(null) }}
+            className="px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-sm font-medium transition-colors"
+          >
+            Volver al inicio
+          </button>
+        </div>
+      ) : (
       <div className="flex flex-col items-center">
         <div className="mb-8">
           <SiriOrb
@@ -792,7 +888,7 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
 
           {(callState === 'ended' || callState === 'error') && (
             <button
-              onClick={() => { setCallState('idle'); setCallDuration(0); setErrorMessage(''); setAudioLevel(0); closedRef.current = false }}
+              onClick={() => { setCallState('idle'); setCallDuration(0); setErrorMessage(''); setAudioLevel(0); closedRef.current = false; setAppointmentConfirmed(null) }}
               className="w-16 h-16 rounded-full bg-gradient-to-br from-[#0ea5e9] to-[#8b5cf6] flex items-center justify-center hover:shadow-lg hover:shadow-[#0ea5e9]/30 transition-all duration-300 active:scale-95"
             >
               <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -801,7 +897,31 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
             </button>
           )}
         </div>
+
+        {/* Live captions — transcriptions streamed from Gemini. Gives the
+            user visual feedback that the IA actually heard them (and shows
+            what the IA is saying in case audio glitches). */}
+        {callState === 'active' && (liveAssistantText || liveUserText) && (
+          <div className="mt-6 max-w-md text-center px-4 min-h-[3rem]">
+            {liveAssistantText ? (
+              <p className="text-[#F2A900]/90 text-sm leading-relaxed">
+                <span className="text-[#F2A900]/50 text-xs uppercase tracking-wider block mb-1">
+                  La asistente
+                </span>
+                {liveAssistantText}
+              </p>
+            ) : liveUserText ? (
+              <p className="text-white/70 text-sm leading-relaxed italic">
+                <span className="text-white/30 text-xs uppercase tracking-wider block mb-1 not-italic">
+                  Tú
+                </span>
+                {liveUserText}
+              </p>
+            ) : null}
+          </div>
+        )}
       </div>
+      )}
 
       <div className="absolute bottom-6 text-center">
         <p className="text-white/15 text-[10px]">Duración máxima: 15 minutos</p>

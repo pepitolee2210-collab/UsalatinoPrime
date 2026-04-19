@@ -1,6 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+// Admin-only page; never statically prerendered. Avoids the Next CSR-bailout
+// error that useSearchParams() would otherwise trigger at build time.
+export const dynamic = 'force-dynamic'
+
+import { useEffect, useState, useMemo, Suspense } from 'react'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -19,6 +24,7 @@ interface ContractRow {
   addon_services: any[]
   client_full_name: string
   client_passport: string
+  client_phone: string | null
   client_dob: string
   client_signature: string
   minors: any[]
@@ -56,13 +62,45 @@ const statusColors: Record<string, string> = {
   completado: 'bg-emerald-100 text-emerald-800',
 }
 
-export default function ContratosPage() {
+export default function ContratosPageWrapper() {
+  // Suspense is required because ContratosPageInner reads useSearchParams.
+  return (
+    <Suspense fallback={<p className="text-sm text-gray-500">Cargando contratos...</p>}>
+      <ContratosPageInner />
+    </Suspense>
+  )
+}
+
+function ContratosPageInner() {
   const [contracts, setContracts] = useState<ContractRow[]>([])
   const [loading, setLoading] = useState(true)
   const [editingContract, setEditingContract] = useState<ContractRow | null>(null)
   const [showGenerator, setShowGenerator] = useState(false)
   const [search, setSearch] = useState('')
   const supabase = createClient()
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  // If we arrived here from /admin/prospectos-citas via the "Convertir en
+  // cliente" button, auto-open the generator with the client data already
+  // filled in. Keeps Andriuw from retyping the name, phone, and service.
+  const prefillFromVoice = useMemo(() => {
+    const name = searchParams.get('prefill_name')
+    const phone = searchParams.get('prefill_phone')
+    const fromVoice = searchParams.get('from_voice')
+    if (!name && !phone && !fromVoice) return null
+    return {
+      name: name || '',
+      phone: phone || '',
+      fromVoiceAppointmentId: fromVoice || null,
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    if (prefillFromVoice) {
+      setShowGenerator(true)
+    }
+  }, [prefillFromVoice])
 
   const filteredContracts = contracts.filter(c => {
     if (!search.trim()) return true
@@ -139,6 +177,31 @@ export default function ContratosPage() {
     toast.success('Enlace copiado al portapapeles')
   }
 
+  // Opens WhatsApp with a pre-built message so Henry/Andriuw don't have to
+  // paste the link and type anything. 1-click send on the client's device.
+  function handleWhatsApp(contract: ContractRow) {
+    const phone = (contract.client_phone || '').replace(/\D/g, '')
+    if (!phone) {
+      toast.error('Este contrato no tiene teléfono registrado')
+      return
+    }
+    // Assume US numbers: if missing country code, prepend 1.
+    const normalized = phone.length === 10 ? `1${phone}` : phone
+    if (!contract.signing_token) {
+      toast.error('El contrato aún no tiene enlace de firma')
+      return
+    }
+    const url = `${window.location.origin}/contrato/${contract.signing_token}`
+    const firstName = contract.client_full_name.split(' ')[0] || ''
+    const message =
+      `Hola ${firstName}, soy del equipo de Henry Orellana (UsaLatino Prime). ` +
+      `Aquí está tu contrato para que lo revises y firmes digitalmente: ${url}\n\n` +
+      `Cualquier pregunta respóndeme por aquí. ¡Gracias!`
+    const waUrl = `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`
+    window.open(waUrl, '_blank', 'noopener,noreferrer')
+    toast.success('Abriendo WhatsApp...')
+  }
+
   async function handleDownloadPDF(contract: ContractRow) {
     try {
       const { generateContractPDF } = await import('@/lib/pdf/generate-contract-pdf')
@@ -200,18 +263,41 @@ export default function ContratosPage() {
     return (
       <div className="space-y-4">
         <button
-          onClick={() => { setShowGenerator(false); setEditingContract(null); }}
+          onClick={() => {
+            setShowGenerator(false)
+            setEditingContract(null)
+            // Clear the ?prefill_* query params so re-entering doesn't
+            // re-open the generator with stale data.
+            if (prefillFromVoice) router.replace('/admin/contratos')
+          }}
           className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 transition-colors"
         >
           <ChevronLeft className="w-4 h-4" />
           Volver a la lista
         </button>
+        {prefillFromVoice && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 flex items-start gap-2">
+            <svg className="w-5 h-5 mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <div>
+              <p className="font-semibold">Cliente proveniente de auto-agenda con la IA</p>
+              <p className="text-rose-700 mt-0.5">
+                Datos pre-cargados desde la llamada. Ajusta servicio, cuotas y monto, guarda y envía el link por WhatsApp.
+              </p>
+            </div>
+          </div>
+        )}
         <h1 className="text-2xl font-bold text-gray-900">
           {editingContract ? 'Editar Contrato' : 'Nuevo Contrato'}
         </h1>
         <QuickContractGenerator
           editData={editingContract}
           onSaved={handleGeneratorDone}
+          prefillName={prefillFromVoice?.name}
+          prefillPhone={prefillFromVoice?.phone}
+          prefillService={prefillFromVoice ? 'visa-juvenil' : undefined}
         />
       </div>
     )
@@ -312,11 +398,18 @@ export default function ContratosPage() {
                       <option value="completado">Completado</option>
                     </select>
 
-                    {/* Send to client / Copy link */}
+                    {/* Send to client / Copy link / WhatsApp */}
                     {c.signing_token ? (
-                      <Button variant="outline" size="sm" onClick={() => handleCopyLink(c.signing_token!)} title="Copiar enlace de firma" className="text-amber-600 hover:text-amber-800 hover:bg-amber-50">
-                        <Link2 className="w-3.5 h-3.5" />
-                      </Button>
+                      <>
+                        <Button variant="outline" size="sm" onClick={() => handleCopyLink(c.signing_token!)} title="Copiar enlace de firma" className="text-amber-600 hover:text-amber-800 hover:bg-amber-50">
+                          <Link2 className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleWhatsApp(c)} title="Enviar enlace por WhatsApp" className="text-green-600 hover:text-green-800 hover:bg-green-50">
+                          <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.626.712.226 1.36.194 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                          </svg>
+                        </Button>
+                      </>
                     ) : c.status === 'firmado' || c.status === 'activo' || c.status === 'completado' ? (
                       <Button variant="outline" size="sm" disabled title="Ya firmado" className="text-green-600">
                         <CheckCircle className="w-3.5 h-3.5" />

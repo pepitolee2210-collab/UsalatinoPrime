@@ -679,6 +679,45 @@
   animation: orb-rotate 3s linear infinite;
 }
 
+/* Listening — user is talking to the AI (blue aura pulsing) */
+.siri-orb-listening::before {
+  background: conic-gradient(
+    from var(--orb-angle),
+    #3b82f6 0%,
+    #2563eb 25%,
+    #60a5fa 50%,
+    #3b82f6 75%,
+    #2563eb 100%
+  );
+  animation: orb-rotate 2.5s linear infinite;
+}
+
+/* Speaking — AI is talking back (green aura, faster to convey activity) */
+.siri-orb-speaking::before {
+  background: conic-gradient(
+    from var(--orb-angle),
+    #10b981 0%,
+    #059669 25%,
+    #34d399 50%,
+    #10b981 75%,
+    #059669 100%
+  );
+  animation: orb-rotate 1.8s linear infinite;
+}
+
+/* Processing — AI is working on a tool call (amber rotation) */
+.siri-orb-processing::before {
+  background: conic-gradient(
+    from var(--orb-angle),
+    #f59e0b 0%,
+    #d97706 25%,
+    #fbbf24 50%,
+    #f59e0b 75%,
+    #d97706 100%
+  );
+  animation: orb-rotate 1.2s linear infinite;
+}
+
 /* ===== Consulta — Chat Bubbles ===== */
 
 .chat-bubble-enter {

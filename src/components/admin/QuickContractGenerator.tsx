@@ -51,11 +51,17 @@ const SERVICE_OPTIONS = [
 interface QuickContractGeneratorProps {
   editData?: any | null
   onSaved?: () => void
+  /** Pre-filled name from a voice-agent lead conversion. */
+  prefillName?: string
+  /** Pre-filled phone from a voice-agent lead conversion. */
+  prefillPhone?: string
+  /** Auto-select this service slug when the form opens. */
+  prefillService?: string
 }
 
 const emptyMinor = (): MinorData => ({ fullName: '', dob: '', birthplace: '', passport: '' })
 
-export function QuickContractGenerator({ editData, onSaved }: QuickContractGeneratorProps) {
+export function QuickContractGenerator({ editData, onSaved, prefillName, prefillPhone, prefillService }: QuickContractGeneratorProps) {
   const supabase = createClient()
   const [selectedSlug, setSelectedSlug] = useState('')
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0)
@@ -87,6 +93,23 @@ export function QuickContractGenerator({ editData, onSaved }: QuickContractGener
   )
   const [customMonthlyAmount, setCustomMonthlyAmount] = useState<string>('')
   const [useCustomMonthly, setUseCustomMonthly] = useState(false)
+
+  // Pre-fill form fields when converting a voice-agent prospect into a client.
+  // Runs once on mount if we aren't editing an existing contract.
+  useEffect(() => {
+    if (editData) return
+    if (!prefillName && !prefillPhone && !prefillService) return
+    setContractForm(prev => ({
+      ...prev,
+      clientFullName: prefillName || prev.clientFullName,
+      clientPhone: prefillPhone || prev.clientPhone,
+    }))
+    if (prefillService) {
+      // Use the existing service-change handler so the template loads too.
+      handleServiceChange(prefillService)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Cargar datos cuando se edita un contrato existente
   useEffect(() => {

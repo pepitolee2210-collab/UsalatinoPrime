@@ -6,11 +6,14 @@ interface SiriOrbProps {
   /** 0–1 normalized audio level */
   audioLevel?: number
   /** Visual state of the orb */
-  state?: 'idle' | 'connecting' | 'active' | 'error'
+  state?: 'idle' | 'connecting' | 'active' | 'error' | 'listening' | 'speaking' | 'processing'
   /** Size in px */
   size?: number
   className?: string
 }
+
+// States where the orb pulses to the audio level (user or model actually talking).
+const REACTIVE_STATES: Array<SiriOrbProps['state']> = ['active', 'listening', 'speaking']
 
 export function SiriOrb({ audioLevel = 0, state = 'idle', size = 200, className = '' }: SiriOrbProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -19,9 +22,9 @@ export function SiriOrb({ audioLevel = 0, state = 'idle', size = 200, className 
     const el = containerRef.current
     if (!el) return
 
-    // Scale orb based on audio level (1.0 to 1.2 range)
-    const scale = state === 'active' ? 1 + audioLevel * 0.2 : 1
-    const glowIntensity = state === 'active' ? 0.3 + audioLevel * 0.5 : 0.3
+    const reactive = REACTIVE_STATES.includes(state)
+    const scale = reactive ? 1 + audioLevel * 0.2 : 1
+    const glowIntensity = reactive ? 0.3 + audioLevel * 0.5 : 0.3
 
     el.style.setProperty('--orb-glow', String(glowIntensity))
     el.style.transform = `scale(${scale})`
@@ -31,6 +34,9 @@ export function SiriOrb({ audioLevel = 0, state = 'idle', size = 200, className 
   const stateClass =
     state === 'connecting' ? 'siri-orb-connecting' :
     state === 'error' ? 'siri-orb-error' :
+    state === 'listening' ? 'siri-orb-listening' :
+    state === 'speaking' ? 'siri-orb-speaking' :
+    state === 'processing' ? 'siri-orb-processing' :
     state === 'active' ? 'siri-orb-active' :
     'siri-orb-idle'
 
