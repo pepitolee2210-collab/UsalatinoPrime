@@ -1,6 +1,12 @@
 import { createServiceClient } from '@/lib/supabase/service'
 
-const WINDOW_MS = 60 * 60 * 1000 // 1 hour
+// Shorter window (30 min) makes the budget feel natural to users: after 2
+// attempts they can try again in <30 min instead of waiting a full hour.
+// Also caps attacker spend per IP at ~$48/day vs $120/day with the old hour
+// window, because fewer hits fit in 30 min than in 60.
+export const WINDOW_MS = 30 * 60 * 1000
+export const DEFAULT_MAX_PER_WINDOW = 2
+export const rateLimitWindowMs = WINDOW_MS
 
 /**
  * Persistent per-IP rate limit (works across serverless instances).
@@ -12,7 +18,7 @@ const WINDOW_MS = 60 * 60 * 1000 // 1 hour
  */
 export async function checkVoiceRateLimit(
   ip: string,
-  maxPerWindow: number = 5,
+  maxPerWindow: number = DEFAULT_MAX_PER_WINDOW,
   scope: string = 'token',
 ): Promise<{ allowed: boolean; remaining: number; resetsAt: Date }> {
   const supabase = createServiceClient()

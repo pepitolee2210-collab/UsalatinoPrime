@@ -47,7 +47,28 @@ Cada escenario toma menos de 2 minutos. En total ~10 minutos.
 
 ---
 
-## Escenario 3 — Reconexión de red
+## Escenario 3 — Memoria post-reconexión (CRÍTICO)
+
+**Setup**: llamada normal, prueba que la IA no pierde contexto al reconectar.
+
+**Pasos**:
+1. Inicia la llamada
+2. Dile tu nombre: "Hola, me llamo Juan"
+3. Cuando te pregunte el estado, responde: "Estoy en Utah"
+4. Abre DevTools → Network → marca "offline" por 3 segundos
+5. Desmarca "offline"
+
+**Criterio de éxito**:
+- Aparece "Reconectando... (1/2)" brevemente
+- Al reconectar, la IA dice algo como "Te escucho de nuevo" o "Continuamos, Juan, ¿cuántos hijos tienes?"
+- **NO** dice "Hola, ¿cómo te llamas?" ni vuelve a pedir el estado
+- En la consola se ve `[voice-call] Reinjected context with N turns`
+
+Si la IA vuelve al paso 1, es regresión — revisa el prompt y la lógica de reinject en `voice-call.tsx`.
+
+---
+
+## Escenario 4 — Reconexión de red
 
 **Setup**: celular con datos móviles y WiFi disponibles.
 
@@ -63,7 +84,7 @@ Cada escenario toma menos de 2 minutos. En total ~10 minutos.
 
 ---
 
-## Escenario 4 — Agendar una cita de prueba
+## Escenario 5 — Agendar una cita de prueba
 
 **Setup**: llamada normal en horario de atención (L–S 8am–8pm MT).
 
@@ -87,7 +108,7 @@ Cada escenario toma menos de 2 minutos. En total ~10 minutos.
 
 ---
 
-## Escenario 5 — Registro en `/admin/llamadas`
+## Escenario 6 — Registro en `/admin/llamadas`
 
 **Setup**: tras ejecutar los escenarios anteriores.
 

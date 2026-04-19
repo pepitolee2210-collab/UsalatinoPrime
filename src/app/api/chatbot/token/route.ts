@@ -3,40 +3,65 @@ import { GoogleGenAI } from '@google/genai'
 import { CHATBOT_VOICE_SYSTEM_PROMPT } from '@/lib/ai/prompts/chatbot-system'
 import { checkVoiceRateLimit } from '@/lib/voice-agent/rate-limit'
 import { isWithinBusinessHours } from '@/lib/voice-agent/business-hours'
+import { isAdminOrEmployee } from '@/lib/voice-agent/auth-check'
 import { createServiceClient } from '@/lib/supabase/service'
 
 // Native audio model — supports Live API + function calling
 const VOICE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025'
+
+function formatResetTime(d: Date): string {
+  try {
+    return d.toLocaleTimeString('es-US', {
+      timeZone: 'America/Denver',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
+  } catch {
+    return d.toISOString()
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
     const userAgent = request.headers.get('user-agent') || null
 
-    // Optional body: if the client is reconnecting, it sends the previous
-    // call_id so the voice_calls row is reused instead of creating a new one.
+    // Optional body: reconnection carries previous_call_id and/or a session
+    // handle so the voice_calls row is reused and the rate limit isn't spent
+    // on what is really a single conversation recovering from a network blip.
     let previousCallId: string | null = null
+    let previousSessionHandle: string | null = null
     try {
       const body = await request.json().catch(() => ({}))
       if (body && typeof body.previous_call_id === 'string' && body.previous_call_id.length > 0) {
         previousCallId = body.previous_call_id
       }
+      if (body && typeof body.previous_session_handle === 'string' && body.previous_session_handle.length > 0) {
+        previousSessionHandle = body.previous_session_handle
+      }
     } catch {
       // request has no body — treat as a fresh call
     }
 
-    // Persistent rate limit (works across serverless instances). 20/hour
-    // per IP is comfortable for real usage — tuned up from 5 which was too
-    // tight for debugging and repeated testing.
-    const rl = await checkVoiceRateLimit(ip, 20, 'token')
-    if (!rl.allowed) {
-      return Response.json(
-        {
-          error: 'Demasiadas llamadas. Intenta de nuevo más tarde.',
-          retry_at: rl.resetsAt.toISOString(),
-        },
-        { status: 429 },
-      )
+    // Two paths skip the rate limit:
+    //   1. Reconnection (same conversation continuing after a transient drop).
+    //   2. Admin/employee session (Henry/Diana testing and supporting).
+    const isReconnect = !!(previousCallId || previousSessionHandle)
+    const isStaff = !isReconnect && (await isAdminOrEmployee(request))
+
+    if (!isReconnect && !isStaff) {
+      const rl = await checkVoiceRateLimit(ip, 2, 'token')
+      if (!rl.allowed) {
+        const when = formatResetTime(rl.resetsAt)
+        return Response.json(
+          {
+            error: `Solo puedes iniciar 2 llamadas cada 30 minutos. Podrás volver a intentarlo a las ${when} (hora de Utah). Si es urgente, llama al 801-941-3479.`,
+            retry_at: rl.resetsAt.toISOString(),
+          },
+          { status: 429 },
+        )
+      }
     }
 
     // Warn (not block) outside business hours. The client decides if it wants
@@ -81,6 +106,18 @@ export async function POST(request: NextRequest) {
           voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
         },
         systemInstruction: CHATBOT_VOICE_SYSTEM_PROMPT,
+        // Transcription of both sides. We keep an in-memory log on the
+        // client and inject it back on reconnect so the model retains
+        // context ("no vuelvas a preguntar el nombre").
+        inputAudioTranscription: {},
+        outputAudioTranscription: {},
+        // Session resumption lets Gemini hand us a handle we can use to
+        // reopen the conversation with the server-side history intact.
+        // If the handle expires or is rejected, the client falls back to
+        // sendClientContent() with a text summary of the last turns.
+        sessionResumption: previousSessionHandle
+          ? { handle: previousSessionHandle }
+          : {},
         // Turn detection: let Gemini use its defaults. We tried tightening
         // this (START_SENSITIVITY_LOW + silenceDurationMs 900) combined with
         // the client-side noise gate and it caused the model to never

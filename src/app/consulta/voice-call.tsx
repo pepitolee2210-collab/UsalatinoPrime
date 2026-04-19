@@ -9,7 +9,13 @@ type CallState = 'idle' | 'connecting' | 'active' | 'ended' | 'error'
 interface LiveSession {
   sendRealtimeInput: (params: { audio: { data: string; mimeType: string } }) => void
   sendToolResponse: (params: { functionResponses: Array<{ id: string; name: string; response: Record<string, unknown> }> }) => void
+  sendClientContent: (params: { turns?: Array<{ role: string; parts: Array<{ text: string }> }>; turnComplete?: boolean }) => void
   close: () => void
+}
+
+interface ConversationTurn {
+  role: 'user' | 'assistant'
+  text: string
 }
 
 interface ToolCallData {
@@ -76,6 +82,15 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
     framesGateClosed: number
     noiseFloor: number
   } | null>(null)
+
+  // Conversation memory — transcriptions captured from Gemini Live.
+  // On reconnect we either resume via sessionHandle or replay this history
+  // as context so the model doesn't ask "¿cómo te llamas?" again.
+  const conversationHistoryRef = useRef<ConversationTurn[]>([])
+  const sessionHandleRef = useRef<string | null>(null)
+  // In-flight transcription fragments (Gemini emits chunks until finished=true).
+  const pendingUserTextRef = useRef('')
+  const pendingAssistantTextRef = useRef('')
 
   const reportCallClose = useCallback((endReason: string, errorMessage?: string) => {
     if (closedRef.current || !callIdRef.current) return
@@ -270,6 +285,29 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
               if (seconds >= 900) endCall('timeout')
             }, 1000)
           }
+          // On reconnect: if we had conversation history, replay a summary
+          // as a text turn. This is the fallback when session resumption by
+          // handle doesn't preserve state (or when there was no handle).
+          if (isReconnect && conversationHistoryRef.current.length > 0) {
+            try {
+              const lastTurns = conversationHistoryRef.current.slice(-10)
+              const summary = lastTurns
+                .map(t => `${t.role === 'user' ? 'Cliente' : 'Asistente'}: ${t.text}`)
+                .join('\n')
+              const contextMessage =
+                `[Reconexión] Se cayó la conexión brevemente. Acabamos de hablar esto:\n${summary}\n\nRetoma EXACTAMENTE donde quedamos. NO vuelvas a saludar, NO vuelvas a pedir el nombre ni el estado. Solo di algo corto como "Te escucho de nuevo" o continúa con la siguiente pregunta del flujo.`
+              // Fire-and-forget — if the session isn't ready yet sendClientContent
+              // will throw and we just move on (the prompt instructions still
+              // cover the case).
+              session.sendClientContent({
+                turns: [{ role: 'user', parts: [{ text: contextMessage }] }],
+                turnComplete: true,
+              })
+              log('Reinjected context with', lastTurns.length, 'turns')
+            } catch (reinjectErr) {
+              warn('sendClientContent failed during reconnect', reinjectErr)
+            }
+          }
         },
         onmessage: (message: unknown) => {
           if (!aliveRef.current) return
@@ -281,6 +319,37 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
             for (const part of modelTurn.parts) {
               if (part.inlineData?.data) queueAudio(part.inlineData.data)
             }
+          }
+
+          // Capture transcriptions (both the user's speech and the model's
+          // replies). Gemini emits chunks until `finished: true`, so we
+          // buffer fragments and commit to history on finish.
+          if (serverContent) {
+            const input = serverContent.inputTranscription as { text?: string; finished?: boolean } | undefined
+            if (input) {
+              if (input.text) pendingUserTextRef.current += input.text
+              if (input.finished) {
+                const text = pendingUserTextRef.current.trim()
+                if (text) conversationHistoryRef.current.push({ role: 'user', text })
+                pendingUserTextRef.current = ''
+              }
+            }
+            const output = serverContent.outputTranscription as { text?: string; finished?: boolean } | undefined
+            if (output) {
+              if (output.text) pendingAssistantTextRef.current += output.text
+              if (output.finished) {
+                const text = pendingAssistantTextRef.current.trim()
+                if (text) conversationHistoryRef.current.push({ role: 'assistant', text })
+                pendingAssistantTextRef.current = ''
+              }
+            }
+          }
+
+          // Capture the session handle so we can resume the conversation
+          // server-side if the WebSocket drops.
+          const resumption = msg.sessionResumptionUpdate as { newHandle?: string; resumable?: boolean } | undefined
+          if (resumption?.newHandle && resumption.resumable !== false) {
+            sessionHandleRef.current = resumption.newHandle
           }
 
           if (msg.toolCall) handleToolCall(msg.toolCall as ToolCallData)
@@ -355,7 +424,10 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
     const tokenRes = await fetch('/api/chatbot/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ previous_call_id: callIdRef.current }),
+      body: JSON.stringify({
+        previous_call_id: callIdRef.current,
+        previous_session_handle: sessionHandleRef.current,
+      }),
     })
     if (!tokenRes.ok) {
       const errorBody = await tokenRes.json().catch(() => ({}))
@@ -378,6 +450,10 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
     reconnectAttemptsRef.current = 0
     callStartRef.current = 0
     gateStatsRef.current = null
+    conversationHistoryRef.current = []
+    sessionHandleRef.current = null
+    pendingUserTextRef.current = ''
+    pendingAssistantTextRef.current = ''
 
     try {
       const tokenRes = await fetch('/api/chatbot/token', { method: 'POST' })
