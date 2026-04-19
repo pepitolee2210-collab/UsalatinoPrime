@@ -1,66 +1,45 @@
 import { createServiceClient } from '@/lib/supabase/service'
 
-const MAX_CALLS_PER_WINDOW = 5
 const WINDOW_MS = 60 * 60 * 1000 // 1 hour
 
 /**
- * Persistent per-IP rate limit for the voice agent token endpoint.
- * Uses a Supabase table so the limit works across serverless instances
- * (the previous in-memory Map was reset on every cold start).
+ * Persistent per-IP rate limit (works across serverless instances).
+ * Uses a Postgres RPC that performs the check + increment atomically to
+ * avoid race conditions when two requests arrive simultaneously.
  *
- * Returns { allowed: boolean, remaining: number, resetsAt: Date }.
+ * scope differentiates endpoints so one noisy endpoint doesn't exhaust
+ * the budget for others (e.g. 'token', 'slots', 'book').
  */
-export async function checkVoiceRateLimit(ip: string): Promise<{
-  allowed: boolean
-  remaining: number
-  resetsAt: Date
-}> {
+export async function checkVoiceRateLimit(
+  ip: string,
+  maxPerWindow: number = 5,
+  scope: string = 'token',
+): Promise<{ allowed: boolean; remaining: number; resetsAt: Date }> {
   const supabase = createServiceClient()
   const now = new Date()
+  const windowStart = new Date(Math.floor(now.getTime() / WINDOW_MS) * WINDOW_MS)
+  const windowEnd = new Date(windowStart.getTime() + WINDOW_MS)
 
-  // Opportunistic cleanup: remove expired windows (best-effort).
-  await supabase
-    .from('voice_call_rate_limits')
-    .delete()
-    .lt('window_resets_at', now.toISOString())
+  const { data, error } = await supabase.rpc('voice_rate_limit_hit_scoped', {
+    p_ip: ip,
+    p_scope: scope,
+    p_window_start: windowStart.toISOString(),
+    p_window_end: windowEnd.toISOString(),
+  })
 
-  const { data: current } = await supabase
-    .from('voice_call_rate_limits')
-    .select('id, count, window_started_at, window_resets_at')
-    .eq('ip_address', ip)
-    .gte('window_resets_at', now.toISOString())
-    .order('window_started_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  if (!current) {
-    const resetsAt = new Date(now.getTime() + WINDOW_MS)
-    await supabase.from('voice_call_rate_limits').insert({
-      ip_address: ip,
-      count: 1,
-      window_started_at: now.toISOString(),
-      window_resets_at: resetsAt.toISOString(),
-    })
-    return { allowed: true, remaining: MAX_CALLS_PER_WINDOW - 1, resetsAt }
+  // If the RPC is missing or errors, fail open (allow the request) so a
+  // misconfiguration never takes down the voice agent. We log so ops notice.
+  if (error || data == null) {
+    return { allowed: true, remaining: maxPerWindow, resetsAt: windowEnd }
   }
 
-  if (current.count >= MAX_CALLS_PER_WINDOW) {
-    return {
-      allowed: false,
-      remaining: 0,
-      resetsAt: new Date(current.window_resets_at),
-    }
+  const count = typeof data === 'number' ? data : (data as { count?: number })?.count ?? 1
+  if (count > maxPerWindow) {
+    return { allowed: false, remaining: 0, resetsAt: windowEnd }
   }
-
-  const nextCount = current.count + 1
-  await supabase
-    .from('voice_call_rate_limits')
-    .update({ count: nextCount, updated_at: now.toISOString() })
-    .eq('id', current.id)
-
   return {
     allowed: true,
-    remaining: MAX_CALLS_PER_WINDOW - nextCount,
-    resetsAt: new Date(current.window_resets_at),
+    remaining: Math.max(0, maxPerWindow - count),
+    resetsAt: windowEnd,
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { getAvailableSlots } from '@/lib/appointments/slots'
 import { formatToMT } from '@/lib/appointments/slots'
+import { checkVoiceRateLimit } from '@/lib/voice-agent/rate-limit'
 
 /**
  * PUBLIC endpoint consumed by the voice agent (Gemini Live tool call).
@@ -13,6 +14,15 @@ import { formatToMT } from '@/lib/appointments/slots'
  * endpoint, not this one.
  */
 export async function GET(request: NextRequest) {
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const rl = await checkVoiceRateLimit(ip, 60, 'slots')
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'Demasiadas consultas, intenta en un momento.', retry_at: rl.resetsAt.toISOString() },
+      { status: 429 },
+    )
+  }
+
   const date = request.nextUrl.searchParams.get('date')
 
   if (!date) {

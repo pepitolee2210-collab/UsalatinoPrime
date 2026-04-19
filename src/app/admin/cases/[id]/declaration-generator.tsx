@@ -77,7 +77,14 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
         }).catch(() => {})
         return updated
       })
-      toast.success(`${label} generado en inglés y español`)
+      const missingEN: number = dataEN?.warnings?.missingCount ?? 0
+      const missingES: number = dataES?.warnings?.missingCount ?? 0
+      const totalMissing = Math.max(missingEN, missingES)
+      if (totalMissing > 0) {
+        toast.warning(`${label} generado con ${totalMissing} dato(s) faltante(s). Revisa antes de usar.`)
+      } else {
+        toast.success(`${label} generado en inglés y español`)
+      }
     } catch (e) {
       toast.error(e instanceof Error && e.message ? e.message : 'Error al generar. Intente de nuevo.')
     } finally {

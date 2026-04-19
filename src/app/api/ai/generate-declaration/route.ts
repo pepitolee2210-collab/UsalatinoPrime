@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { buildCaseContext } from '@/lib/ai/prompts/chat-system'
+import { geminiFetch, extractGeminiText } from '@/lib/ai/gemini-fetch'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('generate-declaration')
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY
 
@@ -719,61 +723,62 @@ export async function POST(request: NextRequest) {
     : '\n\nIMPORTANT: Generate the ENTIRE document in ENGLISH. ALL text must be in English (legal terms, descriptions, paragraphs). Even if the source data contains Spanish text (names, testimonies, etc.), translate the narrative content to English while preserving proper nouns (names, cities) in their original form. Do NOT write any sentence or paragraph in Spanish. The document must be 100% in English.'
   const prompt = sanitizeForAI(basePrompt + langInstruction)
 
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 8192,
-          },
-          safetySettings: [
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-          ],
-        }),
-      }
-    )
+  if (!GEMINI_KEY) {
+    return NextResponse.json({ error: 'Gemini API key no configurada' }, { status: 500 })
+  }
 
-    if (!res.ok) {
-      const err = await res.text()
-      console.error('Gemini error:', err)
-      return NextResponse.json({ error: 'Error de IA' }, { status: 500 })
+  try {
+    const result = await geminiFetch({
+      model: 'gemini-3.1-pro-preview',
+      apiKey: GEMINI_KEY,
+      body: {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+        safetySettings: [
+          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+        ],
+      },
+    })
+
+    if (!result.ok) {
+      log.error('Gemini call failed', result.error)
+      const status = result.status === 504 ? 504 : 500
+      return NextResponse.json({ error: result.error || 'Error de IA' }, { status })
     }
 
-    const data = await res.json()
-
-    // Check for block reason
-    const blockReason = data.promptFeedback?.blockReason
-    const finishReason = data.candidates?.[0]?.finishReason
-    if (blockReason || finishReason === 'SAFETY') {
-      console.error('Gemini BLOCKED:', JSON.stringify({ blockReason, finishReason, safetyRatings: data.candidates?.[0]?.safetyRatings || data.promptFeedback?.safetyRatings }))
+    if (result.blockReason || result.finishReason === 'SAFETY') {
+      log.error('Gemini BLOCKED', { blockReason: result.blockReason, finishReason: result.finishReason })
       return NextResponse.json({
-        error: `Contenido bloqueado por filtro de seguridad (${blockReason || finishReason}). Contacte al administrador.`
+        error: `Contenido bloqueado por filtro de seguridad (${result.blockReason || result.finishReason}). Contacte al administrador.`,
       }, { status: 500 })
     }
 
-    const declaration = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+    const declaration = extractGeminiText(result.data)
 
     if (!declaration) {
-      console.error('Gemini empty response:', JSON.stringify(data))
+      log.error('Gemini empty response')
       return NextResponse.json({ error: 'Sin respuesta de IA' }, { status: 500 })
     }
+
+    // Count [FALTA: ...] placeholders so the admin knows to review before use.
+    const missingMatches = declaration.match(/\[FALTA:[^\]]*\]/gi) || []
+    const missingFields = Array.from(new Set(missingMatches.map(m => m.trim())))
 
     return NextResponse.json({
       declaration,
       type,
       index,
       clientName: `${ctx.client.firstName} ${ctx.client.lastName}`,
+      warnings: {
+        missingCount: missingFields.length,
+        missingFields,
+      },
     })
   } catch (err) {
-    console.error('AI error:', err)
+    log.error('AI unexpected error', err)
     return NextResponse.json({ error: `Error: ${err instanceof Error ? err.message : String(err)}` }, { status: 500 })
   }
 }

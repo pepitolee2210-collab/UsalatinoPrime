@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ClientSearch } from '@/components/admin/ClientSearch'
+import { ErrorBoundary } from '@/components/error-boundary'
 
 const navItems = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, badgeKey: null },
@@ -114,7 +115,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </Sheet>
         <h1 className="font-semibold">UsaLatinoPrime Admin</h1>
       </div>
-      <main className="md:ml-64 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">{children}</main>
+      <main className="md:ml-64 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <ErrorBoundary>{children}</ErrorBoundary>
+      </main>
     </div>
   )
 }

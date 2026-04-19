@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { formatToMT, formatDateMT } from '@/lib/appointments/slots'
+import { checkVoiceRateLimit } from '@/lib/voice-agent/rate-limit'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('voice-agent/book')
 
 /**
  * PUBLIC endpoint consumed by the voice agent to book an appointment for a
@@ -12,6 +16,15 @@ import { formatToMT, formatDateMT } from '@/lib/appointments/slots'
  */
 export async function POST(request: NextRequest) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const rl = await checkVoiceRateLimit(ip, 10, 'book')
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'Demasiados intentos de agendamiento, intenta más tarde.', retry_at: rl.resetsAt.toISOString() },
+        { status: 429 },
+      )
+    }
+
     const { name, phone, scheduled_at, notes, call_id } = await request.json()
 
     if (!name?.trim() || !phone?.trim() || !scheduled_at) {
@@ -89,7 +102,7 @@ export async function POST(request: NextRequest) {
           { status: 409 },
         )
       }
-      console.error('[voice-agent/book] insert error:', error)
+      log.error('insert error', error)
       return NextResponse.json({ error: 'Error al agendar la cita' }, { status: 500 })
     }
 
@@ -110,7 +123,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (err) {
-    console.error('[voice-agent/book] unexpected error:', err)
+    log.error('unexpected error', err)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

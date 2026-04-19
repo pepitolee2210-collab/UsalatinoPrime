@@ -66,30 +66,39 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
   const toolsInvokedRef = useRef<Array<{ name: string; at: number; ok: boolean }>>([])
   const closedRef = useRef(false)
 
-  const reportCallClose = useCallback(async (endReason: string, errorMessage?: string) => {
+  const reportCallClose = useCallback((endReason: string, errorMessage?: string) => {
     if (closedRef.current || !callIdRef.current) return
     closedRef.current = true
     const duration = callStartRef.current
       ? Math.floor((Date.now() - callStartRef.current) / 1000)
       : 0
+    const payload = JSON.stringify({
+      call_id: callIdRef.current,
+      duration_seconds: duration,
+      end_reason: endReason,
+      error_message: errorMessage,
+      lead_id: leadIdRef.current,
+      appointment_id: appointmentIdRef.current,
+      tools_invoked: toolsInvokedRef.current,
+    })
+
+    // sendBeacon survives page unload (tab close, navigation); falls back to
+    // keepalive fetch if Beacon isn't available (rare).
     try {
-      await fetch('/api/voice-agent/close', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          call_id: callIdRef.current,
-          duration_seconds: duration,
-          end_reason: endReason,
-          error_message: errorMessage,
-          lead_id: leadIdRef.current,
-          appointment_id: appointmentIdRef.current,
-          tools_invoked: toolsInvokedRef.current,
-        }),
-        keepalive: true,
-      })
+      if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+        const blob = new Blob([payload], { type: 'application/json' })
+        const sent = navigator.sendBeacon('/api/voice-agent/close', blob)
+        if (sent) return
+      }
     } catch {
-      // telemetry is best-effort
+      // fall through to fetch
     }
+    fetch('/api/voice-agent/close', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+      keepalive: true,
+    }).catch(() => { /* telemetry best-effort */ })
   }, [])
 
   const cleanup = useCallback(() => {
@@ -127,7 +136,14 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
   }, [])
 
   useEffect(() => {
+    const onPageHide = () => {
+      if (callIdRef.current && !closedRef.current) {
+        reportCallClose('page-hide')
+      }
+    }
+    window.addEventListener('pagehide', onPageHide)
     return () => {
+      window.removeEventListener('pagehide', onPageHide)
       if (callIdRef.current && !closedRef.current) {
         reportCallClose('unmount')
       }
@@ -194,14 +210,29 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
         setStatusText('Iniciando micrófono...')
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-          sampleRate: 16000,
-        },
-      })
+      let stream: MediaStream
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 16000,
+          },
+        })
+      } catch (micErr) {
+        const name = micErr instanceof Error ? micErr.name : ''
+        if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+          throw new Error('Permiso de micrófono denegado. Habilítalo en la configuración del navegador y recarga la página.')
+        }
+        if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+          throw new Error('No se detectó micrófono. Conecta uno e intenta de nuevo.')
+        }
+        if (name === 'NotReadableError') {
+          throw new Error('El micrófono está en uso por otra aplicación. Ciérrala e intenta de nuevo.')
+        }
+        throw new Error('No se pudo acceder al micrófono.')
+      }
       mediaStreamRef.current = stream
 
       setStatusText('Conectando con el asistente...')

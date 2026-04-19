@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { geminiFetch, extractGeminiText } from '@/lib/ai/gemini-fetch'
+import { createLogger } from '@/lib/logger'
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY
+const log = createLogger('extract-pdf-data')
 
 interface ExtractedData {
   passport_number?: string
@@ -17,42 +20,34 @@ interface ExtractedData {
 }
 
 async function extractFromImage(base64: string, mimeType: string, prompt: string): Promise<{ text: string; error?: string }> {
-  try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: prompt },
-              { inline_data: { mime_type: mimeType, data: base64 } },
-            ],
-          }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
-          safetySettings: [
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-          ],
-        }),
-      }
-    )
-    if (!res.ok) {
-      const err = await res.text()
-      return { text: '', error: `HTTP ${res.status}: ${err.substring(0, 200)}` }
-    }
-    const data = await res.json()
-    const blockReason = data.promptFeedback?.blockReason
-    if (blockReason) return { text: '', error: `Blocked: ${blockReason}` }
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-    if (!text) return { text: '', error: 'Empty response' }
-    return { text }
-  } catch (e) {
-    return { text: '', error: e instanceof Error ? e.message : 'Network error' }
-  }
+  if (!GEMINI_KEY) return { text: '', error: 'Gemini API key no configurada' }
+  const result = await geminiFetch({
+    model: 'gemini-3.1-pro-preview',
+    apiKey: GEMINI_KEY,
+    timeoutMs: 40_000,
+    maxRetries: 1,
+    body: {
+      contents: [{
+        parts: [
+          { text: prompt },
+          { inline_data: { mime_type: mimeType, data: base64 } },
+        ],
+      }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 2048 },
+      safetySettings: [
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+      ],
+    },
+  })
+
+  if (!result.ok) return { text: '', error: result.error || `HTTP ${result.status}` }
+  if (result.blockReason) return { text: '', error: `Blocked: ${result.blockReason}` }
+  const text = extractGeminiText(result.data)
+  if (!text) return { text: '', error: 'Empty response' }
+  return { text }
 }
 
 function parseExtractedJSON(text: string): ExtractedData {
@@ -122,7 +117,13 @@ export async function POST(req: NextRequest) {
 
       const buf = Buffer.from(await fileData.arrayBuffer())
       const base64 = buf.toString('base64')
-      const mimeType = doc.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'
+      const nameLower = doc.name.toLowerCase()
+      let mimeType: string
+      if (nameLower.endsWith('.pdf')) mimeType = 'application/pdf'
+      else if (nameLower.endsWith('.png')) mimeType = 'image/png'
+      else if (nameLower.endsWith('.webp')) mimeType = 'image/webp'
+      else if (nameLower.endsWith('.heic') || nameLower.endsWith('.heif')) mimeType = 'image/heic'
+      else mimeType = 'image/jpeg'
 
       const prompt = `Analyze this document image and extract the following data in JSON format (use null for missing fields):
 {

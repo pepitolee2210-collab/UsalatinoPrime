@@ -38,18 +38,26 @@ export async function POST(request: NextRequest) {
     const expireTime = new Date(Date.now() + 15 * 60 * 1000).toISOString()
     const token = await client.authTokens.create({ config: { uses: 1, expireTime } })
 
-    // Record that a call was initiated. The front-end will update it on close.
-    const supabase = createServiceClient()
-    const { data: callRecord } = await supabase
-      .from('voice_calls')
-      .insert({ ip_address: ip, user_agent: userAgent })
-      .select('id')
-      .single()
+    // Record that a call was initiated. We need the id to return to the client
+    // so the close endpoint can update it, so we await — but if the insert
+    // fails for any reason we still hand out the token (telemetry is best-effort).
+    let callId: string | null = null
+    try {
+      const supabase = createServiceClient()
+      const { data: callRecord } = await supabase
+        .from('voice_calls')
+        .insert({ ip_address: ip, user_agent: userAgent })
+        .select('id')
+        .single()
+      callId = callRecord?.id ?? null
+    } catch {
+      // ignore — the call will proceed without an id
+    }
 
     return Response.json({
       token: token.name,
       model: VOICE_MODEL,
-      call_id: callRecord?.id ?? null,
+      call_id: callId,
       business_hours: hours,
       config: {
         responseModalities: ['AUDIO'],
