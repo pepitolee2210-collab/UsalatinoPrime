@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { getAvailableSlots } from '@/lib/appointments/slots'
-import { formatToMT } from '@/lib/appointments/slots'
+import { getAvailableSlots, getNextAvailableSlot, formatToMT, formatDateMT } from '@/lib/appointments/slots'
 import { checkVoiceRateLimit } from '@/lib/voice-agent/rate-limit'
 
 // Edge runtime: the voice agent calls this 2-3 times per conversation, and
@@ -10,13 +9,15 @@ import { checkVoiceRateLimit } from '@/lib/voice-agent/rate-limit'
 export const runtime = 'edge'
 
 /**
- * PUBLIC endpoint consumed by the voice agent (Gemini Live tool call).
- * Returns available appointment slots for a given date in Mountain Time,
- * formatted for the AI to read out loud.
+ * Public endpoint consumed by the voice agent (Gemini Live tool call).
+ * Reads the INDEPENDENT prospect calendar (prospect_scheduling_config +
+ * prospect_blocked_dates + prospect_scheduling_settings). That way Henry
+ * can restrict prospect calls to specific days/hours without affecting
+ * his real client appointments.
  *
- * No authentication required — the voice agent runs with an ephemeral token,
- * not a user session. Abuse is controlled by rate-limiting the parent token
- * endpoint, not this one.
+ * If no `date` is passed the endpoint returns the next available slot
+ * looking forward up to 14 days — lets the IA proactively suggest a
+ * concrete appointment instead of asking "¿qué día te conviene?".
  */
 export async function GET(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
@@ -29,52 +30,81 @@ export async function GET(request: NextRequest) {
   }
 
   const date = request.nextUrl.searchParams.get('date')
-
-  if (!date) {
-    return NextResponse.json({ error: 'date required (YYYY-MM-DD)' }, { status: 400 })
-  }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     return NextResponse.json({ error: 'Invalid date format. Use YYYY-MM-DD' }, { status: 400 })
   }
 
   const supabase = createServiceClient()
 
-  const { data: blocked } = await supabase
-    .from('blocked_dates')
-    .select('id')
-    .eq('blocked_date', date)
-    .maybeSingle()
+  // Load prospect-specific calendar config + settings + blocked dates in parallel.
+  const [configRes, settingsRes, blockedRes] = await Promise.all([
+    supabase.from('prospect_scheduling_config').select('*'),
+    supabase.from('prospect_scheduling_settings').select('*').maybeSingle(),
+    supabase.from('prospect_blocked_dates').select('blocked_date'),
+  ])
 
-  if (blocked) {
-    return NextResponse.json({ slots: [], blocked: true, human_readable: [] })
-  }
+  const config = configRes.data || []
+  const slotDuration = settingsRes.data?.slot_duration_minutes || 30
+  const advanceNoticeHours = settingsRes.data?.advance_notice_hours ?? 2
+  const blockedDates = (blockedRes.data || []).map(b => b.blocked_date as string)
 
-  const { data: config } = await supabase.from('scheduling_config').select('*')
-  const { data: settings } = await supabase.from('scheduling_settings').select('*').single()
-
-  const dayStart = `${date}T00:00:00Z`
-  const dayEnd = `${date}T23:59:59Z`
+  // Pull prospect appointments currently scheduled (across the next 14 days
+  // for the suggestion query, or the specific day if date was given).
+  const rangeStart = date ? `${date}T00:00:00Z` : new Date().toISOString()
+  const rangeEnd = date
+    ? `${date}T23:59:59Z`
+    : new Date(Date.now() + 14 * 86400_000).toISOString()
 
   const { data: existingAppointments } = await supabase
     .from('appointments')
     .select('id, scheduled_at, duration_minutes, status')
     .eq('status', 'scheduled')
-    .gte('scheduled_at', dayStart)
-    .lte('scheduled_at', dayEnd)
+    .gte('scheduled_at', rangeStart)
+    .lte('scheduled_at', rangeEnd)
 
-  const slots = getAvailableSlots(
-    date,
-    config || [],
+  // Case A: specific date requested → list slots for that day.
+  if (date) {
+    if (blockedDates.includes(date)) {
+      return NextResponse.json({ slots: [], blocked: true, human_readable: [], date })
+    }
+
+    const slots = getAvailableSlots(
+      date,
+      config,
+      (existingAppointments || []).map(a => a as never),
+      slotDuration,
+    )
+
+    const human_readable = slots.map(iso => ({ iso, human: formatToMT(iso) }))
+    return NextResponse.json({ slots, human_readable, date })
+  }
+
+  // Case B: no date → proactively suggest the next available slot.
+  const today = new Date()
+  today.setUTCHours(0, 0, 0, 0)
+  const next = getNextAvailableSlot(
+    today,
+    config,
     (existingAppointments || []).map(a => a as never),
-    settings?.slot_duration_minutes || 60,
+    slotDuration,
+    blockedDates,
+    advanceNoticeHours,
+    14,
   )
 
-  // Present in a way the voice model can speak naturally:
-  // { iso: "2026-04-18T15:00:00.000Z", human: "3:00 PM" }
-  const human_readable = slots.map(iso => ({
-    iso,
-    human: formatToMT(iso),
-  }))
+  if (!next) {
+    return NextResponse.json({
+      suggested: null,
+      message: 'No hay horarios disponibles en las próximas 2 semanas.',
+    })
+  }
 
-  return NextResponse.json({ slots, human_readable, date })
+  return NextResponse.json({
+    suggested: {
+      iso: next.iso,
+      date: next.date,
+      human_date: formatDateMT(next.iso),
+      human_time: formatToMT(next.iso),
+    },
+  })
 }

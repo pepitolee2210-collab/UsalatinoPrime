@@ -683,6 +683,20 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
         continue
       }
 
+      if (fc.name === 'get_next_available_slot') {
+        try {
+          const res = await fetch('/api/voice-agent/slots')
+          const result = await res.json()
+          toolsInvokedRef.current.push({ name: 'get_next_available_slot', at: tStart, ok: res.ok })
+          safeSendToolResponse(fc.id, 'get_next_available_slot', result)
+        } catch {
+          toolsInvokedRef.current.push({ name: 'get_next_available_slot', at: tStart, ok: false })
+          safeSendToolResponse(fc.id, 'get_next_available_slot', { error: 'No se pudo obtener el próximo horario' })
+        }
+        pendingToolCallsRef.current = Math.max(0, pendingToolCallsRef.current - 1)
+        continue
+      }
+
       if (fc.name === 'get_available_slots') {
         const args = fc.args || {}
         try {

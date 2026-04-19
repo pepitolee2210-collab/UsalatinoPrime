@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import {
   Loader2, Phone, Bot, CalendarCheck, Clock, UserPlus, X,
-  CheckCircle, XCircle, RefreshCw, ExternalLink, AlertCircle,
+  CheckCircle, XCircle, RefreshCw, ExternalLink, AlertCircle, Settings2,
 } from 'lucide-react'
 import { format, formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -130,9 +130,16 @@ export default function ProspectosCitasPage() {
             Leads calientes que acaban de agendar una llamada con Henry a través de la IA de voz
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={load}>
-          <RefreshCw className="w-3.5 h-3.5 mr-1" /> Actualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Link href="/admin/prospectos-citas/configuracion">
+            <Button variant="outline" size="sm">
+              <Settings2 className="w-3.5 h-3.5 mr-1" /> Configurar horarios
+            </Button>
+          </Link>
+          <Button variant="outline" size="sm" onClick={load}>
+            <RefreshCw className="w-3.5 h-3.5 mr-1" /> Actualizar
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

@@ -84,39 +84,37 @@ class VoiceCaptureProcessor extends AudioWorkletProcessor {
     for (let i = 0; i < channel.length; i++) sum += channel[i] * channel[i]
     const rms = Math.sqrt(sum / channel.length)
 
-    // Calibration phase: just learn the noise floor, don't send audio yet.
+    // Calibration — sample ambient RMS for ~1.5s to REFINE the noiseFloor,
+    // but do NOT block audio during this window. The gate runs normally
+    // using the current (conservative) floor from the first frame. This
+    // fixes the "tengo que decir hola dos veces" bug where the user's
+    // first greeting used to land in the silent calibration window and
+    // never reached Gemini.
     if (!this.calibrated) {
       this.calibrationRms.push(rms)
       this.samplesObserved += channel.length
       if (this.samplesObserved >= this.calibrationSamples) {
-        // Median instead of mean: resistant to spikes.
         const sorted = this.calibrationRms.slice().sort((a, b) => a - b)
         const median = sorted[Math.floor(sorted.length / 2)]
         const rawFloor = Math.min(this.maxGateAbsolute, Math.max(this.minGateAbsolute, median))
 
-        // If the calibration landed pegged to the ceiling, the ambient
-        // likely had a sustained loud event (mic settling, user talking).
-        // Give it another window — up to maxCalibrationRetries — before
-        // committing to a floor that'll disable the gate.
         const pinnedHigh = rawFloor >= this.maxGateAbsolute * 0.95
         if (pinnedHigh && this.calibrationRetries < this.maxCalibrationRetries) {
           this.calibrationRetries += 1
           this.calibrationRms.length = 0
           this.samplesObserved = 0
           this.port.postMessage({ type: 'calibration-retry', attempt: this.calibrationRetries, floor: rawFloor })
-          this.port.postMessage({ rms })
-          return true
+          // Don't return — keep running the gate with the default floor.
+        } else {
+          this.noiseFloor = rawFloor
+          this.calibrated = true
+          this.silenceStart = currentTime
+          this.lastStatsEmit = currentTime
+          this.calibrationRms.length = 0
+          this.port.postMessage({ type: 'calibrated', noiseFloor: this.noiseFloor })
         }
-
-        this.noiseFloor = rawFloor
-        this.calibrated = true
-        this.silenceStart = currentTime
-        this.lastStatsEmit = currentTime
-        this.calibrationRms.length = 0 // free memory
-        this.port.postMessage({ type: 'calibrated', noiseFloor: this.noiseFloor })
       }
-      this.port.postMessage({ rms })
-      return true
+      // Fall through to the gate logic below with current noiseFloor.
     }
 
     const now = currentTime

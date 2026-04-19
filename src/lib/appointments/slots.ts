@@ -2,6 +2,39 @@ import type { SchedulingConfig, Appointment } from '@/types/database'
 import { TIMEZONE } from './constants'
 
 /**
+ * Find the next available slot starting from a given date, looking forward
+ * up to N days. Returns null if nothing opens up within the window.
+ *
+ * Used by the voice agent to proactively suggest the nearest appointment
+ * instead of asking the prospect to pick a date.
+ */
+export function getNextAvailableSlot(
+  startDate: Date,
+  config: SchedulingConfig[],
+  existingAppointments: Appointment[],
+  slotDurationMinutes: number,
+  blockedDates: string[],
+  advanceNoticeHours: number = 2,
+  lookAheadDays: number = 14,
+): { iso: string; date: string } | null {
+  const minStart = new Date(Date.now() + advanceNoticeHours * 60 * 60 * 1000)
+  for (let offset = 0; offset < lookAheadDays; offset++) {
+    const day = new Date(startDate)
+    day.setUTCDate(day.getUTCDate() + offset)
+    const dateStr = day.toISOString().slice(0, 10)
+    if (blockedDates.includes(dateStr)) continue
+
+    const slots = getAvailableSlots(dateStr, config, existingAppointments, slotDurationMinutes)
+    for (const iso of slots) {
+      if (new Date(iso).getTime() >= minStart.getTime()) {
+        return { iso, date: dateStr }
+      }
+    }
+  }
+  return null
+}
+
+/**
  * Genera los slots disponibles para una fecha dada en Mountain Time.
  * Filtra slots ocupados y slots ya pasados.
  */

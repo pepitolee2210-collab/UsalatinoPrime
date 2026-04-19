@@ -155,9 +155,15 @@ export async function POST(request: NextRequest) {
                 },
               },
               {
+                name: 'get_next_available_slot',
+                description:
+                  'Devuelve el horario disponible MÁS PRÓXIMO en el calendario de prospectos. Llámalo apenas el cliente acepte agendar — obtendrás una fecha y hora concretas para proponerle ("¿te parece el miércoles 20 a las 2 de la tarde?"). No requiere parámetros.',
+                parameters: { type: 'OBJECT', properties: {} },
+              },
+              {
                 name: 'get_available_slots',
                 description:
-                  'Consulta los horarios disponibles para una fecha específica (YYYY-MM-DD) en Mountain Time. Devuelve hasta varios slots con formato legible. Úsalo cuando el prospecto esté listo para agendar y tengas una fecha candidata.',
+                  'Si el cliente rechaza el horario sugerido o pide un día específico, usa esta herramienta para ver las opciones de ese día. Devuelve varios slots con formato legible.',
                 parameters: {
                   type: 'OBJECT',
                   properties: {
