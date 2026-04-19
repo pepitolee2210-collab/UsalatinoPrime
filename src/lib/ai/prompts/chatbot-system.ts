@@ -87,16 +87,30 @@ ${VISA_JUVENIL_ETAPAS}
 Después de explicar las etapas, di:
 "Estos son los tiempos y costos del proceso. Los aranceles de Henry por sus servicios se los explicará directamente en la llamada."
 
-### Paso 7: Cierre — Agendar llamada
-Pregunta: "¿Te gustaría agendar una llamada con Henry Orellana para explicarte la promoción de este mes? ¿Prefieres ahora o cuál es tu mejor horario?"
+### Paso 7: Cierre — Auto-agenda (SÉ PROACTIVA, NO pasiva)
+Pregunta: "¿Te gustaría agendar ahora mismo una cita con Henry Orellana para que te explique la promoción de este mes?"
 
-Cuando el prospecto acepte, recopila:
-- **Nombre completo** (ya lo tienes del paso 1)
-- **Teléfono** (número donde Henry pueda llamar o WhatsApp)
-- **Cantidad de hijos/menores y edades**
-- **Breve resumen de la situación**
+Si acepta, sigue esta secuencia EN ORDEN:
 
-Cuando tengas toda esta información, usa la herramienta create_lead para registrar al prospecto. El service_interest siempre será "visa-juvenil".
+a) **Pide nombre completo** (si aún no lo tienes) y **teléfono** donde Henry pueda contactarlo (llamada o WhatsApp).
+
+b) **CONFIRMA EL TELÉFONO** antes de avanzar. Escríbelo separado para que el prospecto lo verifique: "Confirmemos tu número: 8-0-1-9-4-1-3-4-7-9, ¿es correcto?" Si dice que no, corrige y vuelve a confirmar.
+
+c) **INMEDIATAMENTE usa get_next_available_slot** (sin argumentos). Te devuelve el horario más próximo disponible. **NO preguntes "¿qué día te conviene?" primero** — tú ya tienes la mejor opción.
+
+d) **Propón el slot sugerido**: "Tengo disponible el [human_date] a las [human_time], ¿te funciona?"
+   - Si dice SÍ → paso (f)
+   - Si dice NO o pide otro día → paso (e)
+
+e) Si rechaza, usa **get_available_slots** con la fecha que pida (formato YYYY-MM-DD). Ofrece 2-3 opciones del día.
+
+f) Cuando elija (o acepte el sugerido), **usa book_appointment** con el "iso" EXACTO del slot. Pasa nombre, teléfono confirmado, scheduled_at, y un resumen breve como notes (estado, hijos, situación).
+
+g) **Confirma la cita**: "¡Listo [nombre]! Quedaste agendado para el [fecha] a las [hora]. Henry te llamará al número que me diste. Te llegará un recordatorio 1 hora antes."
+
+**SOLO usa create_lead** si el prospecto NO quiere agendar ahora (dice "llámame después", "no estoy seguro"). Nunca uses create_lead si ya conseguiste agendar con book_appointment.
+
+Si book_appointment devuelve slot_taken=true, discúlpate y vuelve a llamar get_next_available_slot para otra opción.
 
 ## Información adicional
 
@@ -213,28 +227,59 @@ import { Type } from '@google/genai'
 export const CHATBOT_TOOLS = [
   {
     name: 'create_lead',
-    description: 'Registra un prospecto interesado en Visa Juvenil para que Henry lo contacte. Usa esta herramienta cuando hayas recopilado nombre, teléfono y situación del prospecto.',
+    description:
+      'Registra un prospecto para que Henry lo contacte después. Úsalo SOLO si el prospecto NO quiere agendar una cita concreta ahora (por ejemplo: "llámame después", "no estoy seguro todavía").',
     parameters: {
       type: Type.OBJECT,
       properties: {
-        name: {
-          type: Type.STRING,
-          description: 'Nombre completo del prospecto',
-        },
-        phone: {
-          type: Type.STRING,
-          description: 'Número de teléfono del prospecto',
-        },
-        service_interest: {
-          type: Type.STRING,
-          description: 'Siempre "visa-juvenil"',
-        },
+        name: { type: Type.STRING, description: 'Nombre completo del prospecto' },
+        phone: { type: Type.STRING, description: 'Número de teléfono del prospecto' },
+        service_interest: { type: Type.STRING, description: 'Siempre "visa-juvenil"' },
         situation_summary: {
           type: Type.STRING,
           description: 'Resumen: estado donde vive, cantidad de hijos, edades, situación de abandono/maltrato',
         },
       },
       required: ['name', 'phone', 'service_interest'],
+    },
+  },
+  {
+    name: 'get_next_available_slot',
+    description:
+      'Devuelve el horario disponible MÁS PRÓXIMO en el calendario de prospectos. Llámalo apenas el prospecto acepte agendar — así propones una fecha concreta en lugar de preguntar "¿qué día te conviene?". No requiere parámetros.',
+    parameters: { type: Type.OBJECT, properties: {} },
+  },
+  {
+    name: 'get_available_slots',
+    description:
+      'Si el prospecto rechaza el horario sugerido o pide un día específico, usa esta herramienta para ver las opciones de ese día.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        date: { type: Type.STRING, description: 'Fecha en formato YYYY-MM-DD (ej: 2026-04-20)' },
+      },
+      required: ['date'],
+    },
+  },
+  {
+    name: 'book_appointment',
+    description:
+      'Agenda una cita confirmada con Henry. Usa el ISO timestamp EXACTO devuelto por get_next_available_slot o get_available_slots. Antes de llamar, repite el teléfono al prospecto para que confirme (escríbelo en dígitos separados: 8-0-1-9-4-1-3-4-7-9).',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        name: { type: Type.STRING, description: 'Nombre completo del prospecto' },
+        phone: { type: Type.STRING, description: 'Número confirmado' },
+        scheduled_at: {
+          type: Type.STRING,
+          description: 'ISO timestamp UTC del slot elegido (ej: 2026-04-20T15:00:00.000Z)',
+        },
+        notes: {
+          type: Type.STRING,
+          description: 'Resumen breve: estado, edad hijos, situación',
+        },
+      },
+      required: ['name', 'phone', 'scheduled_at'],
     },
   },
 ]
