@@ -4,6 +4,11 @@ import { getAvailableSlots } from '@/lib/appointments/slots'
 import { formatToMT } from '@/lib/appointments/slots'
 import { checkVoiceRateLimit } from '@/lib/voice-agent/rate-limit'
 
+// Edge runtime: the voice agent calls this 2-3 times per conversation, and
+// edge execution (~30ms) reduces conversational friction vs Node (~200ms).
+// All dependencies (supabase-js, Intl, Date) are edge-compatible.
+export const runtime = 'edge'
+
 /**
  * PUBLIC endpoint consumed by the voice agent (Gemini Live tool call).
  * Returns available appointment slots for a given date in Mountain Time,

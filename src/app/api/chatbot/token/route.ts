@@ -13,6 +13,18 @@ export async function POST(request: NextRequest) {
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
     const userAgent = request.headers.get('user-agent') || null
 
+    // Optional body: if the client is reconnecting, it sends the previous
+    // call_id so the voice_calls row is reused instead of creating a new one.
+    let previousCallId: string | null = null
+    try {
+      const body = await request.json().catch(() => ({}))
+      if (body && typeof body.previous_call_id === 'string' && body.previous_call_id.length > 0) {
+        previousCallId = body.previous_call_id
+      }
+    } catch {
+      // request has no body — treat as a fresh call
+    }
+
     // Persistent rate limit (works across serverless instances).
     const rl = await checkVoiceRateLimit(ip)
     if (!rl.allowed) {
@@ -38,20 +50,22 @@ export async function POST(request: NextRequest) {
     const expireTime = new Date(Date.now() + 15 * 60 * 1000).toISOString()
     const token = await client.authTokens.create({ config: { uses: 1, expireTime } })
 
-    // Record that a call was initiated. We need the id to return to the client
-    // so the close endpoint can update it, so we await — but if the insert
-    // fails for any reason we still hand out the token (telemetry is best-effort).
-    let callId: string | null = null
-    try {
-      const supabase = createServiceClient()
-      const { data: callRecord } = await supabase
-        .from('voice_calls')
-        .insert({ ip_address: ip, user_agent: userAgent })
-        .select('id')
-        .single()
-      callId = callRecord?.id ?? null
-    } catch {
-      // ignore — the call will proceed without an id
+    // Record that a call was initiated. If the client is reconnecting we
+    // reuse the existing voice_calls row (so duration reflects the full
+    // conversation, not just the final segment).
+    let callId: string | null = previousCallId
+    if (!callId) {
+      try {
+        const supabase = createServiceClient()
+        const { data: callRecord } = await supabase
+          .from('voice_calls')
+          .insert({ ip_address: ip, user_agent: userAgent })
+          .select('id')
+          .single()
+        callId = callRecord?.id ?? null
+      } catch {
+        // ignore — the call will proceed without an id
+      }
     }
 
     return Response.json({

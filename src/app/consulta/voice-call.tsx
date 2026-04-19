@@ -65,6 +65,9 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
   const appointmentIdRef = useRef<string | null>(null)
   const toolsInvokedRef = useRef<Array<{ name: string; at: number; ok: boolean }>>([])
   const closedRef = useRef(false)
+  // Reconnection on network hiccups (4G→WiFi, transient WSS drops)
+  const reconnectAttemptsRef = useRef(0)
+  const MAX_RECONNECT = 2
 
   const reportCallClose = useCallback((endReason: string, errorMessage?: string) => {
     if (closedRef.current || !callIdRef.current) return
@@ -186,6 +189,165 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
     return Math.sqrt(sum / samples.length)
   }
 
+  /**
+   * Opens a Gemini Live WebSocket session using the already-acquired
+   * mediaStream + AudioContexts. Separated from startCall so that
+   * reconnection can reuse existing audio resources (no new mic prompt).
+   */
+  async function openLiveSession(params: {
+    token: string
+    model: string
+    config: Record<string, unknown>
+    isReconnect: boolean
+  }): Promise<void> {
+    const { token, model, config, isReconnect } = params
+    const { GoogleGenAI, Modality } = await import('@google/genai')
+    const ai = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: 'v1alpha' } })
+    const playbackCtx = playbackCtxRef.current!
+
+    let nextPlayTime = 0
+    function queueAudio(pcmBase64: string) {
+      if (!aliveRef.current) return
+      const raw = atob(pcmBase64)
+      const bytes = new Uint8Array(raw.length)
+      for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
+      const int16 = new Int16Array(bytes.buffer)
+      const float32 = new Float32Array(int16.length)
+      for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768
+
+      const rms = calculateRMS(float32)
+      const normalized = Math.min(1, rms * 4)
+      if (normalized > audioLevelRef.current) audioLevelRef.current = normalized
+
+      const buffer = playbackCtx.createBuffer(1, float32.length, 24000)
+      buffer.copyToChannel(new Float32Array(float32) as Float32Array<ArrayBuffer>, 0)
+      const source = playbackCtx.createBufferSource()
+      source.buffer = buffer
+      source.connect(playbackCtx.destination)
+
+      const now = playbackCtx.currentTime
+      if (nextPlayTime < now) nextPlayTime = now + 0.05
+      source.start(nextPlayTime)
+      nextPlayTime += float32.length / 24000
+    }
+
+    const session = await ai.live.connect({
+      model,
+      config: { ...config, responseModalities: [Modality.AUDIO] },
+      callbacks: {
+        onopen: () => {
+          aliveRef.current = true
+          if (!isReconnect) {
+            callStartRef.current = Date.now()
+          }
+          reconnectAttemptsRef.current = 0 // successful connection resets the budget
+          setCallState('active')
+          setStatusText('')
+          if (!timerRef.current && !isReconnect) {
+            let seconds = 0
+            timerRef.current = setInterval(() => {
+              seconds++
+              setCallDuration(seconds)
+              if (seconds >= 900) endCall('timeout')
+            }, 1000)
+          }
+        },
+        onmessage: (message: unknown) => {
+          if (!aliveRef.current) return
+          const msg = message as Record<string, unknown>
+
+          const serverContent = msg.serverContent as Record<string, unknown> | undefined
+          const modelTurn = serverContent?.modelTurn as { parts?: Array<{ inlineData?: { data?: string } }> } | undefined
+          if (modelTurn?.parts) {
+            for (const part of modelTurn.parts) {
+              if (part.inlineData?.data) queueAudio(part.inlineData.data)
+            }
+          }
+
+          if (msg.toolCall) handleToolCall(msg.toolCall as ToolCallData)
+        },
+        onerror: (e: Event | { message?: string }) => {
+          err('Live API error', e)
+          aliveRef.current = false
+          const msg = 'message' in e ? (e as { message: string }).message : 'Error en la conexión de voz'
+          // onerror is usually followed by onclose — let that handler decide
+          // whether to reconnect or fail. Only fail outright if we were never
+          // connected (e.g. initial handshake failure).
+          if (callStartRef.current === 0) {
+            setErrorMessage(msg)
+            setCallState('error')
+            reportCallClose('error', msg)
+            cleanup()
+          }
+        },
+        onclose: (e: CloseEvent | Event) => {
+          aliveRef.current = false
+          sessionRef.current = null
+          const closeEvent = e as CloseEvent
+          const code = closeEvent.code || 0
+          const isAbnormal = code !== 0 && code !== 1000 && code !== 1005
+
+          if (closedRef.current) {
+            // User already requested hangup; don't retry.
+            setCallState('ended')
+            cleanup()
+            return
+          }
+
+          if (isAbnormal && reconnectAttemptsRef.current < MAX_RECONNECT && callStartRef.current > 0) {
+            reconnectAttemptsRef.current += 1
+            setStatusText(`Reconectando... (${reconnectAttemptsRef.current}/${MAX_RECONNECT})`)
+            attemptReconnect().catch(reconnectErr => {
+              err('Reconnect failed', reconnectErr)
+              const failMsg = reconnectErr instanceof Error
+                ? reconnectErr.message
+                : 'Perdimos la conexión'
+              setErrorMessage(failMsg)
+              setCallState('error')
+              reportCallClose('reconnect-failed', failMsg)
+              cleanup()
+            })
+            return
+          }
+
+          if (isAbnormal) {
+            const reason = `Conexión cerrada: ${closeEvent.reason || 'Error del servidor'} (${code})`
+            setErrorMessage(reason)
+            setCallState('error')
+            reportCallClose('server-close', reason)
+          } else {
+            setCallState('ended')
+            reportCallClose('user-hangup')
+          }
+          cleanup()
+        },
+      },
+    }) as unknown as LiveSession
+
+    sessionRef.current = session
+  }
+
+  /**
+   * Fetches a new ephemeral token and opens a fresh Live API session,
+   * reusing the existing mic stream and AudioContexts. Does NOT call
+   * getUserMedia again (would re-prompt on some browsers).
+   */
+  async function attemptReconnect(): Promise<void> {
+    const tokenRes = await fetch('/api/chatbot/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ previous_call_id: callIdRef.current }),
+    })
+    if (!tokenRes.ok) {
+      const errorBody = await tokenRes.json().catch(() => ({}))
+      throw new Error(errorBody.error || 'No se pudo renovar el token')
+    }
+    const { token, model, config, call_id } = await tokenRes.json()
+    if (call_id) callIdRef.current = call_id
+
+    await openLiveSession({ token, model, config, isReconnect: true })
+  }
+
   async function startCall() {
     setCallState('connecting')
     setStatusText('Conectando...')
@@ -194,6 +356,8 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
     leadIdRef.current = null
     appointmentIdRef.current = null
     toolsInvokedRef.current = []
+    reconnectAttemptsRef.current = 0
+    callStartRef.current = 0
 
     try {
       const tokenRes = await fetch('/api/chatbot/token', { method: 'POST' })
@@ -237,9 +401,6 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
 
       setStatusText('Conectando con el asistente...')
 
-      const { GoogleGenAI, Modality } = await import('@google/genai')
-      const ai = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: 'v1alpha' } })
-
       const playbackCtx = new AudioContext({ sampleRate: 24000 })
       playbackCtxRef.current = playbackCtx
       const captureCtx = new AudioContext({ sampleRate: 16000 })
@@ -253,89 +414,7 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
         throw new Error('Tu navegador no soporta captura de audio moderna. Prueba con Chrome o Safari actualizado.')
       }
 
-      let nextPlayTime = 0
-      function queueAudio(pcmBase64: string) {
-        if (!aliveRef.current) return
-        const raw = atob(pcmBase64)
-        const bytes = new Uint8Array(raw.length)
-        for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
-        const int16 = new Int16Array(bytes.buffer)
-        const float32 = new Float32Array(int16.length)
-        for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768
-
-        const rms = calculateRMS(float32)
-        const normalized = Math.min(1, rms * 4)
-        if (normalized > audioLevelRef.current) audioLevelRef.current = normalized
-
-        const buffer = playbackCtx.createBuffer(1, float32.length, 24000)
-        buffer.copyToChannel(new Float32Array(float32) as Float32Array<ArrayBuffer>, 0)
-        const source = playbackCtx.createBufferSource()
-        source.buffer = buffer
-        source.connect(playbackCtx.destination)
-
-        const now = playbackCtx.currentTime
-        if (nextPlayTime < now) nextPlayTime = now + 0.05
-        source.start(nextPlayTime)
-        nextPlayTime += float32.length / 24000
-      }
-
-      const session = await ai.live.connect({
-        model,
-        config: { ...config, responseModalities: [Modality.AUDIO] },
-        callbacks: {
-          onopen: () => {
-            aliveRef.current = true
-            callStartRef.current = Date.now()
-            setCallState('active')
-            setStatusText('')
-            let seconds = 0
-            timerRef.current = setInterval(() => {
-              seconds++
-              setCallDuration(seconds)
-              if (seconds >= 900) endCall('timeout')
-            }, 1000)
-          },
-          onmessage: (message: unknown) => {
-            if (!aliveRef.current) return
-            const msg = message as Record<string, unknown>
-
-            const serverContent = msg.serverContent as Record<string, unknown> | undefined
-            const modelTurn = serverContent?.modelTurn as { parts?: Array<{ inlineData?: { data?: string } }> } | undefined
-            if (modelTurn?.parts) {
-              for (const part of modelTurn.parts) {
-                if (part.inlineData?.data) queueAudio(part.inlineData.data)
-              }
-            }
-
-            if (msg.toolCall) handleToolCall(msg.toolCall as ToolCallData)
-          },
-          onerror: (e: Event | { message?: string }) => {
-            err('Live API error', e)
-            aliveRef.current = false
-            const msg = 'message' in e ? (e as { message: string }).message : 'Error en la conexión de voz'
-            setErrorMessage(msg)
-            setCallState('error')
-            reportCallClose('error', msg)
-            cleanup()
-          },
-          onclose: (e: CloseEvent | Event) => {
-            aliveRef.current = false
-            const closeEvent = e as CloseEvent
-            if (closeEvent.code && closeEvent.code !== 1000) {
-              const reason = `Conexión cerrada: ${closeEvent.reason || 'Error del servidor'} (${closeEvent.code})`
-              setErrorMessage(reason)
-              setCallState('error')
-              reportCallClose('server-close', reason)
-            } else {
-              setCallState('ended')
-              reportCallClose('user-hangup')
-            }
-            cleanup()
-          },
-        },
-      }) as unknown as LiveSession
-
-      sessionRef.current = session
+      await openLiveSession({ token, model, config, isReconnect: false })
 
       // Mic capture through AudioWorklet
       const sourceNode = captureCtx.createMediaStreamSource(stream)

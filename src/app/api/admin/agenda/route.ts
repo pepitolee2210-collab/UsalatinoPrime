@@ -20,6 +20,10 @@ async function verifyAdmin() {
   return service
 }
 
+// Defensive cap: current agenda has <200 rows, 500 gives 5-10× runway.
+// When this cap is hit we surface a truncated flag so the UI can warn Henry.
+const MAX_AGENDA = 500
+
 export async function GET() {
   try {
     const service = await verifyAdmin()
@@ -27,16 +31,21 @@ export async function GET() {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
-    const { data, error } = await service
+    const { data, count, error } = await service
       .from('callback_requests')
-      .select('*')
+      .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
+      .limit(MAX_AGENDA)
 
     if (error) {
       return NextResponse.json({ error: 'Error al obtener agenda' }, { status: 500 })
     }
 
-    return NextResponse.json(data)
+    return NextResponse.json({
+      items: data,
+      total: count ?? (data?.length ?? 0),
+      truncated: (count ?? 0) > (data?.length ?? 0),
+    })
   } catch {
     return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
   }

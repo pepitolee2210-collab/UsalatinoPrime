@@ -2,19 +2,25 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { CasesView } from '@/components/admin/CasesView'
 
+// Defensive cap — the CasesView component needs the full list for kanban /
+// alphabet filtering, but we never load the entire table unbounded. 1000 is
+// ~10× current volume, enough margin for years of growth.
+const MAX_CASES = 1000
+
 export default async function AdminCasesPage() {
   const supabase = await createClient()
   const service = createServiceClient()
 
   const [
-    { data: cases },
+    { data: cases, count: totalCases },
     { data: documents },
     { data: submissions },
   ] = await Promise.all([
     supabase
       .from('cases')
-      .select('*, service:service_catalog(name), client:profiles(first_name, last_name, email)')
-      .order('created_at', { ascending: false }),
+      .select('*, service:service_catalog(name), client:profiles(first_name, last_name, email)', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .limit(MAX_CASES),
     service
       .from('documents')
       .select('case_id'),
@@ -46,9 +52,19 @@ export default async function AdminCasesPage() {
     submission_done: submissionMap.get(c.id as string)?.submitted || 0,
   }))
 
+  const loaded = enrichedCases.length
+  const total = totalCases ?? loaded
+  const truncated = total > loaded
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">Todos los Casos</h1>
+      {truncated && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
+          Mostrando {loaded.toLocaleString()} de {total.toLocaleString()} casos (los más recientes).
+          Usa la búsqueda para encontrar un caso específico.
+        </div>
+      )}
       <CasesView cases={enrichedCases} />
     </div>
   )

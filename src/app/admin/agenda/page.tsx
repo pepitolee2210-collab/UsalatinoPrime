@@ -75,6 +75,8 @@ type FilterTab = 'pending' | 'follow_up' | 'all' | 'closed'
 
 export default function AgendaPage() {
   const [items, setItems] = useState<CallbackRequest[]>([])
+  const [truncated, setTruncated] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<FilterTab>('pending')
@@ -93,7 +95,17 @@ export default function AgendaPage() {
       const res = await fetch('/api/admin/agenda')
       if (res.ok) {
         const data = await res.json()
-        setItems(data)
+        // New API shape: { items, total, truncated }.
+        // Keep array fallback for safety in case an older deploy is cached.
+        if (Array.isArray(data)) {
+          setItems(data)
+          setTotalCount(data.length)
+          setTruncated(false)
+        } else {
+          setItems(data.items || [])
+          setTotalCount(data.total ?? (data.items?.length ?? 0))
+          setTruncated(!!data.truncated)
+        }
       }
     } catch {
       toast.error('Error al cargar agenda')
@@ -246,6 +258,13 @@ export default function AgendaPage() {
           <Plus className="w-4 h-4 mr-1" /> Nueva Llamada
         </Button>
       </div>
+
+      {truncated && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
+          Mostrando {items.length.toLocaleString()} de {totalCount.toLocaleString()} registros
+          (los más recientes). Usa los filtros por estado para acotar resultados.
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
