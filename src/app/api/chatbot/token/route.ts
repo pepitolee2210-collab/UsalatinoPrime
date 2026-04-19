@@ -25,8 +25,10 @@ export async function POST(request: NextRequest) {
       // request has no body — treat as a fresh call
     }
 
-    // Persistent rate limit (works across serverless instances).
-    const rl = await checkVoiceRateLimit(ip)
+    // Persistent rate limit (works across serverless instances). 20/hour
+    // per IP is comfortable for real usage — tuned up from 5 which was too
+    // tight for debugging and repeated testing.
+    const rl = await checkVoiceRateLimit(ip, 20, 'token')
     if (!rl.allowed) {
       return Response.json(
         {
