@@ -147,23 +147,38 @@ class VoiceCaptureProcessor extends AudioWorkletProcessor {
       this.lastStatsEmit = now
     }
 
-    if (!gateOpen) {
-      // Silence: only post level for the UI, drop audio.
-      this.port.postMessage({ rms })
-      if (this.buffer.length > 0) this.buffer.length = 0
-      return true
-    }
-
-    // Resample + quantize to Int16 and buffer
+    // CRITICAL: we always produce chunks at a constant rate (even when the
+    // gate is closed). When closed, we write digital silence (zeros) instead
+    // of dropping the samples entirely.
+    //
+    // Why this matters: Gemini Live has its own VAD that decides when the
+    // user's turn ended by observing silence AFTER speech. If we drop silent
+    // frames here, Gemini only sees discontinuous speech chunks — its VAD
+    // never detects an end-of-turn and the model never replies. That's the
+    // classic "la IA me escucha pero no responde" symptom.
+    //
+    // Keeping the gate but writing zeros preserves:
+    //  - Noise suppression (ambient noise becomes digital silence, not sent
+    //    as speech signal to the model)
+    //  - Temporal continuity (Gemini's VAD works correctly)
+    //  - Turn detection (silence = end of turn as the model expects)
     if (this.ratio === 1) {
-      for (let i = 0; i < channel.length; i++) {
-        this.buffer.push(Math.max(-32768, Math.min(32767, Math.floor(channel[i] * 32768))))
+      if (gateOpen) {
+        for (let i = 0; i < channel.length; i++) {
+          this.buffer.push(Math.max(-32768, Math.min(32767, Math.floor(channel[i] * 32768))))
+        }
+      } else {
+        for (let i = 0; i < channel.length; i++) this.buffer.push(0)
       }
     } else {
       const outLen = Math.floor(channel.length / this.ratio)
-      for (let i = 0; i < outLen; i++) {
-        const s = channel[Math.floor(i * this.ratio)]
-        this.buffer.push(Math.max(-32768, Math.min(32767, Math.floor(s * 32768))))
+      if (gateOpen) {
+        for (let i = 0; i < outLen; i++) {
+          const s = channel[Math.floor(i * this.ratio)]
+          this.buffer.push(Math.max(-32768, Math.min(32767, Math.floor(s * 32768))))
+        }
+      } else {
+        for (let i = 0; i < outLen; i++) this.buffer.push(0)
       }
     }
 

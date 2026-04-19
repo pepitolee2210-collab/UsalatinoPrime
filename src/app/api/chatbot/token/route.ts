@@ -79,16 +79,19 @@ export async function POST(request: NextRequest) {
           voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
         },
         systemInstruction: CHATBOT_VOICE_SYSTEM_PROMPT,
-        // Stricter turn detection: harder to trigger on ambient noise,
-        // and waits longer for a silence before closing the user's turn.
-        // Combined with our client-side noise gate, this reduces false
-        // positives from TV, background voices, short coughs, etc.
+        // Turn detection: let Gemini use its defaults. We tried tightening
+        // this (START_SENSITIVITY_LOW + silenceDurationMs 900) combined with
+        // the client-side noise gate and it caused the model to never
+        // detect end-of-turn — the client would speak and the IA never
+        // replied. Keeping the defaults works because the worklet now emits
+        // digital silence (zeros) when the gate is closed, so Gemini's VAD
+        // still sees natural silence between speech.
+        //
+        // Only keep a modest silence buffer so natural short pauses don't
+        // cut the client's turn prematurely.
         realtimeInputConfig: {
           automaticActivityDetection: {
-            startOfSpeechSensitivity: 'START_SENSITIVITY_LOW',
-            endOfSpeechSensitivity: 'END_SENSITIVITY_HIGH',
-            prefixPaddingMs: 200,
-            silenceDurationMs: 900,
+            silenceDurationMs: 600,
           },
         },
         tools: [
