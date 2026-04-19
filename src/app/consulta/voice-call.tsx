@@ -443,14 +443,22 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
       const worklet = new AudioWorkletNode(captureCtx, 'voice-capture-processor', {
         processorOptions: {
           calibrationMs: 1500,
-          gateMultiplier: 2.5,
+          // Multiplier 1.3 keeps the gate permissive enough for soft-speakers
+          // on phones with high-gain mics. The previous 2.5 combined with a
+          // ceiling-pinned floor was blocking nearly all legit speech.
+          gateMultiplier: 1.3,
           holdMs: 400,
+          // Allow up to 0.08 RMS as ambient floor — covers phones with
+          // aggressive autoGainControl that report elevated baseline energy
+          // even in "quiet" rooms.
+          maxGateAbsolute: 0.08,
         },
       })
       workletNodeRef.current = worklet
 
       type WorkletMsg =
         | { type: 'calibrated'; noiseFloor: number }
+        | { type: 'calibration-retry'; attempt: number; floor: number }
         | { type: 'stats'; framesTotal: number; framesGateOpen: number; framesGateClosed: number; noiseFloor: number; t: number }
         | { rms: number; pcm?: ArrayBuffer }
 
@@ -459,6 +467,8 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
         if ('type' in msg) {
           if (msg.type === 'calibrated') {
             log('Noise gate calibrated at', msg.noiseFloor)
+          } else if (msg.type === 'calibration-retry') {
+            log('Noise gate calibration retry', msg.attempt, 'provisional floor', msg.floor)
           } else if (msg.type === 'stats') {
             gateStatsRef.current = {
               framesTotal: msg.framesTotal,

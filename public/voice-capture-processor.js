@@ -40,12 +40,16 @@ class VoiceCaptureProcessor extends AudioWorkletProcessor {
     this.statsIntervalSec = opts.statsIntervalSec != null ? opts.statsIntervalSec : 10
     this.recalibrateAfterSec = opts.recalibrateAfterSec != null ? opts.recalibrateAfterSec : 3
 
-    // Calibration state
+    // Calibration state — collects frame RMS values to compute a median at
+    // the end. Median is robust against transient spikes (mic-enable click,
+    // autoGainControl settling, the user speaking too soon), which used to
+    // push the mean against the ceiling and disable the gate in practice.
     this.samplesObserved = 0
-    this.noiseSum = 0
-    this.noiseFrames = 0
+    this.calibrationRms = []
     this.noiseFloor = this.minGateAbsolute
     this.calibrated = false
+    this.calibrationRetries = 0
+    this.maxCalibrationRetries = 2
 
     // Gate state
     this.lastSpeechTime = -Infinity
@@ -82,15 +86,33 @@ class VoiceCaptureProcessor extends AudioWorkletProcessor {
 
     // Calibration phase: just learn the noise floor, don't send audio yet.
     if (!this.calibrated) {
-      this.noiseSum += rms
-      this.noiseFrames += 1
+      this.calibrationRms.push(rms)
       this.samplesObserved += channel.length
       if (this.samplesObserved >= this.calibrationSamples) {
-        const avg = this.noiseSum / Math.max(1, this.noiseFrames)
-        this.noiseFloor = Math.min(this.maxGateAbsolute, Math.max(this.minGateAbsolute, avg))
+        // Median instead of mean: resistant to spikes.
+        const sorted = this.calibrationRms.slice().sort((a, b) => a - b)
+        const median = sorted[Math.floor(sorted.length / 2)]
+        const rawFloor = Math.min(this.maxGateAbsolute, Math.max(this.minGateAbsolute, median))
+
+        // If the calibration landed pegged to the ceiling, the ambient
+        // likely had a sustained loud event (mic settling, user talking).
+        // Give it another window — up to maxCalibrationRetries — before
+        // committing to a floor that'll disable the gate.
+        const pinnedHigh = rawFloor >= this.maxGateAbsolute * 0.95
+        if (pinnedHigh && this.calibrationRetries < this.maxCalibrationRetries) {
+          this.calibrationRetries += 1
+          this.calibrationRms.length = 0
+          this.samplesObserved = 0
+          this.port.postMessage({ type: 'calibration-retry', attempt: this.calibrationRetries, floor: rawFloor })
+          this.port.postMessage({ rms })
+          return true
+        }
+
+        this.noiseFloor = rawFloor
         this.calibrated = true
         this.silenceStart = currentTime
         this.lastStatsEmit = currentTime
+        this.calibrationRms.length = 0 // free memory
         this.port.postMessage({ type: 'calibrated', noiseFloor: this.noiseFloor })
       }
       this.port.postMessage({ rms })
