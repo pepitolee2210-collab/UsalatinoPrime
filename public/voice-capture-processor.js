@@ -7,11 +7,20 @@
 // A hold-time keeps the gate open briefly after speech ends (avoids cutting
 // off the tail of words).
 //
+// Adaptive recalibration: after calibration, if the gate stays closed for >3s
+// straight (sustained silence), we gently update noiseFloor toward the
+// observed ambient level. Handles "someone turns on TV mid-call" without any
+// user intervention. We never update while the gate is open (that would pull
+// the floor up toward speech energy and break detection).
+//
 // Messages posted to main thread:
 //   { rms }                              — every frame, for the UI level meter
 //   { pcm, rms }                         — only when gate is open; PCM is the
 //                                          transferable buffer to send to Gemini
-//   { type: 'calibrated', noiseFloor }  — once, when calibration finishes
+//   { type: 'calibrated', noiseFloor }  — once, when initial calibration ends
+//   { type: 'stats', framesTotal,       — every ~10s, for observability
+//     framesGateOpen, framesGateClosed,
+//     noiseFloor }
 
 class VoiceCaptureProcessor extends AudioWorkletProcessor {
   constructor(options) {
@@ -26,17 +35,38 @@ class VoiceCaptureProcessor extends AudioWorkletProcessor {
     this.calibrationSamples = Math.floor(((opts.calibrationMs != null ? opts.calibrationMs : 1500) * this.inputRate) / 1000)
     this.gateMultiplier = opts.gateMultiplier != null ? opts.gateMultiplier : 2.5
     this.holdSeconds = (opts.holdMs != null ? opts.holdMs : 400) / 1000
-    // Absolute floor so a dead-silent mic doesn't set a near-zero threshold.
     this.minGateAbsolute = opts.minGateAbsolute != null ? opts.minGateAbsolute : 0.012
-    // Absolute ceiling so extreme background hiss can't disable the gate.
     this.maxGateAbsolute = opts.maxGateAbsolute != null ? opts.maxGateAbsolute : 0.05
+    this.statsIntervalSec = opts.statsIntervalSec != null ? opts.statsIntervalSec : 10
+    this.recalibrateAfterSec = opts.recalibrateAfterSec != null ? opts.recalibrateAfterSec : 3
 
+    // Calibration state
     this.samplesObserved = 0
     this.noiseSum = 0
     this.noiseFrames = 0
     this.noiseFloor = this.minGateAbsolute
     this.calibrated = false
+
+    // Gate state
     this.lastSpeechTime = -Infinity
+    this.silenceStart = 0
+
+    // Stats
+    this.framesTotal = 0
+    this.framesGateOpen = 0
+    this.framesGateClosed = 0
+    this.lastStatsEmit = 0
+  }
+
+  emitStats(now) {
+    this.port.postMessage({
+      type: 'stats',
+      framesTotal: this.framesTotal,
+      framesGateOpen: this.framesGateOpen,
+      framesGateClosed: this.framesGateClosed,
+      noiseFloor: this.noiseFloor,
+      t: now,
+    })
   }
 
   process(inputs) {
@@ -59,22 +89,45 @@ class VoiceCaptureProcessor extends AudioWorkletProcessor {
         const avg = this.noiseSum / Math.max(1, this.noiseFrames)
         this.noiseFloor = Math.min(this.maxGateAbsolute, Math.max(this.minGateAbsolute, avg))
         this.calibrated = true
+        this.silenceStart = currentTime
+        this.lastStatsEmit = currentTime
         this.port.postMessage({ type: 'calibrated', noiseFloor: this.noiseFloor })
       }
       this.port.postMessage({ rms })
       return true
     }
 
-    // Gate decision
+    const now = currentTime
     const threshold = this.noiseFloor * this.gateMultiplier
-    const now = currentTime // worklet global, seconds
-    if (rms >= threshold) this.lastSpeechTime = now
+    if (rms >= threshold) {
+      this.lastSpeechTime = now
+      this.silenceStart = 0 // any speech resets the recalibration window
+    }
     const gateOpen = now - this.lastSpeechTime < this.holdSeconds
+
+    this.framesTotal += 1
+    if (gateOpen) this.framesGateOpen += 1
+    else this.framesGateClosed += 1
+
+    // Adaptive recalibration during sustained silence.
+    if (!gateOpen) {
+      if (this.silenceStart === 0) this.silenceStart = now
+      if (now - this.silenceStart > this.recalibrateAfterSec) {
+        // EMA toward the current rms; clamp within absolute bounds.
+        const updated = 0.9 * this.noiseFloor + 0.1 * rms
+        this.noiseFloor = Math.min(this.maxGateAbsolute, Math.max(this.minGateAbsolute, updated))
+      }
+    }
+
+    // Periodic stats emission
+    if (now - this.lastStatsEmit >= this.statsIntervalSec) {
+      this.emitStats(now)
+      this.lastStatsEmit = now
+    }
 
     if (!gateOpen) {
       // Silence: only post level for the UI, drop audio.
       this.port.postMessage({ rms })
-      // Reset buffer so we don't mix silence into the next speech burst.
       if (this.buffer.length > 0) this.buffer.length = 0
       return true
     }

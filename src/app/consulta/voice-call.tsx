@@ -68,6 +68,14 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
   // Reconnection on network hiccups (4G→WiFi, transient WSS drops)
   const reconnectAttemptsRef = useRef(0)
   const MAX_RECONNECT = 2
+  // Latest noise-gate snapshot from the worklet. Reported at close for
+  // observability ("is the gate blocking too much or too little?").
+  const gateStatsRef = useRef<{
+    framesTotal: number
+    framesGateOpen: number
+    framesGateClosed: number
+    noiseFloor: number
+  } | null>(null)
 
   const reportCallClose = useCallback((endReason: string, errorMessage?: string) => {
     if (closedRef.current || !callIdRef.current) return
@@ -75,6 +83,16 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
     const duration = callStartRef.current
       ? Math.floor((Date.now() - callStartRef.current) / 1000)
       : 0
+
+    const gs = gateStatsRef.current
+    const gateStatsPayload = gs && gs.framesTotal > 0
+      ? {
+          open_pct: +(gs.framesGateOpen / gs.framesTotal).toFixed(3),
+          noise_floor: +gs.noiseFloor.toFixed(4),
+          frames_total: gs.framesTotal,
+        }
+      : null
+
     const payload = JSON.stringify({
       call_id: callIdRef.current,
       duration_seconds: duration,
@@ -83,6 +101,7 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
       lead_id: leadIdRef.current,
       appointment_id: appointmentIdRef.current,
       tools_invoked: toolsInvokedRef.current,
+      gate_stats: gateStatsPayload,
     })
 
     // sendBeacon survives page unload (tab close, navigation); falls back to
@@ -358,6 +377,7 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
     toolsInvokedRef.current = []
     reconnectAttemptsRef.current = 0
     callStartRef.current = 0
+    gateStatsRef.current = null
 
     try {
       const tokenRes = await fetch('/api/chatbot/token', { method: 'POST' })
@@ -431,12 +451,22 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
 
       type WorkletMsg =
         | { type: 'calibrated'; noiseFloor: number }
+        | { type: 'stats'; framesTotal: number; framesGateOpen: number; framesGateClosed: number; noiseFloor: number; t: number }
         | { rms: number; pcm?: ArrayBuffer }
 
       worklet.port.onmessage = (event: MessageEvent<WorkletMsg>) => {
         const msg = event.data
-        if ('type' in msg && msg.type === 'calibrated') {
-          log('Noise gate calibrated at', msg.noiseFloor)
+        if ('type' in msg) {
+          if (msg.type === 'calibrated') {
+            log('Noise gate calibrated at', msg.noiseFloor)
+          } else if (msg.type === 'stats') {
+            gateStatsRef.current = {
+              framesTotal: msg.framesTotal,
+              framesGateOpen: msg.framesGateOpen,
+              framesGateClosed: msg.framesGateClosed,
+              noiseFloor: msg.noiseFloor,
+            }
+          }
           return
         }
         if (!('rms' in msg)) return
