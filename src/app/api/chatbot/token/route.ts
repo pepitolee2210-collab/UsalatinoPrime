@@ -79,6 +79,18 @@ export async function POST(request: NextRequest) {
           voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } },
         },
         systemInstruction: CHATBOT_VOICE_SYSTEM_PROMPT,
+        // Stricter turn detection: harder to trigger on ambient noise,
+        // and waits longer for a silence before closing the user's turn.
+        // Combined with our client-side noise gate, this reduces false
+        // positives from TV, background voices, short coughs, etc.
+        realtimeInputConfig: {
+          automaticActivityDetection: {
+            startOfSpeechSensitivity: 'START_SENSITIVITY_LOW',
+            endOfSpeechSensitivity: 'END_SENSITIVITY_HIGH',
+            prefixPaddingMs: 200,
+            silenceDurationMs: 900,
+          },
+        },
         tools: [
           {
             functionDeclarations: [

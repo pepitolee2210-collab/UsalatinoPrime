@@ -420,17 +420,35 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
       const sourceNode = captureCtx.createMediaStreamSource(stream)
       sourceNodeRef.current = sourceNode
 
-      const worklet = new AudioWorkletNode(captureCtx, 'voice-capture-processor')
+      const worklet = new AudioWorkletNode(captureCtx, 'voice-capture-processor', {
+        processorOptions: {
+          calibrationMs: 1500,
+          gateMultiplier: 2.5,
+          holdMs: 400,
+        },
+      })
       workletNodeRef.current = worklet
 
-      worklet.port.onmessage = (event: MessageEvent<{ pcm: ArrayBuffer; rms: number }>) => {
-        if (mutedRef.current || !aliveRef.current) return
-        const { pcm, rms } = event.data
-        const normalized = Math.min(1, rms * 6)
+      type WorkletMsg =
+        | { type: 'calibrated'; noiseFloor: number }
+        | { rms: number; pcm?: ArrayBuffer }
+
+      worklet.port.onmessage = (event: MessageEvent<WorkletMsg>) => {
+        const msg = event.data
+        if ('type' in msg && msg.type === 'calibrated') {
+          log('Noise gate calibrated at', msg.noiseFloor)
+          return
+        }
+        if (!('rms' in msg)) return
+
+        const normalized = Math.min(1, msg.rms * 6)
         if (normalized > audioLevelRef.current) audioLevelRef.current = normalized
 
-        const bytes = new Uint8Array(pcm)
-        safeSendAudio(bytesToBase64(bytes))
+        // Only send PCM when the gate decided it's speech.
+        if (msg.pcm && !mutedRef.current && aliveRef.current) {
+          const bytes = new Uint8Array(msg.pcm)
+          safeSendAudio(bytesToBase64(bytes))
+        }
       }
 
       sourceNode.connect(worklet)
