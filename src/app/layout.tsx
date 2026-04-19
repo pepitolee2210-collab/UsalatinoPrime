@@ -1,9 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Fraunces } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({ subsets: ["latin"] });
+// Distinctive editorial serif used for the voice agent's live captions and
+// for the appointment confirmation card. Loaded lazily by next/font so it
+// doesn't block the first paint of other routes.
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  variable: "--font-fraunces",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "UsaLatinoPrime - Portal de Servicios Migratorios",
@@ -39,7 +49,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" className={fraunces.variable}>
       <body className={`${inter.className} antialiased`}>
         {children}
         <Toaster richColors position="top-right" />

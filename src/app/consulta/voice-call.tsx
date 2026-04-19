@@ -774,30 +774,87 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
       {/* Successful-booking confirmation screen — replaces the generic
           "llamada finalizada" view when the IA actually agendaron la cita. */}
       {callState === 'ended' && appointmentConfirmed ? (
-        <div className="flex flex-col items-center max-w-md text-center">
-          <div className="w-20 h-20 rounded-full bg-emerald-500/15 ring-2 ring-emerald-400/40 flex items-center justify-center mb-6">
-            <svg className="w-10 h-10 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
+        <div className="w-full max-w-[480px] px-4">
+          {/* Status chip above the card */}
+          <div className="flex justify-center mb-6">
+            <span className="inline-flex items-center vc-label text-emerald-300/90">
+              <span className="vc-dot vc-dot-green" />
+              Cita confirmada
+            </span>
           </div>
-          <h2 className="text-white text-2xl font-bold tracking-tight mb-2">
-            Tu cita está agendada
-          </h2>
-          <p className="text-emerald-300 text-lg font-semibold mb-1">
-            {appointmentConfirmed.date}
+
+          {/* Boarding-pass-style ticket */}
+          <div className="vc-ticket rounded-[28px] overflow-hidden">
+            <div className="relative px-8 pt-10 pb-8 vc-reveal">
+              {/* Animated check with ripple rings */}
+              <div className="flex justify-center mb-8">
+                <div className="vc-check-ring flex items-center justify-center">
+                  <div className="relative z-10 w-[72px] h-[72px] rounded-full bg-emerald-500/12 ring-1 ring-emerald-400/50 flex items-center justify-center">
+                    <svg className="w-9 h-9 text-emerald-300 vc-check-draw" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12.5 L10 17.5 L19 7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Big declarative headline — editorial serif */}
+              <p className="vc-serif text-center text-white text-[28px] leading-[1.15] tracking-tight mb-8">
+                Nos vemos pronto.
+                <span className="block text-white/40 text-[18px] italic mt-1">
+                  Tu cita quedó agendada.
+                </span>
+              </p>
+
+              {/* Date stack — label + serif DISPLAY */}
+              <div className="text-center">
+                <p className="vc-label text-white/35 mb-3">Fecha de la cita</p>
+                <p className="vc-serif text-[#F2D780] text-[22px] leading-tight uppercase tracking-[0.04em] font-medium">
+                  {appointmentConfirmed.date}
+                </p>
+                <p className="vc-serif text-white text-[44px] leading-none mt-3 tracking-tight font-semibold tabular-nums">
+                  {appointmentConfirmed.time}
+                </p>
+              </div>
+            </div>
+
+            {/* Perforated separator — classic ticket notches */}
+            <div className="px-6">
+              <div className="vc-ticket-perf" />
+            </div>
+
+            {/* Footer grid: who + reminder */}
+            <div className="px-8 pt-6 pb-8 vc-reveal">
+              <div className="grid grid-cols-2 gap-5">
+                <div>
+                  <p className="vc-label text-white/35 mb-2">Con</p>
+                  <p className="text-white text-sm font-medium leading-snug">Henry Orellana</p>
+                  <p className="text-white/40 text-xs mt-0.5">UsaLatino Prime</p>
+                </div>
+                <div>
+                  <p className="vc-label text-white/35 mb-2">Recordatorio</p>
+                  <p className="text-white text-sm font-medium leading-snug">1 h antes</p>
+                  <p className="text-white/40 text-xs mt-0.5">Te llamaremos</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Fine print + return button */}
+          <p className="text-center text-white/35 text-[11px] mt-6 leading-relaxed px-4">
+            Recibirás un aviso por teléfono una hora antes. Si necesitas reagendar, llama al 801-941-3479.
           </p>
-          <p className="text-white/70 text-base mb-6">
-            a las {appointmentConfirmed.time}
-          </p>
-          <p className="text-white/50 text-sm leading-relaxed mb-8 max-w-sm">
-            Henry te llamará al número que nos diste. Recibirás un recordatorio una hora antes de la cita.
-          </p>
-          <button
-            onClick={() => { setCallState('idle'); setCallDuration(0); setErrorMessage(''); setAudioLevel(0); closedRef.current = false; setAppointmentConfirmed(null) }}
-            className="px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white/80 text-sm font-medium transition-colors"
-          >
-            Volver al inicio
-          </button>
+
+          <div className="flex justify-center mt-5">
+            <button
+              onClick={() => { setCallState('idle'); setCallDuration(0); setErrorMessage(''); setAudioLevel(0); closedRef.current = false; setAppointmentConfirmed(null) }}
+              className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] ring-1 ring-white/10 hover:ring-white/20 text-white/70 hover:text-white text-[13px] font-medium transition-all duration-300"
+            >
+              <span>Volver al inicio</span>
+              <svg className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </button>
+          </div>
         </div>
       ) : (
       <div className="flex flex-col items-center">
@@ -898,26 +955,38 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
           )}
         </div>
 
-        {/* Live captions — transcriptions streamed from Gemini. Gives the
-            user visual feedback that the IA actually heard them (and shows
-            what the IA is saying in case audio glitches). */}
+        {/* Live captions — transcriptions streamed from Gemini.
+            Editorial format: wide-tracking monospace label + Fraunces serif
+            for the AI's voice, lighter italic sans for the user's. A blinking
+            caret signals live typing. */}
         {callState === 'active' && (liveAssistantText || liveUserText) && (
-          <div className="mt-6 max-w-md text-center px-4 min-h-[3rem]">
-            {liveAssistantText ? (
-              <p className="text-[#F2A900]/90 text-sm leading-relaxed">
-                <span className="text-[#F2A900]/50 text-xs uppercase tracking-wider block mb-1">
-                  La asistente
-                </span>
-                {liveAssistantText}
-              </p>
-            ) : liveUserText ? (
-              <p className="text-white/70 text-sm leading-relaxed italic">
-                <span className="text-white/30 text-xs uppercase tracking-wider block mb-1 not-italic">
-                  Tú
-                </span>
-                {liveUserText}
-              </p>
-            ) : null}
+          <div className="mt-8 w-full max-w-[540px] px-6">
+            {/* Faded hairline — atmospheric separator that frames the caption */}
+            <div className="vc-hairline mb-5" />
+
+            <div key={liveAssistantText ? 'ai' : 'user'} className="vc-enter min-h-[5rem]">
+              {liveAssistantText ? (
+                <>
+                  <p className="vc-label text-[#F2A900]/60 mb-3">
+                    <span className="vc-dot vc-dot-amber" />
+                    La asistente
+                  </p>
+                  <p className="vc-serif vc-caret text-[#F8E5B0] text-[19px] leading-[1.55] font-normal">
+                    {liveAssistantText}
+                  </p>
+                </>
+              ) : liveUserText ? (
+                <>
+                  <p className="vc-label text-white/45 mb-3">
+                    <span className="vc-dot vc-dot-white" />
+                    Tú
+                  </p>
+                  <p className="text-white/75 text-[15px] leading-[1.65] italic font-light vc-caret">
+                    {liveUserText}
+                  </p>
+                </>
+              ) : null}
+            </div>
           </div>
         )}
       </div>

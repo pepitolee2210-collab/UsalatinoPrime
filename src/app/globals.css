@@ -718,6 +718,201 @@
   animation: orb-rotate 1.2s linear infinite;
 }
 
+/* ===== Consulta — Live Transcript + Appointment Card ===== */
+
+/* Editorial serif for the AI's voice — contrasts the interface sans.
+   Uses Fraunces (loaded via next/font variable in app/layout.tsx). */
+.vc-serif {
+  font-family: var(--font-fraunces), 'Playfair Display', 'Canela', 'EB Garamond', Georgia, 'Times New Roman', serif;
+  font-feature-settings: 'ss01', 'ss02', 'liga', 'dlig';
+}
+
+/* Tracking label — all-caps with wide letter spacing for editorial feel. */
+.vc-label {
+  font-family: ui-monospace, 'SF Mono', 'Fira Code', 'JetBrains Mono', Menlo, monospace;
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* Faded hairline with gradient fading to the edges — atmospheric separator. */
+.vc-hairline {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(255, 255, 255, 0.14) 20%,
+    rgba(255, 255, 255, 0.22) 50%,
+    rgba(255, 255, 255, 0.14) 80%,
+    transparent 100%
+  );
+}
+
+/* Pulsing dot used with labels to signal live activity. */
+.vc-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  margin-right: 10px;
+  vertical-align: middle;
+  animation: vc-dot-pulse 1.4s ease-in-out infinite;
+}
+.vc-dot-amber { background: #F2A900; box-shadow: 0 0 0 0 rgba(242, 169, 0, 0.5); }
+.vc-dot-white { background: rgba(255, 255, 255, 0.7); box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); }
+.vc-dot-green { background: #10b981; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5); }
+
+@keyframes vc-dot-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(0, 0, 0, 0);
+    opacity: 0.6;
+  }
+}
+
+/* Typing caret — thin vertical bar that blinks. Appears after live text. */
+.vc-caret::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 4px;
+  background: currentColor;
+  vertical-align: -0.12em;
+  opacity: 0.85;
+  animation: vc-caret-blink 1s steps(2, start) infinite;
+}
+
+@keyframes vc-caret-blink {
+  to { opacity: 0; }
+}
+
+/* Subtle up + fade entrance for caption blocks. */
+.vc-enter {
+  animation: vc-enter 350ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes vc-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Boarding-pass style for the appointment confirmation card. */
+.vc-ticket {
+  position: relative;
+  background:
+    radial-gradient(
+      ellipse at top,
+      rgba(16, 185, 129, 0.08) 0%,
+      rgba(16, 185, 129, 0) 60%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(18, 22, 32, 0.72) 0%,
+      rgba(12, 16, 24, 0.88) 100%
+    );
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 30px 80px -20px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(16, 185, 129, 0.06) inset,
+    0 0 60px -10px rgba(16, 185, 129, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Film-grain overlay for warmth. */
+.vc-ticket::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.08 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.5;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* Perforated divider with notches on each side — classic ticket trick. */
+.vc-ticket-perf {
+  position: relative;
+  height: 1px;
+  background-image: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.18) 0 6px,
+    transparent 6px 14px
+  );
+  background-size: 14px 1px;
+  background-repeat: repeat-x;
+}
+.vc-ticket-perf::before,
+.vc-ticket-perf::after {
+  content: '';
+  position: absolute;
+  top: -12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: #0b0f17; /* match page bg */
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+.vc-ticket-perf::before { left: -12px; }
+.vc-ticket-perf::after { right: -12px; }
+
+/* Check mark draw animation for the confirmation. */
+.vc-check-ring {
+  position: relative;
+  width: 72px;
+  height: 72px;
+}
+.vc-check-ring::before,
+.vc-check-ring::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  animation: vc-ring-pulse 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.vc-check-ring::after { animation-delay: 1.1s; }
+
+@keyframes vc-ring-pulse {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+.vc-check-draw path {
+  stroke-dasharray: 32;
+  stroke-dashoffset: 32;
+  animation: vc-check-draw 600ms 200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes vc-check-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+/* Soft staggered reveal for the ticket content blocks. */
+.vc-reveal > * {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: vc-enter 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.vc-reveal > *:nth-child(1) { animation-delay: 120ms; }
+.vc-reveal > *:nth-child(2) { animation-delay: 220ms; }
+.vc-reveal > *:nth-child(3) { animation-delay: 320ms; }
+.vc-reveal > *:nth-child(4) { animation-delay: 420ms; }
+.vc-reveal > *:nth-child(5) { animation-delay: 520ms; }
+.vc-reveal > *:nth-child(6) { animation-delay: 620ms; }
+
 /* ===== Consulta — Chat Bubbles ===== */
 
 .chat-bubble-enter {
