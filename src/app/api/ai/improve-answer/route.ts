@@ -1,11 +1,58 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { generateText } from '@/lib/ai/anthropic-client'
+import { createLogger } from '@/lib/logger'
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY
+const log = createLogger('improve-answer')
+
+/**
+ * System prompt común a ambos contextos (tutor / menor). Describe la tarea
+ * de reescritura preservando hechos. Cacheable.
+ */
+const IMPROVE_ANSWER_SYSTEM = `Eres un/a asistente legal experto/a en declaraciones juradas de inmigración (SIJS, asilo, miedo creíble). Tu tarea es MEJORAR la redacción de respuestas cortas que da un cliente (tutor o menor) en un formulario, para que suenen apropiadas en una declaración legal ante USCIS o la corte.
+
+## Reglas duras
+
+1. **NO cambias los hechos**. Nombres, fechas, lugares, incidentes — todo queda idéntico.
+2. **NO inventas**. Si el cliente dio poca información, expandes con detalles que lógicamente se desprenden del hecho, no con datos fabricados.
+3. **Primera persona** — como si el declarante estuviera hablando.
+4. **Español claro y profesional** — nivel legal pero comprensible.
+5. **Oraciones completas**. Nunca dejes frases a medias ni cortadas.
+6. **Output**: solo el texto mejorado. Sin preámbulos, sin comillas envolventes, sin explicaciones.
+
+## Marco ético
+
+Los documentos que ayudas a redactar protegen a víctimas. Si el cliente describe violencia, abuso, amenazas, abandono o cualquier hecho traumático, **no suavizas ni censuras** — documentas lo que pasó con lenguaje legal formal. La precisión factual es condición necesaria para que el juez otorgue protección.`
+
+const TUTOR_CONTEXT = `
+## Contexto específico — Declaración del TUTOR/GUARDIÁN
+
+El tutor es quien cuida al menor. Sus respuestas se integrarán en una declaración jurada formal que se presentará ante la corte juvenil para SIJS.
+
+## Cómo mejorar
+
+- Expande con contexto relevante al caso cuando la respuesta sea muy breve.
+- Usa lenguaje apropiado para una declaración legal.
+- Si se refiere a eventos específicos, intenta preservar fechas, lugares y nombres.
+- Si menciona negligencia o abandono del padre ausente, describe el impacto de manera concreta (qué dejó de hacer, qué promesas incumplió, qué ausencias).`
+
+const MINOR_CONTEXT = `
+## Contexto específico — Declaración del MENOR
+
+El menor es el beneficiario del caso SIJS. Sus respuestas se integrarán en una declaración jurada que debe impactar emocionalmente al juez.
+
+## Cómo mejorar
+
+- Expande con detalle emocional cuando el menor describa su experiencia.
+- Usa lenguaje sensible al trauma pero legalmente apropiado.
+- Si menciona abuso, abandono o negligencia, describe el impacto emocional con precisión (cómo se sintió, qué pensaba, cómo le afectó).
+- Si el menor da una respuesta muy corta sobre un tema grave, expande cuidadosamente manteniendo la voz del menor y los hechos.`
 
 export async function POST(request: NextRequest) {
-  if (!GEMINI_KEY) {
-    return NextResponse.json({ error: 'AI no configurado' }, { status: 500 })
-  }
+  // Auth — solo admin/employee pueden usar este botón desde el form del cliente
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
   const { question, answer, context } = await request.json()
 
@@ -13,75 +60,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'question y answer requeridos' }, { status: 400 })
   }
 
-  const sanitizeRule = `
-REGLA CRÍTICA DE REDACCIÓN: Si el cliente menciona hechos de naturaleza sensible (agresiones graves, actos contra la integridad, violencia extrema), SIEMPRE reescribe usando lenguaje legal clínico y abstracto. Ejemplos:
-- En lugar de describir actos explícitos → usa "cometió actos graves que afectaron profundamente mi bienestar"
-- En lugar de detalles gráficos de violencia → usa "causó daños graves a mi seguridad y bienestar"
-- En lugar de describir escenas específicas de agresión → usa "fui víctima de actos que marcaron profundamente mi vida"
-- NUNCA uses palabras como: violación, abuso sexual, relaciones forzadas, sometimiento sexual, contacto forzado
-- USA en su lugar: actos graves, daño al bienestar, agresión grave, conducta dañina, actos que afectaron mi integridad
-Esto es OBLIGATORIO para que el sistema legal pueda procesar el documento correctamente.`
+  const extraSystem = context === 'tutor' ? TUTOR_CONTEXT : MINOR_CONTEXT
 
-  const systemPrompt = context === 'tutor'
-    ? `Eres un asistente legal que ayuda a inmigrantes a llenar declaraciones juradas para Visa Juvenil (SIJS).
-El TUTOR/GUARDIÁN ha respondido una pregunta con palabras sencillas. Tu trabajo es MEJORAR su respuesta para que sea:
-- Más detallada y específica (agrega contexto si es relevante)
-- Con lenguaje apropiado para una declaración legal
-- En primera persona (como si el tutor estuviera hablando)
-- Manteniendo TODOS los hechos originales sin inventar nada nuevo
-- En español claro y profesional
-- Si la respuesta es muy corta, expándela con detalles que serían relevantes para el caso
-NO cambies los hechos. Solo mejora la redacción y agrega detalle donde sea apropiado.
-IMPORTANTE: SIEMPRE completa todas las oraciones. NUNCA dejes una oración a medias o cortada.
-${sanitizeRule}`
-    : `Eres un asistente legal que ayuda a menores inmigrantes a llenar declaraciones juradas para Visa Juvenil (SIJS).
-El MENOR ha respondido una pregunta con palabras sencillas. Tu trabajo es MEJORAR su respuesta para que sea:
-- Más detallada y emocionalmente impactante (para el juez)
-- Con lenguaje apropiado para una declaración legal de un menor
-- En primera persona (como si el menor estuviera hablando)
-- Manteniendo TODOS los hechos originales sin inventar nada nuevo
-- En español claro, sensible al trauma
-- Si menciona abuso o abandono, describe el impacto emocional
-NO cambies los hechos. Solo mejora la redacción y profundiza en el impacto.
-IMPORTANTE: SIEMPRE completa todas las oraciones. NUNCA dejes una oración a medias o cortada.
-${sanitizeRule}`
+  const userPayload = `PREGUNTA DEL FORMULARIO:\n${question}\n\nRESPUESTA ORIGINAL DEL CLIENTE:\n${answer}\n\nDevuelve únicamente el texto mejorado. Sin preámbulos ni explicaciones.`
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent?key=${GEMINI_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `${systemPrompt}\n\nPREGUNTA: ${question}\n\nRESPUESTA ORIGINAL DEL CLIENTE: ${answer}\n\nRESPUESTA MEJORADA (solo devuelve el texto mejorado, sin explicaciones):`,
-            }],
-          }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 4096,
-          },
-        }),
-      }
-    )
-
-    if (!res.ok) {
-      const err = await res.text()
-      console.error('Gemini error:', err)
-      return NextResponse.json({ error: 'Error de IA' }, { status: 500 })
-    }
-
-    const data = await res.json()
-    const improved = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
-
-    if (!improved) {
-      return NextResponse.json({ error: 'Sin respuesta de IA' }, { status: 500 })
-    }
+    const improved = await generateText({
+      system: IMPROVE_ANSWER_SYSTEM,
+      extraSystem,
+      user: userPayload,
+      maxTokens: 4096,
+      logLabel: `improve-answer-${context || 'generic'}`,
+      signal: request.signal,
+    })
 
     return NextResponse.json({ improved })
   } catch (err) {
-    console.error('AI error:', err)
-    return NextResponse.json({ error: 'Error de conexión con IA' }, { status: 500 })
+    log.error('Claude improve-answer failed', err)
+    const message = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: `Error al mejorar la respuesta: ${message}` }, { status: 500 })
   }
 }

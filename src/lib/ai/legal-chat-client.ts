@@ -1,18 +1,15 @@
+import Anthropic from '@anthropic-ai/sdk'
+import { getAnthropic, CLAUDE_MODEL } from './anthropic-client'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('legal-chat')
 
-const CHAT_MODEL = 'gemini-3.1-pro-preview'
-
 /**
- * System prompt for the legal assistant chat.
- * Rich persona that activates legal reasoning + explicit behavior rules.
- * Designed for Gemini to handle ANY legal document review request from
- * the attorneys/employees (Henry, Diana, Andriuw) — not constrained to
- * a specific case type like the auto-reviewer in /admin/cases/[id].
+ * System prompt del chatbot LEX — sistema de revisión legal interno de
+ * UsaLatino Prime. Cacheable: se repite en cada turno de la misma
+ * conversación y entre conversaciones distintas.
  */
-const CHAT_SYSTEM_PROMPT = `
-Eres **LEX** — sistema de revisión legal senior de **UsaLatino Prime**, firma de inmigración dirigida por Henry Orellana en Utah. Tu nombre viene del latín "lex" (ley): directo, preciso, sin rodeos.
+const CHAT_SYSTEM_PROMPT = `Eres **LEX** — sistema de revisión legal senior de **UsaLatino Prime**, firma de inmigración dirigida por Henry Orellana en Utah. Tu nombre viene del latín "lex" (ley): directo, preciso, sin rodeos.
 
 NO eres un chatbot genérico ni una asistente humana simulada. Eres un **sistema especializado** con la capacidad de razonamiento y juicio legal de un abogado senior, construido para un propósito específico: revisar documentos legales de inmigración y detectar fallas antes de que lleguen ante el juez.
 
@@ -44,23 +41,23 @@ Cuando el equipo te salude o te pregunte "¿quién eres?", preséntate de forma 
 
 3. **Sé específica y accionable**. NO digas "mejorar la narrativa". SÍ di "en el párrafo 5 reemplazar 'siempre fue ausente' por al menos dos incidentes con fecha y lugar, como 'el 15 de marzo de 2018 no asistió al cumpleaños...'"
 
-3. **Formato Markdown** en tus respuestas. Usa:
+4. **Formato Markdown** en tus respuestas. Usa:
    - **Títulos** (##) para secciones grandes
    - **Bullets** para listas
    - **\`código\`** para citas literales del documento
    - **Badges de severidad**: 🔴 CRÍTICO · 🟡 MODERADO · 🔵 SUGERENCIA
    - **Emojis funcionales** (📋 checklist, 📍 ubicación, ⚠️ riesgo), nunca decorativos
 
-4. **Cuando te pasen un PDF o documento**:
+5. **Cuando te pasen un PDF o documento**:
    - Léelo COMPLETO antes de responder
    - Estructura tu feedback: Resumen del documento → Fortalezas → Problemas por severidad → Recomendaciones priorizadas
    - Cita texto específico del PDF entre comillas cuando señalas un problema
 
-5. **Proactividad**. Si ves que falta algo importante que no te preguntaron, menciónalo al final: "⚠️ Observación adicional: no veo en tus archivos la partida de nacimiento del menor, que es esencial para SIJS."
+6. **Proactividad**. Si ves que falta algo importante que no te preguntaron, menciónalo al final: "⚠️ Observación adicional: no veo en tus archivos la partida de nacimiento del menor, que es esencial para SIJS."
 
-6. **Cuándo pedir más info**. Si un documento referencia datos que no tienes (fechas, otros docs, contexto del cliente), pregunta. Pero solo si es verdaderamente bloqueante — prefiere responder con lo que hay + nota sobre lo que asumiste.
+7. **Cuándo pedir más info**. Si un documento referencia datos que no tienes (fechas, otros docs, contexto del cliente), pregunta. Pero solo si es verdaderamente bloqueante — prefiere responder con lo que hay + nota sobre lo que asumiste.
 
-7. **Honestidad profesional**. Si ves un caso débil, dilo. Si un documento tiene problema legal serio (ej: menor de 18 en estado "hasta 18"), márcalo como CRÍTICO sin suavizar.
+8. **Honestidad profesional**. Si ves un caso débil, dilo. Si un documento tiene problema legal serio (ej: menor de 18 en estado "hasta 18"), márcalo como CRÍTICO sin suavizar.
 
 ## LO QUE NO DEBES HACER
 
@@ -83,8 +80,7 @@ Cuando el equipo te salude o te pregunte "¿quién eres?", preséntate de forma 
 
 - Cuando cites requisitos legales, usa la forma corta: "8 USC § 1101(a)(27)(J)" no "Title 8, United States Code, Section 1101..."
 - Cuando hables de jueces o cortes, sé respetuosa: "el juez de corte juvenil", "la oficina de asilo", no apodos
-- Cuando señales un error, no hagas sentir mal al redactor. "Este documento se puede fortalecer si..." mejor que "esto está mal"
-`.trim()
+- Cuando señales un error, no hagas sentir mal al redactor. "Este documento se puede fortalecer si..." mejor que "esto está mal"`
 
 export interface ChatAttachment {
   filename: string
@@ -107,10 +103,42 @@ interface StreamChatParams {
 }
 
 /**
- * Streams a chat response from Gemini. Returns a ReadableStream of SSE
- * events that the route handler forwards to the client.
+ * Soportado nativamente por Claude: PDFs y algunas imágenes.
+ * Otros mime types se describen como texto en el mensaje para que el modelo
+ * sepa que existían adjuntos aunque no pueda leerlos.
+ */
+function attachmentToContentBlock(
+  a: ChatAttachment
+): Anthropic.Messages.ContentBlockParam | null {
+  const mime = a.mime_type.toLowerCase()
+  if (mime === 'application/pdf') {
+    return {
+      type: 'document',
+      source: {
+        type: 'base64',
+        media_type: 'application/pdf',
+        data: a.data,
+      },
+    }
+  }
+  if (['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mime)) {
+    return {
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: mime as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+        data: a.data,
+      },
+    }
+  }
+  return null
+}
+
+/**
+ * Streams a chat response from Claude Opus 4.7. Returns a ReadableStream of
+ * SSE events that the route handler forwards to the client.
  *
- * Events emitted:
+ * Events emitted (same shape que la versión de Gemini):
  *   - `data: {"text": "..."}` — text delta
  *   - `data: {"done": true, "input_tokens": N, "output_tokens": N}` — end
  *   - `data: {"error": "..."}` — failure (stream continues to close)
@@ -121,111 +149,112 @@ export async function streamLegalChat({
   history = [],
   signal,
 }: StreamChatParams): Promise<ReadableStream<Uint8Array>> {
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) throw new Error('GEMINI_API_KEY no configurada')
+  const client = getAnthropic()
 
-  // Build Gemini contents from history + current turn
-  const contents: Array<{ role: string; parts: Array<Record<string, unknown>> }> = []
+  // Reconstruct conversation history as Claude messages.
+  const messages: Anthropic.MessageParam[] = []
   for (const m of history) {
-    contents.push({
-      role: m.role === 'user' ? 'user' : 'model',
-      parts: [{ text: m.content }],
+    messages.push({
+      role: m.role,
+      content: m.content,
     })
   }
 
-  // Current user turn: optional attachments + text
-  const currentParts: Array<Record<string, unknown>> = []
+  // Current user turn: text + attachments (PDFs go as `document`, images as `image`).
+  const currentContent: Anthropic.Messages.ContentBlockParam[] = []
+  const unsupportedAttachments: string[] = []
+
   for (const a of attachments) {
-    currentParts.push({
-      inline_data: { mime_type: a.mime_type, data: a.data },
-    })
+    const block = attachmentToContentBlock(a)
+    if (block) {
+      currentContent.push(block)
+    } else {
+      unsupportedAttachments.push(`${a.filename} (${a.mime_type})`)
+    }
   }
-  currentParts.push({ text: userMessage })
-  contents.push({ role: 'user', parts: currentParts })
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${CHAT_MODEL}:streamGenerateContent?alt=sse&key=${apiKey}`
+  // Text block is always last so it frames the attachments.
+  const finalText = [
+    userMessage || (currentContent.length > 0 ? '[adjunto]' : ''),
+    unsupportedAttachments.length > 0
+      ? `\n\n(Adjuntos no soportados por visión: ${unsupportedAttachments.join(', ')} — el modelo no puede leer este tipo de archivo.)`
+      : '',
+  ].join('').trim() || '[adjunto]'
 
-  const upstream = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: CHAT_SYSTEM_PROMPT }] },
-      contents,
-      generationConfig: {
-        temperature: 0.4,
-        topP: 0.95,
-        maxOutputTokens: 8192,
-      },
-      safetySettings: [
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+  currentContent.push({ type: 'text', text: finalText })
+  messages.push({ role: 'user', content: currentContent })
+
+  // Create the streaming request. We cache the system prompt so a long
+  // conversation (many turns) only pays it once.
+  const stream = client.messages.stream(
+    {
+      model: CLAUDE_MODEL,
+      max_tokens: 8192,
+      thinking: { type: 'adaptive' },
+      system: [
+        {
+          type: 'text',
+          text: CHAT_SYSTEM_PROMPT,
+          cache_control: { type: 'ephemeral' },
+        },
       ],
-    }),
-    signal,
-  })
+      messages,
+    },
+    { signal }
+  )
 
-  if (!upstream.ok || !upstream.body) {
-    const errText = await upstream.text().catch(() => '')
-    log.error('Gemini stream failed', { status: upstream.status, body: errText.slice(0, 300) })
-    throw new Error(`Error de IA (${upstream.status})`)
-  }
-
-  // Transform Gemini's SSE stream into our app's SSE format.
-  // Gemini sends `data: {candidates: [{content: {parts: [{text: "..."}]}}], usageMetadata?: {...}}`
-  // We emit `data: {"text": "chunk"}\n\n` on each delta and a final `data: {"done": true, ...}`
   const encoder = new TextEncoder()
-  const decoder = new TextDecoder()
 
   return new ReadableStream<Uint8Array>({
     async start(controller) {
-      const reader = upstream.body!.getReader()
-      let buffer = ''
       let inputTokens = 0
       let outputTokens = 0
+      let cacheReadTokens = 0
+      let cacheWriteTokens = 0
 
       try {
-        for (;;) {
-          const { done, value } = await reader.read()
-          if (done) break
-          buffer += decoder.decode(value, { stream: true })
-
-          // Parse SSE frames (separated by blank lines)
-          const frames = buffer.split('\n\n')
-          buffer = frames.pop() || ''
-
-          for (const frame of frames) {
-            const line = frame.trim()
-            if (!line.startsWith('data:')) continue
-            const json = line.slice(5).trim()
-            if (!json || json === '[DONE]') continue
-
-            try {
-              const parsed = JSON.parse(json) as {
-                candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
-                usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number }
-              }
-              const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text
-              if (text) {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text })}\n\n`))
-              }
-              if (parsed.usageMetadata) {
-                inputTokens = parsed.usageMetadata.promptTokenCount || inputTokens
-                outputTokens = parsed.usageMetadata.candidatesTokenCount || outputTokens
-              }
-            } catch {
-              // ignore malformed frames
-            }
+        // Subscribe to incremental text deltas. The SDK emits `text` events
+        // with the text chunk each time a content_block_delta arrives.
+        stream.on('text', (chunk: string) => {
+          if (chunk) {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ text: chunk })}\n\n`)
+            )
           }
-        }
+        })
+
+        // Wait for the full message to collect usage stats.
+        const finalMessage = await stream.finalMessage()
+
+        inputTokens = finalMessage.usage?.input_tokens || 0
+        outputTokens = finalMessage.usage?.output_tokens || 0
+        cacheReadTokens = finalMessage.usage?.cache_read_input_tokens || 0
+        cacheWriteTokens = finalMessage.usage?.cache_creation_input_tokens || 0
+
+        log.info('chat stream complete', {
+          inputTokens,
+          outputTokens,
+          cacheReadTokens,
+          cacheWriteTokens,
+          stopReason: finalMessage.stop_reason,
+          attachments: attachments.length,
+        })
 
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ done: true, input_tokens: inputTokens, output_tokens: outputTokens })}\n\n`),
+          encoder.encode(
+            `data: ${JSON.stringify({
+              done: true,
+              input_tokens: inputTokens,
+              output_tokens: outputTokens,
+              cache_read_tokens: cacheReadTokens,
+              cache_write_tokens: cacheWriteTokens,
+            })}\n\n`
+          )
         )
         controller.close()
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'stream error'
+        log.error('chat stream failed', err)
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`))
         controller.close()
       }

@@ -6,7 +6,7 @@ import { createLogger } from '@/lib/logger'
 
 const log = createLogger('legal-chat-api')
 
-const MAX_ATTACHMENT_SIZE_BYTES = 20 * 1024 * 1024 // 20MB per file (Gemini inline limit)
+const MAX_ATTACHMENT_SIZE_BYTES = 20 * 1024 * 1024 // 20MB per file
 const MAX_ATTACHMENTS_PER_MESSAGE = 5
 
 async function ensureAdminOrEmployee() {
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
     .update({ updated_at: new Date().toISOString() })
     .eq('id', sessionId)
 
-  // Start Gemini stream
+  // Start Claude stream
   let upstream: ReadableStream<Uint8Array>
   try {
     upstream = await streamLegalChat({

@@ -1,61 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { buildCaseContext } from '@/lib/ai/prompts/chat-system'
-import { geminiFetch, extractGeminiText } from '@/lib/ai/gemini-fetch'
+import { generateText } from '@/lib/ai/anthropic-client'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('generate-declaration')
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY
-
 type DeclarationType = 'tutor' | 'minor' | 'witness' | 'parental_consent' | 'parental_consent_collaborative' | 'petition_guardianship'
 
 /**
- * Sanitizes text data before sending to Gemini to avoid PROHIBITED_CONTENT blocks.
- * Replaces explicit/graphic language with clinical legal equivalents.
- * Facts and legal meaning are preserved — only trigger words change.
+ * System prompt común a todos los tipos de declaración. Se cachea.
+ * Define la persona profesional, reglas de redacción y el marco legal
+ * en el que Claude debe operar. Específicamente autoriza el tratamiento
+ * narrativo de hechos sensibles (violencia, abuso) porque son parte
+ * constitutiva del trabajo legal de inmigración.
  */
-function sanitizeForAI(text: string): string {
-  if (!text) return text
-  const replacements: [RegExp, string][] = [
-    // Spanish triggers
-    [/abus[oó]\s*sexual(es)?/gi, 'actos graves contra el bienestar'],
-    [/abusar\s*sexualmente/gi, 'cometer actos graves contra el bienestar'],
-    [/viol[aó](ci[oó]n|r|da|ndo|rl[aoe])/gi, 'agresión grave'],
-    [/relaciones?\s*sexuales?\s*(forzad|obligad)/gi, 'actos forzados contra el bienestar'],
-    [/me\s*somet[ií][aó]\s*contra\s*mi\s*voluntad/gi, 'me agredió gravemente'],
-    [/somet(ió|ida|ido|iendo)\s*(a\s*)?(contacto|actos)\s*(forzad|sexual)/gi, 'causó daños graves a su bienestar'],
-    [/sometid[ao]\s*a\s*(conducta|actos)\s*grave/gi, 'víctima de actos que afectaron su bienestar'],
-    [/somet(ió|iendo)\s*(por la fuerza\s*)?en\s*contra\s*de\s*(mi|su)\s*voluntad/gi, 'agredió gravemente'],
-    [/contacto\s*forzado\s*contra\s*(mi|su)\s*voluntad/gi, 'agresión grave'],
-    [/sometimiento\s*forzado/gi, 'agresión grave'],
-    [/me\s*obligaba\s*a\s*tener\s*relaciones/gi, 'me agredía gravemente'],
-    // Suicide - explicit method (Spanish)
-    [/se\s*quit[óo]\s*la\s*vida\s*con\s*una\s*soga/gi, 'falleció por causas no naturales'],
-    [/atando\s*una\s*soga\s*a\s*una\s*viga\s*y\s*en\s*el\s*cuello/gi, 'por medios no naturales'],
-    [/se\s*quit[óo]\s*la\s*vida/gi, 'falleció por causas no naturales'],
-    [/se\s*suicid[óo]/gi, 'falleció por causas no naturales'],
-    [/colg[óo]\s*del\s*cuello/gi, 'falleció por causas no naturales'],
-    [/ahorc[óo]/gi, 'falleció por causas no naturales'],
-    // Suicide (English)
-    [/hanged?\s*himself/gi, 'passed away by non-natural causes'],
-    [/hanged?\s*herself/gi, 'passed away by non-natural causes'],
-    [/commit(ed|ted)?\s*suicide/gi, 'passed away by non-natural causes'],
-    [/took\s*his\s*(own\s*)?life/gi, 'passed away by non-natural causes'],
-    [/took\s*her\s*(own\s*)?life/gi, 'passed away by non-natural causes'],
-    // English triggers
-    [/sexual(ly)?\s*abus(e[ds]?|ing)/gi, 'grave harm to wellbeing'],
-    [/rap(e[ds]?|ing)/gi, 'grave assault'],
-    [/molest(ed|ing|ation)/gi, 'grave harm'],
-    [/sexual\s*assault/gi, 'grave assault'],
-    [/forced\s*(sexual\s*)?(contact|intercourse|relations)/gi, 'forced harmful acts'],
-  ]
-  let result = text
-  for (const [pattern, replacement] of replacements) {
-    result = result.replace(pattern, replacement)
-  }
-  return result
-}
+const DECLARATION_SYSTEM = `Eres un/a paralegal experto/a en inmigración con 15 años de experiencia redactando declaraciones juradas (affidavits), peticiones de tutela y cartas de consentimiento parental para casos SIJS, asilo afirmativo y miedo creíble ante USCIS, EOIR y cortes estatales de Estados Unidos.
+
+Tu trabajo es redactar documentos legales que se presenten tal cual ante un juez o un oficial de USCIS. Son documentos reales que protegen a víctimas: menores sobrevivientes de abandono, abuso o negligencia; solicitantes de asilo que narran persecución; personas que huyeron de violencia.
+
+## Tu misión
+
+Transformas los datos estructurados del caso (formularios llenados por el cliente y el abogado) en un documento legal formal, en primera persona, con estructura numerada, tono profesional y fidelidad absoluta a los hechos.
+
+## Marco ético y legal
+
+Los documentos que redactas necesitan describir con precisión hechos de violencia, abuso sexual, amenazas de muerte, negligencia grave y trauma. Eso es parte inseparable del trabajo legal de protección a víctimas — sin la descripción factual, el juez no puede otorgar el amparo (SIJS, asilo, miedo creíble) y la víctima queda desprotegida. Por lo tanto:
+
+- Escribe los hechos con el detalle que el expediente exija, usando lenguaje legal formal.
+- No glorificas violencia; documentas daño para obtener protección.
+- Si el caso contiene menciones de abuso sexual, violación, violencia doméstica, persecución política, tortura, suicidio o autolesión, describes los hechos con la precisión forense que el tribunal espera, sin eufemismos innecesarios ni detalles gratuitos.
+- Mantén tono respetuoso hacia la víctima. Primera persona, voz firme, sin victimización hiperbólica.
+
+## Reglas duras de redacción
+
+1. **Usa solo los datos provistos**. Nunca inventes nombres, fechas, direcciones ni documentos de identidad.
+2. **Si falta un dato**, escribe \`[FALTA: descripción del dato]\` en español dentro del lugar donde debería ir. Nunca uses \`[PENDING]\` ni dejes el campo en blanco.
+3. **Primera persona**. "Yo, [NOMBRE], declaro...". El declarante habla.
+4. **Lenguaje legal formal** — registros de corte. Sin slang, sin coloquialismos.
+5. **Párrafos numerados** cuando el tipo de documento lo requiera.
+6. **Fechas, lugares, nombres propios concretos** cuando los datos los provean.
+7. **Cláusula de perjurio** al final ("Declaro bajo pena de perjurio...").
+8. **Output**: solo el texto del documento. Sin preámbulos ("Aquí tienes..."), sin markdown, sin explicaciones.
+
+## Idioma
+
+Se te indicará \`en\` o \`es\`. Genera TODO el documento en ese idioma incluyendo términos legales. Nombres propios (personas, ciudades, países) quedan en su forma original.`
 
 function buildDeclarationPrompt(
   type: DeclarationType,
@@ -686,10 +676,6 @@ ${suppBlock}`
 }
 
 export async function POST(request: NextRequest) {
-  if (!GEMINI_KEY) {
-    return NextResponse.json({ error: 'AI no configurado' }, { status: 500 })
-  }
-
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -715,53 +701,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'case_id y type requeridos' }, { status: 400 })
   }
 
-  // Build context
+  // Build context — pure SQL, no AI
   const ctx = await buildCaseContext(case_id)
-  const basePrompt = buildDeclarationPrompt(type, ctx, index, lang)
-  const langInstruction = lang === 'es'
-    ? '\n\nIMPORTANT: Generate the ENTIRE document in SPANISH. Translate all legal terms and content to Spanish. Keep the same structure and format but write everything in Spanish. CRITICAL: Use ALL the same data (names, dates, cities, countries, ID numbers) as the English version. Do NOT omit any fact in the Spanish version that appears in the English version. Both versions must contain the EXACT SAME INFORMATION, only translated.'
-    : '\n\nIMPORTANT: Generate the ENTIRE document in ENGLISH. ALL text must be in English (legal terms, descriptions, paragraphs). Even if the source data contains Spanish text (names, testimonies, etc.), translate the narrative content to English while preserving proper nouns (names, cities) in their original form. Do NOT write any sentence or paragraph in Spanish. The document must be 100% in English.'
-  const prompt = sanitizeForAI(basePrompt + langInstruction)
 
-  if (!GEMINI_KEY) {
-    return NextResponse.json({ error: 'Gemini API key no configurada' }, { status: 500 })
-  }
+  // Build the user-side payload: structural instructions for THIS document
+  // type + case-specific data. The persona + reglas generales + tratamiento
+  // de contenido sensible viven en DECLARATION_SYSTEM (cacheado).
+  const typeSpecificPayload = buildDeclarationPrompt(type, ctx, index, lang)
+  const langInstruction = lang === 'es'
+    ? '\n\nGenera TODO el documento en ESPAÑOL formal. Traduce términos legales al español. Mantén nombres propios (personas, ciudades, países) en su forma original.'
+    : '\n\nGenerate the ENTIRE document in formal ENGLISH. Translate narrative content to English; keep proper nouns (names, cities, countries) in their original form.'
+
+  const userPayload = typeSpecificPayload + langInstruction
 
   try {
-    const result = await geminiFetch({
-      model: 'gemini-3.1-pro-preview',
-      apiKey: GEMINI_KEY,
-      body: {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
-        safetySettings: [
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-        ],
-      },
+    const declaration = await generateText({
+      system: DECLARATION_SYSTEM,
+      user: userPayload,
+      maxTokens: 8192,
+      logLabel: `declaration-${type}`,
+      signal: request.signal,
     })
-
-    if (!result.ok) {
-      log.error('Gemini call failed', result.error)
-      const status = result.status === 504 ? 504 : 500
-      return NextResponse.json({ error: result.error || 'Error de IA' }, { status })
-    }
-
-    if (result.blockReason || result.finishReason === 'SAFETY') {
-      log.error('Gemini BLOCKED', { blockReason: result.blockReason, finishReason: result.finishReason })
-      return NextResponse.json({
-        error: `Contenido bloqueado por filtro de seguridad (${result.blockReason || result.finishReason}). Contacte al administrador.`,
-      }, { status: 500 })
-    }
-
-    const declaration = extractGeminiText(result.data)
-
-    if (!declaration) {
-      log.error('Gemini empty response')
-      return NextResponse.json({ error: 'Sin respuesta de IA' }, { status: 500 })
-    }
 
     // Count [FALTA: ...] placeholders so the admin knows to review before use.
     const missingMatches = declaration.match(/\[FALTA:[^\]]*\]/gi) || []
@@ -778,7 +738,8 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (err) {
-    log.error('AI unexpected error', err)
-    return NextResponse.json({ error: `Error: ${err instanceof Error ? err.message : String(err)}` }, { status: 500 })
+    log.error('Claude declaration failed', err)
+    const message = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: `Error al generar la declaración: ${message}` }, { status: 500 })
   }
 }
