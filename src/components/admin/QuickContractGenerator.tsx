@@ -109,27 +109,26 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
   const [customMonthlyAmount, setCustomMonthlyAmount] = useState<string>('')
   const [useCustomMonthly, setUseCustomMonthly] = useState(false)
 
-  // Auto-fill city + state from US ZIP via zippopotam.us (free, no API key).
+  // Auto-fill city + state from US ZIP via proxy server-side (evita CSP).
   // Runs 350ms after the last keystroke to avoid spamming requests.
   useEffect(() => {
     const zip = contractForm.clientZip.trim()
     if (!/^\d{5}$/.test(zip)) {
-      setZipLookup(zip.length === 0 ? 'idle' : 'idle')
+      setZipLookup('idle')
       return
     }
     setZipLookup('loading')
     const ctrl = new AbortController()
     const tid = setTimeout(async () => {
       try {
-        const res = await fetch(`https://api.zippopotam.us/us/${zip}`, { signal: ctrl.signal })
+        const res = await fetch(`/api/admin/zip-lookup?zip=${zip}`, { signal: ctrl.signal })
         if (!res.ok) { setZipLookup('not-found'); return }
         const data = await res.json()
-        const place = data?.places?.[0]
-        if (!place) { setZipLookup('not-found'); return }
+        if (!data?.city || !data?.state) { setZipLookup('not-found'); return }
         setContractForm(prev => ({
           ...prev,
-          clientCity: String(place['place name'] || ''),
-          clientState: String(place['state abbreviation'] || ''),
+          clientCity: String(data.city),
+          clientState: String(data.state),
         }))
         setZipLookup('found')
       } catch (err: any) {
