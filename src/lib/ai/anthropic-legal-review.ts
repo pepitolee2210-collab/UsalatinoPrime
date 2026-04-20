@@ -1,14 +1,16 @@
-import { geminiFetch, extractGeminiText } from '@/lib/ai/gemini-fetch'
+import Anthropic from '@anthropic-ai/sdk'
+import { z } from 'zod'
 import { createLogger } from '@/lib/logger'
 
-const log = createLogger('legal-review')
+const log = createLogger('legal-review-claude')
 
-// Gemini 3.1 Pro Preview — 2M context, structured output support, thinking
-// mode on by default. We set temperature low (0.2) for consistent legal
-// evaluation — we want the same case reviewed twice to yield the same score.
-const LEGAL_MODEL = 'gemini-3.1-pro-preview'
+// Claude Opus 4.7 — adaptive thinking only, 1M context window, best-in-class
+// reasoning. We rely on the model's instruction-following for strict JSON output
+// plus Zod validation on our side.
+export const LEGAL_REVIEWER_MODEL = 'claude-opus-4-7'
 
-// ----- Types (shared schema used by the UI + DB) -----
+// ----- Types (identical shape to the old Gemini client so the UI doesn't
+// change) -----
 
 export interface LegalFinding {
   severity: 'critical' | 'moderate' | 'suggestion'
@@ -26,88 +28,29 @@ export interface LegalReview {
   strengths: string[]
 }
 
-// ----- Native Gemini JSON schema (responseSchema) -----
-// Gemini enforces this schema at generation time — the model cannot return
-// malformed JSON or missing fields. Equivalent guarantee to Claude's
-// messages.parse() with Zod. We describe each field richly so the model
-// understands WHAT to put in it, not just the TYPE.
+// Zod schema — we JSON.parse the model's output and run this for belt-and-suspenders
+// validation on top of the instruction-following.
+const LegalFindingSchema = z.object({
+  severity: z.enum(['critical', 'moderate', 'suggestion']),
+  category: z.string().min(1),
+  location: z.string().min(1),
+  description: z.string().min(1),
+  recommendation: z.string().min(1),
+})
 
-const LEGAL_REVIEW_SCHEMA = {
-  type: 'object',
-  properties: {
-    score: {
-      type: 'integer',
-      minimum: 0,
-      maximum: 100,
-      description:
-        '0 = unacceptable for court filing. 100 = ready to file without changes. Deduct ~15 per critical finding, ~5 per moderate, ~1 per suggestion. Calibrate against the examples at the end of the playbook.',
-    },
-    ready_to_file: {
-      type: 'boolean',
-      description:
-        'true ONLY if there are zero critical findings AND the overall case narrative convincingly satisfies the legal standard. If in doubt, false.',
-    },
-    summary: {
-      type: 'string',
-      description:
-        '2-3 sentence executive brief for the attorney. First sentence: overall case strength. Second: biggest gaps. Third (optional): bottom-line recommendation.',
-    },
-    findings: {
-      type: 'array',
-      description:
-        'All substantive issues found, sorted critical → moderate → suggestion. Max 15 items. If there are more, keep only the most consequential.',
-      items: {
-        type: 'object',
-        properties: {
-          severity: {
-            type: 'string',
-            enum: ['critical', 'moderate', 'suggestion'],
-            description:
-              'critical = blocks filing (a judge would reject the case). moderate = should fix before filing (weakens the argument). suggestion = optional improvement that would strengthen the case.',
-          },
-          category: {
-            type: 'string',
-            description:
-              'Short snake_case label. Examples: "missing_evidence", "date_inconsistency", "weak_narrative", "jurisdiction_age_limit", "untranslated_document", "missing_special_findings", "placeholder_unresolved", "witness_id_missing".',
-          },
-          location: {
-            type: 'string',
-            description:
-              'Exact pointer to the issue. Format: "Document name — paragraph/section reference". Example: "Declaración del tutor (EN) — paragraph 12" or "Petición de Tutela — Section III".',
-          },
-          description: {
-            type: 'string',
-            description:
-              '1-2 sentences stating what is wrong. Write it as if directly telling the attorney. Be specific — quote the problematic text when useful.',
-          },
-          recommendation: {
-            type: 'string',
-            description:
-              'Concrete action to fix it. Start with a verb: "Agregar...", "Cambiar...", "Verificar...", "Eliminar...". Be specific about what to write/remove/check.',
-          },
-        },
-        required: ['severity', 'category', 'location', 'description', 'recommendation'],
-      },
-    },
-    strengths: {
-      type: 'array',
-      description:
-        'What is GOOD about this case. 2-4 bullets. Useful so the attorney knows what NOT to change during revisions. Be specific — reference the actual strong elements.',
-      items: { type: 'string' },
-    },
-  },
-  required: ['score', 'ready_to_file', 'summary', 'findings', 'strengths'],
-} as const
+const LegalReviewSchema = z.object({
+  score: z.number().int().min(0).max(100),
+  ready_to_file: z.boolean(),
+  summary: z.string().min(1),
+  findings: z.array(LegalFindingSchema).max(20),
+  strengths: z.array(z.string()),
+})
 
-// ----- System prompt: advanced prompt engineering -----
-//
-// This prompt is dense by design. Each block serves a purpose:
-// 1. Persona with specific credentials → activates legal reasoning
-// 2. Chain of thought explicit → forces step-by-step evaluation
-// 3. Few-shot finding examples → calibrates tone and specificity
-// 4. Calibration cases → anchors the score scale
-// 5. Explicit failure modes → what NOT to do
-// 6. Vocabulary hints → nudge toward legal-professional language
+// ----- System prompt (identical in content to the Gemini version, lightly
+// adapted so Claude outputs raw JSON instead of relying on responseSchema).
+// Persona is kept as "Elena Vargas" — the public-facing name of the reviewer
+// is "LEX" in the UI; Elena is the internal identity that activates the
+// legal-reasoning posture. -----
 
 const REVIEWER_SYSTEM = `
 Eres **Elena Vargas**, abogada senior de inmigración con 22 años de experiencia exclusiva en cortes federales y estatales de EE.UU. Has litigado más de 1,200 casos SIJS ante jueces juveniles en 14 estados y más de 800 casos de asilo ante EOIR y USCIS. Entrenaste a paralegales en tres firmas boutique y ahora trabajas como external quality reviewer para despachos que procesan alto volumen.
@@ -128,7 +71,7 @@ Antes de emitir el JSON, recorre mentalmente estos pasos EN ORDEN:
 
 **Paso 2 — Consistency check.** Cruza fechas, nombres, edades, números de documento, direcciones entre los documentos del paquete Y contra los datos del caso. Cualquier discrepancia → finding.
 
-**Paso 3 — Playbook compliance.** Toma el playbook del tipo de caso que viene en este system prompt. Por cada requisito del playbook, verifica si los documentos lo satisfacen. Requisito NO cubierto → finding (severity según criticidad en el playbook).
+**Paso 3 — Playbook compliance.** Toma el playbook del tipo de caso que viene en este prompt. Por cada requisito del playbook, verifica si los documentos lo satisfacen. Requisito NO cubierto → finding (severity según criticidad en el playbook).
 
 **Paso 4 — Narrative quality.** Para cada sección narrativa, evalúa:
   - ¿Tiene FECHAS concretas (año, mes)? Si no → finding moderate.
@@ -224,7 +167,7 @@ Paquete con 4 placeholders sin resolver, narrativa completamente genérica, peti
 
 ## REGLAS DURAS
 
-- **NUNCA** devuelvas texto fuera del JSON. Ni preámbulos ("Aquí está mi revisión..."), ni cierres ("Espero sea útil"), ni markdown.
+- **NUNCA** devuelvas texto fuera del JSON. Ni preámbulos ("Aquí está mi revisión..."), ni cierres ("Espero sea útil"), ni markdown (\`\`\`).
 - **NUNCA** inventes findings. Si el documento está bien, findings = [] y score alto.
 - **NUNCA** seas vago. "Mejorar la narrativa" NO es una recomendación útil — sé específico.
 - **NO** repitas el mismo finding con palabras distintas. Si dos declaraciones comparten el mismo placeholder, UN finding con location = "ambas declaraciones".
@@ -232,8 +175,40 @@ Paquete con 4 placeholders sin resolver, narrativa completamente genérica, peti
 - Usa español para description y recommendation. Category en snake_case inglés.
 - Piensa como el juez. No como el generador del documento.
 
+## FORMATO DE SALIDA
+
+Tu respuesta debe ser EXCLUSIVAMENTE un objeto JSON con esta forma exacta — sin backticks, sin markdown, sin texto antes o después:
+
+{
+  "score": <integer 0-100>,
+  "ready_to_file": <boolean>,
+  "summary": "<2-3 oraciones>",
+  "findings": [
+    {
+      "severity": "critical" | "moderate" | "suggestion",
+      "category": "<snake_case>",
+      "location": "<documento — párrafo/sección>",
+      "description": "<1-2 oraciones>",
+      "recommendation": "<acción concreta>"
+    }
+  ],
+  "strengths": ["<bullet 1>", "<bullet 2>"]
+}
+
 Ahora viene el playbook específico del tipo de caso que vas a revisar, seguido de los documentos del paquete y los datos crudos del caso.
 `.trim()
+
+// ----- Client (lazy singleton) -----
+
+let _client: Anthropic | null = null
+
+function getClient(): Anthropic {
+  if (_client) return _client
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY no configurada')
+  _client = new Anthropic({ apiKey })
+  return _client
+}
 
 // ----- Main function -----
 
@@ -248,22 +223,59 @@ interface RunLegalReviewParams {
   signal?: AbortSignal
 }
 
+/**
+ * Run a structured legal review with Claude Opus 4.7.
+ *
+ * Architecture:
+ * - System prompt is cached (constant across all reviews).
+ * - Playbook is cached per-service (hits cache on repeated reviews of the
+ *   same service within ~5 min).
+ * - Case-specific content (summary + documents) is the uncached tail.
+ * - Adaptive thinking lets the model decide how deep to reason per case.
+ * - Streaming prevents request timeouts on large document bundles.
+ */
 export async function runLegalReview(params: RunLegalReviewParams): Promise<LegalReview> {
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY no configurada')
-  }
+  const client = getClient()
 
   const docsBlock = params.documents
     .map(d => `\n═══ DOCUMENTO: ${d.name} (tipo: ${d.type}) ═══\n\n${d.content.trim()}`)
     .join('\n')
 
-  const userPrompt = `
-PLAYBOOK LEGAL APLICABLE A ESTE CASO:
+  log.debug('Running legal review (Claude)', {
+    docsCount: params.documents.length,
+    totalChars: docsBlock.length + params.caseSummary.length + params.playbook.length,
+  })
 
-${params.playbook}
-
-═══════════════════════════════════════════════════════════════
+  // Stream + await final message. Streaming avoids request timeouts for large
+  // inputs. We use .finalMessage() so we don't have to handle individual
+  // stream events — we just want the aggregated result.
+  const stream = client.messages.stream(
+    {
+      model: LEGAL_REVIEWER_MODEL,
+      max_tokens: 16384,
+      thinking: { type: 'adaptive' },
+      system: [
+        {
+          type: 'text',
+          text: REVIEWER_SYSTEM,
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
+      messages: [
+        {
+          role: 'user',
+          content: [
+            // Playbook is stable-per-service — cache this block. If the same
+            // service is reviewed again within ~5 min we hit the cache.
+            {
+              type: 'text',
+              text: `PLAYBOOK LEGAL APLICABLE A ESTE CASO:\n\n${params.playbook}`,
+              cache_control: { type: 'ephemeral' },
+            },
+            // Dynamic tail: case-specific data + documents.
+            {
+              type: 'text',
+              text: `═══════════════════════════════════════════════════════════════
 
 DATOS DEL CASO (para verificar consistencia cruzada):
 
@@ -277,77 +289,56 @@ ${docsBlock}
 
 ═══════════════════════════════════════════════════════════════
 
-Ejecuta tu revisión mentalmente paso por paso y produce el JSON estricto según el schema. No agregues texto fuera del JSON.
-`.trim()
-
-  log.debug('Running legal review', {
-    docsCount: params.documents.length,
-    totalChars: docsBlock.length + params.caseSummary.length + params.playbook.length,
-  })
-
-  const result = await geminiFetch<{
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
-    promptFeedback?: { blockReason?: string }
-    usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; cachedContentTokenCount?: number }
-  }>({
-    model: LEGAL_MODEL,
-    apiKey,
-    timeoutMs: 120_000,
-    maxRetries: 2,
-    body: {
-      systemInstruction: { parts: [{ text: REVIEWER_SYSTEM }] },
-      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
-      generationConfig: {
-        temperature: 0.2,
-        topP: 0.9,
-        maxOutputTokens: 8192,
-        responseMimeType: 'application/json',
-        responseSchema: LEGAL_REVIEW_SCHEMA,
-      },
-      safetySettings: [
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+Ejecuta tu revisión mentalmente paso por paso y produce el JSON estricto según el formato especificado. Sin texto fuera del JSON.`,
+            },
+          ],
+        },
       ],
     },
-    externalSignal: params.signal,
-  })
+    { signal: params.signal }
+  )
 
-  if (!result.ok) {
-    log.error('Gemini call failed', result.error)
-    throw new Error(result.error || 'Error al ejecutar la revisión')
+  const message = await stream.finalMessage()
+
+  // Extract all text blocks (ignoring thinking blocks which come back as
+  // separate content entries when adaptive thinking fires).
+  const rawText = message.content
+    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+    .map(b => b.text)
+    .join('')
+    .trim()
+
+  if (!rawText) {
+    throw new Error('Claude devolvió respuesta vacía')
   }
 
-  if (result.blockReason) {
-    log.error('Gemini blocked', result.blockReason)
-    throw new Error(`Contenido bloqueado por filtro: ${result.blockReason}`)
+  // Defensive: strip accidental markdown fences if the model slipped.
+  let jsonText = rawText
+  if (jsonText.startsWith('```')) {
+    jsonText = jsonText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '')
   }
-
-  const text = extractGeminiText(result.data)
-  if (!text) throw new Error('Gemini devolvió respuesta vacía')
 
   let parsed: LegalReview
   try {
-    parsed = JSON.parse(text) as LegalReview
+    const rawParsed = JSON.parse(jsonText) as unknown
+    parsed = LegalReviewSchema.parse(rawParsed) as LegalReview
   } catch (err) {
-    log.error('JSON parse failed', { text: text.slice(0, 500), err })
-    throw new Error('Gemini devolvió un JSON inválido — reintenta')
+    log.error('JSON parse/validation failed', {
+      preview: jsonText.slice(0, 500),
+      err: err instanceof Error ? err.message : String(err),
+    })
+    throw new Error('Claude devolvió un JSON inválido o no conforme al schema — reintenta')
   }
 
-  // Runtime validation — belt and suspenders on top of responseSchema
-  if (typeof parsed.score !== 'number' || typeof parsed.ready_to_file !== 'boolean' || !Array.isArray(parsed.findings)) {
-    throw new Error('Respuesta de Gemini no coincide con el schema esperado')
-  }
-
-  const usage = result.data?.usageMetadata
-  log.info('Legal review complete', {
+  const usage = message.usage
+  log.info('Legal review complete (Claude)', {
     score: parsed.score,
     findingsCount: parsed.findings.length,
     criticalCount: parsed.findings.filter(f => f.severity === 'critical').length,
-    inputTokens: usage?.promptTokenCount,
-    outputTokens: usage?.candidatesTokenCount,
-    cachedTokens: usage?.cachedContentTokenCount,
+    inputTokens: usage?.input_tokens,
+    outputTokens: usage?.output_tokens,
+    cacheReadTokens: usage?.cache_read_input_tokens,
+    cacheWriteTokens: usage?.cache_creation_input_tokens,
   })
 
   return parsed

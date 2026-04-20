@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { runLegalReview } from '@/lib/ai/legal-review-client'
+import { runLegalReview, LEGAL_REVIEWER_MODEL } from '@/lib/ai/anthropic-legal-review'
 import { getPlaybookForService, getPlaybookName } from '@/lib/ai/legal-playbooks'
 import { createLogger } from '@/lib/logger'
 
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
       case_id: caseId,
       service_slug: serviceInfo?.slug || null,
       playbook_name: playbookName,
-      reviewer_model: 'gemini-3.1-pro-preview',
+      reviewer_model: LEGAL_REVIEWER_MODEL,
       score: review.score,
       ready_to_file: review.ready_to_file,
       summary: review.summary,
