@@ -23,7 +23,7 @@ export async function GET() {
 
   // The /admin/citas view excludes voice-agent bookings, so the dashboard
   // counter here does the same — leads show up in `prospectosPending` instead.
-  const [citasRes, visaRes, asiloRes, ajusteRes, renunciaRes, cambioRes, agendaRes, prospectosRes] = await Promise.all([
+  const [citasRes, visaRes, asiloRes, ajusteRes, renunciaRes, cambioRes, agendaRes, prospectosRes, whatsappRes] = await Promise.all([
     supabase
       .from('appointments')
       .select('*', { count: 'exact', head: true })
@@ -62,6 +62,11 @@ export async function GET() {
       .eq('source', 'voice-agent')
       .eq('status', 'scheduled')
       .gte('scheduled_at', todayStart.toISOString()),
+    // Active WhatsApp SIJS conversations (still in the filter, not yet closed).
+    supabase
+      .from('whatsapp_conversations')
+      .select('*', { count: 'exact', head: true })
+      .in('status', ['active', 'filtered_in']),
   ])
 
   const formsPending = (visaRes.count || 0) + (asiloRes.count || 0) + (ajusteRes.count || 0) + (renunciaRes.count || 0) + (cambioRes.count || 0)
@@ -71,5 +76,6 @@ export async function GET() {
     formsPending,
     agendaPending: agendaRes.count || 0,
     prospectosPending: prospectosRes.count || 0,
+    whatsappActive: whatsappRes.count || 0,
   })
 }
