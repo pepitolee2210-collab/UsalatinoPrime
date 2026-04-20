@@ -29,6 +29,11 @@ interface ContractPDFInput {
   clientPassport: string
   clientDOB: string
   clientSignature: string
+  clientAddress?: string
+  clientAddressUnit?: string
+  clientCity?: string
+  clientState?: string
+  clientZip?: string
   minors?: MinorData[]
   objetoDelContrato: string
   etapas: string[]
@@ -68,6 +73,7 @@ export function generateContractPDF(input: ContractPDFInput): jsPDF {
   const {
     serviceName, totalPrice, installments, installmentCount = 10,
     clientFullName, clientPassport, clientDOB, clientSignature,
+    clientAddress, clientAddressUnit, clientCity, clientState, clientZip,
     minors, objetoDelContrato, etapas, addonServices,
     initialPayment, paymentSchedule, clientSignatureImage,
   } = input
@@ -190,6 +196,15 @@ export function generateContractPDF(input: ContractPDFInput): jsPDF {
   fieldLine('Nombre completo:', clientFullName)
   fieldLine('Pasaporte:', clientPassport)
   fieldLine('Fecha de nacimiento:', formatDateSpanish(clientDOB))
+  if (clientAddress) {
+    const streetLine = clientAddressUnit
+      ? `${clientAddress}, ${clientAddressUnit}`
+      : clientAddress
+    fieldLine('Dirección:', streetLine)
+    const cityState = [clientCity, clientState].filter(Boolean).join(', ')
+    const cityStateZip = cityState + (clientZip ? ` ${clientZip}` : '')
+    if (cityStateZip) fieldLine('Ciudad, estado, ZIP:', cityStateZip)
+  }
   y += 4
 
   // Minors (if applicable)

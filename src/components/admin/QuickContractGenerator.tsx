@@ -11,6 +11,7 @@ import { getInstallmentCount } from '@/lib/contracts'
 import {
   FileText, PenLine, Download, Plus, X, ChevronDown,
   User, Stamp, Calendar, Baby, PackagePlus, DollarSign, Hash, CalendarClock, Save, Phone,
+  MapPin, Building2, Hash as HashIcon, Loader2, CheckCircle2,
 } from 'lucide-react'
 
 interface MinorData {
@@ -32,7 +33,14 @@ interface ContractForm {
   clientDOB: string
   clientSignature: string
   clientPhone: string
+  clientAddress: string
+  clientAddressUnit: string
+  clientCity: string
+  clientState: string
+  clientZip: string
 }
+
+type ZipLookupState = 'idle' | 'loading' | 'found' | 'not-found'
 
 const SERVICE_OPTIONS = [
   { slug: 'asilo-afirmativo', label: 'Asilo Afirmativo' },
@@ -71,7 +79,13 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
     clientDOB: '',
     clientSignature: '',
     clientPhone: '',
+    clientAddress: '',
+    clientAddressUnit: '',
+    clientCity: '',
+    clientState: '',
+    clientZip: '',
   })
+  const [zipLookup, setZipLookup] = useState<ZipLookupState>('idle')
   const [minors, setMinors] = useState<MinorData[]>([emptyMinor()])
   const [generating, setGenerating] = useState(false)
   const [template, setTemplate] = useState<any>(null)
@@ -93,6 +107,36 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
   )
   const [customMonthlyAmount, setCustomMonthlyAmount] = useState<string>('')
   const [useCustomMonthly, setUseCustomMonthly] = useState(false)
+
+  // Auto-fill city + state from US ZIP via zippopotam.us (free, no API key).
+  // Runs 350ms after the last keystroke to avoid spamming requests.
+  useEffect(() => {
+    const zip = contractForm.clientZip.trim()
+    if (!/^\d{5}$/.test(zip)) {
+      setZipLookup(zip.length === 0 ? 'idle' : 'idle')
+      return
+    }
+    setZipLookup('loading')
+    const ctrl = new AbortController()
+    const tid = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://api.zippopotam.us/us/${zip}`, { signal: ctrl.signal })
+        if (!res.ok) { setZipLookup('not-found'); return }
+        const data = await res.json()
+        const place = data?.places?.[0]
+        if (!place) { setZipLookup('not-found'); return }
+        setContractForm(prev => ({
+          ...prev,
+          clientCity: String(place['place name'] || ''),
+          clientState: String(place['state abbreviation'] || ''),
+        }))
+        setZipLookup('found')
+      } catch (err: any) {
+        if (err?.name !== 'AbortError') setZipLookup('not-found')
+      }
+    }, 350)
+    return () => { clearTimeout(tid); ctrl.abort() }
+  }, [contractForm.clientZip])
 
   // Pre-fill form fields when converting a voice-agent prospect into a client.
   // Runs once on mount if we aren't editing an existing contract.
@@ -126,6 +170,11 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
         clientDOB: editData.client_dob || '',
         clientSignature: editData.client_signature || '',
         clientPhone: editData.client_phone || '',
+        clientAddress: editData.client_address || '',
+        clientAddressUnit: editData.client_address_unit || '',
+        clientCity: editData.client_city || '',
+        clientState: editData.client_state || '',
+        clientZip: editData.client_zip || '',
       })
       setMinors(
         editData.minors?.length > 0
@@ -305,6 +354,22 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
       toast.error('Ingrese un teléfono válido del cliente')
       return
     }
+    if (!contractForm.clientAddress.trim()) {
+      toast.error('Ingrese la dirección del cliente')
+      return
+    }
+    if (!contractForm.clientCity.trim()) {
+      toast.error('Ingrese la ciudad del cliente')
+      return
+    }
+    if (!contractForm.clientState.trim()) {
+      toast.error('Ingrese el estado del cliente')
+      return
+    }
+    if (!/^\d{5}$/.test(contractForm.clientZip.trim())) {
+      toast.error('Ingrese un ZIP válido de 5 dígitos')
+      return
+    }
     if (template.requiresMinor && minors.some(m => !m.fullName.trim())) {
       toast.error('Ingrese el nombre de todos los menores')
       return
@@ -339,6 +404,11 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
         client_dob: contractForm.clientDOB,
         client_signature: contractForm.clientSignature.trim(),
         client_phone: contractForm.clientPhone.trim(),
+        client_address: contractForm.clientAddress.trim(),
+        client_address_unit: contractForm.clientAddressUnit.trim() || null,
+        client_city: contractForm.clientCity.trim(),
+        client_state: contractForm.clientState.trim().toUpperCase(),
+        client_zip: contractForm.clientZip.trim(),
         minors: template.requiresMinor
           ? minors.map(m => ({
               fullName: m.fullName.trim(),
@@ -425,6 +495,11 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
         clientPassport: contractForm.clientPassport.trim(),
         clientDOB: contractForm.clientDOB,
         clientSignature: contractForm.clientSignature.trim(),
+        clientAddress: contractForm.clientAddress.trim(),
+        clientAddressUnit: contractForm.clientAddressUnit.trim() || undefined,
+        clientCity: contractForm.clientCity.trim(),
+        clientState: contractForm.clientState.trim().toUpperCase(),
+        clientZip: contractForm.clientZip.trim(),
         objetoDelContrato: template.objetoDelContrato,
         etapas: template.etapas,
         addonServices: addonServices.length > 0 ? addonServices : undefined,
@@ -465,7 +540,11 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
     setSelectedSlug('')
     setSelectedVariantIndex(0)
     setTemplate(null)
-    setContractForm({ clientFullName: '', clientPassport: '', clientDOB: '', clientSignature: '', clientPhone: '' })
+    setContractForm({
+      clientFullName: '', clientPassport: '', clientDOB: '', clientSignature: '', clientPhone: '',
+      clientAddress: '', clientAddressUnit: '', clientCity: '', clientState: '', clientZip: '',
+    })
+    setZipLookup('idle')
     setMinors([emptyMinor()])
     setAddons([])
     setShowAddonSelector(false)
@@ -841,6 +920,100 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                   onChange={(e) => setContractForm({ ...contractForm, clientSignature: e.target.value })}
                   className="h-10 rounded-lg font-serif italic"
                 />
+              </div>
+            </div>
+
+            {/* Address section — USA only. City + state auto-fill from ZIP. */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-[#002855]/50" />
+                <span className="text-sm font-semibold text-[#002855]/70">Dirección del cliente (USA)</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-sm font-medium text-[#002855] flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                    Dirección <span className="text-[#F2A900]">*</span>
+                  </Label>
+                  <Input
+                    placeholder="Ej: 1234 Pine Street"
+                    value={contractForm.clientAddress}
+                    onChange={(e) => setContractForm({ ...contractForm, clientAddress: e.target.value })}
+                    className="h-10 rounded-lg"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium text-[#002855] flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-gray-400" />
+                    Apto / Unidad
+                  </Label>
+                  <Input
+                    placeholder="Opcional — Ej: Apt 4B"
+                    value={contractForm.clientAddressUnit}
+                    onChange={(e) => setContractForm({ ...contractForm, clientAddressUnit: e.target.value })}
+                    className="h-10 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium text-[#002855] flex items-center gap-1.5">
+                    <HashIcon className="w-3.5 h-3.5 text-gray-400" />
+                    Código Postal (ZIP) <span className="text-[#F2A900]">*</span>
+                    {zipLookup === 'loading' && (
+                      <Loader2 className="w-3 h-3 text-[#F2A900] animate-spin ml-auto" />
+                    )}
+                    {zipLookup === 'found' && (
+                      <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold text-green-600">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Auto-completado
+                      </span>
+                    )}
+                    {zipLookup === 'not-found' && (
+                      <span className="ml-auto text-[10px] font-semibold text-red-500">
+                        ZIP no encontrado
+                      </span>
+                    )}
+                  </Label>
+                  <Input
+                    placeholder="Ej: 84101"
+                    value={contractForm.clientZip}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/\D/g, '').slice(0, 5)
+                      setContractForm({ ...contractForm, clientZip: cleaned })
+                    }}
+                    inputMode="numeric"
+                    maxLength={5}
+                    className="h-10 rounded-lg tabular-nums"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium text-[#002855] flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-gray-400" />
+                    Ciudad <span className="text-[#F2A900]">*</span>
+                  </Label>
+                  <Input
+                    placeholder="Se autocompleta con ZIP"
+                    value={contractForm.clientCity}
+                    onChange={(e) => setContractForm({ ...contractForm, clientCity: e.target.value })}
+                    className="h-10 rounded-lg"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium text-[#002855] flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                    Estado <span className="text-[#F2A900]">*</span>
+                  </Label>
+                  <Input
+                    placeholder="UT"
+                    value={contractForm.clientState}
+                    onChange={(e) => setContractForm({ ...contractForm, clientState: e.target.value.toUpperCase().slice(0, 2) })}
+                    maxLength={2}
+                    className="h-10 rounded-lg uppercase font-mono"
+                  />
+                </div>
               </div>
             </div>
 
