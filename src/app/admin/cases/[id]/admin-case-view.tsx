@@ -14,7 +14,7 @@ import { CaseFormViewer } from '@/components/admin/CaseFormViewer'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { CheckCircle, AlertCircle, FileText, Download, ArrowLeft, Loader2, DollarSign, CreditCard, Plus, ShieldCheck, ShieldOff, Upload, Eye, Pencil, Trash2, MessageSquare, Briefcase, Send, UserPlus } from 'lucide-react'
+import { CheckCircle, AlertCircle, FileText, Download, ArrowLeft, Loader2, DollarSign, CreditCard, Plus, ShieldCheck, ShieldOff, Upload, Eye, Pencil, Trash2, MessageSquare, Briefcase, Send, UserPlus, Scale } from 'lucide-react'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -27,6 +27,7 @@ import { ClientStoryReview } from './client-story-review'
 import { I589Review } from './i589-review'
 import { DeclarationGenerator } from './declaration-generator'
 import { ParentalConsentGenerator } from './parental-consent-generator'
+import { LegalReviewer } from './legal-reviewer'
 import { SupplementaryDataForm } from './supplementary-data-form'
 import { CasePipeline } from '@/components/case-pipeline'
 import { uploadDirect } from '@/lib/upload-direct'
@@ -467,6 +468,10 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               )}
             </TabsTrigger>
           )}
+          <TabsTrigger value="legal-review" className="flex items-center gap-1.5">
+            <Scale className="w-3.5 h-3.5 text-[#F2A900]" />
+            Revisión Legal
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="payments" className="mt-4">
@@ -1035,6 +1040,11 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
             <I360Review submissions={(aiSubmissions || []).filter((s: any) => s.form_type === 'i360_sijs')} onDownload={handleDownloadI360} downloading={i360Loading} />
           </TabsContent>
         )}
+
+        {/* Legal Review — super reviewer powered by Claude Opus 4.7 */}
+        <TabsContent value="legal-review" className="mt-4">
+          <LegalReviewer caseId={caseData.id} />
+        </TabsContent>
 
       </Tabs>
     </div>
