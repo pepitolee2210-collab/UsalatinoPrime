@@ -58,16 +58,38 @@ export type LegalFinding = z.infer<typeof LegalFindingSchema>
 
 let _client: Anthropic | null = null
 
+/**
+ * Returns an Anthropic client configured with one of two auth methods, in
+ * priority order:
+ *
+ *   1. ANTHROPIC_AUTH_TOKEN — OAuth bearer token from `claude setup-token`.
+ *      Consumes the user's Max/Pro subscription (no API billing). Format:
+ *      sk-ant-oat01-... Tokens last 1 year and must be regenerated via
+ *      `claude setup-token` before expiry.
+ *
+ *   2. ANTHROPIC_API_KEY — Standard API key from console.anthropic.com.
+ *      Format: sk-ant-api03-... Billed per-token against Console credits.
+ *
+ * The SDK sends the OAuth token as `Authorization: Bearer <token>` and the
+ * API key as `X-Api-Key: <key>`. Both authenticate against the same
+ * /v1/messages endpoint but draw from different quota pools.
+ */
 function getClient(): Anthropic {
   if (_client) return _client
+
+  const authToken = process.env.ANTHROPIC_AUTH_TOKEN
   const apiKey = process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
+
+  if (!authToken && !apiKey) {
     throw new Error(
-      'ANTHROPIC_API_KEY no configurada. Agrégala en Vercel → Settings → Environment Variables.',
+      'No hay credenciales de Anthropic configuradas. Agrega ANTHROPIC_AUTH_TOKEN (plan Max, generado por "claude setup-token") o ANTHROPIC_API_KEY (consola, pay-per-token) en Vercel → Environment Variables.',
     )
   }
+
   _client = new Anthropic({
-    apiKey,
+    // authToken takes precedence — if the subscription token is present, use
+    // it so reviews consume the Max plan instead of API credits.
+    ...(authToken ? { authToken } : { apiKey: apiKey! }),
     // SDK already retries 5xx / 429 with exponential backoff. Bump the budget
     // a bit for long legal reviews that may be slow.
     maxRetries: 3,
@@ -181,7 +203,9 @@ Produce el JSON estricto del schema. NO agregues explicaciones fuera del JSON.`
     }
     if (err instanceof Anthropic.AuthenticationError) {
       log.error('Claude auth error', err.message)
-      throw new Error('API key de Anthropic inválida o no configurada.')
+      throw new Error(
+        'Credenciales de Anthropic inválidas. Si usas ANTHROPIC_AUTH_TOKEN (plan Max), puede haber expirado — regenera con "claude setup-token". Si usas ANTHROPIC_API_KEY, revisa que esté activa en console.anthropic.com.',
+      )
     }
     if (err instanceof Anthropic.RateLimitError) {
       log.warn('Claude rate limit', err.message)
