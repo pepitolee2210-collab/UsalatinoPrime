@@ -3,14 +3,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, UserPlus, Trash2 } from 'lucide-react'
 import { AIImproveButton } from '@/components/ai-improve-button'
-
-function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
-  return (
-    <label className="text-sm font-medium text-gray-700 mb-1.5 block">
-      {children}{required && <span className="text-red-400 ml-0.5">*</span>}
-    </label>
-  )
-}
+import { FieldLabel, LegalFieldInput, ValidatedInput } from './form-components'
 
 function TInput({ value, onChange, placeholder, type = 'text' }: {
   value: string; onChange: (v: string) => void; placeholder?: string; type?: string
@@ -122,12 +115,12 @@ export function MinorBasicSection({ data, onChange }: { data: MinorBasicData; on
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div><FieldLabel required>2. Fecha de nacimiento</FieldLabel><TInput type="date" value={data.dob} onChange={v => upd('dob', v)} /></div>
-        <div><FieldLabel>3. País de nacimiento</FieldLabel><TInput value={data.country} onChange={v => upd('country', v)} placeholder="Ej: Honduras" /></div>
+        <div><FieldLabel required>3. País de nacimiento</FieldLabel><ValidatedInput value={data.country} onChange={v => upd('country', v)} placeholder="Ej: Honduras" /></div>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <div><FieldLabel>Ciudad de nacimiento</FieldLabel><TInput value={data.birth_city} onChange={v => upd('birth_city', v)} placeholder="Ej: Guayaquil" /></div>
-        <div><FieldLabel>Tipo de documento</FieldLabel><TInput value={data.id_type} onChange={v => upd('id_type', v)} placeholder="Ej: Pasaporte" /></div>
-        <div><FieldLabel>No. de documento</FieldLabel><TInput value={data.id_number} onChange={v => upd('id_number', v)} placeholder="Número de documento" /></div>
+        <div><FieldLabel required>Ciudad de nacimiento</FieldLabel><ValidatedInput value={data.birth_city} onChange={v => upd('birth_city', v)} placeholder="Ej: Guayaquil" /></div>
+        <div><FieldLabel help="Tipo de documento del menor (Pasaporte, Partida de Nacimiento, DNI). Si aún no tiene ninguno, marque la casilla en el siguiente campo.">Tipo de documento</FieldLabel><LegalFieldInput value={data.id_type} onChange={v => upd('id_type', v)} placeholder="Ej: Pasaporte" /></div>
+        <div><FieldLabel help="Número del documento del menor. Aparece en los formularios migratorios (I-360, I-485). Si el menor no tiene documento, marque la casilla.">No. de documento</FieldLabel><LegalFieldInput value={data.id_number} onChange={v => upd('id_number', v)} placeholder="Número de documento" /></div>
       </div>
       <div>
         <FieldLabel>4. Estado civil actual</FieldLabel>
@@ -140,7 +133,7 @@ export function MinorBasicSection({ data, onChange }: { data: MinorBasicData; on
           ))}
         </div>
       </div>
-      <div><FieldLabel>5. Dirección actual donde reside</FieldLabel><TInput value={data.address} onChange={v => upd('address', v)} placeholder="Dirección completa en EE.UU." /></div>
+      <div><FieldLabel required>5. Dirección actual donde reside</FieldLabel><ValidatedInput value={data.address} onChange={v => upd('address', v)} placeholder="Dirección completa en EE.UU." /></div>
       <div className="grid grid-cols-2 gap-3">
         <div><FieldLabel>6. ¿Con quién vive actualmente?</FieldLabel><TInput value={data.lives_with} onChange={v => upd('lives_with', v)} placeholder="Nombre de la persona" /></div>
         <div><FieldLabel>Relación</FieldLabel><TInput value={data.lives_with_relationship} onChange={v => upd('lives_with_relationship', v)} placeholder="Ej: Madre, tía, tutor" /></div>
