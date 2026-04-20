@@ -361,10 +361,15 @@ export default function RevisorIAPage() {
                 <Scale className="w-4 h-4 text-[#F2A900]" />
               </div>
               <div>
-                <h1 className="text-sm font-bold text-gray-900">Revisor IA</h1>
+                <h1 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                  Ámbar
+                  <span className="text-[10px] font-medium text-[#F2A900] bg-[#F2A900]/10 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                    IA
+                  </span>
+                </h1>
                 <p className="text-[10px] text-gray-400 flex items-center gap-1">
                   <Sparkles className="w-2.5 h-2.5" />
-                  Gemini 3.1 Pro · Elena Vargas
+                  Asistente legal senior · UsaLatino Prime
                 </p>
               </div>
             </div>
@@ -378,9 +383,14 @@ export default function RevisorIAPage() {
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#002855] to-[#001d3d] flex items-center justify-center mb-5">
                 <Scale className="w-8 h-8 text-[#F2A900]" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">¿En qué podemos ayudarte hoy?</h2>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">
+                Hola, soy <span className="text-[#F2A900]">Ámbar</span>
+              </h2>
+              <p className="text-sm text-gray-500 mb-1 max-w-md">
+                La asistente legal senior de <strong className="text-gray-700">UsaLatino Prime</strong>.
+              </p>
               <p className="text-sm text-gray-500 mb-8 max-w-md">
-                Soy tu asistente legal senior de inmigración. Revisa formularios, declaraciones, evidencia, o hazme cualquier pregunta técnica sobre un caso.
+                Revisa formularios, declaraciones, evidencia, o hazme cualquier pregunta técnica sobre un caso de inmigración.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
                 {[
@@ -425,7 +435,7 @@ export default function RevisorIAPage() {
               {streaming && !streamingText && (
                 <div className="flex items-center gap-2 text-xs text-gray-400 pl-11">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Elena está analizando...
+                  Ámbar está analizando...
                 </div>
               )}
               <div ref={messagesEndRef} />
@@ -483,7 +493,7 @@ export default function RevisorIAPage() {
                     handleSend()
                   }
                 }}
-                placeholder="Pega un documento o pregunta algo sobre un caso..."
+                placeholder="Pregúntale a Ámbar o sube un documento..."
                 rows={1}
                 disabled={streaming}
                 className="flex-1 bg-transparent border-none outline-none resize-none text-sm text-gray-900 placeholder-gray-400 px-2 py-2 max-h-60"
@@ -523,7 +533,7 @@ function MessageBubble({ message, isStreaming = false }: { message: Message; isS
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : ''}`}>
       {!isUser && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-[#002855] to-[#001d3d] flex items-center justify-center">
+        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-[#002855] to-[#001d3d] flex items-center justify-center ring-1 ring-[#F2A900]/20 shadow-[0_0_12px_-2px_rgba(242,169,0,0.3)]">
           <Scale className="w-4 h-4 text-[#F2A900]" />
         </div>
       )}
