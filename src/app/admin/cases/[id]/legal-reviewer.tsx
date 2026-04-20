@@ -132,7 +132,7 @@ export function LegalReviewer({ caseId }: Props) {
                 Super Revisor Legal
                 <Badge className="bg-white/10 text-white/80 text-[10px] border-white/10">
                   <Sparkles className="w-3 h-3 mr-1" />
-                  Claude Opus 4.7
+                  Gemini 3.1 Pro
                 </Badge>
               </h3>
               <p className="text-sm text-white/70 mt-0.5 max-w-xl">
@@ -149,7 +149,7 @@ export function LegalReviewer({ caseId }: Props) {
             {running ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Analizando (30-60s)...
+                Analizando (20-40s)...
               </>
             ) : (
               <>

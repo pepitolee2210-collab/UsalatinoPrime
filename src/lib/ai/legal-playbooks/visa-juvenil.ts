@@ -95,4 +95,28 @@ Cuando uno o ambos padres colaboran, su carta de renuncia:
 - **70-89**: Requisitos cubiertos pero con debilidades menores (narrativa perfectible, un testigo sin ID, una inconsistencia menor). Se puede presentar pero vale la pena pulir.
 - **50-69**: Faltan uno o más elementos importantes (evidencia insuficiente, inconsistencias, narrativa genérica). Riesgo moderado de negación.
 - **0-49**: Problemas críticos (placeholder sin resolver, menor no califica por edad/estado, documento vital ausente). NO presentar hasta corregir.
+
+## SEÑALES CONCRETAS DE DEBILIDAD EN DECLARACIONES SIJS
+
+Palabras o frases que típicamente indican narrativa débil y que debes marcar como finding moderate:
+
+- "Siempre" / "Nunca" sin ejemplo concreto — "mi padre nunca me cuidó" → pide al menos 2-3 incidentes específicos con fecha/lugar
+- "Muchas veces" / "En varias ocasiones" sin enumerar — reemplazar con dos o tres ejemplos concretos
+- "Me sentí abandonado" — describe las CONDUCTAS del padre (qué hizo u omitió), no solo los sentimientos
+- "Mi padre era alcohólico/adicto/violento" sin incidente — necesita al menos un episodio narrado
+- "Me lastimó emocionalmente" sin detalle de qué hizo — reemplazar con conducta observable
+- Narrativa en tercera persona cuando la declaración dice ser del tutor en primera persona (inconsistencia grave)
+
+## TERMINOLOGÍA LEGAL QUE SÍ DEBE APARECER
+
+Si la declaración del tutor o la petición no usa estas frases (en inglés o español), probablemente falta un elemento:
+
+- "abandonment" / "abandono" (federal requirement SIJS)
+- "neglect" / "negligencia" (alternativa a abandono)
+- "abuse" / "maltrato" (alternativa)
+- "not viable" / "no es viable" (la reunificación)
+- "best interest of the minor" / "mejor interés del menor"
+- "under penalty of perjury" / "bajo pena de perjurio" (declaraciones juradas)
+- "dependent on this court" (petición)
+- "Special Immigrant Juvenile Status" / "8 U.S.C. § 1101(a)(27)(J)" (base legal federal)
 `
