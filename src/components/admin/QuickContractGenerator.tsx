@@ -72,6 +72,7 @@ const emptyMinor = (): MinorData => ({ fullName: '', dob: '', birthplace: '', pa
 export function QuickContractGenerator({ editData, onSaved, prefillName, prefillPhone, prefillService }: QuickContractGeneratorProps) {
   const supabase = createClient()
   const [selectedSlug, setSelectedSlug] = useState('')
+  const [selectedSubserviceSlug, setSelectedSubserviceSlug] = useState<string>('')
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0)
   const [contractForm, setContractForm] = useState<ContractForm>({
     clientFullName: '',
@@ -163,6 +164,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
       const t = getContractTemplate(editData.service_slug)
       setTemplate(t)
       setSelectedSlug(editData.service_slug)
+      setSelectedSubserviceSlug(editData.subservice_slug || '')
       setSelectedVariantIndex(editData.variant_index || 0)
       setContractForm({
         clientFullName: editData.client_full_name || '',
@@ -209,6 +211,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
 
   async function handleServiceChange(slug: string) {
     setSelectedSlug(slug)
+    setSelectedSubserviceSlug('')
     setSelectedVariantIndex(0)
     setUseCustomPrice(false)
     setCustomPrice('')
@@ -226,6 +229,46 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
     setTemplate(t)
     if (t?.requiresMinor && minors.length === 0) {
       setMinors([emptyMinor()])
+    }
+    if (t?.subservices && t.subservices.length > 0) {
+      setSelectedSubserviceSlug(t.subservices[0].slug)
+    }
+  }
+
+  function handleSubserviceChange(subSlug: string) {
+    setSelectedSubserviceSlug(subSlug)
+    setSelectedVariantIndex(0)
+    setUseCustomPrice(false)
+    setCustomPrice('')
+    setUseCustomInstallments(false)
+    setCustomInstallments('')
+  }
+
+  /**
+   * Retorna la configuración efectiva del contrato: si hay un subservicio
+   * seleccionado, sus variants/etapas/objeto ganan; de lo contrario, los
+   * del template padre (comportamiento histórico).
+   */
+  function getActiveConfig(): {
+    variants: any[]
+    etapas: string[]
+    objetoDelContrato: string
+  } | null {
+    if (!template) return null
+    if (selectedSubserviceSlug && template.subservices) {
+      const sub = template.subservices.find((s: any) => s.slug === selectedSubserviceSlug)
+      if (sub) {
+        return {
+          variants: sub.variants,
+          etapas: sub.etapas,
+          objetoDelContrato: sub.objetoDelContrato,
+        }
+      }
+    }
+    return {
+      variants: template.variants,
+      etapas: template.etapas,
+      objetoDelContrato: template.objetoDelContrato,
     }
   }
 
@@ -248,10 +291,18 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
     setAddons(prev => prev.map((a, i) => i === index ? { ...a, price } : a))
   }
 
+  // Variantes activas — del subservicio si hay uno seleccionado, del template si no
+  function getActiveVariants(): any[] {
+    const cfg = getActiveConfig()
+    return cfg?.variants || []
+  }
+
   // Calcular precio total (servicio principal + addons)
   function getCalculatedTotal(): number {
     if (!template) return 0
-    const variant = template.variants[selectedVariantIndex]
+    const variants = getActiveVariants()
+    const variant = variants[selectedVariantIndex] || variants[0]
+    if (!variant) return 0
     const basePrice = variant.totalPrice
     const addonsTotal = addons.reduce((sum: number, a: AddonItem) => sum + a.price, 0)
     return basePrice + addonsTotal
@@ -281,7 +332,9 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
     }
     if (useCustomInstallments && customInstallments) return parseInt(customInstallments)
     if (!template) return 10
-    return getInstallmentCount(template.variants[selectedVariantIndex])
+    const variants = getActiveVariants()
+    const variant = variants[selectedVariantIndex] || variants[0]
+    return variant ? getInstallmentCount(variant) : 10
   }
 
   // Monto mensual final
@@ -385,6 +438,17 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
       const hasInstallments = template.installments || useCustomInstallments || useCustomMonthly
       const paymentSchedule = hasInstallments ? buildPaymentSchedule() : undefined
 
+      // Usar subservicio si está seleccionado; si no, template completo
+      const activeCfg = getActiveConfig()
+      const effectiveObjeto = activeCfg?.objetoDelContrato || template.objetoDelContrato
+      const effectiveEtapas = activeCfg?.etapas || template.etapas
+      const activeSubservice = selectedSubserviceSlug && template.subservices
+        ? template.subservices.find((s: any) => s.slug === selectedSubserviceSlug)
+        : null
+      const effectiveServiceLabel = activeSubservice
+        ? `${serviceLabel} — ${activeSubservice.label}`
+        : serviceLabel
+
       // Preparar servicios adicionales para el PDF
       const addonServices = addons.map(a => ({
         name: a.label,
@@ -396,7 +460,8 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
       // Guardar en Supabase
       const contractData = {
         service_slug: selectedSlug,
-        service_name: serviceLabel,
+        service_name: effectiveServiceLabel,
+        subservice_slug: selectedSubserviceSlug || null,
         variant_index: selectedVariantIndex,
         addon_services: addonServices,
         client_full_name: contractForm.clientFullName.trim(),
@@ -427,8 +492,8 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
         use_custom_price: useCustomPrice,
         use_custom_installments: useCustomInstallments,
         payment_schedule: paymentSchedule || [],
-        objeto_del_contrato: template.objetoDelContrato,
-        etapas: template.etapas,
+        objeto_del_contrato: effectiveObjeto,
+        etapas: effectiveEtapas,
       }
 
       let contractId: string | null = editData?.id || null
@@ -487,7 +552,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
       }
 
       const pdf = generateContractPDF({
-        serviceName: serviceLabel,
+        serviceName: effectiveServiceLabel,
         totalPrice: finalPrice,
         installments: hasInstallments,
         installmentCount: getFinalInstallments(),
@@ -500,8 +565,8 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
         clientCity: contractForm.clientCity.trim(),
         clientState: contractForm.clientState.trim().toUpperCase(),
         clientZip: contractForm.clientZip.trim(),
-        objetoDelContrato: template.objetoDelContrato,
-        etapas: template.etapas,
+        objetoDelContrato: effectiveObjeto,
+        etapas: effectiveEtapas,
         addonServices: addonServices.length > 0 ? addonServices : undefined,
         initialPayment: getInitialPayment() > 0 ? getInitialPayment() : undefined,
         paymentSchedule,
@@ -594,12 +659,53 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
           </div>
         </div>
 
+        {/* Sub-service selector — only for templates that define subservices (ej: Visa Juvenil) */}
+        {template?.subservices && template.subservices.length > 0 && (
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium text-[#002855] flex items-center gap-1.5">
+              <PackagePlus className="w-3.5 h-3.5 text-[#F2A900]" />
+              Alcance del contrato
+            </Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {template.subservices.map((sub: any) => {
+                const active = selectedSubserviceSlug
+                  ? selectedSubserviceSlug === sub.slug
+                  : sub.slug === 'completa'
+                return (
+                  <button
+                    key={sub.slug}
+                    type="button"
+                    onClick={() => handleSubserviceChange(sub.slug)}
+                    className={`text-left px-3 py-2.5 rounded-lg border transition-colors ${
+                      active
+                        ? 'border-[#002855] bg-[#002855]/5 ring-1 ring-[#002855]/20'
+                        : 'border-gray-200 bg-white hover:bg-gray-50'
+                    }`}
+                  >
+                    <p className={`text-sm font-medium ${active ? 'text-[#002855]' : 'text-gray-700'}`}>
+                      {sub.label}
+                    </p>
+                    {sub.description && (
+                      <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+                        {sub.description}
+                      </p>
+                    )}
+                    <p className="text-[11px] font-mono text-[#F2A900] mt-1">
+                      Desde ${sub.variants[0].totalPrice.toLocaleString()}
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Variant selector (if multiple) */}
-        {template && template.variants.length > 1 && (
+        {template && getActiveVariants().length > 1 && (
           <div className="space-y-1.5">
             <Label className="text-sm font-medium text-[#002855]">Variante</Label>
             <div className="flex gap-2">
-              {template.variants.map((v: any, i: number) => (
+              {getActiveVariants().map((v: any, i: number) => (
                 <button
                   key={i}
                   type="button"
@@ -690,8 +796,18 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
             {/* Desglose de servicios */}
             <div className="space-y-1">
               <div className="flex justify-between text-sm">
-                <span className="text-[#002855]/70">{SERVICE_OPTIONS.find(s => s.slug === selectedSlug)?.label}:</span>
-                <span className="font-medium text-[#002855]">${template.variants[selectedVariantIndex].totalPrice.toLocaleString()}</span>
+                <span className="text-[#002855]/70">
+                  {SERVICE_OPTIONS.find(s => s.slug === selectedSlug)?.label}
+                  {(() => {
+                    const sub = selectedSubserviceSlug && template.subservices
+                      ? template.subservices.find((s: any) => s.slug === selectedSubserviceSlug)
+                      : null
+                    return sub ? ` — ${sub.label}` : ''
+                  })()}:
+                </span>
+                <span className="font-medium text-[#002855]">
+                  ${(getActiveVariants()[selectedVariantIndex]?.totalPrice || 0).toLocaleString()}
+                </span>
               </div>
               {addons.map((a, i) => (
                 <div key={i} className="flex justify-between text-sm">
@@ -790,7 +906,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                 {!useCustomMonthly && (
                   <input
                     type="number"
-                    value={useCustomInstallments ? customInstallments : (template ? getInstallmentCount(template.variants[selectedVariantIndex]).toString() : '10')}
+                    value={useCustomInstallments ? customInstallments : (template ? getInstallmentCount(getActiveVariants()[selectedVariantIndex] || getActiveVariants()[0]).toString() : '10')}
                     onChange={(e) => { setUseCustomInstallments(true); setCustomInstallments(e.target.value); }}
                     min="1"
                     max="36"
