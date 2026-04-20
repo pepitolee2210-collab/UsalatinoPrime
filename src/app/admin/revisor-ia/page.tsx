@@ -361,15 +361,15 @@ export default function RevisorIAPage() {
                 <Scale className="w-4 h-4 text-[#F2A900]" />
               </div>
               <div>
-                <h1 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
-                  Ámbar
-                  <span className="text-[10px] font-medium text-[#F2A900] bg-[#F2A900]/10 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-                    IA
+                <h1 className="text-sm font-bold text-gray-900 flex items-center gap-1.5 font-mono tracking-wide">
+                  LEX
+                  <span className="text-[10px] font-mono font-medium text-[#F2A900] bg-[#F2A900]/10 px-1.5 py-0.5 rounded border border-[#F2A900]/20">
+                    v1
                   </span>
                 </h1>
-                <p className="text-[10px] text-gray-400 flex items-center gap-1">
-                  <Sparkles className="w-2.5 h-2.5" />
-                  Asistente legal senior · UsaLatino Prime
+                <p className="text-[10px] text-gray-400 flex items-center gap-1 font-mono">
+                  <span className="text-[#F2A900]">▸</span>
+                  Sistema legal · UsaLatino Prime
                 </p>
               </div>
             </div>
@@ -383,14 +383,14 @@ export default function RevisorIAPage() {
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#002855] to-[#001d3d] flex items-center justify-center mb-5">
                 <Scale className="w-8 h-8 text-[#F2A900]" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900 mb-2">
-                Hola, soy <span className="text-[#F2A900]">Ámbar</span>
+              <h2 className="text-3xl font-mono font-bold text-gray-900 mb-1 tracking-wide">
+                <span className="text-[#F2A900]">LEX</span><span className="text-gray-300">.</span>
               </h2>
-              <p className="text-sm text-gray-500 mb-1 max-w-md">
-                La asistente legal senior de <strong className="text-gray-700">UsaLatino Prime</strong>.
+              <p className="text-[11px] font-mono text-gray-400 uppercase tracking-[0.2em] mb-5">
+                Sistema legal · UsaLatino Prime
               </p>
-              <p className="text-sm text-gray-500 mb-8 max-w-md">
-                Revisa formularios, declaraciones, evidencia, o hazme cualquier pregunta técnica sobre un caso de inmigración.
+              <p className="text-sm text-gray-500 mb-8 max-w-md leading-relaxed">
+                Revisa formularios, declaraciones o evidencia. Detecta fallas antes de que lleguen al juez.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
                 {[
@@ -433,9 +433,9 @@ export default function RevisorIAPage() {
                 />
               )}
               {streaming && !streamingText && (
-                <div className="flex items-center gap-2 text-xs text-gray-400 pl-11">
+                <div className="flex items-center gap-2 text-xs text-gray-400 pl-11 font-mono">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  Ámbar está analizando...
+                  <span className="text-[#F2A900]">▸</span> LEX analizando...
                 </div>
               )}
               <div ref={messagesEndRef} />
@@ -493,7 +493,7 @@ export default function RevisorIAPage() {
                     handleSend()
                   }
                 }}
-                placeholder="Pregúntale a Ámbar o sube un documento..."
+                placeholder="Consulta a LEX o sube un documento..."
                 rows={1}
                 disabled={streaming}
                 className="flex-1 bg-transparent border-none outline-none resize-none text-sm text-gray-900 placeholder-gray-400 px-2 py-2 max-h-60"
