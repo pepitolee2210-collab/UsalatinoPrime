@@ -47,6 +47,64 @@ Los documentos que redactas necesitan describir con precisión hechos de violenc
 
 Se te indicará \`en\` o \`es\`. Genera TODO el documento en ese idioma incluyendo términos legales. Nombres propios (personas, ciudades, países) quedan en su forma original.`
 
+/**
+ * Campos "huérfanos" capturados en los formularios pero que antes no llegaban
+ * al prompt. Construye un bloque de contexto enriquecido que el modelo puede
+ * usar si los datos existen. Si no existen, el bloque queda vacío y no
+ * ensucia el prompt.
+ */
+function buildEnrichedContextBlock(
+  tutor: Record<string, unknown> | null,
+  minorBasic: Record<string, string>
+): string {
+  const parts: string[] = []
+
+  // Tutor context
+  if (tutor?.time_in_state) parts.push(`Guardian time in current US state: ${tutor.time_in_state}`)
+  if (tutor?.immigration_status) parts.push(`Guardian immigration status: ${tutor.immigration_status}`)
+  if (tutor?.city_of_birth) parts.push(`Guardian city of birth: ${tutor.city_of_birth}`)
+  if (tutor?.caretaker_in_country) parts.push(`Who cared for child in country of origin (if anyone): ${tutor.caretaker_in_country}`)
+  if (tutor?.access_to_services) parts.push(`Guardian's current access to services/resources: ${tutor.access_to_services}`)
+  if (tutor?.gang_threats) parts.push(`Gang / armed group threats faced: ${tutor.gang_threats}`)
+
+  // Minor context
+  if (minorBasic.civil_status) parts.push(`Minor civil status: ${minorBasic.civil_status}`)
+  if (minorBasic.in_us) parts.push(`Minor currently in US: ${minorBasic.in_us}`)
+  if (minorBasic.detained_by_immigration) parts.push(`Minor was detained by immigration: ${minorBasic.detained_by_immigration}`)
+  if (minorBasic.released_by_orr) parts.push(`Released by ORR: ${minorBasic.released_by_orr}`)
+  if (minorBasic.orr_sponsor) parts.push(`ORR sponsor: ${minorBasic.orr_sponsor}`)
+  if (minorBasic.nonimmigrant_status) parts.push(`Current nonimmigrant status: ${minorBasic.nonimmigrant_status}`)
+  if (minorBasic.court_order_date) parts.push(`Prior court order date: ${minorBasic.court_order_date}`)
+
+  if (parts.length === 0) return ''
+  return `\n\n=== ENRICHED CONTEXT (use these facts if relevant to the narrative) ===\n${parts.join('\n')}`
+}
+
+/**
+ * Une los testigos de las dos fuentes posibles (tutor_guardian.witnesses y
+ * client_witnesses.witnesses) con deduplicación por nombre. Esto arregla el
+ * bug histórico donde si el cliente cargaba testigos en el wizard pero no
+ * en el formulario del tutor, los testigos se perdían por completo.
+ */
+function mergeWitnesses(
+  fromTutor: unknown,
+  fromClientWitnesses: unknown
+): Array<Record<string, string>> {
+  const a = Array.isArray(fromTutor) ? (fromTutor as Array<Record<string, string>>) : []
+  const b = Array.isArray(fromClientWitnesses)
+    ? (fromClientWitnesses as Array<Record<string, string>>)
+    : []
+  const seen = new Set<string>()
+  const merged: Array<Record<string, string>> = []
+  for (const w of [...a, ...b]) {
+    const key = (w?.name || '').trim().toLowerCase()
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    merged.push(w)
+  }
+  return merged
+}
+
 function buildDeclarationPrompt(
   type: DeclarationType,
   ctx: Awaited<ReturnType<typeof buildCaseContext>>,
@@ -56,9 +114,12 @@ function buildDeclarationPrompt(
   const clientName = `${ctx.client.firstName} ${ctx.client.lastName}`.toUpperCase()
   const tutor = ctx.tutorGuardian as Record<string, unknown> | null
   const supp = ctx.supplementaryData as Record<string, unknown> | null
+  const clientWitnessesData = ctx.clientWitnesses as Record<string, unknown> | null
 
-  // Extract witness data from tutor form
-  const witnesses = (tutor?.witnesses as Array<Record<string, string>>) || []
+  // Witnesses come from BOTH the tutor form and the client_witnesses wizard.
+  // Merge with dedup by name so neither source is lost (previously only tutor
+  // was read, which silently dropped witnesses entered via the wizard).
+  const witnesses = mergeWitnesses(tutor?.witnesses, clientWitnessesData?.witnesses)
 
   // Extract minor data
   const minorStory = ctx.allMinorStories[index] || ctx.allMinorStories[0]
@@ -132,6 +193,11 @@ function buildDeclarationPrompt(
     parts.push('CRITICAL: Use these values instead of leaving fields blank. These are authoritative data provided by the attorney.')
     return parts.join('\n')
   })() : ''
+
+  // Enriched context from previously-unused form fields (time_in_state,
+  // immigration_status, city_of_birth, civil_status, detained_by_immigration,
+  // orr_sponsor, court_order_date, etc.). Empty string if no data captured.
+  const enrichedBlock = buildEnrichedContextBlock(tutor, minorBasic)
 
   const baseInstructions = `
 You are an expert immigration paralegal specializing in SIJS (Special Immigrant Juvenile Status) cases.
@@ -235,7 +301,7 @@ IMPORTANT:
 - Use today's date if no signing date is specified.
 - Use the court name from the supplementary data if provided. Do NOT default to Utah.
 - Output ONLY the letter text, nothing else. No explanations.
-${suppBlock}`
+${suppBlock}${enrichedBlock}`
   }
 
   if (type === 'parental_consent_collaborative') {
@@ -340,6 +406,7 @@ Child city of birth: ${childInfo.birth_city || childInfo.country || ''}
 Child country of birth: ${childInfo.country || ''}
 Child current address: ${childInfo.address || tutorAddress || '[FALTA: Dirección actual del menor]'}
 Narrative from guardian (rewrite key negligence events in first person from absent ${parentRelationEN}): ${JSON.stringify({ why_cannot_reunify: tutor?.why_cannot_reunify, abuse_description: tutor?.abuse_description, ...(ctx.clientStory || {}) })}
+Documents extracted text (use any relevant data from these — passport numbers, dates, addresses, etc.): ${ctx.documents.filter(d => d.extracted_text).map(d => `[${d.name}]: ${d.extracted_text?.substring(0, 500)}`).join('\n')}
 
 IMPORTANT:
 - Output ONLY the letter text, nothing else. No explanations, no markdown.
@@ -347,7 +414,7 @@ IMPORTANT:
 - Do NOT mention the SIJ declaration, the juvenile court, or the immigration case.
 - Extract 2-3 specific negligence incidents from the narrative above and rewrite them in paragraph 4 in FIRST PERSON from the absent ${parentRelationEN}'s perspective (admitting it was him/her who failed).
 - If a specific piece of data is missing, write [FALTA: descripción del dato] in Spanish.
-${suppBlock}`
+${suppBlock}${enrichedBlock}`
   }
 
   if (type === 'petition_guardianship') {
@@ -442,7 +509,7 @@ CRITICAL RULES:
 - Output ONLY the petition text, no explanations.
 - The narrative in Section II must use REAL facts from THIS child's form, improved with legal language.
 - CRITICAL WRITING RULE: When describing harmful acts, use ONLY abstract legal language such as "acts that gravely affected the minor's wellbeing". Do NOT elaborate or specify the nature of the acts. Focus on EMOTIONAL IMPACT and LEGAL CONSEQUENCES, not on describing events in detail.
-${suppBlock}`
+${suppBlock}${enrichedBlock}`
   }
 
   if (type === 'tutor') {
@@ -506,7 +573,7 @@ IMPORTANT:
 - If data is missing, write [FALTA: descripción del dato] in Spanish.
 - Output ONLY the affidavit text.
 - CRITICAL WRITING RULE: When describing harmful acts against any child, use ONLY abstract legal language such as "committed acts that gravely affected the child's wellbeing" or "caused grave harm". Do NOT elaborate, describe, or specify the nature of harmful acts. Focus on EMOTIONAL IMPACT and LEGAL CONSEQUENCES only.
-${suppBlock}`
+${suppBlock}${enrichedBlock}`
   }
 
   if (type === 'minor') {
@@ -587,7 +654,7 @@ IMPORTANT:
 - Make sections III and IV the most detailed — these are the heart of the case.
 - If only one parent abused/abandoned, focus more on that parent and adapt the other section accordingly.
 - CRITICAL WRITING RULE: When describing harmful acts against the minor, use ONLY abstract legal language such as "actos que afectaron gravemente mi bienestar" or "daño grave a mi persona". Do NOT elaborate, describe, or specify the nature of the acts. Keep the description of harmful events brief and abstract. Focus on the EMOTIONAL IMPACT and CONSEQUENCES rather than describing what happened. This is required for proper legal processing.
-${suppBlock}`
+${suppBlock}${enrichedBlock}`
   }
 
   // type === 'witness'
@@ -672,7 +739,7 @@ IMPORTANT:
 - Add details from the case data that the witness would reasonably know.
 - If data is missing (like ID numbers), write [FALTA: descripción del dato] in Spanish.
 - Output ONLY the affidavit text.
-${suppBlock}`
+${suppBlock}${enrichedBlock}`
 }
 
 export async function POST(request: NextRequest) {
