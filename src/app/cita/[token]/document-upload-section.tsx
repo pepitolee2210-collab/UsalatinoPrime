@@ -33,22 +33,16 @@ export function DocumentUploadSection({ token, uploadedDocuments, serviceSlug }:
   const [uploading, setUploading] = useState<string | null>(null)
   const categories = getDocumentCategories(serviceSlug)
   const [previewDoc, setPreviewDoc] = useState<{ id: string; name: string } | null>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [previewLoading, setPreviewLoading] = useState(false)
 
-  async function openPreview(doc: { id: string; name: string }) {
+  function openPreview(doc: { id: string; name: string }) {
     setPreviewDoc(doc)
-    setPreviewLoading(true)
-    setPreviewUrl(null)
-    try {
-      const res = await fetch(`/api/client/preview-doc?token=${token}&id=${doc.id}`)
-      if (res.ok) {
-        const data = await res.json()
-        if (data.url) setPreviewUrl(data.url)
-      }
-    } catch { /* silent */ }
-    finally { setPreviewLoading(false) }
   }
+
+  // Proxy endpoint que sirve el PDF/imagen con headers same-origin
+  // para que el iframe no sea bloqueado por CSP del CDN de Supabase.
+  const previewUrl = previewDoc
+    ? `/api/client/preview-doc?token=${encodeURIComponent(token)}&id=${encodeURIComponent(previewDoc.id)}&raw=1`
+    : null
 
   const totalDocs = categories.flatMap(c => c.docs).length
   const categoriesWithDocs = new Set(uploaded.map(u => u.document_key)).size
@@ -56,28 +50,33 @@ export function DocumentUploadSection({ token, uploadedDocuments, serviceSlug }:
   return (
     <div className="space-y-5">
       {/* Preview Modal */}
-      {previewDoc && (
+      {previewDoc && previewUrl && (
         <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'rgba(0,0,0,0.85)' }}
-          onClick={() => { setPreviewDoc(null); setPreviewUrl(null) }}>
+          onClick={() => setPreviewDoc(null)}>
           <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
             <p className="text-white font-semibold text-sm truncate flex-1 mr-4">{previewDoc.name}</p>
-            <button onClick={() => { setPreviewDoc(null); setPreviewUrl(null) }}
-              className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-opacity hover:opacity-70"
-              style={{ background: 'rgba(255,255,255,0.12)' }}>
-              <X className="w-5 h-5 text-white" />
-            </button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <a
+                href={previewUrl}
+                download={previewDoc.name}
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 h-9 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-80"
+                style={{ background: 'rgba(255,255,255,0.12)' }}
+              >
+                Descargar
+              </a>
+              <button onClick={() => setPreviewDoc(null)}
+                className="w-9 h-9 rounded-full flex items-center justify-center transition-opacity hover:opacity-70"
+                style={{ background: 'rgba(255,255,255,0.12)' }}>
+                <X className="w-5 h-5 text-white" />
+              </button>
+            </div>
           </div>
-          <div className="flex-1 flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
-            {previewLoading ? (
-              <div className="flex flex-col items-center gap-3">
-                <Loader2 className="w-8 h-8 text-[#F2A900] animate-spin" />
-                <p className="text-white/60 text-sm">Cargando documento...</p>
-              </div>
-            ) : previewUrl ? (
-              <iframe src={previewUrl} className="w-full h-full rounded-xl bg-white" style={{ maxHeight: '80vh' }} />
-            ) : (
-              <p className="text-white/60 text-sm">No se pudo cargar el documento.</p>
-            )}
+          <div className="flex-1 flex items-stretch justify-center px-4 pb-4" onClick={e => e.stopPropagation()}>
+            <iframe
+              src={previewUrl}
+              className="w-full h-full rounded-xl bg-white"
+              title={previewDoc.name}
+            />
           </div>
         </div>
       )}
