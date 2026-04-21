@@ -65,6 +65,12 @@ export const SIJS_WA_TOOLS = [
     parameters: { type: Type.OBJECT, properties: {} },
   },
   {
+    name: 'share_explainer_video',
+    description:
+      'Comparte nuevamente el video explicativo del proceso SIJS. SOLO úsalo cuando el usuario pida explícitamente más información sobre el proceso de Visa Juvenil, quiera ver el video otra vez, o diga que no lo vio. NO lo uses en el saludo inicial (el video se envía automáticamente en la primera respuesta).',
+    parameters: { type: Type.OBJECT, properties: {} },
+  },
+  {
     name: 'list_available_dates',
     description:
       'Devuelve los próximos días (hasta 14) que tienen al menos un horario disponible. Útil cuando el usuario pregunta "¿qué días tienes disponibles?" sin señalar uno concreto.',
@@ -163,6 +169,8 @@ export async function dispatchSijsTool(
         return await handleSaveFilterAnswer(args, ctx)
       case 'evaluate_eligibility':
         return await handleEvaluateEligibility(ctx)
+      case 'share_explainer_video':
+        return handleShareVideo()
       case 'list_available_dates':
         return await handleListDates(args)
       case 'list_slots_for_date':
@@ -268,6 +276,20 @@ async function handleEvaluateEligibility(ctx: ToolContext) {
     status: verdict.verdict === 'not_eligible' ? 'filtered_out' : 'filtered_in',
   })
   return { result: { ...verdict }, patch: { verdict: verdict.verdict } }
+}
+
+function handleShareVideo(): {
+  result: Record<string, unknown>
+  patch: Record<string, unknown>
+} {
+  const url = process.env.WHATSAPP_VIDEO_URL
+  if (!url) return { result: { sent: false, reason: 'no video configured' }, patch: {} }
+  // The worker reads `__share_video_url` from the patch and appends it
+  // to the outgoing message (either as Twilio media or as a text link).
+  return {
+    result: { sent: true, url },
+    patch: { __share_video_url: url },
+  }
 }
 
 async function handleListDates(args: Record<string, unknown>) {

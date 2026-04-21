@@ -208,6 +208,8 @@ async function processInboundMessage(args: { messageSid: string; params: TwilioP
   let aiTextAccumulator = ''
   let totalInputTokens = 0
   let totalOutputTokens = 0
+  // Set by the `share_explainer_video` tool when the user asks for more info.
+  let onDemandVideoUrl: string | null = null
 
   // The explainer video is sent deterministically by the worker on the
   // very first bot reply (when video_sent=false). We don't rely on the
@@ -251,6 +253,12 @@ async function processInboundMessage(args: { messageSid: string; params: TwilioP
 
       // Keep the shared ctx in sync so later tools see the patch.
       if (dispatched.patch) {
+        // `__share_video_url` is a transient signal from share_explainer_video
+        // — consume it here and don't persist it to collected_data.
+        if (typeof dispatched.patch.__share_video_url === 'string') {
+          onDemandVideoUrl = dispatched.patch.__share_video_url
+          delete (dispatched.patch as Record<string, unknown>).__share_video_url
+        }
         Object.assign(toolCtx.collected, dispatched.patch)
       }
       functionResponses.push({
@@ -288,19 +296,38 @@ async function processInboundMessage(args: { messageSid: string; params: TwilioP
     aiText += `\n\n📺 Video explicativo: ${videoLinkForText}`
   }
 
-  // Mark video_sent if we just sent it, so future turns don't resend.
-  const videoMarkingPromise = pendingVideoUrl
+  // On-demand video share (tool `share_explainer_video`). Only appended
+  // this turn; we don't re-send it on later turns.
+  let onDemandMediaUrl: string | null = null
+  if (onDemandVideoUrl) {
+    const direct = /\.(mp4|m4v|mov|webm|3gp|jpg|jpeg|png|gif|pdf|ogg|opus|mp3|aac)(\?.*)?$/i.test(
+      onDemandVideoUrl,
+    )
+    if (direct) {
+      onDemandMediaUrl = onDemandVideoUrl
+    } else if (!aiText.includes(onDemandVideoUrl)) {
+      aiText += `\n\n📺 Aquí lo tienes: ${onDemandVideoUrl}`
+    }
+  }
+
+  // Mark video_sent if we sent it in *any* form (direct mediaUrl OR pasted
+  // link). Without this the flag stayed false for YouTube-style URLs and
+  // the worker re-appended the video link on every single turn.
+  const videoMarkingPromise = shouldSendVideo
     ? updateConversation({
         conversationId: conversation.id,
         videoSent: true,
       }).catch(() => {})
     : Promise.resolve()
 
+  const mediaUrls = [pendingVideoUrl, onDemandMediaUrl].filter(
+    (u): u is string => !!u,
+  )
   await sendBotMessage({
     conversationId: conversation.id,
     contactPhone: phone,
     text: aiText,
-    mediaUrls: pendingVideoUrl ? [pendingVideoUrl] : undefined,
+    mediaUrls: mediaUrls.length > 0 ? mediaUrls : undefined,
     tokens: { input: totalInputTokens, output: totalOutputTokens },
   })
 
