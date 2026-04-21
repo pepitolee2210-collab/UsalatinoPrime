@@ -134,7 +134,10 @@ async function processInboundMessage(args: { messageSid: string; params: TwilioP
   let currentStep: SijsStep = conversation.current_step
 
   // Brand-new conversation: respond GREETING immediately, don't run transition.
-  if (conversation.total_messages === 0 || currentStep === 'GREETING') {
+  // Only match on current_step because total_messages isn't incremented
+  // anywhere — relying on it was the reason the bot looped back to the
+  // greeting on every inbound message.
+  if (currentStep === 'GREETING') {
     await sendBotMessage({
       conversationId: conversation.id,
       contactPhone: phone,
