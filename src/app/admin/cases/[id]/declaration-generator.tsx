@@ -5,14 +5,17 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import {
-  FileText, Loader2, Download, Copy, CheckCircle, Users, User, Eye, X, RotateCw,
+  FileText, Loader2, Download, Copy, CheckCircle, Users, User, Eye, X, Sparkles, Pencil, Save,
 } from 'lucide-react'
+import { ReadinessPanel } from './readiness-panel'
 
 interface DeclarationGeneratorProps {
   caseId: string
   clientName: string
   tutorData: Record<string, unknown> | null
   minorStories: { minorIndex: number; formData: Record<string, unknown> }[]
+  absentParents?: { formData: Record<string, unknown> }[]
+  supplementaryData?: Record<string, unknown> | null
 }
 
 interface GeneratedDoc {
@@ -23,11 +26,18 @@ interface GeneratedDoc {
   contentES?: string
 }
 
-export function DeclarationGenerator({ caseId, clientName, tutorData, minorStories }: DeclarationGeneratorProps) {
+export function DeclarationGenerator({ caseId, clientName, tutorData, minorStories, absentParents, supplementaryData }: DeclarationGeneratorProps) {
   const [generating, setGenerating] = useState<string | null>(null)
   const [docs, setDocs] = useState<GeneratedDoc[]>([])
   const [previewDoc, setPreviewDoc] = useState<GeneratedDoc | null>(null)
   const [loaded, setLoaded] = useState(false)
+  // Editor inline (mejora #3) y corrección dirigida (mejora #4)
+  const [editing, setEditing] = useState(false)
+  const [editedContent, setEditedContent] = useState('')
+  const [correcting, setCorrecting] = useState(false)
+  const [correctionFeedback, setCorrectionFeedback] = useState('')
+  const [applyingCorrection, setApplyingCorrection] = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
 
   // Load saved declarations on mount
   if (!loaded) {
@@ -150,39 +160,277 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
     if (doc.contentES) setPreviewDoc({ ...doc, content: doc.contentES, label: doc.label + ' (Español)' })
   }
 
+  function openPreview(doc: GeneratedDoc) {
+    setPreviewDoc(doc)
+    setEditing(false)
+    setCorrecting(false)
+    setEditedContent('')
+    setCorrectionFeedback('')
+  }
+
+  /**
+   * Determina si el preview abierto es la versión EN o ES y devuelve el
+   * objeto base del documento (sin el sufijo "(Español)") para poder
+   * persistir los cambios contra el `docs` array.
+   */
+  function findBaseDoc(preview: GeneratedDoc): { base: GeneratedDoc; isES: boolean } | null {
+    const isES = preview.label.endsWith('(Español)')
+    const base = docs.find(d => d.type === preview.type && d.index === preview.index)
+    if (!base) return null
+    return { base, isES }
+  }
+
+  /**
+   * Guarda el documento editado manualmente. Si es la versión EN,
+   * automáticamente re-traduce la ES para mantener consistencia.
+   */
+  async function saveEdit() {
+    if (!previewDoc || !editedContent.trim()) return
+    const found = findBaseDoc(previewDoc)
+    if (!found) return
+
+    setSavingEdit(true)
+    try {
+      let newDoc: GeneratedDoc
+      if (found.isES) {
+        // Solo actualizamos el ES; no re-generamos EN.
+        newDoc = { ...found.base, contentES: editedContent }
+      } else {
+        // Se editó el EN → re-traducir el ES para mantener consistencia.
+        const resES = await fetch('/api/ai/generate-declaration', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            case_id: caseId,
+            type: previewDoc.type,
+            index: previewDoc.index,
+            lang: 'es',
+            english_source: editedContent,
+          }),
+        })
+        const dataES = await resES.json()
+        if (!resES.ok) throw new Error(dataES.error || 'Error al re-traducir ES')
+        newDoc = { ...found.base, content: editedContent, contentES: dataES.declaration }
+      }
+
+      const updated = docs.filter(d => !(d.type === found.base.type && d.index === found.base.index))
+      updated.push(newDoc)
+      setDocs(updated)
+
+      // Persist to DB
+      await fetch('/api/cases/saved-declarations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ case_id: caseId, declarations: updated }),
+      })
+
+      // Actualizar el previewDoc para que muestre el contenido nuevo
+      if (found.isES) {
+        setPreviewDoc({ ...previewDoc, content: editedContent })
+      } else {
+        setPreviewDoc({ ...previewDoc, content: editedContent })
+      }
+      setEditing(false)
+      setEditedContent('')
+      toast.success(found.isES ? 'Cambios guardados en español' : 'Cambios guardados (ES re-traducido automáticamente)')
+    } catch (e) {
+      toast.error(e instanceof Error && e.message ? e.message : 'Error al guardar los cambios')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  /**
+   * Aplica una corrección dirigida: Claude recibe el documento actual + el
+   * feedback del admin y devuelve el documento con SOLO esa corrección.
+   * Si se corrigió el EN, re-traduce el ES automáticamente.
+   */
+  async function applyCorrection() {
+    if (!previewDoc || !correctionFeedback.trim()) return
+    const found = findBaseDoc(previewDoc)
+    if (!found) return
+
+    setApplyingCorrection(true)
+    try {
+      const resCorrect = await fetch('/api/ai/correct-declaration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_text: previewDoc.content,
+          feedback: correctionFeedback.trim(),
+          lang: found.isES ? 'es' : 'en',
+        }),
+      })
+      const dataC = await resCorrect.json()
+      if (!resCorrect.ok) throw new Error(dataC.error || 'Error al aplicar la corrección')
+
+      let newDoc: GeneratedDoc
+      if (found.isES) {
+        newDoc = { ...found.base, contentES: dataC.corrected }
+      } else {
+        // Se corrigió el EN → re-traducir el ES.
+        const resES = await fetch('/api/ai/generate-declaration', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            case_id: caseId,
+            type: previewDoc.type,
+            index: previewDoc.index,
+            lang: 'es',
+            english_source: dataC.corrected,
+          }),
+        })
+        const dataES = await resES.json()
+        if (!resES.ok) throw new Error(dataES.error || 'Error al re-traducir ES')
+        newDoc = { ...found.base, content: dataC.corrected, contentES: dataES.declaration }
+      }
+
+      const updated = docs.filter(d => !(d.type === found.base.type && d.index === found.base.index))
+      updated.push(newDoc)
+      setDocs(updated)
+
+      await fetch('/api/cases/saved-declarations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ case_id: caseId, declarations: updated }),
+      })
+
+      setPreviewDoc({ ...previewDoc, content: dataC.corrected })
+      setCorrecting(false)
+      setCorrectionFeedback('')
+      toast.success('Corrección aplicada (ES re-sincronizado)')
+    } catch (e) {
+      toast.error(e instanceof Error && e.message ? e.message : 'Error al aplicar la corrección')
+    } finally {
+      setApplyingCorrection(false)
+    }
+  }
+
   function downloadES(doc: GeneratedDoc) {
     if (doc.contentES) downloadAsPDF({ ...doc, content: doc.contentES, label: doc.label + '_ES' })
   }
 
   return (
     <div className="space-y-4">
-      {/* Preview modal */}
+      {/* Readiness panel — #2 */}
+      <ReadinessPanel
+        tutorData={tutorData}
+        minorStories={minorStories}
+        absentParents={absentParents}
+        supplementaryData={supplementaryData}
+      />
+
+      {/* Preview modal — soporta lectura, edición inline (#3) y corrección dirigida (#4) */}
       {previewDoc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}
-          onClick={() => setPreviewDoc(null)}>
-          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden shadow-2xl flex flex-col"
+          onClick={() => { if (!editing && !correcting) setPreviewDoc(null) }}>
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
             onClick={e => e.stopPropagation()}>
+            {/* Header */}
             <div className="flex items-center justify-between p-4 border-b">
               <div>
                 <p className="font-bold text-gray-900">{previewDoc.label}</p>
-                <p className="text-xs text-gray-500">Declaración generada por IA</p>
+                <p className="text-xs text-gray-500">
+                  {editing ? '✏️ Modo edición manual' : correcting ? '💬 Corrección dirigida con IA' : 'Vista previa'}
+                </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => copyToClipboard(previewDoc.content)}>
-                  <Copy className="w-3 h-3 mr-1" /> Copiar
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => downloadAsPDF(previewDoc)}>
-                  <Download className="w-3 h-3 mr-1" /> Descargar
-                </Button>
-                <button onClick={() => setPreviewDoc(null)}
+                {!editing && !correcting && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => copyToClipboard(previewDoc.content)}>
+                      <Copy className="w-3 h-3 mr-1" /> Copiar
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => downloadAsPDF(previewDoc)}>
+                      <Download className="w-3 h-3 mr-1" /> Descargar
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setEditing(true); setEditedContent(previewDoc.content) }}
+                      className="border-blue-300 text-blue-700 hover:bg-blue-50">
+                      <Pencil className="w-3 h-3 mr-1" /> Editar
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setCorrecting(true)}
+                      className="border-purple-300 text-purple-700 hover:bg-purple-50">
+                      <Sparkles className="w-3 h-3 mr-1" /> Corregir con IA
+                    </Button>
+                  </>
+                )}
+                <button onClick={() => {
+                  if (editing || correcting) {
+                    setEditing(false); setCorrecting(false); setEditedContent(''); setCorrectionFeedback('')
+                  } else {
+                    setPreviewDoc(null)
+                  }
+                }}
                   className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 hover:bg-gray-200">
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-6">
-              <pre className="text-sm text-gray-800 whitespace-pre-wrap font-serif leading-relaxed">{previewDoc.content}</pre>
-            </div>
+
+            {/* Body */}
+            {editing ? (
+              <>
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="mb-2 text-xs text-gray-500 flex items-center gap-2">
+                    <Pencil className="w-3 h-3" />
+                    Edita el texto directamente. Si modificas la versión EN, la ES se re-traduce al guardar.
+                  </div>
+                  <textarea
+                    value={editedContent}
+                    onChange={e => setEditedContent(e.target.value)}
+                    className="w-full h-[60vh] p-4 text-sm font-serif leading-relaxed border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300/40 resize-none"
+                  />
+                </div>
+                <div className="flex items-center justify-end gap-2 p-4 border-t bg-gray-50">
+                  <Button size="sm" variant="outline" onClick={() => { setEditing(false); setEditedContent('') }} disabled={savingEdit}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" onClick={saveEdit} disabled={savingEdit || !editedContent.trim()}
+                    className="bg-blue-600 hover:bg-blue-700 text-white">
+                    {savingEdit ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Save className="w-3 h-3 mr-1" />}
+                    Guardar cambios
+                  </Button>
+                </div>
+              </>
+            ) : correcting ? (
+              <>
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Documento actual</p>
+                      <div className="h-[55vh] overflow-y-auto p-3 text-xs border border-gray-200 rounded-lg bg-gray-50">
+                        <pre className="whitespace-pre-wrap font-serif leading-relaxed">{previewDoc.content}</pre>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">¿Qué hay que corregir?</p>
+                      <textarea
+                        value={correctionFeedback}
+                        onChange={e => setCorrectionFeedback(e.target.value)}
+                        placeholder='Ejemplo: "El párrafo 5 dice que el abandono fue en 2015 pero fue en 2013. También el nombre del testigo en el párrafo 8 está mal escrito: es Libia no Lidia."'
+                        className="w-full h-[55vh] p-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300/40 resize-none"
+                      />
+                      <p className="text-[11px] text-gray-500 mt-2 leading-relaxed">
+                        Claude aplicará <strong>solo esa corrección</strong>, sin tocar el resto del documento. La versión en español se re-traduce automáticamente.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-2 p-4 border-t bg-gray-50">
+                  <Button size="sm" variant="outline" onClick={() => { setCorrecting(false); setCorrectionFeedback('') }} disabled={applyingCorrection}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" onClick={applyCorrection} disabled={applyingCorrection || correctionFeedback.trim().length < 5}
+                    className="bg-purple-600 hover:bg-purple-700 text-white">
+                    {applyingCorrection ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                    Aplicar corrección
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 overflow-y-auto p-6">
+                <pre className="text-sm text-gray-800 whitespace-pre-wrap font-serif leading-relaxed">{previewDoc.content}</pre>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -209,7 +457,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
             generating={generating === `petition_guardianship-${i}`}
             generated={!!getDoc('petition_guardianship', i)}
             onGenerate={() => generate('petition_guardianship', i, `Petición ${name}`)}
-            onPreview={() => setPreviewDoc(getDoc('petition_guardianship', i)!)}
+            onPreview={() => openPreview(getDoc('petition_guardianship', i)!)}
             onCopy={() => copyToClipboard(getDoc('petition_guardianship', i)!.content)}
             onDownload={() => downloadAsPDF(getDoc('petition_guardianship', i)!)}
             onPreviewES={() => previewES(getDoc('petition_guardianship', i)!)}
@@ -227,7 +475,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
         generating={generating === 'tutor-0'}
         generated={!!getDoc('tutor', 0)}
         onGenerate={() => generate('tutor', 0, tutorName)}
-        onPreview={() => setPreviewDoc(getDoc('tutor', 0)!)}
+        onPreview={() => openPreview(getDoc('tutor', 0)!)}
         onCopy={() => copyToClipboard(getDoc('tutor', 0)!.content)}
         onDownload={() => downloadAsPDF(getDoc('tutor', 0)!)}
         onPreviewES={() => previewES(getDoc('tutor', 0)!)}
@@ -248,7 +496,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
             generating={generating === `minor-${i}`}
             generated={!!getDoc('minor', i)}
             onGenerate={() => generate('minor', i, name)}
-            onPreview={() => setPreviewDoc(getDoc('minor', i)!)}
+            onPreview={() => openPreview(getDoc('minor', i)!)}
             onCopy={() => copyToClipboard(getDoc('minor', i)!.content)}
             onDownload={() => downloadAsPDF(getDoc('minor', i)!)}
             onPreviewES={() => previewES(getDoc('minor', i)!)}
@@ -268,7 +516,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
           generating={generating === `witness-${i}`}
           generated={!!getDoc('witness', i)}
           onGenerate={() => generate('witness', i, w.name)}
-          onPreview={() => setPreviewDoc(getDoc('witness', i)!)}
+          onPreview={() => openPreview(getDoc('witness', i)!)}
           onCopy={() => copyToClipboard(getDoc('witness', i)!.content)}
           onDownload={() => downloadAsPDF(getDoc('witness', i)!)}
           onPreviewES={() => previewES(getDoc('witness', i)!)}
@@ -345,14 +593,10 @@ function DocCard({ icon, title, subtitle, color, generating, generated, onGenera
         ) : generated ? (
           <div className="flex items-center gap-1 flex-wrap">
             <Badge className="bg-green-100 text-green-700">✓</Badge>
-            <Button size="sm" variant="outline" onClick={onPreview} title="Ver EN"><Eye className="w-3 h-3 mr-1" />EN</Button>
+            <Button size="sm" variant="outline" onClick={onPreview} title="Ver EN — desde aquí podés editar o corregir con IA"><Eye className="w-3 h-3 mr-1" />EN</Button>
             {onPreviewES && <Button size="sm" variant="outline" onClick={onPreviewES} title="Ver ES"><Eye className="w-3 h-3 mr-1" />ES</Button>}
             <Button size="sm" variant="ghost" onClick={onDownload} title="PDF EN"><Download className="w-3 h-3" /></Button>
             {onDownloadES && <Button size="sm" variant="ghost" onClick={onDownloadES} title="PDF ES"><Download className="w-3 h-3" /></Button>}
-            <Button size="sm" variant="outline" onClick={onGenerate} title="Volver a generar" className="border-[#F2A900] text-[#9a6500] hover:bg-amber-50">
-              <RotateCw className="w-3 h-3 mr-1" />
-              Regenerar
-            </Button>
           </div>
         ) : (
           <Button size="sm" className="bg-[#F2A900] hover:bg-[#D4940A] text-[#001020] font-bold"

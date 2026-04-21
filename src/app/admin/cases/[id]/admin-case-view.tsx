@@ -1029,6 +1029,11 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
                 .sort((a: any, b: any) => (a.minor_index || 0) - (b.minor_index || 0))
                 .map((s: any) => ({ minorIndex: s.minor_index || 0, formData: s.form_data }))
               }
+              absentParents={(aiSubmissions || [])
+                .filter((s: any) => s.form_type === 'client_absent_parent')
+                .map((s: any) => ({ formData: s.form_data }))
+              }
+              supplementaryData={(aiSubmissions || []).find((s: any) => s.form_type === 'admin_supplementary')?.form_data || null}
             />
 
           </TabsContent>
