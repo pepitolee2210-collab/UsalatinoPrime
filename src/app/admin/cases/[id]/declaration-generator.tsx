@@ -47,7 +47,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
     const key = `${type}-${index}`
     setGenerating(key)
     try {
-      // Generate English
+      // Generate English (from case data)
       const resEN = await fetch('/api/ai/generate-declaration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -56,11 +56,19 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
       const dataEN = await resEN.json()
       if (!resEN.ok) throw new Error(dataEN.error || 'Error EN')
 
-      // Generate Spanish
+      // Spanish is TRANSLATED from the English version (not generated from case).
+      // Cheaper (~50%) y garantiza consistencia 1:1 entre ambas versiones —
+      // mismos datos, mismas fechas, mismo orden de párrafos.
       const resES = await fetch('/api/ai/generate-declaration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ case_id: caseId, type, index, lang: 'es' }),
+        body: JSON.stringify({
+          case_id: caseId,
+          type,
+          index,
+          lang: 'es',
+          english_source: dataEN.declaration,
+        }),
       })
       const dataES = await resES.json()
       if (!resES.ok) throw new Error(dataES.error || 'Error ES')

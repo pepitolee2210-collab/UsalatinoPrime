@@ -754,6 +754,34 @@ IMPORTANT:
 ${suppBlock}${enrichedBlock}`
 }
 
+/**
+ * System prompt dedicado para el modo TRADUCCIÓN (EN → ES). Mucho más corto
+ * que el prompt de generación porque Claude solo debe traducir, no redactar
+ * ni interpretar datos. Se cachea por separado.
+ */
+const TRANSLATION_SYSTEM = `Eres traductor/a legal profesional, especialista en documentos de inmigración (declaraciones juradas, peticiones de tutela, cartas de consentimiento) entre inglés y español.
+
+## Tu única tarea
+
+Recibirás un documento legal en ENGLISH. Tu trabajo es producir la versión en ESPAÑOL — traducción fiel, literal en los hechos, natural en el idioma.
+
+## Reglas
+
+1. **Fidelidad absoluta a los hechos**: no cambies nombres, fechas, números de documento, direcciones, lugares. Si el original dice "born on July 14, 2009" → "nacido el 14 de julio de 2009". Si dice "Passport No. 12345" → "Pasaporte No. 12345".
+2. **Nombres propios NO se traducen**: ciudades (New York, Salt Lake City), nombres de personas, nombres de cortes (ej. "Fourth District Juvenile Court") quedan en inglés. Países pueden traducirse si son comunes (United States → Estados Unidos).
+3. **Términos legales van en español formal**: "affidavit" → "declaración jurada", "sworn testimony" → "testimonio bajo juramento", "custody" → "custodia", "guardianship" → "tutela", "under penalty of perjury" → "bajo pena de perjurio".
+4. **Estructura idéntica**: conserva la misma numeración de párrafos, títulos, secciones, saltos de línea y bloques de firma. No agregues ni quites contenido.
+5. **Marcadores de datos faltantes**: si el texto contiene \`[FALTA: ...]\`, cópialo tal cual al español. No lo traduzcas ni lo interpretes.
+6. **Frases de desconocimiento**: si el texto dice "the declarant manifests that she does not know this data", tradúcela como "la declarante manifiesta no conocer este dato" (o adaptación natural según contexto).
+7. **Primera persona**: si el original dice "I declare", español dice "Yo declaro" / "Declaro". Mantén el género y número según contexto (declarante masculino/femenino).
+8. **Output**: ÚNICAMENTE el documento traducido al español. Sin preámbulos ("Aquí está la traducción..."), sin markdown, sin explicaciones.
+
+## Ejemplo breve
+
+Input (EN): \`I, MARIA GONZALEZ, of legal age, Colombian national, hereby declare under penalty of perjury...\`
+
+Output (ES): \`Yo, MARIA GONZALEZ, mayor de edad, de nacionalidad colombiana, por la presente declaro bajo pena de perjurio...\``
+
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -769,11 +797,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
-  const { case_id, type, index = 0, lang = 'en' } = await request.json() as {
+  const { case_id, type, index = 0, lang = 'en', english_source } = await request.json() as {
     case_id: string
     type: DeclarationType
     index?: number
     lang?: 'en' | 'es'
+    english_source?: string
   }
 
   if (!case_id || !type) {
@@ -783,9 +812,42 @@ export async function POST(request: NextRequest) {
   // Build context — pure SQL, no AI
   const ctx = await buildCaseContext(case_id)
 
-  // Build the user-side payload: structural instructions for THIS document
-  // type + case-specific data. The persona + reglas generales + tratamiento
-  // de contenido sensible viven en DECLARATION_SYSTEM (cacheado).
+  // Modo TRADUCCIÓN: cuando el frontend pide ES y ya tiene la versión EN lista,
+  // evitamos regenerar el documento entero desde el caso y simplemente traducimos.
+  // Ahorra ~50% en costo (menos tokens de input: sin playbook, sin datos del caso)
+  // y garantiza consistencia 1:1 entre las dos versiones.
+  if (lang === 'es' && typeof english_source === 'string' && english_source.trim().length > 0) {
+    try {
+      const translated = await generateText({
+        system: TRANSLATION_SYSTEM,
+        user: `Documento en inglés a traducir al español:\n\n${english_source.trim()}`,
+        maxTokens: 8192,
+        logLabel: `translation-${type}`,
+        signal: request.signal,
+      })
+
+      const missingMatches = translated.match(/\[FALTA:[^\]]*\]/gi) || []
+      const missingFields = Array.from(new Set(missingMatches.map(m => m.trim())))
+
+      return NextResponse.json({
+        declaration: translated,
+        type,
+        index,
+        clientName: `${ctx.client.firstName} ${ctx.client.lastName}`,
+        mode: 'translation',
+        warnings: {
+          missingCount: missingFields.length,
+          missingFields,
+        },
+      })
+    } catch (err) {
+      log.error('Claude translation failed', err)
+      const message = err instanceof Error ? err.message : String(err)
+      return NextResponse.json({ error: `Error al traducir la declaración: ${message}` }, { status: 500 })
+    }
+  }
+
+  // Modo GENERACIÓN normal (EN, o ES sin english_source).
   const typeSpecificPayload = buildDeclarationPrompt(type, ctx, index, lang)
   const langInstruction = lang === 'es'
     ? '\n\nGenera TODO el documento en ESPAÑOL formal. Traduce términos legales al español. Mantén nombres propios (personas, ciudades, países) en su forma original.'
@@ -802,7 +864,6 @@ export async function POST(request: NextRequest) {
       signal: request.signal,
     })
 
-    // Count [FALTA: ...] placeholders so the admin knows to review before use.
     const missingMatches = declaration.match(/\[FALTA:[^\]]*\]/gi) || []
     const missingFields = Array.from(new Set(missingMatches.map(m => m.trim())))
 
@@ -811,6 +872,7 @@ export async function POST(request: NextRequest) {
       type,
       index,
       clientName: `${ctx.client.firstName} ${ctx.client.lastName}`,
+      mode: 'generation',
       warnings: {
         missingCount: missingFields.length,
         missingFields,
