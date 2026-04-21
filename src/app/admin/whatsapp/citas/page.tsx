@@ -4,6 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Calendar, Phone, User } from 'lucide-react'
 import { formatDateMT, formatToMT } from '@/lib/appointments/slots'
+import {
+  appointmentStatusLabel,
+  APPOINTMENT_STATUS_BADGE_STYLE,
+} from '@/lib/appointments/status-labels'
 
 export const dynamic = 'force-dynamic'
 
@@ -115,16 +119,8 @@ export default async function WhatsappCitasPage() {
                           </div>
                         )}
                       </div>
-                      <Badge
-                        className={
-                          a.status === 'scheduled'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : a.status === 'cancelled'
-                              ? 'bg-red-100 text-red-700'
-                              : ''
-                        }
-                      >
-                        {a.status}
+                      <Badge className={APPOINTMENT_STATUS_BADGE_STYLE[a.status] ?? ''}>
+                        {appointmentStatusLabel(a.status)}
                       </Badge>
                       {conv && (
                         <Link

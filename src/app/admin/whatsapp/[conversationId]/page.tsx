@@ -5,6 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Phone, MessageCircle, Calendar, User, MapPin } from 'lucide-react'
 import { formatDateMT, formatToMT } from '@/lib/appointments/slots'
+import { stateName } from '@/lib/timezones/us-states'
+import {
+  appointmentStatusLabel,
+  APPOINTMENT_STATUS_BADGE_STYLE,
+} from '@/lib/appointments/status-labels'
 
 export const dynamic = 'force-dynamic'
 
@@ -116,7 +121,7 @@ export default async function WhatsappConversationDetailPage({
                 <div className="text-muted-foreground">Estado</div>
                 <div className="flex items-center gap-1">
                   <MapPin className="w-3 h-3" />
-                  {contact.state_us.toUpperCase()}
+                  {stateName(contact.state_us)}
                 </div>
               </div>
             )}
@@ -144,7 +149,7 @@ export default async function WhatsappConversationDetailPage({
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Estado</span>
-              <span>{intake?.state_us?.toUpperCase() ?? '—'}</span>
+              <span>{stateName(intake?.state_us)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Abuso/neg/aband</span>
@@ -190,7 +195,9 @@ export default async function WhatsappConversationDetailPage({
                 </div>
                 <div>
                   <div className="text-muted-foreground">Estado</div>
-                  <Badge className="capitalize">{appointment.status}</Badge>
+                  <Badge className={APPOINTMENT_STATUS_BADGE_STYLE[appointment.status] ?? ''}>
+                    {appointmentStatusLabel(appointment.status)}
+                  </Badge>
                 </div>
                 {appointment.notes && (
                   <div>

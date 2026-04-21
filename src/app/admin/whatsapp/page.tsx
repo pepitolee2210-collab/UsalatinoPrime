@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { MessageCircle, Phone, User, Clock, Calendar } from 'lucide-react'
+import { stateName } from '@/lib/timezones/us-states'
 
 export const dynamic = 'force-dynamic'
 
@@ -124,7 +125,7 @@ export default async function WhatsappListPage() {
                         <span className="font-medium truncate">{name}</span>
                         {stateUs && (
                           <span className="text-xs bg-slate-100 px-1.5 py-0.5 rounded">
-                            {stateUs}
+                            {stateName(stateUs)}
                           </span>
                         )}
                       </div>

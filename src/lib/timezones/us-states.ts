@@ -89,3 +89,30 @@ export function tzForState(state: string): string {
   if (!code) return 'America/Denver' // office default
   return STATE_TIMEZONE[code]
 }
+
+/** Two-letter code → full English state name. Used in admin UI. */
+const CODE_TO_NAME: Record<UsStateCode, string> = {
+  AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas',
+  CA: 'California', CO: 'Colorado', CT: 'Connecticut', DE: 'Delaware',
+  DC: 'District of Columbia', FL: 'Florida', GA: 'Georgia', HI: 'Hawaii',
+  ID: 'Idaho', IL: 'Illinois', IN: 'Indiana', IA: 'Iowa',
+  KS: 'Kansas', KY: 'Kentucky', LA: 'Louisiana', ME: 'Maine',
+  MD: 'Maryland', MA: 'Massachusetts', MI: 'Michigan', MN: 'Minnesota',
+  MS: 'Mississippi', MO: 'Missouri', MT: 'Montana', NE: 'Nebraska',
+  NV: 'Nevada', NH: 'New Hampshire', NJ: 'New Jersey', NM: 'New Mexico',
+  NY: 'New York', NC: 'North Carolina', ND: 'North Dakota', OH: 'Ohio',
+  OK: 'Oklahoma', OR: 'Oregon', PA: 'Pennsylvania', RI: 'Rhode Island',
+  SC: 'South Carolina', SD: 'South Dakota', TN: 'Tennessee', TX: 'Texas',
+  UT: 'Utah', VT: 'Vermont', VA: 'Virginia', WA: 'Washington',
+  WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming',
+}
+
+/**
+ * Given a 2-letter US state code returns the full name ("UT" → "Utah").
+ * Falls back to the input if the code is unknown. Returns "—" for nullish.
+ */
+export function stateName(code?: string | null): string {
+  if (!code) return '—'
+  const upper = code.trim().toUpperCase() as UsStateCode
+  return CODE_TO_NAME[upper] ?? code
+}

@@ -243,3 +243,48 @@ export async function markTwilioEventProcessed(messageSid: string, error?: strin
     })
     .eq('message_sid', messageSid)
 }
+
+/** A message in Gemini's chat history format (role + text parts). */
+export interface GeminiHistoryMessage {
+  role: 'user' | 'model'
+  parts: Array<{ text: string }>
+}
+
+/**
+ * Loads the last N messages of a conversation and maps them to Gemini's
+ * chat history format. The worker passes this into `chats.create({ history })`
+ * so the model has full context on every async turn.
+ *
+ * - user → 'user'
+ * - bot  → 'model'
+ * - admin/system messages are skipped (they aren't part of the user↔AI
+ *   conversation, and mixing them confuses the model about who said what).
+ */
+export async function loadChatHistory(
+  conversationId: string,
+  limit = 20,
+): Promise<GeminiHistoryMessage[]> {
+  const supabase = createServiceClient()
+  const { data, error } = await supabase
+    .from('whatsapp_messages')
+    .select('role, body, created_at')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error || !data) {
+    log.warn('loadChatHistory failed', error)
+    return []
+  }
+  const out: GeminiHistoryMessage[] = []
+  // data is desc — reverse to asc for chronological order
+  for (const row of data.reverse()) {
+    if (!row.body) continue
+    if (row.role === 'user') {
+      out.push({ role: 'user', parts: [{ text: row.body as string }] })
+    } else if (row.role === 'bot') {
+      out.push({ role: 'model', parts: [{ text: row.body as string }] })
+    }
+    // admin/system are intentionally ignored
+  }
+  return out
+}

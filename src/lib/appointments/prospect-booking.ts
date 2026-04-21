@@ -88,6 +88,103 @@ export async function listUpcomingProspectSlots(args: {
   return out
 }
 
+export interface ProspectAvailableDate {
+  /** ISO date string YYYY-MM-DD. */
+  date: string
+  /** Day of week (0=Sunday). */
+  dayOfWeek: number
+  /** Spanish short name ("lun", "mar"). */
+  dayLabel: string
+  /** Total slots available on this date. */
+  slotCount: number
+}
+
+/**
+ * Lists the next N days that have at least one available slot, without
+ * enumerating every individual slot. Used by the WhatsApp AI to answer
+ * "¿qué día puedo agendar?" — Gemini can then ask `list_slots_for_date`
+ * for the user's preferred date instead of dumping a giant list.
+ */
+export async function listProspectDatesWithSlots(
+  args: { lookAheadDays?: number } = {},
+): Promise<ProspectAvailableDate[]> {
+  const look = args.lookAheadDays ?? 14
+  const { supabase, config, slotDuration, blockedDates, advanceNoticeHours } =
+    await loadProspectCalendar()
+
+  const rangeEnd = new Date(Date.now() + look * 86400_000).toISOString()
+  const { data: existing } = await supabase
+    .from('appointments')
+    .select('id, scheduled_at, duration_minutes, status')
+    .eq('status', 'scheduled')
+    .gte('scheduled_at', new Date().toISOString())
+    .lte('scheduled_at', rangeEnd)
+
+  const minStart = new Date(Date.now() + advanceNoticeHours * 3600_000)
+  const dayLabels = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb']
+  const out: ProspectAvailableDate[] = []
+
+  for (let offset = 0; offset < look; offset++) {
+    const day = new Date()
+    day.setUTCDate(day.getUTCDate() + offset)
+    const dateStr = day.toISOString().slice(0, 10)
+    if (blockedDates.includes(dateStr)) continue
+    const slots = getAvailableSlots(
+      dateStr,
+      config,
+      (existing ?? []) as never[],
+      slotDuration,
+    )
+    const usableSlots = slots.filter(
+      iso => new Date(iso).getTime() >= minStart.getTime(),
+    )
+    if (usableSlots.length === 0) continue
+    const dow = new Date(dateStr + 'T12:00:00Z').getUTCDay()
+    out.push({
+      date: dateStr,
+      dayOfWeek: dow,
+      dayLabel: dayLabels[dow],
+      slotCount: usableSlots.length,
+    })
+  }
+  return out
+}
+
+/**
+ * Lists individual slots for a specific date. Mirror of `listUpcoming…`
+ * but scoped to one day. The caller (e.g. WhatsApp bot) is expected to
+ * format the ISO into both office (MT) and client-local timezones.
+ */
+export async function listProspectSlotsForDate(date: string): Promise<ProspectSlot[]> {
+  const { supabase, config, slotDuration, blockedDates, advanceNoticeHours } =
+    await loadProspectCalendar()
+  if (blockedDates.includes(date)) return []
+
+  const dayStart = `${date}T00:00:00Z`
+  const dayEnd = `${date}T23:59:59Z`
+  const { data: existing } = await supabase
+    .from('appointments')
+    .select('id, scheduled_at, duration_minutes, status')
+    .eq('status', 'scheduled')
+    .gte('scheduled_at', dayStart)
+    .lte('scheduled_at', dayEnd)
+
+  const slots = getAvailableSlots(
+    date,
+    config,
+    (existing ?? []) as never[],
+    slotDuration,
+  )
+  const minStart = new Date(Date.now() + advanceNoticeHours * 3600_000)
+  return slots
+    .filter(iso => new Date(iso).getTime() >= minStart.getTime())
+    .map(iso => ({
+      iso,
+      humanDate: formatDateMT(iso),
+      humanTime: formatToMT(iso),
+    }))
+}
+
 export async function getNextProspectSlot(): Promise<ProspectSlot | null> {
   const { supabase, config, slotDuration, blockedDates, advanceNoticeHours } =
     await loadProspectCalendar()

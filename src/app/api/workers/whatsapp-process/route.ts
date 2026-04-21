@@ -6,26 +6,16 @@ import {
   persistInboundMessage,
   persistOutboundMessage,
   updateConversation,
-  upsertSijsIntake,
-  markContactOptedOut,
   markTwilioEventProcessed,
+  loadChatHistory,
 } from '@/lib/chatbot/sijs-session'
+import { SIJS_WA_SYSTEM_PROMPT, CANONICAL_MESSAGES } from '@/lib/ai/prompts/sijs-whatsapp-system'
 import {
-  nextStep,
-  isTerminal,
-  type SijsStep,
-  type CollectedData,
-} from '@/lib/chatbot/sijs-state-machine'
-import { evaluateEligibility } from '@/lib/chatbot/sijs-eligibility'
-import { CANONICAL_MESSAGES } from '@/lib/ai/prompts/sijs-whatsapp-system'
-import { generateFaqReply, generateIneligibleReply } from '@/lib/ai/sijs-whatsapp-reply'
-import { tzForState } from '@/lib/timezones/us-states'
-import {
-  listUpcomingProspectSlots,
-  bookProspectAppointment,
-} from '@/lib/appointments/prospect-booking'
-import { formatDateMT, formatToMT } from '@/lib/appointments/slots'
-import { sendPushToAdmins } from '@/lib/notifications/push'
+  SIJS_WA_TOOLS,
+  dispatchSijsTool,
+  type ToolContext,
+} from '@/lib/ai/tools/sijs-whatsapp-tools'
+import { getGeminiClient, GEMINI_MODEL } from '@/lib/ai/gemini'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('whatsapp-worker')
@@ -33,11 +23,11 @@ const log = createLogger('whatsapp-worker')
 interface TwilioParams {
   MessageSid: string
   SmsMessageSid?: string
-  From: string     // "whatsapp:+15551234567"
-  To: string       // "whatsapp:+14155238886"
+  From: string
+  To: string
   Body?: string
   ProfileName?: string
-  WaId?: string    // "15551234567" (no +)
+  WaId?: string
   NumMedia?: string
   MediaUrl0?: string
   MediaContentType0?: string
@@ -51,8 +41,7 @@ interface WorkerPayload {
 function phoneFromTwilio(params: TwilioParams): string {
   const waId = params.WaId
   if (waId) return waId.startsWith('+') ? waId : `+${waId}`
-  const from = params.From.replace(/^whatsapp:/, '')
-  return from
+  return params.From.replace(/^whatsapp:/, '')
 }
 
 function mediaUrlsFromParams(params: TwilioParams): Array<{ url: string; contentType: string }> {
@@ -66,8 +55,9 @@ function mediaUrlsFromParams(params: TwilioParams): Array<{ url: string; content
   return out
 }
 
+const OPT_OUT_RE = /^\s*(stop|baja|cancelar|unsubscribe|parar|salir)\b/i
+
 export async function POST(request: NextRequest) {
-  // Verify QStash signature so only QStash can call us.
   const raw = await request.text()
   const signature = request.headers.get('upstash-signature')
   const proto = request.headers.get('x-forwarded-proto') ?? 'https'
@@ -99,11 +89,15 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     log.error('worker error', err)
     await markTwilioEventProcessed(messageSid, String(err)).catch(() => {})
-    // Non-200 triggers QStash retry (we configured retries=3).
     return new NextResponse('Server Error', { status: 500 })
   }
 }
 
+/**
+ * Async turn: load state, let Gemini drive the conversation via function
+ * calling, send the final text reply via Twilio. The tool dispatcher
+ * handles side effects (save intake, book appointment, push admins).
+ */
 async function processInboundMessage(args: { messageSid: string; params: TwilioParams }) {
   const { messageSid, params } = args
   const phone = phoneFromTwilio(params)
@@ -116,13 +110,13 @@ async function processInboundMessage(args: { messageSid: string; params: TwilioP
     profileName,
   })
 
-  // Skip if contact already opted out — should not get here because Twilio
-  // filters replies to STOP, but belt-and-suspenders.
   if (contact.opted_out) {
-    log.info('ignoring message from opted-out contact', { phone })
+    log.info('ignoring opted-out contact', { phone })
     return
   }
 
+  // Always persist the inbound message first — we never want to lose a user
+  // reply even if the AI or Twilio fails downstream.
   await persistInboundMessage({
     conversationId: conversation.id,
     body,
@@ -130,513 +124,180 @@ async function processInboundMessage(args: { messageSid: string; params: TwilioP
     twilioSid: messageSid,
   })
 
-  const collected: CollectedData = (conversation.collected_data ?? {}) as CollectedData
-  let currentStep: SijsStep = conversation.current_step
-
-  // Brand-new conversation: respond GREETING immediately, don't run transition.
-  // Only match on current_step because total_messages isn't incremented
-  // anywhere — relying on it was the reason the bot looped back to the
-  // greeting on every inbound message.
-  if (currentStep === 'GREETING') {
+  // Hard safety net: if the user shouts "stop" the AI should also pick it
+  // up, but we short-circuit to guarantee a fast, deterministic ack.
+  if (OPT_OUT_RE.test(body)) {
     await sendBotMessage({
       conversationId: conversation.id,
       contactPhone: phone,
-      text: CANONICAL_MESSAGES.GREETING,
+      text: CANONICAL_MESSAGES.OPTED_OUT,
     })
-    await updateConversation({
-      conversationId: conversation.id,
-      currentStep: 'INTRODUCTION',
-    })
+    await dispatchSijsTool(
+      'opt_out',
+      {},
+      {
+        conversation,
+        contact,
+        phoneE164: phone,
+        waProfileName: profileName,
+        collected: (conversation.collected_data ?? {}) as Record<string, unknown>,
+      },
+    )
     return
   }
 
-  // Regular turn: run the state machine.
-  const transition = nextStep(currentStep, body, collected)
-
-  // Retry path: resend the question with a hint; bump retry_count; escalate on 3.
-  if (transition.retry) {
-    const newRetryCount = conversation.retry_count + 1
-    if (newRetryCount >= 3) {
-      await sendBotMessage({
-        conversationId: conversation.id,
-        contactPhone: phone,
-        text: CANONICAL_MESSAGES.REQUIRES_HUMAN,
-      })
-      await updateConversation({
-        conversationId: conversation.id,
-        currentStep: 'REQUIRES_HUMAN',
-        retryCount: newRetryCount,
-        status: 'closed',
-        closedReason: 'retry_exhausted',
-      })
-      return
-    }
-    await sendBotMessage({
-      conversationId: conversation.id,
-      contactPhone: phone,
-      text: transition.retry.hint,
-    })
-    await updateConversation({
-      conversationId: conversation.id,
-      retryCount: newRetryCount,
-    })
-    return
+  // Build the collected context the AI will see. It includes intake answers
+  // plus waProfileName so the AI can greet by first name naturally.
+  const collected: Record<string, unknown> = {
+    ...(conversation.collected_data ?? {}),
   }
 
-  const newCollected: CollectedData = {
-    ...collected,
-    ...(transition.patch ?? {}),
+  const toolCtx: ToolContext = {
+    conversation,
+    contact,
+    phoneE164: phone,
+    waProfileName: profileName,
+    collected,
   }
 
-  // Merge contact info from Twilio profile.
-  if (!newCollected.contact_full_name && (profileName || contact.display_name)) {
-    newCollected.contact_full_name = profileName ?? contact.display_name ?? undefined
-  }
-  if (!newCollected.contact_phone_e164) newCollected.contact_phone_e164 = phone
+  // Load chat history (last 20 turns) for Gemini context.
+  const history = await loadChatHistory(conversation.id, 20)
+  // history now ends with the just-persisted user message — drop it so we
+  // can `sendMessage(body)` separately (Gemini SDK treats history + latest
+  // message as distinct inputs).
+  const historyWithoutLatest = history.slice(0, -1)
 
-  // Execute the step that we are transitioning INTO. Some steps are
-  // self-triggering (ANALYSIS, ELIGIBLE after patch, PICK_SLOT after ELIGIBLE
-  // accepts "después"), so loop until we land on a step that needs user input.
-  currentStep = transition.nextStep
-  await runServerSideStep({
-    conversationId: conversation.id,
-    contactId: contact.id,
-    contactPhone: phone,
-    startingStep: currentStep,
-    collected: newCollected,
-    retryCount: 0,
+  const gemini = getGeminiClient()
+
+  // System prompt with a tiny context block so the AI knows what's been
+  // collected so far across prior turns (it helps avoid re-asking).
+  const contextLine = buildContextBlock(collected, profileName)
+  const systemInstruction = `${SIJS_WA_SYSTEM_PROMPT}\n\n## Contexto de la conversación actual\n${contextLine}`
+
+  const chat = gemini.chats.create({
+    model: GEMINI_MODEL,
+    config: {
+      systemInstruction,
+      temperature: 0.7,
+      maxOutputTokens: 600,
+      tools: [
+        {
+          functionDeclarations: SIJS_WA_TOOLS.map(t => ({
+            name: t.name,
+            description: t.description,
+            parameters: t.parameters as unknown as Record<string, unknown>,
+          })) as unknown as Parameters<
+            typeof gemini.chats.create
+          >[0]['config'] extends infer C
+            ? C extends { tools?: Array<{ functionDeclarations?: infer FD }> }
+              ? FD
+              : never
+            : never,
+        },
+      ],
+    },
+    history: historyWithoutLatest,
   })
+
+  // Send the user message and loop until the AI emits plain text with no
+  // further tool calls. Guard the loop so a misbehaving model cannot spam.
+  let aiText = ''
+  let pendingVideoUrl: string | null = null
+  let totalInputTokens = 0
+  let totalOutputTokens = 0
+
+  let response = await chat.sendMessage({ message: body || '(mensaje vacío)' })
+  for (let iter = 0; iter < 6; iter++) {
+    totalInputTokens += response.usageMetadata?.promptTokenCount ?? 0
+    totalOutputTokens += response.usageMetadata?.candidatesTokenCount ?? 0
+
+    const calls = response.functionCalls ?? []
+    if (calls.length === 0) {
+      aiText = extractText(response)
+      break
+    }
+
+    // Dispatch every call in this round and send back all responses at once.
+    const functionResponses: Array<{ functionResponse: { name: string; response: Record<string, unknown> } }> = []
+    for (const call of calls) {
+      const name = call.name ?? 'unknown'
+      const callArgs = (call.args ?? {}) as Record<string, unknown>
+      const dispatched = await dispatchSijsTool(name, callArgs, toolCtx)
+
+      // Keep the shared ctx in sync so later tools see the patch.
+      if (dispatched.patch) {
+        Object.assign(toolCtx.collected, dispatched.patch)
+        if ('__send_video' in dispatched.patch) {
+          pendingVideoUrl = dispatched.patch.__send_video as string
+          delete (toolCtx.collected as Record<string, unknown>)['__send_video']
+        }
+      }
+      functionResponses.push({
+        functionResponse: { name, response: dispatched.result },
+      })
+    }
+
+    // Persist the running collected_data so if we fail mid-turn the state
+    // survives the next QStash retry.
+    await updateConversation({
+      conversationId: conversation.id,
+      collectedData: toolCtx.collected as Parameters<typeof updateConversation>[0]['collectedData'],
+    }).catch(() => {})
+
+    response = await chat.sendMessage({
+      message: functionResponses as unknown as string,
+    })
+  }
+
+  if (!aiText) aiText = extractText(response) || CANONICAL_MESSAGES.GEMINI_ERROR
+
+  // Mark video_sent if we just sent it, so future turns don't resend.
+  const videoMarkingPromise = pendingVideoUrl
+    ? updateConversation({
+        conversationId: conversation.id,
+        videoSent: true,
+      }).catch(() => {})
+    : Promise.resolve()
+
+  await sendBotMessage({
+    conversationId: conversation.id,
+    contactPhone: phone,
+    text: aiText,
+    mediaUrls: pendingVideoUrl ? [pendingVideoUrl] : undefined,
+    tokens: { input: totalInputTokens, output: totalOutputTokens },
+  })
+
+  await videoMarkingPromise
 }
 
-/**
- * Execute server-side steps (no user input required) until we hit a step
- * that expects a reply or a terminal step.
- */
-async function runServerSideStep(args: {
-  conversationId: string
-  contactId: string
-  contactPhone: string
-  startingStep: SijsStep
-  collected: CollectedData
-  retryCount: number
-}) {
-  let step = args.startingStep
-  let collected = args.collected
+function buildContextBlock(
+  collected: Record<string, unknown>,
+  profileName: string | null,
+): string {
+  const pieces: string[] = []
+  if (profileName) pieces.push(`WhatsApp ProfileName: ${profileName}`)
+  if (collected.contact_full_name) pieces.push(`Nombre completo confirmado: ${collected.contact_full_name}`)
+  if (collected.lives_in_usa !== undefined)
+    pieces.push(`lives_in_usa: ${collected.lives_in_usa}`)
+  if (collected.age !== undefined) pieces.push(`age: ${collected.age}`)
+  if (collected.state_us) pieces.push(`state_us: ${collected.state_us}`)
+  if (collected.suffered_abuse !== undefined)
+    pieces.push(`suffered_abuse: ${collected.suffered_abuse}`)
+  if (collected.verdict) pieces.push(`verdict: ${collected.verdict}`)
+  return pieces.length > 0 ? pieces.join(' | ') : '(sin datos recopilados aún)'
+}
 
-  // Safety bound on the self-advance loop.
-  for (let i = 0; i < 6; i++) {
-    switch (step) {
-      case 'INTRODUCTION': {
-        // Send the intro message + the explainer video, then go to Q1.
-        await sendBotMessage({
-          conversationId: args.conversationId,
-          contactPhone: args.contactPhone,
-          text: CANONICAL_MESSAGES.INTRODUCTION,
-        })
-        const videoUrl = process.env.WHATSAPP_VIDEO_URL
-        if (videoUrl) {
-          await sendBotMessage({
-            conversationId: args.conversationId,
-            contactPhone: args.contactPhone,
-            text: CANONICAL_MESSAGES.VIDEO_CAPTION,
-            mediaUrls: [videoUrl],
-          })
-        }
-        await sendBotMessage({
-          conversationId: args.conversationId,
-          contactPhone: args.contactPhone,
-          text: CANONICAL_MESSAGES.Q1_LIVES_USA,
-        })
-        await updateConversation({
-          conversationId: args.conversationId,
-          currentStep: 'Q1_LIVES_USA',
-          collectedData: collected,
-          videoSent: true,
-          retryCount: 0,
-        })
-        return
-      }
-
-      case 'FAQ_MODE': {
-        const reply = await generateFaqReply({
-          userMessage: collected.contact_full_name
-            ? `El usuario pregunta algo sobre SIJS. Su nombre es ${collected.contact_full_name}.`
-            : 'El usuario tiene una duda abierta sobre SIJS.',
-        })
-        await sendBotMessage({
-          conversationId: args.conversationId,
-          contactPhone: args.contactPhone,
-          text: reply.text,
-          tokens: {
-            input: reply.inputTokens,
-            output: reply.outputTokens,
-          },
-        })
-        await updateConversation({
-          conversationId: args.conversationId,
-          currentStep: 'FAQ_MODE',
-          collectedData: collected,
-          retryCount: 0,
-        })
-        return
-      }
-
-      case 'Q1_LIVES_USA':
-      case 'Q2_AGE':
-      case 'Q3_STATE':
-      case 'Q4_ABUSE': {
-        const msg =
-          step === 'Q1_LIVES_USA' ? CANONICAL_MESSAGES.Q1_LIVES_USA
-          : step === 'Q2_AGE' ? CANONICAL_MESSAGES.Q2_AGE
-          : step === 'Q3_STATE' ? CANONICAL_MESSAGES.Q3_STATE
-          : CANONICAL_MESSAGES.Q4_ABUSE
-        await sendBotMessage({
-          conversationId: args.conversationId,
-          contactPhone: args.contactPhone,
-          text: msg,
-        })
-        await updateConversation({
-          conversationId: args.conversationId,
-          currentStep: step,
-          collectedData: collected,
-          retryCount: 0,
-        })
-        return
-      }
-
-      case 'ANALYSIS': {
-        const intake = {
-          lives_in_usa: collected.lives_in_usa ?? null,
-          age: collected.age ?? null,
-          state_us: collected.state_us ?? null,
-          suffered_abuse: collected.suffered_abuse ?? null,
-        }
-        const verdict = evaluateEligibility(intake)
-        collected = { ...collected, verdict: verdict.verdict }
-        await upsertSijsIntake({
-          conversationId: args.conversationId,
-          contactId: args.contactId,
-          collectedData: collected,
-          verdict: verdict.verdict,
-          verdictReasoning: verdict.reasons.join(' '),
-          stateAgeLimit: verdict.state_age_limit,
-          aiModel: 'rule-based',
-        })
-        step =
-          verdict.verdict === 'eligible' ? 'ELIGIBLE'
-          : verdict.verdict === 'not_eligible' ? 'INELIGIBLE'
-          : 'REQUIRES_REVIEW'
-        continue
-      }
-
-      case 'ELIGIBLE':
-      case 'REQUIRES_REVIEW': {
-        const text =
-          step === 'ELIGIBLE'
-            ? CANONICAL_MESSAGES.ELIGIBLE(collected.contact_full_name)
-            : CANONICAL_MESSAGES.REQUIRES_REVIEW(collected.contact_full_name)
-        await sendBotMessage({
-          conversationId: args.conversationId,
-          contactPhone: args.contactPhone,
-          text,
-        })
-        await updateConversation({
-          conversationId: args.conversationId,
-          currentStep: 'SCHEDULE_OFFER',
-          collectedData: collected,
-          status: 'filtered_in',
-          retryCount: 0,
-        })
-        return
-      }
-
-      case 'INELIGIBLE': {
-        const intake = {
-          lives_in_usa: collected.lives_in_usa ?? null,
-          age: collected.age ?? null,
-          state_us: collected.state_us ?? null,
-          suffered_abuse: collected.suffered_abuse ?? null,
-        }
-        const verdict = evaluateEligibility(intake)
-        const llm = await generateIneligibleReply({
-          reason: verdict.reasons.join(' '),
-          name: collected.contact_full_name,
-        })
-        const text = llm.text?.trim() || CANONICAL_MESSAGES.INELIGIBLE_BASE
-        await sendBotMessage({
-          conversationId: args.conversationId,
-          contactPhone: args.contactPhone,
-          text,
-          tokens: { input: llm.inputTokens, output: llm.outputTokens },
-        })
-        await updateConversation({
-          conversationId: args.conversationId,
-          currentStep: 'INELIGIBLE',
-          collectedData: collected,
-          status: 'filtered_out',
-          closedReason: 'ineligible',
-          retryCount: 0,
-        })
-        return
-      }
-
-      case 'SCHEDULE_OFFER': {
-        await sendBotMessage({
-          conversationId: args.conversationId,
-          contactPhone: args.contactPhone,
-          text: CANONICAL_MESSAGES.SCHEDULE_OFFER_RETRY,
-        })
-        await updateConversation({
-          conversationId: args.conversationId,
-          currentStep: 'SCHEDULE_OFFER',
-          collectedData: collected,
-          retryCount: 0,
-        })
-        return
-      }
-
-      case 'CALL_NOW': {
-        await sendBotMessage({
-          conversationId: args.conversationId,
-          contactPhone: args.contactPhone,
-          text: CANONICAL_MESSAGES.CALL_NOW,
-        })
-        await sendPushToAdmins({
-          title: '📞 Llamada SIJS inmediata',
-          body: `${collected.contact_full_name ?? 'Prospecto'} (${args.contactPhone}) quiere una llamada ahora.`,
-          url: '/admin/whatsapp',
-          tag: `wa-call-now-${args.conversationId}`,
-        }).catch(err => log.error('push admins (call-now) failed', err))
-        await updateConversation({
-          conversationId: args.conversationId,
-          currentStep: 'CALL_NOW',
-          collectedData: collected,
-          status: 'closed',
-          closedReason: 'requested_call_now',
-          retryCount: 0,
-        })
-        return
-      }
-
-      case 'PICK_SLOT': {
-        const slots = await listUpcomingProspectSlots({ maxSlots: 6, lookAheadDays: 7 })
-        if (slots.length === 0) {
-          await sendBotMessage({
-            conversationId: args.conversationId,
-            contactPhone: args.contactPhone,
-            text: CANONICAL_MESSAGES.PICK_SLOT_NONE,
-          })
-          await updateConversation({
-            conversationId: args.conversationId,
-            currentStep: 'REQUIRES_HUMAN',
-            collectedData: collected,
-            status: 'closed',
-            closedReason: 'no_slots',
-            retryCount: 0,
-          })
-          return
-        }
-
-        const clientTz = collected.state_us ? tzForState(collected.state_us) : 'America/Denver'
-        const tzLabel = clientTz.split('/').pop() ?? clientTz
-
-        const labeled = slots.map((s, i) => {
-          const humanLocalDate = new Intl.DateTimeFormat('es-US', {
-            timeZone: clientTz,
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-          }).format(new Date(s.iso))
-          const humanLocalTime = new Intl.DateTimeFormat('en-US', {
-            timeZone: clientTz,
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true,
-          }).format(new Date(s.iso))
-          return { iso: s.iso, label: `${i + 1}) ${humanLocalDate} — ${humanLocalTime}` }
-        })
-
-        const listText =
-          CANONICAL_MESSAGES.PICK_SLOT_HEADER(tzLabel) +
-          '\n\n' +
-          labeled.map(l => l.label).join('\n')
-
-        await sendBotMessage({
-          conversationId: args.conversationId,
-          contactPhone: args.contactPhone,
-          text: listText,
-        })
-
-        await updateConversation({
-          conversationId: args.conversationId,
-          currentStep: 'PICK_SLOT',
-          collectedData: { ...collected, offered_slots: labeled },
-          retryCount: 0,
-        })
-        return
-      }
-
-      case 'CONFIRM_SLOT': {
-        const iso = collected.preferred_slot_iso
-        if (!iso) {
-          step = 'PICK_SLOT'
-          continue
-        }
-        const clientTz = collected.state_us ? tzForState(collected.state_us) : 'America/Denver'
-        const tzLabel = clientTz.split('/').pop() ?? clientTz
-        const humanDate = new Intl.DateTimeFormat('es-US', {
-          timeZone: clientTz,
-          weekday: 'long',
-          day: 'numeric',
-          month: 'long',
-        }).format(new Date(iso))
-        const humanTime = new Intl.DateTimeFormat('en-US', {
-          timeZone: clientTz,
-          hour: 'numeric',
-          minute: '2-digit',
-          hour12: true,
-        }).format(new Date(iso))
-        await sendBotMessage({
-          conversationId: args.conversationId,
-          contactPhone: args.contactPhone,
-          text: CANONICAL_MESSAGES.CONFIRM_SLOT(humanDate, humanTime, tzLabel),
-        })
-        await updateConversation({
-          conversationId: args.conversationId,
-          currentStep: 'CONFIRM_SLOT',
-          collectedData: collected,
-          retryCount: 0,
-        })
-        return
-      }
-
-      case 'BOOKED': {
-        const iso = collected.preferred_slot_iso
-        if (!iso) {
-          // Shouldn't happen but re-show slots.
-          step = 'PICK_SLOT'
-          continue
-        }
-        const notes = [
-          `WhatsApp SIJS intake:`,
-          `Estado: ${collected.state_us ?? '?'}`,
-          `Edad: ${collected.age ?? '?'}`,
-          `Vive en EEUU: ${collected.lives_in_usa === true ? 'sí' : collected.lives_in_usa === false ? 'no' : '?'}`,
-          `Abuso/neg/aband: ${collected.suffered_abuse === true ? 'sí' : collected.suffered_abuse === false ? 'no' : '?'}`,
-          `Verdict: ${collected.verdict ?? '?'}`,
-        ].join(' | ')
-
-        const result = await bookProspectAppointment({
-          scheduledAtIso: iso,
-          guestName: collected.contact_full_name ?? 'Sin nombre',
-          guestPhone: args.contactPhone,
-          source: 'whatsapp-chatbot',
-          notes,
-        })
-
-        if (!result.ok) {
-          if (result.error === 'slot_taken') {
-            await sendBotMessage({
-              conversationId: args.conversationId,
-              contactPhone: args.contactPhone,
-              text: 'Parece que ese horario se tomó justo antes que tú. Te muestro opciones nuevas.',
-            })
-            step = 'PICK_SLOT'
-            collected = { ...collected, preferred_slot_iso: undefined }
-            continue
-          }
-          await sendBotMessage({
-            conversationId: args.conversationId,
-            contactPhone: args.contactPhone,
-            text: `No pude agendar automáticamente (${result.message}). Henry te contactará para coordinar.`,
-          })
-          await updateConversation({
-            conversationId: args.conversationId,
-            currentStep: 'REQUIRES_HUMAN',
-            collectedData: collected,
-            status: 'closed',
-            closedReason: 'booking_error',
-            retryCount: 0,
-          })
-          return
-        }
-
-        const clientTz = collected.state_us ? tzForState(collected.state_us) : 'America/Denver'
-        const tzLabel = clientTz.split('/').pop() ?? clientTz
-        const humanLocalDate = new Intl.DateTimeFormat('es-US', {
-          timeZone: clientTz, weekday: 'long', day: 'numeric', month: 'long',
-        }).format(new Date(iso))
-        const humanLocalTime = new Intl.DateTimeFormat('en-US', {
-          timeZone: clientTz, hour: 'numeric', minute: '2-digit', hour12: true,
-        }).format(new Date(iso))
-
-        await sendBotMessage({
-          conversationId: args.conversationId,
-          contactPhone: args.contactPhone,
-          text: CANONICAL_MESSAGES.BOOKED(humanLocalDate, humanLocalTime, tzLabel),
-        })
-
-        await updateConversation({
-          conversationId: args.conversationId,
-          currentStep: 'BOOKED',
-          collectedData: collected,
-          status: 'scheduled',
-          closedReason: 'booked',
-          appointmentId: result.appointmentId,
-          retryCount: 0,
-        })
-
-        // Notify admin via Web Push (PWA, fires even with phone locked).
-        await sendPushToAdmins({
-          title: '✅ Nueva cita SIJS',
-          body: `${collected.contact_full_name ?? 'Prospecto'} — ${formatDateMT(iso)} ${formatToMT(iso)} MT`,
-          url: `/admin/whatsapp/${args.conversationId}`,
-          tag: `wa-booked-${args.conversationId}`,
-        }).catch(err => log.error('push admins (booked) failed', err))
-        return
-      }
-
-      case 'OPTED_OUT': {
-        await sendBotMessage({
-          conversationId: args.conversationId,
-          contactPhone: args.contactPhone,
-          text: CANONICAL_MESSAGES.OPTED_OUT,
-        })
-        await markContactOptedOut(args.contactId)
-        await updateConversation({
-          conversationId: args.conversationId,
-          currentStep: 'OPTED_OUT',
-          status: 'closed',
-          closedReason: 'opted_out',
-          retryCount: 0,
-        })
-        return
-      }
-
-      case 'REQUIRES_HUMAN': {
-        await sendBotMessage({
-          conversationId: args.conversationId,
-          contactPhone: args.contactPhone,
-          text: CANONICAL_MESSAGES.REQUIRES_HUMAN,
-        })
-        await updateConversation({
-          conversationId: args.conversationId,
-          currentStep: 'REQUIRES_HUMAN',
-          status: 'closed',
-          closedReason: 'requires_human',
-          retryCount: 0,
-        })
-        return
-      }
-
-      case 'GREETING':
-        // Greeting is handled inline on first message — fall through to quit.
-        return
-    }
-    if (isTerminal(step)) return
+function extractText(response: unknown): string {
+  const r = response as {
+    text?: string
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>
   }
-
-  log.warn('runServerSideStep hit max loop iterations', { step })
+  if (r.text) return r.text.trim()
+  const parts = r.candidates?.[0]?.content?.parts ?? []
+  return parts
+    .map(p => p.text ?? '')
+    .join('')
+    .trim()
 }
 
 async function sendBotMessage(args: {
