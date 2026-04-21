@@ -8,17 +8,20 @@ import { createLogger } from '@/lib/logger'
 const log = createLogger('cron-reminders')
 
 /**
- * Dispatches appointment reminders. Runs every 15 minutes from Vercel Cron.
+ * Dispatches appointment reminders.
  *
- * Channel routing depends on the `source` column of the appointment:
- *  - `whatsapp-chatbot`, `voice-agent`  → Twilio WhatsApp (guest_phone)
- *  - anything else with a client_id     → Resend email (client.email)
- *  - anything else without either       → skipped + logged
+ * NOTE ON FREQUENCY: the Vercel Hobby plan only allows 1 cron job per day,
+ * so this endpoint runs once at 08:00 UTC. That means the "1 hour before"
+ * reminder only fires if a scheduled appointment happens to fall in the
+ * 08:00–09:15 UTC window. The 24h reminder has slightly better coverage
+ * because the window is wider. For full per-hour precision we'd need the
+ * Vercel Pro plan (or an external scheduler). Because of this limitation
+ * we do NOT tell the user in the bot that a reminder will arrive.
  *
- * Twilio WhatsApp note: outside the 24-hour session window we'd need a
- * pre-approved template. The 1h reminder always fits; the 24h reminder
- * fits only if the user chatted in the last 24h (almost always true for
- * bookings made via the chatbot that day).
+ * Channel routing (when the cron does run):
+ *  - `whatsapp-chatbot`, `voice-agent`, `chatbot` + guest_phone → Twilio WA
+ *  - anything else with a client_id                            → Resend
+ *  - anything else                                             → skipped
  */
 
 type ApptRow = {
