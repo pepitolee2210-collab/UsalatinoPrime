@@ -202,15 +202,23 @@ async function processInboundMessage(args: { messageSid: string; params: TwilioP
   // Send the user message and loop until the AI emits a turn with no
   // further tool calls. Guard the loop so a misbehaving model cannot spam.
   //
-  // IMPORTANT: accumulate text from EVERY turn, not just the last one.
-  // Gemini often sends text + function call together (e.g. greets the user
-  // in the same turn it calls send_explainer_video). If we only read text
-  // from turns with zero function calls, the greeting gets silently dropped
-  // and the user sees no reply to their first message.
+  // We accumulate text from EVERY turn (Gemini may send text together with
+  // a function call in the same turn — if we only read text from final
+  // turns the greeting would get dropped).
   let aiTextAccumulator = ''
-  let pendingVideoUrl: string | null = null
   let totalInputTokens = 0
   let totalOutputTokens = 0
+
+  // The explainer video is sent deterministically by the worker on the
+  // very first bot reply (when video_sent=false). We don't rely on the
+  // AI calling a tool for it, because the model sometimes emits the tool
+  // call without any text in the same turn and the user ends up with
+  // zero reply to their first "hola".
+  const shouldAttachVideo =
+    !conversation.video_sent && !!process.env.WHATSAPP_VIDEO_URL
+  const pendingVideoUrl = shouldAttachVideo
+    ? (process.env.WHATSAPP_VIDEO_URL as string)
+    : null
 
   let response = await chat.sendMessage({ message: body || '(mensaje vacío)' })
   for (let iter = 0; iter < 6; iter++) {
@@ -235,10 +243,6 @@ async function processInboundMessage(args: { messageSid: string; params: TwilioP
       // Keep the shared ctx in sync so later tools see the patch.
       if (dispatched.patch) {
         Object.assign(toolCtx.collected, dispatched.patch)
-        if ('__send_video' in dispatched.patch) {
-          pendingVideoUrl = dispatched.patch.__send_video as string
-          delete (toolCtx.collected as Record<string, unknown>)['__send_video']
-        }
       }
       functionResponses.push({
         functionResponse: { name, response: dispatched.result },
@@ -257,7 +261,16 @@ async function processInboundMessage(args: { messageSid: string; params: TwilioP
     })
   }
 
-  const aiText = aiTextAccumulator || CANONICAL_MESSAGES.GEMINI_ERROR
+  // Fallbacks:
+  // - If this is the first turn (no video yet) AND Gemini didn't produce
+  //   text, send the canned greeting so the user always sees a reply.
+  // - Otherwise, if Gemini went silent mid-conversation, surface the
+  //   generic error so the user knows something is up.
+  const aiText =
+    aiTextAccumulator ||
+    (shouldAttachVideo
+      ? '¡Hola! 👋 Soy Sofía, asistente virtual de Henry Orellana. No soy abogada, hago un filtro inicial para Visa Juvenil. Te envío un video corto y te hago 4 preguntas rápidas. ¿Empezamos?'
+      : CANONICAL_MESSAGES.GEMINI_ERROR)
 
   // Mark video_sent if we just sent it, so future turns don't resend.
   const videoMarkingPromise = pendingVideoUrl

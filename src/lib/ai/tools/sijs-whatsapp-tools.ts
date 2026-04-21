@@ -65,12 +65,6 @@ export const SIJS_WA_TOOLS = [
     parameters: { type: Type.OBJECT, properties: {} },
   },
   {
-    name: 'send_explainer_video',
-    description:
-      'Envía el video MP4 explicativo del proceso SIJS al usuario. Úsalo solo una vez al inicio, tras el saludo inicial. Si ya fue enviado en esta conversación, no lo vuelvas a enviar.',
-    parameters: { type: Type.OBJECT, properties: {} },
-  },
-  {
     name: 'list_available_dates',
     description:
       'Devuelve los próximos días (hasta 14) que tienen al menos un horario disponible. Útil cuando el usuario pregunta "¿qué días tienes disponibles?" sin señalar uno concreto.',
@@ -169,8 +163,6 @@ export async function dispatchSijsTool(
         return await handleSaveFilterAnswer(args, ctx)
       case 'evaluate_eligibility':
         return await handleEvaluateEligibility(ctx)
-      case 'send_explainer_video':
-        return handleSendVideo(ctx)
       case 'list_available_dates':
         return await handleListDates(args)
       case 'list_slots_for_date':
@@ -276,23 +268,6 @@ async function handleEvaluateEligibility(ctx: ToolContext) {
     status: verdict.verdict === 'not_eligible' ? 'filtered_out' : 'filtered_in',
   })
   return { result: { ...verdict }, patch: { verdict: verdict.verdict } }
-}
-
-function handleSendVideo(ctx: ToolContext): {
-  result: Record<string, unknown>
-  patch: Record<string, unknown>
-} {
-  const url = process.env.WHATSAPP_VIDEO_URL
-  if (!url) return { result: { sent: false, reason: 'no video configured' }, patch: {} }
-  if (ctx.conversation.video_sent) {
-    return { result: { sent: false, reason: 'already sent earlier' }, patch: {} }
-  }
-  // The worker sees `patch.__send_video` and actually posts the media URL.
-  // We don't send it here because mediaUrl piggy-backs on the text reply.
-  return {
-    result: { sent: true, url },
-    patch: { __send_video: url },
-  }
 }
 
 async function handleListDates(args: Record<string, unknown>) {
