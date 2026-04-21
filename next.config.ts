@@ -61,8 +61,15 @@ const nextConfig: NextConfig = {
       { source: '/api/client/preview-doc', headers: embedHeaders },
       // Contrato firmado embebido en modal del portal del cliente
       { source: '/api/cita/:token/signed-contract', headers: embedHeaders },
-      // Default: todo lo demás mantiene headers estrictos
-      { source: '/:path*', headers: securityHeaders },
+      // Default para todo lo demás. Usamos un negative lookahead en el
+      // path para EXCLUIR las rutas de embed arriba — si el source global
+      // matcheara también esas rutas, Next.js aplicaría AMBOS sets de
+      // headers y el último gana, lo que sobreescribiría los permisivos
+      // del embed con DENY (rompe el iframe).
+      {
+        source: '/:path((?!api/client/preview-doc|api/cita/[^/]+/signed-contract).*)',
+        headers: securityHeaders,
+      },
     ]
   },
 };
