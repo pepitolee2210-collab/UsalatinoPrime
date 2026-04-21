@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { getAnthropic, CLAUDE_MODEL } from './anthropic-client'
+import { selectRelevantDocs, buildKnowledgeContentBlocks } from './lex-knowledge-base'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('legal-chat')
@@ -80,7 +81,21 @@ Cuando el equipo te salude o te pregunte "¿quién eres?", preséntate de forma 
 
 - Cuando cites requisitos legales, usa la forma corta: "8 USC § 1101(a)(27)(J)" no "Title 8, United States Code, Section 1101..."
 - Cuando hables de jueces o cortes, sé respetuosa: "el juez de corte juvenil", "la oficina de asilo", no apodos
-- Cuando señales un error, no hagas sentir mal al redactor. "Este documento se puede fortalecer si..." mejor que "esto está mal"`
+- Cuando señales un error, no hagas sentir mal al redactor. "Este documento se puede fortalecer si..." mejor que "esto está mal"
+
+## BASE DE CONOCIMIENTO OFICIAL — REGLA CRÍTICA
+
+Cuando la conversación trata sobre un formulario migratorio específico (I-485, I-360, I-589), el sistema automáticamente adjunta los documentos oficiales de USCIS a tu contexto (formulario vacío + instrucciones). **Eso es tu fuente autorizada de verdad, por encima de tu memoria**.
+
+Reglas duras cuando tienes documentos oficiales adjuntos:
+
+1. **Cita siempre la fuente** — formato: \`[según I-485 Instructions pág. 12]\` o \`[según I-360 formulario Part 5 Question 3]\`. Si no puedes citar fuente, no afirmes el criterio como obligatorio.
+2. **No inventes reglas que no estén en el documento oficial**. Si el paralegal pregunta "¿es obligatorio el campo X?" y el documento oficial no lo marca como obligatorio, dilo: *"Las instrucciones oficiales no marcan este campo como obligatorio, aunque USCIS recomienda llenarlo para evitar RFE."*
+3. **Prioridad al documento oficial**. Si tu memoria dice A y el documento oficial adjunto dice B, vale B. Eso es intencional: USCIS actualiza formularios y tu entrenamiento puede estar desactualizado.
+4. **Si no hay documento oficial adjunto** (ej. consulta sobre un tema sin formulario — "¿cómo preparo un testigo para entrevista?"), entonces opera con tu conocimiento general, pero siendo explícita: *"Basándome en mi experiencia (sin documento oficial adjunto para esta consulta)..."*
+5. **Cuando revises un PDF llenado por el paralegal**, compáralo campo por campo contra el formulario oficial adjunto. Cada crítica debe decir qué dice el documento oficial vs qué puso el paralegal.
+
+Si el paralegal cuestiona una crítica tuya y tienes documento oficial: cita la página exacta. Si no tienes respaldo en el documento, reconocelo y retirá la crítica — es mejor eso que insistir sin evidencia.`
 
 export interface ChatAttachment {
   filename: string
@@ -151,6 +166,23 @@ export async function streamLegalChat({
 }: StreamChatParams): Promise<ReadableStream<Uint8Array>> {
   const client = getAnthropic()
 
+  // Seleccionar documentos oficiales relevantes a la consulta. Los triggers
+  // son regex sobre userMessage + nombres de adjuntos. Si detectamos que
+  // la conversación trata sobre I-485, cargamos el formulario oficial y
+  // las instrucciones oficiales de USCIS como contexto autorizado.
+  // Si no hay match, knowledgeBlocks = [] y LEX opera como antes.
+  const allMessageText = [userMessage, ...history.map(h => h.content)].join(' ')
+  const attachmentNames = attachments.map(a => a.filename)
+  const relevantDocs = selectRelevantDocs(allMessageText, attachmentNames)
+  const knowledgeBlocks = await buildKnowledgeContentBlocks(relevantDocs)
+
+  if (relevantDocs.length > 0) {
+    log.info('knowledge base activated', {
+      docs: relevantDocs.map(d => d.slug),
+      messageLen: userMessage.length,
+    })
+  }
+
   // Reconstruct conversation history as Claude messages.
   const messages: Anthropic.MessageParam[] = []
   for (const m of history) {
@@ -160,10 +192,16 @@ export async function streamLegalChat({
     })
   }
 
-  // Current user turn: text + attachments (PDFs go as `document`, images as `image`).
+  // Current user turn: knowledge base blocks (oficial USCIS) + adjuntos +
+  // texto. Orden importa: contexto autorizado PRIMERO para que Claude lo
+  // tenga en mente al analizar los adjuntos del paralegal.
   const currentContent: Anthropic.Messages.ContentBlockParam[] = []
-  const unsupportedAttachments: string[] = []
 
+  // 1. Documentos oficiales (cacheados — costo marginal después del primer uso)
+  currentContent.push(...knowledgeBlocks)
+
+  // 2. Adjuntos del paralegal (PDF llenado que Diana quiere revisar, etc.)
+  const unsupportedAttachments: string[] = []
   for (const a of attachments) {
     const block = attachmentToContentBlock(a)
     if (block) {
@@ -173,7 +211,7 @@ export async function streamLegalChat({
     }
   }
 
-  // Text block is always last so it frames the attachments.
+  // 3. Texto final del paralegal (siempre al final como marco de la consulta)
   const finalText = [
     userMessage || (currentContent.length > 0 ? '[adjunto]' : ''),
     unsupportedAttachments.length > 0
