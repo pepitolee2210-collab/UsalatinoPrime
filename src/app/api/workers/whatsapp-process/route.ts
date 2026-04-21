@@ -214,11 +214,20 @@ async function processInboundMessage(args: { messageSid: string; params: TwilioP
   // AI calling a tool for it, because the model sometimes emits the tool
   // call without any text in the same turn and the user ends up with
   // zero reply to their first "hola".
-  const shouldAttachVideo =
-    !conversation.video_sent && !!process.env.WHATSAPP_VIDEO_URL
-  const pendingVideoUrl = shouldAttachVideo
-    ? (process.env.WHATSAPP_VIDEO_URL as string)
-    : null
+  //
+  // Twilio WhatsApp mediaUrl only accepts direct file URLs (mp4, jpg, etc.)
+  // — YouTube / Vimeo / Drive links are rejected silently and the whole
+  // message disappears. So we only use mediaUrl for direct files; for
+  // anything else we append the URL to the text body as a clickable link.
+  const rawVideoUrl = process.env.WHATSAPP_VIDEO_URL ?? null
+  const shouldSendVideo = !conversation.video_sent && !!rawVideoUrl
+  const isDirectMediaFile =
+    !!rawVideoUrl &&
+    /\.(mp4|m4v|mov|webm|3gp|jpg|jpeg|png|gif|pdf|ogg|opus|mp3|aac)(\?.*)?$/i.test(rawVideoUrl)
+  const pendingVideoUrl =
+    shouldSendVideo && isDirectMediaFile ? (rawVideoUrl as string) : null
+  const videoLinkForText =
+    shouldSendVideo && !isDirectMediaFile ? (rawVideoUrl as string) : null
 
   let response = await chat.sendMessage({ message: body || '(mensaje vacío)' })
   for (let iter = 0; iter < 6; iter++) {
@@ -266,11 +275,18 @@ async function processInboundMessage(args: { messageSid: string; params: TwilioP
   //   text, send the canned greeting so the user always sees a reply.
   // - Otherwise, if Gemini went silent mid-conversation, surface the
   //   generic error so the user knows something is up.
-  const aiText =
+  let aiText =
     aiTextAccumulator ||
-    (shouldAttachVideo
+    (shouldSendVideo
       ? '¡Hola! 👋 Soy Sofía, asistente virtual de Henry Orellana. No soy abogada, hago un filtro inicial para Visa Juvenil. Te envío un video corto y te hago 4 preguntas rápidas. ¿Empezamos?'
       : CANONICAL_MESSAGES.GEMINI_ERROR)
+
+  // If the configured video URL is not a direct file (e.g. a YouTube link),
+  // append it to the text so the user still gets it — Twilio would drop
+  // the media otherwise.
+  if (videoLinkForText) {
+    aiText += `\n\n📺 Video explicativo: ${videoLinkForText}`
+  }
 
   // Mark video_sent if we just sent it, so future turns don't resend.
   const videoMarkingPromise = pendingVideoUrl
