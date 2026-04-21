@@ -199,9 +199,15 @@ async function processInboundMessage(args: { messageSid: string; params: TwilioP
     history: historyWithoutLatest,
   })
 
-  // Send the user message and loop until the AI emits plain text with no
+  // Send the user message and loop until the AI emits a turn with no
   // further tool calls. Guard the loop so a misbehaving model cannot spam.
-  let aiText = ''
+  //
+  // IMPORTANT: accumulate text from EVERY turn, not just the last one.
+  // Gemini often sends text + function call together (e.g. greets the user
+  // in the same turn it calls send_explainer_video). If we only read text
+  // from turns with zero function calls, the greeting gets silently dropped
+  // and the user sees no reply to their first message.
+  let aiTextAccumulator = ''
   let pendingVideoUrl: string | null = null
   let totalInputTokens = 0
   let totalOutputTokens = 0
@@ -211,11 +217,13 @@ async function processInboundMessage(args: { messageSid: string; params: TwilioP
     totalInputTokens += response.usageMetadata?.promptTokenCount ?? 0
     totalOutputTokens += response.usageMetadata?.candidatesTokenCount ?? 0
 
-    const calls = response.functionCalls ?? []
-    if (calls.length === 0) {
-      aiText = extractText(response)
-      break
+    const turnText = extractText(response)
+    if (turnText) {
+      aiTextAccumulator += (aiTextAccumulator ? '\n\n' : '') + turnText
     }
+
+    const calls = response.functionCalls ?? []
+    if (calls.length === 0) break
 
     // Dispatch every call in this round and send back all responses at once.
     const functionResponses: Array<{ functionResponse: { name: string; response: Record<string, unknown> } }> = []
@@ -249,7 +257,7 @@ async function processInboundMessage(args: { messageSid: string; params: TwilioP
     })
   }
 
-  if (!aiText) aiText = extractText(response) || CANONICAL_MESSAGES.GEMINI_ERROR
+  const aiText = aiTextAccumulator || CANONICAL_MESSAGES.GEMINI_ERROR
 
   // Mark video_sent if we just sent it, so future turns don't resend.
   const videoMarkingPromise = pendingVideoUrl
