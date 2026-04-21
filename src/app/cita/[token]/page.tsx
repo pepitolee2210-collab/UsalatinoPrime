@@ -34,7 +34,7 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
     )
   }
 
-  const [profileRes, caseRes, appointmentsRes, documentsRes, settingsRes, formSubmissionsRes, communityPostsRes, communityReactionsRes, schedulingConfigRes] = await Promise.all([
+  const [profileRes, caseRes, appointmentsRes, documentsRes, settingsRes, formSubmissionsRes, communityPostsRes, communityReactionsRes, schedulingConfigRes, signedContractRes] = await Promise.all([
     supabase.from('profiles').select('first_name, last_name, email, avatar_url').eq('id', tokenData.client_id).single(),
     supabase.from('cases').select('id, case_number, form_data, service:service_catalog(name, slug)').eq('id', tokenData.case_id).single(),
     supabase.from('appointments').select('*').eq('client_id', tokenData.client_id).order('scheduled_at', { ascending: false }),
@@ -44,6 +44,7 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
     supabase.from('community_posts').select('id, type, title, content, video_url, zoom_url, pinned, created_at').order('pinned', { ascending: false }).order('created_at', { ascending: false }).limit(30),
     supabase.from('community_reactions').select('post_id, user_id, emoji'),
     supabase.from('scheduling_config').select('day_of_week, start_hour, end_hour').eq('is_available', true).order('day_of_week'),
+    supabase.from('contracts').select('id').eq('client_id', tokenData.client_id).eq('status', 'firmado').limit(1).maybeSingle(),
   ])
 
   const profile = profileRes.data
@@ -55,6 +56,7 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
   const communityPosts = communityPostsRes.data || []
   const communityReactions = communityReactionsRes.data || []
   const schedulingDays = (schedulingConfigRes.data || []) as { day_of_week: number; start_hour: number; end_hour: number }[]
+  const hasSignedContract = !!signedContractRes.data
 
   const serviceRaw = caseData?.service as unknown
   const service = Array.isArray(serviceRaw)
@@ -115,6 +117,7 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
           serviceName={service?.name || 'Servicio'}
           serviceSlug={service?.slug || ''}
           minorData={minorData}
+          hasSignedContract={hasSignedContract}
         />
       </div>
     </div>

@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import {
   CalendarClock, FileUp, Download, CheckCircle, BookOpen,
-  ClipboardList, Users, Camera, Loader2
+  ClipboardList, Users, Camera, Loader2, FileText,
 } from 'lucide-react'
 import { AppointmentBooking } from './appointment-booking'
 import { DocumentUploadSection } from './document-upload-section'
@@ -57,6 +57,7 @@ interface ClientPortalProps {
     minor_full_name?: string; minor_dob?: string
     minor_country_of_birth?: string; mother_full_name?: string
   }
+  hasSignedContract?: boolean
 }
 
 const TABS = {
@@ -75,7 +76,7 @@ export function ClientPortal({
   token, clientId, clientName, caseNumber, avatarUrl,
   appointments, zoomLink, uploadedDocuments, henryDocuments,
   formSubmissions, communityPosts, communityReactions, schedulingDays,
-  declarationDocs, serviceName, serviceSlug, minorData,
+  declarationDocs, serviceName, serviceSlug, minorData, hasSignedContract,
 }: ClientPortalProps) {
   const [activeTab, setActiveTab] = useState<TabId>('cita')
   const [avatar, setAvatar] = useState<string | null>(avatarUrl)
@@ -300,6 +301,28 @@ export function ClientPortal({
                 </a>
               </div>
             </div>
+
+            {/* Ver contrato firmado — solo si el cliente ya firmó */}
+            {hasSignedContract && (
+              <a
+                href={`/api/cita/${token}/signed-contract`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 flex items-center justify-between gap-3 p-3.5 rounded-2xl transition-all hover:shadow-lg"
+                style={{ background: 'linear-gradient(135deg, #F2A900 0%, #D4940A 100%)' }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-4.5 h-4.5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-[#001020] leading-tight">Ver contrato firmado</p>
+                    <p className="text-[10px] text-[#001020]/70 mt-0.5">Descarga tu copia del contrato</p>
+                  </div>
+                </div>
+                <Download className="w-4 h-4 text-[#001020]/80" />
+              </a>
+            )}
           </div>
         </div>
 
