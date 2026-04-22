@@ -841,7 +841,7 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
               <div className="grid grid-cols-2 gap-5">
                 <div>
                   <p className="vc-label text-white/35 mb-2">Con</p>
-                  <p className="text-white text-sm font-medium leading-snug">Henry Orellana</p>
+                  <p className="text-white text-sm font-medium leading-snug">Consultora Senior</p>
                   <p className="text-white/40 text-xs mt-0.5">UsaLatino Prime</p>
                 </div>
                 <div>
@@ -855,7 +855,7 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
 
           {/* Fine print + return button */}
           <p className="text-center text-white/35 text-[11px] mt-6 leading-relaxed px-4">
-            Recibirás un aviso por teléfono una hora antes. Si necesitas reagendar, llama al 801-941-3479.
+            Recibirás un aviso por teléfono una hora antes. Si necesitas reagendar, responde al número desde el que te contactemos.
           </p>
 
           <div className="flex justify-center mt-5">
