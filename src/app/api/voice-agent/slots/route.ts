@@ -3,21 +3,21 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { getAvailableSlots, getNextAvailableSlot, formatToMT, formatDateMT } from '@/lib/appointments/slots'
 import { checkVoiceRateLimit } from '@/lib/voice-agent/rate-limit'
 
-// Edge runtime: the voice agent calls this 2-3 times per conversation, and
-// edge execution (~30ms) reduces conversational friction vs Node (~200ms).
-// All dependencies (supabase-js, Intl, Date) are edge-compatible.
+// Edge runtime para latencia baja (30ms vs 200ms Node)
 export const runtime = 'edge'
 
 /**
- * Public endpoint consumed by the voice agent (Gemini Live tool call).
- * Reads the INDEPENDENT prospect calendar (prospect_scheduling_config +
- * prospect_blocked_dates + prospect_scheduling_settings). That way Henry
- * can restrict prospect calls to specific days/hours without affecting
- * his real client appointments.
+ * Endpoint público usado por la IA de voz (Gemini Live tool call).
  *
- * If no `date` is passed the endpoint returns the next available slot
- * looking forward up to 14 days — lets the IA proactively suggest a
- * concrete appointment instead of asking "¿qué día te conviene?".
+ * FUENTE DE HORARIO (prioridad):
+ *   1. Si existe al menos una consultora senior con agenda configurada
+ *      (employee_type='senior_consultant' con rows en consultant_availability),
+ *      la agenda se arma a partir de la UNIÓN de sus disponibilidades.
+ *      Los bloqueos puntuales (consultant_blocks) se respetan como citas
+ *      ocupadas.
+ *   2. Fallback — si no hay consultoras configuradas, cae al calendario
+ *      legacy prospect_scheduling_config/settings/blocked_dates. Mantiene
+ *      el flow actual operativo mientras Vanessa termina de entrar.
  */
 export async function GET(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
@@ -36,20 +36,76 @@ export async function GET(request: NextRequest) {
 
   const supabase = createServiceClient()
 
-  // Load prospect-specific calendar config + settings + blocked dates in parallel.
-  const [configRes, settingsRes, blockedRes] = await Promise.all([
-    supabase.from('prospect_scheduling_config').select('*'),
-    supabase.from('prospect_scheduling_settings').select('*').maybeSingle(),
-    supabase.from('prospect_blocked_dates').select('blocked_date'),
-  ])
+  // 1. Intentar leer agenda de consultoras senior
+  const { data: consultants } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'employee')
+    .eq('employee_type', 'senior_consultant')
 
-  const config = configRes.data || []
-  const slotDuration = settingsRes.data?.slot_duration_minutes || 30
-  const advanceNoticeHours = settingsRes.data?.advance_notice_hours ?? 2
-  const blockedDates = (blockedRes.data || []).map(b => b.blocked_date as string)
+  const consultantIds = (consultants || []).map(c => c.id as string)
+  let config: Array<{ day_of_week: number; start_hour: number; end_hour: number; is_available: boolean; time_blocks?: Array<{ start_hour: number; end_hour: number }> }> = []
+  let slotDuration = 30
+  let advanceNoticeHours = 2
+  let blockedDates: string[] = []
+  let consultantBlocks: Array<{ blocked_at_start: string; blocked_at_end: string }> = []
+  let usedSource: 'consultants' | 'legacy' = 'legacy'
 
-  // Pull prospect appointments currently scheduled (across the next 14 days
-  // for the suggestion query, or the specific day if date was given).
+  if (consultantIds.length > 0) {
+    const { data: availability } = await supabase
+      .from('consultant_availability')
+      .select('day_of_week, start_hour, end_hour, is_available')
+      .in('consultant_id', consultantIds)
+      .eq('is_available', true)
+
+    if (availability && availability.length > 0) {
+      // Unión de disponibilidades por día (si un día tiene 2 consultoras, el rango se extiende)
+      const byDay = new Map<number, { start: number; end: number }>()
+      for (const row of availability) {
+        const day = row.day_of_week as number
+        const start = row.start_hour as number
+        const end = row.end_hour as number
+        const existing = byDay.get(day)
+        if (!existing) {
+          byDay.set(day, { start, end })
+        } else {
+          byDay.set(day, { start: Math.min(existing.start, start), end: Math.max(existing.end, end) })
+        }
+      }
+
+      config = Array.from(byDay.entries()).map(([day_of_week, r]) => ({
+        day_of_week,
+        start_hour: r.start,
+        end_hour: r.end,
+        is_available: true,
+      }))
+
+      // Bloqueos puntuales
+      const { data: blocksData } = await supabase
+        .from('consultant_blocks')
+        .select('blocked_at_start, blocked_at_end')
+        .in('consultant_id', consultantIds)
+        .gte('blocked_at_end', new Date().toISOString())
+
+      consultantBlocks = (blocksData || []) as typeof consultantBlocks
+      usedSource = 'consultants'
+    }
+  }
+
+  // 2. Fallback legacy si no hay agenda de consultoras
+  if (usedSource === 'legacy') {
+    const [configRes, settingsRes, blockedRes] = await Promise.all([
+      supabase.from('prospect_scheduling_config').select('*'),
+      supabase.from('prospect_scheduling_settings').select('*').maybeSingle(),
+      supabase.from('prospect_blocked_dates').select('blocked_date'),
+    ])
+    config = (configRes.data || []) as typeof config
+    slotDuration = settingsRes.data?.slot_duration_minutes || 30
+    advanceNoticeHours = settingsRes.data?.advance_notice_hours ?? 2
+    blockedDates = (blockedRes.data || []).map(b => b.blocked_date as string)
+  }
+
+  // Rango de búsqueda
   const rangeStart = date ? `${date}T00:00:00Z` : new Date().toISOString()
   const rangeEnd = date
     ? `${date}T23:59:59Z`
@@ -62,30 +118,44 @@ export async function GET(request: NextRequest) {
     .gte('scheduled_at', rangeStart)
     .lte('scheduled_at', rangeEnd)
 
-  // Case A: specific date requested → list slots for that day.
+  // Convertir consultant_blocks en "appointments" ficticios para que
+  // getAvailableSlots los trate como slots ocupados.
+  const blocksAsAppointments = consultantBlocks.map((b, i) => ({
+    id: `block-${i}`,
+    scheduled_at: b.blocked_at_start,
+    duration_minutes: Math.max(
+      30,
+      Math.round((new Date(b.blocked_at_end).getTime() - new Date(b.blocked_at_start).getTime()) / 60_000)
+    ),
+    status: 'scheduled' as const,
+  }))
+
+  const allBusy = [...(existingAppointments || []), ...blocksAsAppointments]
+
+  // Case A: fecha específica
   if (date) {
     if (blockedDates.includes(date)) {
-      return NextResponse.json({ slots: [], blocked: true, human_readable: [], date })
+      return NextResponse.json({ slots: [], blocked: true, human_readable: [], date, source: usedSource })
     }
 
     const slots = getAvailableSlots(
       date,
-      config,
-      (existingAppointments || []).map(a => a as never),
+      config as never,
+      allBusy as never,
       slotDuration,
     )
 
     const human_readable = slots.map(iso => ({ iso, human: formatToMT(iso) }))
-    return NextResponse.json({ slots, human_readable, date })
+    return NextResponse.json({ slots, human_readable, date, source: usedSource })
   }
 
-  // Case B: no date → proactively suggest the next available slot.
+  // Case B: siguiente disponible
   const today = new Date()
   today.setUTCHours(0, 0, 0, 0)
   const next = getNextAvailableSlot(
     today,
-    config,
-    (existingAppointments || []).map(a => a as never),
+    config as never,
+    allBusy as never,
     slotDuration,
     blockedDates,
     advanceNoticeHours,
@@ -96,6 +166,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       suggested: null,
       message: 'No hay horarios disponibles en las próximas 2 semanas.',
+      source: usedSource,
     })
   }
 
@@ -106,5 +177,6 @@ export async function GET(request: NextRequest) {
       human_date: formatDateMT(next.iso),
       human_time: formatToMT(next.iso),
     },
+    source: usedSource,
   })
 }

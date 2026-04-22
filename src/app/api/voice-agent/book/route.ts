@@ -74,12 +74,32 @@ export async function POST(request: NextRequest) {
     if (existingForPhone && existingForPhone.length > 0) {
       return NextResponse.json(
         {
-          error: 'Ya tienes una cita agendada. Si deseas cambiarla, llama al 801-941-3479.',
+          error: 'Ya tienes una cita agendada. Una consultora senior te contactará en el horario programado.',
           existing: true,
         },
         { status: 400 },
       )
     }
+
+    // Clasificación automática del tipo de llamada para el dashboard de
+    // la consultora senior. "llamada_ahora" = el prospecto quiere ser
+    // contactado en las próximas 2 horas (el caso típico cuando dice
+    // "llámenme lo antes posible"). "programada" = agendado a futuro.
+    const nowMs = Date.now()
+    const diffMinutes = (cleanDate.getTime() - nowMs) / 60_000
+    const callStatus = diffMinutes <= 120 ? 'llamada_ahora' : 'programada'
+
+    // Asignar al primer senior_consultant activo. Cuando haya más de una
+    // consultora haremos round-robin o balance por carga. Por ahora el
+    // modelo asume una sola (Vanessa).
+    const { data: consultant } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('role', 'employee')
+      .eq('employee_type', 'senior_consultant')
+      .limit(1)
+      .maybeSingle()
+    const consultantId = consultant?.id || null
 
     const { data: appointment, error } = await supabase
       .from('appointments')
@@ -91,6 +111,8 @@ export async function POST(request: NextRequest) {
         notes: notes ? String(notes).slice(0, 500) : null,
         reminder_1h_requested: true,
         reminder_24h_requested: true,
+        call_status: callStatus,
+        consultant_id: consultantId,
       })
       .select()
       .single()
