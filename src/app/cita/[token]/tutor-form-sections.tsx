@@ -3,15 +3,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, UserPlus, Trash2, User } from 'lucide-react'
 import { AIImproveButton } from '@/components/ai-improve-button'
-
-// Reusable field components
-function FieldLabel({ children, required }: { children: React.ReactNode; required?: boolean }) {
-  return (
-    <label className="text-sm font-medium text-gray-700 mb-1.5 block">
-      {children}{required && <span className="text-red-400 ml-0.5">*</span>}
-    </label>
-  )
-}
+import { FieldLabel, LegalFieldInput, ValidatedInput } from './form-components'
 
 function TInput({ value, onChange, placeholder, type = 'text' }: {
   value: string; onChange: (v: string) => void; placeholder?: string; type?: string
@@ -101,13 +93,13 @@ function MinorBlock({ index, data, onChange }: {
           <TInput type="date" value={data.dob || ''} onChange={v => onChange('dob', v)} />
         </div>
         <div>
-          <FieldLabel>País de nacimiento</FieldLabel>
-          <TInput value={data.country || ''} onChange={v => onChange('country', v)} placeholder="Ej: Venezuela, Perú..." />
+          <FieldLabel required>País de nacimiento</FieldLabel>
+          <ValidatedInput value={data.country || ''} onChange={v => onChange('country', v)} placeholder="Ej: Venezuela, Perú..." />
         </div>
       </div>
       <div>
-        <FieldLabel>Ciudad de nacimiento</FieldLabel>
-        <TInput value={data.city || ''} onChange={v => onChange('city', v)} placeholder="Ej: Lima, Guayaquil, Tegucigalpa..." />
+        <FieldLabel required>Ciudad de nacimiento</FieldLabel>
+        <ValidatedInput value={data.city || ''} onChange={v => onChange('city', v)} placeholder="Ej: Lima, Guayaquil, Tegucigalpa..." />
       </div>
       <div>
         <FieldLabel>Estado civil</FieldLabel>
@@ -121,8 +113,8 @@ function MinorBlock({ index, data, onChange }: {
         </div>
       </div>
       <div>
-        <FieldLabel>Dirección actual del menor</FieldLabel>
-        <TInput value={data.location || ''} onChange={v => onChange('location', v)} placeholder="Dirección completa en EE.UU." />
+        <FieldLabel required>Dirección actual del menor</FieldLabel>
+        <ValidatedInput value={data.location || ''} onChange={v => onChange('location', v)} placeholder="Dirección completa en EE.UU." />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
@@ -168,25 +160,25 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
         <div className="grid grid-cols-3 gap-3">
           <div>
             <FieldLabel required>4. Fecha de nacimiento</FieldLabel>
-            <TInput value={data.date_of_birth as string || ''} onChange={v => upd('date_of_birth', v)} placeholder="Ej: 13/11/1986" />
+            <TInput type="date" value={data.date_of_birth as string || ''} onChange={v => upd('date_of_birth', v)} />
           </div>
           <div>
-            <FieldLabel>5. País de nacimiento</FieldLabel>
-            <TInput value={data.country_of_birth as string || ''} onChange={v => upd('country_of_birth', v)} placeholder="Ej: Ecuador" />
+            <FieldLabel required help="Aparece en la petición de tutela y declaración. Debe coincidir con su pasaporte.">5. País de nacimiento</FieldLabel>
+            <ValidatedInput value={data.country_of_birth as string || ''} onChange={v => upd('country_of_birth', v)} placeholder="Ej: Ecuador" />
           </div>
           <div>
-            <FieldLabel>Ciudad de nacimiento</FieldLabel>
-            <TInput value={data.city_of_birth as string || ''} onChange={v => upd('city_of_birth', v)} placeholder="Ej: Guayaquil" />
+            <FieldLabel required>Ciudad de nacimiento</FieldLabel>
+            <ValidatedInput value={data.city_of_birth as string || ''} onChange={v => upd('city_of_birth', v)} placeholder="Ej: Guayaquil" />
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <FieldLabel>No. de documento de identidad (Pasaporte, Cédula o DNI)</FieldLabel>
-            <TInput value={data.id_number as string || ''} onChange={v => upd('id_number', v)} placeholder="Número de documento" />
+            <FieldLabel required help="Su pasaporte, cédula o DNI. Este número aparece en los documentos legales que firma Henry ante la corte.">No. de documento de identidad (Pasaporte, Cédula o DNI)</FieldLabel>
+            <LegalFieldInput value={data.id_number as string || ''} onChange={v => upd('id_number', v)} placeholder="Número de documento" />
           </div>
           <div>
-            <FieldLabel>Nacionalidad</FieldLabel>
-            <TInput value={data.nationality as string || ''} onChange={v => upd('nationality', v)} placeholder="Ej: Ecuatoriana" />
+            <FieldLabel required>Nacionalidad</FieldLabel>
+            <ValidatedInput value={data.nationality as string || ''} onChange={v => upd('nationality', v)} placeholder="Ej: Ecuatoriana" />
           </div>
         </div>
         <div>
@@ -261,33 +253,33 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
       {/* Sección 2.5: Datos del Padre/Madre Ausente */}
       <Section title="Datos del Padre/Madre Ausente" number={3}>
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-800">
-          Estos datos son necesarios para generar los documentos legales (declaraciones juradas, carta de renuncia).
+          Estos datos son necesarios para generar los documentos legales. Si no conoce algún dato del padre/madre ausente (ej. perdió contacto hace años), marque <strong>&ldquo;No tengo este dato&rdquo;</strong> en ese campo — es mejor que dejarlo en blanco.
         </div>
         <div>
-          <FieldLabel>Nombre completo del padre/madre ausente</FieldLabel>
-          <TInput value={data.absent_parent_name as string || ''} onChange={v => upd('absent_parent_name', v)} placeholder="Nombre y apellidos completos" />
+          <FieldLabel required help="Aparece en la petición de tutela ante la corte. Si realmente no conoce el nombre completo, marque la casilla.">Nombre completo del padre/madre ausente</FieldLabel>
+          <LegalFieldInput value={data.absent_parent_name as string || ''} onChange={v => upd('absent_parent_name', v)} placeholder="Nombre y apellidos completos" />
         </div>
         <div>
-          <FieldLabel>Nacionalidad del padre/madre ausente</FieldLabel>
-          <TInput value={data.absent_parent_nationality as string || ''} onChange={v => upd('absent_parent_nationality', v)} placeholder="Ej: Colombiana, Peruana, Mexicana..." />
+          <FieldLabel required>Nacionalidad del padre/madre ausente</FieldLabel>
+          <LegalFieldInput value={data.absent_parent_nationality as string || ''} onChange={v => upd('absent_parent_nationality', v)} placeholder="Ej: Colombiana, Peruana, Mexicana..." />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <FieldLabel>Número de pasaporte del padre/madre ausente</FieldLabel>
-            <TInput value={data.absent_parent_passport as string || ''} onChange={v => upd('absent_parent_passport', v)} placeholder="Número de pasaporte (si lo tiene)" />
+            <FieldLabel help="Pasaporte del padre/madre ausente. Si no lo tiene pero sí tiene su cédula, llene el otro campo y marque aquí &ldquo;No tengo este dato&rdquo;.">Número de pasaporte del padre/madre ausente</FieldLabel>
+            <LegalFieldInput value={data.absent_parent_passport as string || ''} onChange={v => upd('absent_parent_passport', v)} placeholder="Número de pasaporte" />
           </div>
           <div>
-            <FieldLabel>Número de ID/Cédula del padre/madre ausente</FieldLabel>
-            <TInput value={data.absent_parent_id as string || ''} onChange={v => upd('absent_parent_id', v)} placeholder="Cédula, DNI u otro documento" />
+            <FieldLabel help="Cédula, DNI u otra identificación nacional. Con uno de los dos (pasaporte o cédula) es suficiente.">Número de ID/Cédula del padre/madre ausente</FieldLabel>
+            <LegalFieldInput value={data.absent_parent_id as string || ''} onChange={v => upd('absent_parent_id', v)} placeholder="Cédula, DNI u otro documento" />
           </div>
         </div>
         <div>
-          <FieldLabel>País de residencia actual del padre/madre ausente</FieldLabel>
-          <TInput value={data.absent_parent_country as string || ''} onChange={v => upd('absent_parent_country', v)} placeholder="Ej: Colombia, Ecuador, EE.UU..." />
+          <FieldLabel required>País de residencia actual del padre/madre ausente</FieldLabel>
+          <LegalFieldInput value={data.absent_parent_country as string || ''} onChange={v => upd('absent_parent_country', v)} placeholder="Ej: Colombia, Ecuador, EE.UU..." />
         </div>
         <div>
-          <FieldLabel>Ciudad/Estado donde reside (si lo sabe)</FieldLabel>
-          <TInput value={data.absent_parent_location as string || ''} onChange={v => upd('absent_parent_location', v)} placeholder="Ej: Quito, Ecuador / Port St. Lucie, Florida" />
+          <FieldLabel>Ciudad/Estado donde reside</FieldLabel>
+          <LegalFieldInput value={data.absent_parent_location as string || ''} onChange={v => upd('absent_parent_location', v)} placeholder="Ej: Quito, Ecuador / Port St. Lucie, Florida" />
         </div>
       </Section>
 
@@ -392,12 +384,12 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
               )}
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><FieldLabel>Nombre</FieldLabel><TInput value={w.name} onChange={v => { const ws = [...witnesses]; ws[i] = { ...ws[i], name: v }; onChange({ ...data, witnesses: ws }) }} placeholder="Nombre completo" /></div>
-              <div><FieldLabel>Relación</FieldLabel><TInput value={w.relationship} onChange={v => { const ws = [...witnesses]; ws[i] = { ...ws[i], relationship: v }; onChange({ ...data, witnesses: ws }) }} placeholder="Ej: Hermana, vecina" /></div>
+              <div><FieldLabel required>Nombre</FieldLabel><ValidatedInput value={w.name} onChange={v => { const ws = [...witnesses]; ws[i] = { ...ws[i], name: v }; onChange({ ...data, witnesses: ws }) }} placeholder="Nombre completo" /></div>
+              <div><FieldLabel required>Relación</FieldLabel><ValidatedInput value={w.relationship} onChange={v => { const ws = [...witnesses]; ws[i] = { ...ws[i], relationship: v }; onChange({ ...data, witnesses: ws }) }} placeholder="Ej: Hermana, vecina" /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><FieldLabel>Nacionalidad</FieldLabel><TInput value={(w as any).nationality || ''} onChange={v => { const ws = [...witnesses]; ws[i] = { ...ws[i], nationality: v } as any; onChange({ ...data, witnesses: ws }) }} placeholder="Ej: Colombiana" /></div>
-              <div><FieldLabel>Nº de ID / Cédula</FieldLabel><TInput value={(w as any).id_number || ''} onChange={v => { const ws = [...witnesses]; ws[i] = { ...ws[i], id_number: v } as any; onChange({ ...data, witnesses: ws }) }} placeholder="Número de documento" /></div>
+              <div><FieldLabel required help="Nacionalidad del testigo. Aparece en la declaración jurada que firmará ante notario.">Nacionalidad</FieldLabel><LegalFieldInput value={(w as any).nationality || ''} onChange={v => { const ws = [...witnesses]; ws[i] = { ...ws[i], nationality: v } as any; onChange({ ...data, witnesses: ws }) }} placeholder="Ej: Colombiana" /></div>
+              <div><FieldLabel required help="Pasaporte, cédula, DNI o número de identificación del testigo. Obligatorio para la declaración jurada.">Nº de ID / Cédula</FieldLabel><LegalFieldInput value={(w as any).id_number || ''} onChange={v => { const ws = [...witnesses]; ws[i] = { ...ws[i], id_number: v } as any; onChange({ ...data, witnesses: ws }) }} placeholder="Número de documento" /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><FieldLabel>Teléfono</FieldLabel><TInput value={w.phone} onChange={v => { const ws = [...witnesses]; ws[i] = { ...ws[i], phone: v }; onChange({ ...data, witnesses: ws }) }} placeholder="Número" /></div>

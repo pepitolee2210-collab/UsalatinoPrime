@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react'
 import {
   CalendarClock, FileUp, Download, CheckCircle, BookOpen,
-  ClipboardList, Users, Camera, Loader2
+  ClipboardList, Users, Camera, Loader2, FileText, X,
 } from 'lucide-react'
 import { AppointmentBooking } from './appointment-booking'
 import { DocumentUploadSection } from './document-upload-section'
@@ -57,6 +57,7 @@ interface ClientPortalProps {
     minor_full_name?: string; minor_dob?: string
     minor_country_of_birth?: string; mother_full_name?: string
   }
+  hasSignedContract?: boolean
 }
 
 const TABS = {
@@ -75,9 +76,10 @@ export function ClientPortal({
   token, clientId, clientName, caseNumber, avatarUrl,
   appointments, zoomLink, uploadedDocuments, henryDocuments,
   formSubmissions, communityPosts, communityReactions, schedulingDays,
-  declarationDocs, serviceName, serviceSlug, minorData,
+  declarationDocs, serviceName, serviceSlug, minorData, hasSignedContract,
 }: ClientPortalProps) {
   const [activeTab, setActiveTab] = useState<TabId>('cita')
+  const [contractOpen, setContractOpen] = useState(false)
   const [avatar, setAvatar] = useState<string | null>(avatarUrl)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -300,6 +302,27 @@ export function ClientPortal({
                 </a>
               </div>
             </div>
+
+            {/* Ver contrato firmado — solo si el cliente ya firmó */}
+            {hasSignedContract && (
+              <button
+                type="button"
+                onClick={() => setContractOpen(true)}
+                className="mt-3 w-full flex items-center justify-between gap-3 p-3.5 rounded-2xl transition-all hover:shadow-lg text-left"
+                style={{ background: 'linear-gradient(135deg, #F2A900 0%, #D4940A 100%)' }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-4.5 h-4.5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-[#001020] leading-tight">Ver contrato firmado</p>
+                    <p className="text-[10px] text-[#001020]/70 mt-0.5">Previsualiza tu copia del contrato</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-[#001020]/80 uppercase tracking-wider">Abrir</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -377,6 +400,73 @@ export function ClientPortal({
         </div>
 
       </div>
+
+      {/* Modal de previsualización del contrato firmado */}
+      {contractOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4"
+          style={{ background: 'rgba(0, 8, 20, 0.85)' }}
+          onClick={() => setContractOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-4xl h-[92vh] sm:h-[88vh] shadow-2xl flex flex-col overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header del modal */}
+            <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-gray-200">
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #F2A900 0%, #D4940A 100%)' }}
+                >
+                  <FileText className="w-4 h-4 text-white" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-gray-900 leading-tight truncate">Contrato firmado</p>
+                  <p className="text-[11px] text-gray-500 truncate">{clientName}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <a
+                  href={`/api/cita/${token}/signed-contract`}
+                  download
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-colors"
+                  style={{ background: '#002855' }}
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Descargar PDF
+                </a>
+                <a
+                  href={`/api/cita/${token}/signed-contract`}
+                  download
+                  className="sm:hidden inline-flex items-center justify-center w-9 h-9 rounded-lg text-white"
+                  style={{ background: '#002855' }}
+                  aria-label="Descargar"
+                >
+                  <Download className="w-4 h-4" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setContractOpen(false)}
+                  className="w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+                  aria-label="Cerrar"
+                >
+                  <X className="w-4 h-4 text-gray-600" />
+                </button>
+              </div>
+            </div>
+
+            {/* Preview del PDF embed */}
+            <div className="flex-1 bg-gray-100 overflow-hidden">
+              <iframe
+                src={`/api/cita/${token}/signed-contract#toolbar=0&navpanes=0`}
+                className="w-full h-full border-0"
+                title="Contrato firmado"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

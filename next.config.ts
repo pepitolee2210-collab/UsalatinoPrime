@@ -32,13 +32,42 @@ const securityHeaders = [
   { key: 'Content-Security-Policy', value: CSP },
 ]
 
+// Endpoints que sirven PDFs para previsualización dentro de nuestros
+// propios modales con <iframe>. Necesitan permitir same-origin framing,
+// lo que entra en conflicto con el X-Frame-Options: DENY global.
+const embedCSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "object-src 'self' data:",
+  "frame-ancestors 'self'",
+].join('; ')
+
+const embedHeaders = [
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Content-Security-Policy', value: embedCSP },
+]
+
 const nextConfig: NextConfig = {
   reactCompiler: true,
   turbopack: {},
   async headers() {
     return [
+      // Preview de documentos del cliente (iframe dentro de /cita/[token])
+      { source: '/api/client/preview-doc', headers: embedHeaders },
+      // Contrato firmado embebido en modal del portal del cliente
+      { source: '/api/cita/:token/signed-contract', headers: embedHeaders },
+      // Default para todo lo demás. Usamos un negative lookahead en el
+      // path para EXCLUIR las rutas de embed arriba — si el source global
+      // matcheara también esas rutas, Next.js aplicaría AMBOS sets de
+      // headers y el último gana, lo que sobreescribiría los permisivos
+      // del embed con DENY (rompe el iframe).
       {
-        source: '/:path*',
+        source: '/:path((?!api/client/preview-doc|api/cita/[^/]+/signed-contract).*)',
         headers: securityHeaders,
       },
     ]

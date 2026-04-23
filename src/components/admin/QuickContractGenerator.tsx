@@ -11,6 +11,7 @@ import { getInstallmentCount } from '@/lib/contracts'
 import {
   FileText, PenLine, Download, Plus, X, ChevronDown,
   User, Stamp, Calendar, Baby, PackagePlus, DollarSign, Hash, CalendarClock, Save, Phone,
+  MapPin, Building2, Hash as HashIcon, Loader2, CheckCircle2,
 } from 'lucide-react'
 
 interface MinorData {
@@ -32,7 +33,14 @@ interface ContractForm {
   clientDOB: string
   clientSignature: string
   clientPhone: string
+  clientAddress: string
+  clientAddressUnit: string
+  clientCity: string
+  clientState: string
+  clientZip: string
 }
+
+type ZipLookupState = 'idle' | 'loading' | 'found' | 'not-found'
 
 const SERVICE_OPTIONS = [
   { slug: 'asilo-afirmativo', label: 'Asilo Afirmativo' },
@@ -64,6 +72,7 @@ const emptyMinor = (): MinorData => ({ fullName: '', dob: '', birthplace: '', pa
 export function QuickContractGenerator({ editData, onSaved, prefillName, prefillPhone, prefillService }: QuickContractGeneratorProps) {
   const supabase = createClient()
   const [selectedSlug, setSelectedSlug] = useState('')
+  const [selectedSubserviceSlug, setSelectedSubserviceSlug] = useState<string>('')
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0)
   const [contractForm, setContractForm] = useState<ContractForm>({
     clientFullName: '',
@@ -71,7 +80,13 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
     clientDOB: '',
     clientSignature: '',
     clientPhone: '',
+    clientAddress: '',
+    clientAddressUnit: '',
+    clientCity: '',
+    clientState: '',
+    clientZip: '',
   })
+  const [zipLookup, setZipLookup] = useState<ZipLookupState>('idle')
   const [minors, setMinors] = useState<MinorData[]>([emptyMinor()])
   const [generating, setGenerating] = useState(false)
   const [template, setTemplate] = useState<any>(null)
@@ -93,6 +108,35 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
   )
   const [customMonthlyAmount, setCustomMonthlyAmount] = useState<string>('')
   const [useCustomMonthly, setUseCustomMonthly] = useState(false)
+
+  // Auto-fill city + state from US ZIP via proxy server-side (evita CSP).
+  // Runs 350ms after the last keystroke to avoid spamming requests.
+  useEffect(() => {
+    const zip = contractForm.clientZip.trim()
+    if (!/^\d{5}$/.test(zip)) {
+      setZipLookup('idle')
+      return
+    }
+    setZipLookup('loading')
+    const ctrl = new AbortController()
+    const tid = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/admin/zip-lookup?zip=${zip}`, { signal: ctrl.signal })
+        if (!res.ok) { setZipLookup('not-found'); return }
+        const data = await res.json()
+        if (!data?.city || !data?.state) { setZipLookup('not-found'); return }
+        setContractForm(prev => ({
+          ...prev,
+          clientCity: String(data.city),
+          clientState: String(data.state),
+        }))
+        setZipLookup('found')
+      } catch (err: any) {
+        if (err?.name !== 'AbortError') setZipLookup('not-found')
+      }
+    }, 350)
+    return () => { clearTimeout(tid); ctrl.abort() }
+  }, [contractForm.clientZip])
 
   // Pre-fill form fields when converting a voice-agent prospect into a client.
   // Runs once on mount if we aren't editing an existing contract.
@@ -119,6 +163,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
       const t = getContractTemplate(editData.service_slug)
       setTemplate(t)
       setSelectedSlug(editData.service_slug)
+      setSelectedSubserviceSlug(editData.subservice_slug || '')
       setSelectedVariantIndex(editData.variant_index || 0)
       setContractForm({
         clientFullName: editData.client_full_name || '',
@@ -126,6 +171,11 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
         clientDOB: editData.client_dob || '',
         clientSignature: editData.client_signature || '',
         clientPhone: editData.client_phone || '',
+        clientAddress: editData.client_address || '',
+        clientAddressUnit: editData.client_address_unit || '',
+        clientCity: editData.client_city || '',
+        clientState: editData.client_state || '',
+        clientZip: editData.client_zip || '',
       })
       setMinors(
         editData.minors?.length > 0
@@ -160,6 +210,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
 
   async function handleServiceChange(slug: string) {
     setSelectedSlug(slug)
+    setSelectedSubserviceSlug('')
     setSelectedVariantIndex(0)
     setUseCustomPrice(false)
     setCustomPrice('')
@@ -177,6 +228,46 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
     setTemplate(t)
     if (t?.requiresMinor && minors.length === 0) {
       setMinors([emptyMinor()])
+    }
+    if (t?.subservices && t.subservices.length > 0) {
+      setSelectedSubserviceSlug(t.subservices[0].slug)
+    }
+  }
+
+  function handleSubserviceChange(subSlug: string) {
+    setSelectedSubserviceSlug(subSlug)
+    setSelectedVariantIndex(0)
+    setUseCustomPrice(false)
+    setCustomPrice('')
+    setUseCustomInstallments(false)
+    setCustomInstallments('')
+  }
+
+  /**
+   * Retorna la configuración efectiva del contrato: si hay un subservicio
+   * seleccionado, sus variants/etapas/objeto ganan; de lo contrario, los
+   * del template padre (comportamiento histórico).
+   */
+  function getActiveConfig(): {
+    variants: any[]
+    etapas: string[]
+    objetoDelContrato: string
+  } | null {
+    if (!template) return null
+    if (selectedSubserviceSlug && template.subservices) {
+      const sub = template.subservices.find((s: any) => s.slug === selectedSubserviceSlug)
+      if (sub) {
+        return {
+          variants: sub.variants,
+          etapas: sub.etapas,
+          objetoDelContrato: sub.objetoDelContrato,
+        }
+      }
+    }
+    return {
+      variants: template.variants,
+      etapas: template.etapas,
+      objetoDelContrato: template.objetoDelContrato,
     }
   }
 
@@ -199,10 +290,18 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
     setAddons(prev => prev.map((a, i) => i === index ? { ...a, price } : a))
   }
 
+  // Variantes activas — del subservicio si hay uno seleccionado, del template si no
+  function getActiveVariants(): any[] {
+    const cfg = getActiveConfig()
+    return cfg?.variants || []
+  }
+
   // Calcular precio total (servicio principal + addons)
   function getCalculatedTotal(): number {
     if (!template) return 0
-    const variant = template.variants[selectedVariantIndex]
+    const variants = getActiveVariants()
+    const variant = variants[selectedVariantIndex] || variants[0]
+    if (!variant) return 0
     const basePrice = variant.totalPrice
     const addonsTotal = addons.reduce((sum: number, a: AddonItem) => sum + a.price, 0)
     return basePrice + addonsTotal
@@ -232,7 +331,9 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
     }
     if (useCustomInstallments && customInstallments) return parseInt(customInstallments)
     if (!template) return 10
-    return getInstallmentCount(template.variants[selectedVariantIndex])
+    const variants = getActiveVariants()
+    const variant = variants[selectedVariantIndex] || variants[0]
+    return variant ? getInstallmentCount(variant) : 10
   }
 
   // Monto mensual final
@@ -305,6 +406,22 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
       toast.error('Ingrese un teléfono válido del cliente')
       return
     }
+    if (!contractForm.clientAddress.trim()) {
+      toast.error('Ingrese la dirección del cliente')
+      return
+    }
+    if (!contractForm.clientCity.trim()) {
+      toast.error('Ingrese la ciudad del cliente')
+      return
+    }
+    if (!contractForm.clientState.trim()) {
+      toast.error('Ingrese el estado del cliente')
+      return
+    }
+    if (!/^\d{5}$/.test(contractForm.clientZip.trim())) {
+      toast.error('Ingrese un ZIP válido de 5 dígitos')
+      return
+    }
     if (template.requiresMinor && minors.some(m => !m.fullName.trim())) {
       toast.error('Ingrese el nombre de todos los menores')
       return
@@ -320,6 +437,17 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
       const hasInstallments = template.installments || useCustomInstallments || useCustomMonthly
       const paymentSchedule = hasInstallments ? buildPaymentSchedule() : undefined
 
+      // Usar subservicio si está seleccionado; si no, template completo
+      const activeCfg = getActiveConfig()
+      const effectiveObjeto = activeCfg?.objetoDelContrato || template.objetoDelContrato
+      const effectiveEtapas = activeCfg?.etapas || template.etapas
+      const activeSubservice = selectedSubserviceSlug && template.subservices
+        ? template.subservices.find((s: any) => s.slug === selectedSubserviceSlug)
+        : null
+      const effectiveServiceLabel = activeSubservice
+        ? `${serviceLabel} — ${activeSubservice.label}`
+        : serviceLabel
+
       // Preparar servicios adicionales para el PDF
       const addonServices = addons.map(a => ({
         name: a.label,
@@ -331,7 +459,8 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
       // Guardar en Supabase
       const contractData = {
         service_slug: selectedSlug,
-        service_name: serviceLabel,
+        service_name: effectiveServiceLabel,
+        subservice_slug: selectedSubserviceSlug || null,
         variant_index: selectedVariantIndex,
         addon_services: addonServices,
         client_full_name: contractForm.clientFullName.trim(),
@@ -339,6 +468,11 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
         client_dob: contractForm.clientDOB,
         client_signature: contractForm.clientSignature.trim(),
         client_phone: contractForm.clientPhone.trim(),
+        client_address: contractForm.clientAddress.trim(),
+        client_address_unit: contractForm.clientAddressUnit.trim() || null,
+        client_city: contractForm.clientCity.trim(),
+        client_state: contractForm.clientState.trim().toUpperCase(),
+        client_zip: contractForm.clientZip.trim(),
         minors: template.requiresMinor
           ? minors.map(m => ({
               fullName: m.fullName.trim(),
@@ -357,8 +491,8 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
         use_custom_price: useCustomPrice,
         use_custom_installments: useCustomInstallments,
         payment_schedule: paymentSchedule || [],
-        objeto_del_contrato: template.objetoDelContrato,
-        etapas: template.etapas,
+        objeto_del_contrato: effectiveObjeto,
+        etapas: effectiveEtapas,
       }
 
       let contractId: string | null = editData?.id || null
@@ -417,7 +551,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
       }
 
       const pdf = generateContractPDF({
-        serviceName: serviceLabel,
+        serviceName: effectiveServiceLabel,
         totalPrice: finalPrice,
         installments: hasInstallments,
         installmentCount: getFinalInstallments(),
@@ -425,8 +559,13 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
         clientPassport: contractForm.clientPassport.trim(),
         clientDOB: contractForm.clientDOB,
         clientSignature: contractForm.clientSignature.trim(),
-        objetoDelContrato: template.objetoDelContrato,
-        etapas: template.etapas,
+        clientAddress: contractForm.clientAddress.trim(),
+        clientAddressUnit: contractForm.clientAddressUnit.trim() || undefined,
+        clientCity: contractForm.clientCity.trim(),
+        clientState: contractForm.clientState.trim().toUpperCase(),
+        clientZip: contractForm.clientZip.trim(),
+        objetoDelContrato: effectiveObjeto,
+        etapas: effectiveEtapas,
         addonServices: addonServices.length > 0 ? addonServices : undefined,
         initialPayment: getInitialPayment() > 0 ? getInitialPayment() : undefined,
         paymentSchedule,
@@ -465,7 +604,11 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
     setSelectedSlug('')
     setSelectedVariantIndex(0)
     setTemplate(null)
-    setContractForm({ clientFullName: '', clientPassport: '', clientDOB: '', clientSignature: '', clientPhone: '' })
+    setContractForm({
+      clientFullName: '', clientPassport: '', clientDOB: '', clientSignature: '', clientPhone: '',
+      clientAddress: '', clientAddressUnit: '', clientCity: '', clientState: '', clientZip: '',
+    })
+    setZipLookup('idle')
     setMinors([emptyMinor()])
     setAddons([])
     setShowAddonSelector(false)
@@ -515,12 +658,53 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
           </div>
         </div>
 
+        {/* Sub-service selector — only for templates that define subservices (ej: Visa Juvenil) */}
+        {template?.subservices && template.subservices.length > 0 && (
+          <div className="space-y-1.5">
+            <Label className="text-sm font-medium text-[#002855] flex items-center gap-1.5">
+              <PackagePlus className="w-3.5 h-3.5 text-[#F2A900]" />
+              Alcance del contrato
+            </Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {template.subservices.map((sub: any) => {
+                const active = selectedSubserviceSlug
+                  ? selectedSubserviceSlug === sub.slug
+                  : sub.slug === 'completa'
+                return (
+                  <button
+                    key={sub.slug}
+                    type="button"
+                    onClick={() => handleSubserviceChange(sub.slug)}
+                    className={`text-left px-3 py-2.5 rounded-lg border transition-colors ${
+                      active
+                        ? 'border-[#002855] bg-[#002855]/5 ring-1 ring-[#002855]/20'
+                        : 'border-gray-200 bg-white hover:bg-gray-50'
+                    }`}
+                  >
+                    <p className={`text-sm font-medium ${active ? 'text-[#002855]' : 'text-gray-700'}`}>
+                      {sub.label}
+                    </p>
+                    {sub.description && (
+                      <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+                        {sub.description}
+                      </p>
+                    )}
+                    <p className="text-[11px] font-mono text-[#F2A900] mt-1">
+                      Desde ${sub.variants[0].totalPrice.toLocaleString()}
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Variant selector (if multiple) */}
-        {template && template.variants.length > 1 && (
+        {template && getActiveVariants().length > 1 && (
           <div className="space-y-1.5">
             <Label className="text-sm font-medium text-[#002855]">Variante</Label>
             <div className="flex gap-2">
-              {template.variants.map((v: any, i: number) => (
+              {getActiveVariants().map((v: any, i: number) => (
                 <button
                   key={i}
                   type="button"
@@ -611,8 +795,18 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
             {/* Desglose de servicios */}
             <div className="space-y-1">
               <div className="flex justify-between text-sm">
-                <span className="text-[#002855]/70">{SERVICE_OPTIONS.find(s => s.slug === selectedSlug)?.label}:</span>
-                <span className="font-medium text-[#002855]">${template.variants[selectedVariantIndex].totalPrice.toLocaleString()}</span>
+                <span className="text-[#002855]/70">
+                  {SERVICE_OPTIONS.find(s => s.slug === selectedSlug)?.label}
+                  {(() => {
+                    const sub = selectedSubserviceSlug && template.subservices
+                      ? template.subservices.find((s: any) => s.slug === selectedSubserviceSlug)
+                      : null
+                    return sub ? ` — ${sub.label}` : ''
+                  })()}:
+                </span>
+                <span className="font-medium text-[#002855]">
+                  ${(getActiveVariants()[selectedVariantIndex]?.totalPrice || 0).toLocaleString()}
+                </span>
               </div>
               {addons.map((a, i) => (
                 <div key={i} className="flex justify-between text-sm">
@@ -711,7 +905,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                 {!useCustomMonthly && (
                   <input
                     type="number"
-                    value={useCustomInstallments ? customInstallments : (template ? getInstallmentCount(template.variants[selectedVariantIndex]).toString() : '10')}
+                    value={useCustomInstallments ? customInstallments : (template ? getInstallmentCount(getActiveVariants()[selectedVariantIndex] || getActiveVariants()[0]).toString() : '10')}
                     onChange={(e) => { setUseCustomInstallments(true); setCustomInstallments(e.target.value); }}
                     min="1"
                     max="36"
@@ -841,6 +1035,100 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                   onChange={(e) => setContractForm({ ...contractForm, clientSignature: e.target.value })}
                   className="h-10 rounded-lg font-serif italic"
                 />
+              </div>
+            </div>
+
+            {/* Address section — USA only. City + state auto-fill from ZIP. */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-[#002855]/50" />
+                <span className="text-sm font-semibold text-[#002855]/70">Dirección del cliente (USA)</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <Label className="text-sm font-medium text-[#002855] flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                    Dirección <span className="text-[#F2A900]">*</span>
+                  </Label>
+                  <Input
+                    placeholder="Ej: 1234 Pine Street"
+                    value={contractForm.clientAddress}
+                    onChange={(e) => setContractForm({ ...contractForm, clientAddress: e.target.value })}
+                    className="h-10 rounded-lg"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium text-[#002855] flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-gray-400" />
+                    Apto / Unidad
+                  </Label>
+                  <Input
+                    placeholder="Opcional — Ej: Apt 4B"
+                    value={contractForm.clientAddressUnit}
+                    onChange={(e) => setContractForm({ ...contractForm, clientAddressUnit: e.target.value })}
+                    className="h-10 rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium text-[#002855] flex items-center gap-1.5">
+                    <HashIcon className="w-3.5 h-3.5 text-gray-400" />
+                    Código Postal (ZIP) <span className="text-[#F2A900]">*</span>
+                    {zipLookup === 'loading' && (
+                      <Loader2 className="w-3 h-3 text-[#F2A900] animate-spin ml-auto" />
+                    )}
+                    {zipLookup === 'found' && (
+                      <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold text-green-600">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Auto-completado
+                      </span>
+                    )}
+                    {zipLookup === 'not-found' && (
+                      <span className="ml-auto text-[10px] font-semibold text-red-500">
+                        ZIP no encontrado
+                      </span>
+                    )}
+                  </Label>
+                  <Input
+                    placeholder="Ej: 84101"
+                    value={contractForm.clientZip}
+                    onChange={(e) => {
+                      const cleaned = e.target.value.replace(/\D/g, '').slice(0, 5)
+                      setContractForm({ ...contractForm, clientZip: cleaned })
+                    }}
+                    inputMode="numeric"
+                    maxLength={5}
+                    className="h-10 rounded-lg tabular-nums"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium text-[#002855] flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-gray-400" />
+                    Ciudad <span className="text-[#F2A900]">*</span>
+                  </Label>
+                  <Input
+                    placeholder="Se autocompleta con ZIP"
+                    value={contractForm.clientCity}
+                    onChange={(e) => setContractForm({ ...contractForm, clientCity: e.target.value })}
+                    className="h-10 rounded-lg"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm font-medium text-[#002855] flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                    Estado <span className="text-[#F2A900]">*</span>
+                  </Label>
+                  <Input
+                    placeholder="UT"
+                    value={contractForm.clientState}
+                    onChange={(e) => setContractForm({ ...contractForm, clientState: e.target.value.toUpperCase().slice(0, 2) })}
+                    maxLength={2}
+                    className="h-10 rounded-lg uppercase font-mono"
+                  />
+                </div>
               </div>
             </div>
 

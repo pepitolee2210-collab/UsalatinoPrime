@@ -4,12 +4,29 @@ export interface PriceVariant {
   installmentCount?: number
 }
 
+/**
+ * Sub-servicio opcional dentro de un template. Permite vender alcances
+ * parciales del servicio principal (ej. dentro de "Visa Juvenil" vender
+ * solo I-360+I-485 para clientes que ya tienen la Orden de custodia).
+ * Cuando el usuario elige un subservicio, sus etapas y objetoDelContrato
+ * reemplazan los del template padre en el contrato generado.
+ */
+export interface ContractSubservice {
+  slug: string
+  label: string
+  description?: string
+  etapas: string[]
+  objetoDelContrato: string
+  variants: PriceVariant[]
+}
+
 export interface ContractTemplate {
   objetoDelContrato: string
   etapas: string[]
   requiresMinor: boolean
   installments: boolean
   variants: PriceVariant[]
+  subservices?: ContractSubservice[]
 }
 
 const contracts: Record<string, ContractTemplate> = {
@@ -90,6 +107,84 @@ const contracts: Record<string, ContractTemplate> = {
       'Presentaci\u00f3n de la petici\u00f3n I-360 ante USCIS',
       'Preparaci\u00f3n y presentaci\u00f3n del Ajuste de Estatus (I-485) cuando la visa est\u00e9 disponible',
       'Seguimiento del caso hasta la obtenci\u00f3n de la residencia permanente',
+    ],
+    subservices: [
+      {
+        slug: 'completa',
+        label: 'Proceso completo (Custodia + I-360 + I-485)',
+        description: 'Las 3 etapas: Corte estatal, petici\u00f3n federal y residencia.',
+        variants: [
+          { label: 'Individual', totalPrice: 2500 },
+          { label: 'Familiar', totalPrice: 3500, installmentCount: 14 },
+        ],
+        objetoDelContrato:
+          'El CONSULTOR se compromete a brindar asesor\u00eda y asistencia en el proceso de obtenci\u00f3n del Estatus Especial de Inmigrante Juvenil (SIJS) para el menor beneficiario, incluyendo la coordinaci\u00f3n con la corte estatal y la presentaci\u00f3n ante USCIS.',
+        etapas: [
+          'Evaluaci\u00f3n inicial del caso y determinaci\u00f3n de elegibilidad del menor',
+          'Preparaci\u00f3n de la petici\u00f3n ante la Corte Estatal para hallazgos de SIJS',
+          'Coordinaci\u00f3n y representaci\u00f3n en procedimientos de la Corte Estatal',
+          'Obtenci\u00f3n de la Orden de Hallazgos Especiales (Special Findings Order)',
+          'Preparaci\u00f3n del Formulario I-360 (Petition for Amerasian, Widow(er), or Special Immigrant)',
+          'Presentaci\u00f3n de la petici\u00f3n I-360 ante USCIS',
+          'Preparaci\u00f3n y presentaci\u00f3n del Ajuste de Estatus (I-485) cuando la visa est\u00e9 disponible',
+          'Seguimiento del caso hasta la obtenci\u00f3n de la residencia permanente',
+        ],
+      },
+      {
+        slug: 'i360-i485',
+        label: 'I-360 + I-485 (ya tiene custodia emitida)',
+        description: 'Para clientes que ya cuentan con la Orden de Hallazgos Especiales de la corte estatal.',
+        variants: [
+          { label: 'Individual', totalPrice: 1500 },
+          { label: 'Familiar', totalPrice: 2100, installmentCount: 10 },
+        ],
+        objetoDelContrato:
+          'El CONSULTOR se compromete a brindar asesor\u00eda y asistencia en la preparaci\u00f3n y presentaci\u00f3n de la petici\u00f3n I-360 (SIJS) y del Ajuste de Estatus (I-485) ante USCIS, partiendo de la Orden de Hallazgos Especiales ya emitida por la Corte Estatal. El presente contrato no incluye la representaci\u00f3n ante la Corte Estatal para la obtenci\u00f3n de dicha orden.',
+        etapas: [
+          'Revisi\u00f3n de la Orden de Hallazgos Especiales (Special Findings Order) emitida por la Corte Estatal',
+          'Preparaci\u00f3n del Formulario I-360 (Petition for Amerasian, Widow(er), or Special Immigrant)',
+          'Presentaci\u00f3n de la petici\u00f3n I-360 ante USCIS',
+          'Preparaci\u00f3n y presentaci\u00f3n del Ajuste de Estatus (I-485) cuando la visa est\u00e9 disponible',
+          'Respuesta a solicitudes de evidencia adicional (RFE) si aplica',
+          'Seguimiento del caso hasta la obtenci\u00f3n de la residencia permanente',
+        ],
+      },
+      {
+        slug: 'i360',
+        label: 'Solo I-360 (petici\u00f3n federal)',
+        description: 'Presentaci\u00f3n \u00fanica del I-360, sin incluir corte estatal ni ajuste de estatus.',
+        variants: [
+          { label: 'Individual', totalPrice: 1200 },
+        ],
+        objetoDelContrato:
+          'El CONSULTOR se compromete a brindar asesor\u00eda y asistencia en la preparaci\u00f3n y presentaci\u00f3n del Formulario I-360 (Petition for Amerasian, Widow(er), or Special Immigrant) ante USCIS, partiendo de la Orden de Hallazgos Especiales ya emitida. El presente contrato no incluye la representaci\u00f3n ante la Corte Estatal ni la presentaci\u00f3n del Ajuste de Estatus (I-485).',
+        etapas: [
+          'Revisi\u00f3n de la Orden de Hallazgos Especiales (Special Findings Order) emitida por la Corte Estatal',
+          'Preparaci\u00f3n del Formulario I-360 y documentos de soporte',
+          'Presentaci\u00f3n de la petici\u00f3n I-360 ante USCIS',
+          'Respuesta a solicitudes de evidencia adicional (RFE) si aplica',
+          'Seguimiento hasta la aprobaci\u00f3n de la petici\u00f3n I-360',
+        ],
+      },
+      {
+        slug: 'i485',
+        label: 'Solo I-485 (ajuste con I-360 ya aprobado)',
+        description: 'Ajuste de estatus para clientes con I-360 aprobado y visa disponible.',
+        variants: [
+          { label: 'Individual', totalPrice: 1500 },
+        ],
+        objetoDelContrato:
+          'El CONSULTOR se compromete a brindar asesor\u00eda y asistencia en la preparaci\u00f3n y presentaci\u00f3n del Formulario I-485 (Application to Register Permanent Residence or Adjust Status) ante USCIS, partiendo de la aprobaci\u00f3n previa del Formulario I-360. El presente contrato no incluye la representaci\u00f3n ante la Corte Estatal ni la presentaci\u00f3n del I-360.',
+        etapas: [
+          'Revisi\u00f3n de la aprobaci\u00f3n del Formulario I-360 y disponibilidad de visa',
+          'Recopilaci\u00f3n de documentaci\u00f3n para el Ajuste de Estatus',
+          'Preparaci\u00f3n del Formulario I-485 y formularios complementarios',
+          'Presentaci\u00f3n de la solicitud ante USCIS',
+          'Preparaci\u00f3n del cliente para la cita biom\u00e9trica',
+          'Respuesta a solicitudes de evidencia adicional (RFE) si aplica',
+          'Seguimiento hasta la obtenci\u00f3n de la residencia permanente',
+        ],
+      },
     ],
   },
   'mociones': {
@@ -238,4 +333,14 @@ export function getAddonServices(): AddonServiceInfo[] {
 /** Obtener etapas de un servicio por slug */
 export function getServiceEtapas(slug: string): string[] {
   return contracts[slug]?.etapas || []
+}
+
+/** Sub-servicio por slug dentro de un template */
+export function getSubservice(
+  templateSlug: string,
+  subserviceSlug: string
+): ContractSubservice | null {
+  const tpl = contracts[templateSlug]
+  if (!tpl?.subservices) return null
+  return tpl.subservices.find(s => s.slug === subserviceSlug) || null
 }

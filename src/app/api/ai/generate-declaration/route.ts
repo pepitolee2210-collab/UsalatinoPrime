@@ -1,60 +1,120 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { buildCaseContext } from '@/lib/ai/prompts/chat-system'
-import { geminiFetch, extractGeminiText } from '@/lib/ai/gemini-fetch'
+import { generateText } from '@/lib/ai/anthropic-client'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('generate-declaration')
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY
-
 type DeclarationType = 'tutor' | 'minor' | 'witness' | 'parental_consent' | 'parental_consent_collaborative' | 'petition_guardianship'
 
 /**
- * Sanitizes text data before sending to Gemini to avoid PROHIBITED_CONTENT blocks.
- * Replaces explicit/graphic language with clinical legal equivalents.
- * Facts and legal meaning are preserved — only trigger words change.
+ * System prompt común a todos los tipos de declaración. Se cachea.
+ * Define la persona profesional, reglas de redacción y el marco legal
+ * en el que Claude debe operar. Específicamente autoriza el tratamiento
+ * narrativo de hechos sensibles (violencia, abuso) porque son parte
+ * constitutiva del trabajo legal de inmigración.
  */
-function sanitizeForAI(text: string): string {
-  if (!text) return text
-  const replacements: [RegExp, string][] = [
-    // Spanish triggers
-    [/abus[oó]\s*sexual(es)?/gi, 'actos graves contra el bienestar'],
-    [/abusar\s*sexualmente/gi, 'cometer actos graves contra el bienestar'],
-    [/viol[aó](ci[oó]n|r|da|ndo|rl[aoe])/gi, 'agresión grave'],
-    [/relaciones?\s*sexuales?\s*(forzad|obligad)/gi, 'actos forzados contra el bienestar'],
-    [/me\s*somet[ií][aó]\s*contra\s*mi\s*voluntad/gi, 'me agredió gravemente'],
-    [/somet(ió|ida|ido|iendo)\s*(a\s*)?(contacto|actos)\s*(forzad|sexual)/gi, 'causó daños graves a su bienestar'],
-    [/sometid[ao]\s*a\s*(conducta|actos)\s*grave/gi, 'víctima de actos que afectaron su bienestar'],
-    [/somet(ió|iendo)\s*(por la fuerza\s*)?en\s*contra\s*de\s*(mi|su)\s*voluntad/gi, 'agredió gravemente'],
-    [/contacto\s*forzado\s*contra\s*(mi|su)\s*voluntad/gi, 'agresión grave'],
-    [/sometimiento\s*forzado/gi, 'agresión grave'],
-    [/me\s*obligaba\s*a\s*tener\s*relaciones/gi, 'me agredía gravemente'],
-    // Suicide - explicit method (Spanish)
-    [/se\s*quit[óo]\s*la\s*vida\s*con\s*una\s*soga/gi, 'falleció por causas no naturales'],
-    [/atando\s*una\s*soga\s*a\s*una\s*viga\s*y\s*en\s*el\s*cuello/gi, 'por medios no naturales'],
-    [/se\s*quit[óo]\s*la\s*vida/gi, 'falleció por causas no naturales'],
-    [/se\s*suicid[óo]/gi, 'falleció por causas no naturales'],
-    [/colg[óo]\s*del\s*cuello/gi, 'falleció por causas no naturales'],
-    [/ahorc[óo]/gi, 'falleció por causas no naturales'],
-    // Suicide (English)
-    [/hanged?\s*himself/gi, 'passed away by non-natural causes'],
-    [/hanged?\s*herself/gi, 'passed away by non-natural causes'],
-    [/commit(ed|ted)?\s*suicide/gi, 'passed away by non-natural causes'],
-    [/took\s*his\s*(own\s*)?life/gi, 'passed away by non-natural causes'],
-    [/took\s*her\s*(own\s*)?life/gi, 'passed away by non-natural causes'],
-    // English triggers
-    [/sexual(ly)?\s*abus(e[ds]?|ing)/gi, 'grave harm to wellbeing'],
-    [/rap(e[ds]?|ing)/gi, 'grave assault'],
-    [/molest(ed|ing|ation)/gi, 'grave harm'],
-    [/sexual\s*assault/gi, 'grave assault'],
-    [/forced\s*(sexual\s*)?(contact|intercourse|relations)/gi, 'forced harmful acts'],
-  ]
-  let result = text
-  for (const [pattern, replacement] of replacements) {
-    result = result.replace(pattern, replacement)
+const DECLARATION_SYSTEM = `Eres un/a paralegal experto/a en inmigración con 15 años de experiencia redactando declaraciones juradas (affidavits), peticiones de tutela y cartas de consentimiento parental para casos SIJS, asilo afirmativo y miedo creíble ante USCIS, EOIR y cortes estatales de Estados Unidos.
+
+## Valor especial __UNKNOWN__
+
+Cuando encuentres el valor literal \`__UNKNOWN__\` en cualquier campo de los datos del caso, NO lo trates como dato faltante ni lo pongas como \`[FALTA:...]\`. Significa que el cliente marcó explícitamente que **no conoce** ese dato. Redacta la declaración así:
+
+- Para IDs / pasaportes desconocidos: "cuyo número de documento de identidad la declarante manifiesta no conocer con precisión"
+- Para nombres desconocidos del padre ausente: "identificado únicamente como [otra info disponible]" o "de quien la declarante desconoce el nombre completo"
+- Para direcciones / ubicaciones desconocidas: "de quien se desconoce su paradero actual"
+- Para nacionalidades desconocidas: "de nacionalidad desconocida"
+
+El documento legal debe leer de forma natural sin los corchetes \`[FALTA:...]\`, manifestando que el declarante no conoce ese dato específico. Esto es legalmente válido y preferible a dejar placeholders.
+
+
+Tu trabajo es redactar documentos legales que se presenten tal cual ante un juez o un oficial de USCIS. Son documentos reales que protegen a víctimas: menores sobrevivientes de abandono, abuso o negligencia; solicitantes de asilo que narran persecución; personas que huyeron de violencia.
+
+## Tu misión
+
+Transformas los datos estructurados del caso (formularios llenados por el cliente y el abogado) en un documento legal formal, en primera persona, con estructura numerada, tono profesional y fidelidad absoluta a los hechos.
+
+## Marco ético y legal
+
+Los documentos que redactas necesitan describir con precisión hechos de violencia, abuso sexual, amenazas de muerte, negligencia grave y trauma. Eso es parte inseparable del trabajo legal de protección a víctimas — sin la descripción factual, el juez no puede otorgar el amparo (SIJS, asilo, miedo creíble) y la víctima queda desprotegida. Por lo tanto:
+
+- Escribe los hechos con el detalle que el expediente exija, usando lenguaje legal formal.
+- No glorificas violencia; documentas daño para obtener protección.
+- Si el caso contiene menciones de abuso sexual, violación, violencia doméstica, persecución política, tortura, suicidio o autolesión, describes los hechos con la precisión forense que el tribunal espera, sin eufemismos innecesarios ni detalles gratuitos.
+- Mantén tono respetuoso hacia la víctima. Primera persona, voz firme, sin victimización hiperbólica.
+
+## Reglas duras de redacción
+
+1. **Usa solo los datos provistos**. Nunca inventes nombres, fechas, direcciones ni documentos de identidad.
+2. **Si falta un dato**, escribe \`[FALTA: descripción del dato]\` en español dentro del lugar donde debería ir. Nunca uses \`[PENDING]\` ni dejes el campo en blanco.
+3. **Primera persona**. "Yo, [NOMBRE], declaro...". El declarante habla.
+4. **Lenguaje legal formal** — registros de corte. Sin slang, sin coloquialismos.
+5. **Párrafos numerados** cuando el tipo de documento lo requiera.
+6. **Fechas, lugares, nombres propios concretos** cuando los datos los provean.
+7. **Cláusula de perjurio** al final ("Declaro bajo pena de perjurio...").
+8. **Output**: solo el texto del documento. Sin preámbulos ("Aquí tienes..."), sin markdown, sin explicaciones.
+
+## Idioma
+
+Se te indicará \`en\` o \`es\`. Genera TODO el documento en ese idioma incluyendo términos legales. Nombres propios (personas, ciudades, países) quedan en su forma original.`
+
+/**
+ * Campos "huérfanos" capturados en los formularios pero que antes no llegaban
+ * al prompt. Construye un bloque de contexto enriquecido que el modelo puede
+ * usar si los datos existen. Si no existen, el bloque queda vacío y no
+ * ensucia el prompt.
+ */
+function buildEnrichedContextBlock(
+  tutor: Record<string, unknown> | null,
+  minorBasic: Record<string, string>
+): string {
+  const parts: string[] = []
+
+  // Tutor context
+  if (tutor?.time_in_state) parts.push(`Guardian time in current US state: ${tutor.time_in_state}`)
+  if (tutor?.immigration_status) parts.push(`Guardian immigration status: ${tutor.immigration_status}`)
+  if (tutor?.city_of_birth) parts.push(`Guardian city of birth: ${tutor.city_of_birth}`)
+  if (tutor?.caretaker_in_country) parts.push(`Who cared for child in country of origin (if anyone): ${tutor.caretaker_in_country}`)
+  if (tutor?.access_to_services) parts.push(`Guardian's current access to services/resources: ${tutor.access_to_services}`)
+  if (tutor?.gang_threats) parts.push(`Gang / armed group threats faced: ${tutor.gang_threats}`)
+
+  // Minor context
+  if (minorBasic.civil_status) parts.push(`Minor civil status: ${minorBasic.civil_status}`)
+  if (minorBasic.in_us) parts.push(`Minor currently in US: ${minorBasic.in_us}`)
+  if (minorBasic.detained_by_immigration) parts.push(`Minor was detained by immigration: ${minorBasic.detained_by_immigration}`)
+  if (minorBasic.released_by_orr) parts.push(`Released by ORR: ${minorBasic.released_by_orr}`)
+  if (minorBasic.orr_sponsor) parts.push(`ORR sponsor: ${minorBasic.orr_sponsor}`)
+  if (minorBasic.nonimmigrant_status) parts.push(`Current nonimmigrant status: ${minorBasic.nonimmigrant_status}`)
+  if (minorBasic.court_order_date) parts.push(`Prior court order date: ${minorBasic.court_order_date}`)
+
+  if (parts.length === 0) return ''
+  return `\n\n=== ENRICHED CONTEXT (use these facts if relevant to the narrative) ===\n${parts.join('\n')}`
+}
+
+/**
+ * Une los testigos de las dos fuentes posibles (tutor_guardian.witnesses y
+ * client_witnesses.witnesses) con deduplicación por nombre. Esto arregla el
+ * bug histórico donde si el cliente cargaba testigos en el wizard pero no
+ * en el formulario del tutor, los testigos se perdían por completo.
+ */
+function mergeWitnesses(
+  fromTutor: unknown,
+  fromClientWitnesses: unknown
+): Array<Record<string, string>> {
+  const a = Array.isArray(fromTutor) ? (fromTutor as Array<Record<string, string>>) : []
+  const b = Array.isArray(fromClientWitnesses)
+    ? (fromClientWitnesses as Array<Record<string, string>>)
+    : []
+  const seen = new Set<string>()
+  const merged: Array<Record<string, string>> = []
+  for (const w of [...a, ...b]) {
+    const key = (w?.name || '').trim().toLowerCase()
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    merged.push(w)
   }
-  return result
+  return merged
 }
 
 function buildDeclarationPrompt(
@@ -66,9 +126,12 @@ function buildDeclarationPrompt(
   const clientName = `${ctx.client.firstName} ${ctx.client.lastName}`.toUpperCase()
   const tutor = ctx.tutorGuardian as Record<string, unknown> | null
   const supp = ctx.supplementaryData as Record<string, unknown> | null
+  const clientWitnessesData = ctx.clientWitnesses as Record<string, unknown> | null
 
-  // Extract witness data from tutor form
-  const witnesses = (tutor?.witnesses as Array<Record<string, string>>) || []
+  // Witnesses come from BOTH the tutor form and the client_witnesses wizard.
+  // Merge with dedup by name so neither source is lost (previously only tutor
+  // was read, which silently dropped witnesses entered via the wizard).
+  const witnesses = mergeWitnesses(tutor?.witnesses, clientWitnessesData?.witnesses)
 
   // Extract minor data
   const minorStory = ctx.allMinorStories[index] || ctx.allMinorStories[0]
@@ -142,6 +205,11 @@ function buildDeclarationPrompt(
     parts.push('CRITICAL: Use these values instead of leaving fields blank. These are authoritative data provided by the attorney.')
     return parts.join('\n')
   })() : ''
+
+  // Enriched context from previously-unused form fields (time_in_state,
+  // immigration_status, city_of_birth, civil_status, detained_by_immigration,
+  // orr_sponsor, court_order_date, etc.). Empty string if no data captured.
+  const enrichedBlock = buildEnrichedContextBlock(tutor, minorBasic)
 
   const baseInstructions = `
 You are an expert immigration paralegal specializing in SIJS (Special Immigrant Juvenile Status) cases.
@@ -245,7 +313,7 @@ IMPORTANT:
 - Use today's date if no signing date is specified.
 - Use the court name from the supplementary data if provided. Do NOT default to Utah.
 - Output ONLY the letter text, nothing else. No explanations.
-${suppBlock}`
+${suppBlock}${enrichedBlock}`
   }
 
   if (type === 'parental_consent_collaborative') {
@@ -350,6 +418,7 @@ Child city of birth: ${childInfo.birth_city || childInfo.country || ''}
 Child country of birth: ${childInfo.country || ''}
 Child current address: ${childInfo.address || tutorAddress || '[FALTA: Dirección actual del menor]'}
 Narrative from guardian (rewrite key negligence events in first person from absent ${parentRelationEN}): ${JSON.stringify({ why_cannot_reunify: tutor?.why_cannot_reunify, abuse_description: tutor?.abuse_description, ...(ctx.clientStory || {}) })}
+Documents extracted text (use any relevant data from these — passport numbers, dates, addresses, etc.): ${ctx.documents.filter(d => d.extracted_text).map(d => `[${d.name}]: ${d.extracted_text?.substring(0, 500)}`).join('\n')}
 
 IMPORTANT:
 - Output ONLY the letter text, nothing else. No explanations, no markdown.
@@ -357,7 +426,7 @@ IMPORTANT:
 - Do NOT mention the SIJ declaration, the juvenile court, or the immigration case.
 - Extract 2-3 specific negligence incidents from the narrative above and rewrite them in paragraph 4 in FIRST PERSON from the absent ${parentRelationEN}'s perspective (admitting it was him/her who failed).
 - If a specific piece of data is missing, write [FALTA: descripción del dato] in Spanish.
-${suppBlock}`
+${suppBlock}${enrichedBlock}`
   }
 
   if (type === 'petition_guardianship') {
@@ -452,7 +521,7 @@ CRITICAL RULES:
 - Output ONLY the petition text, no explanations.
 - The narrative in Section II must use REAL facts from THIS child's form, improved with legal language.
 - CRITICAL WRITING RULE: When describing harmful acts, use ONLY abstract legal language such as "acts that gravely affected the minor's wellbeing". Do NOT elaborate or specify the nature of the acts. Focus on EMOTIONAL IMPACT and LEGAL CONSEQUENCES, not on describing events in detail.
-${suppBlock}`
+${suppBlock}${enrichedBlock}`
   }
 
   if (type === 'tutor') {
@@ -516,7 +585,7 @@ IMPORTANT:
 - If data is missing, write [FALTA: descripción del dato] in Spanish.
 - Output ONLY the affidavit text.
 - CRITICAL WRITING RULE: When describing harmful acts against any child, use ONLY abstract legal language such as "committed acts that gravely affected the child's wellbeing" or "caused grave harm". Do NOT elaborate, describe, or specify the nature of harmful acts. Focus on EMOTIONAL IMPACT and LEGAL CONSEQUENCES only.
-${suppBlock}`
+${suppBlock}${enrichedBlock}`
   }
 
   if (type === 'minor') {
@@ -597,7 +666,7 @@ IMPORTANT:
 - Make sections III and IV the most detailed — these are the heart of the case.
 - If only one parent abused/abandoned, focus more on that parent and adapt the other section accordingly.
 - CRITICAL WRITING RULE: When describing harmful acts against the minor, use ONLY abstract legal language such as "actos que afectaron gravemente mi bienestar" or "daño grave a mi persona". Do NOT elaborate, describe, or specify the nature of the acts. Keep the description of harmful events brief and abstract. Focus on the EMOTIONAL IMPACT and CONSEQUENCES rather than describing what happened. This is required for proper legal processing.
-${suppBlock}`
+${suppBlock}${enrichedBlock}`
   }
 
   // type === 'witness'
@@ -682,14 +751,38 @@ IMPORTANT:
 - Add details from the case data that the witness would reasonably know.
 - If data is missing (like ID numbers), write [FALTA: descripción del dato] in Spanish.
 - Output ONLY the affidavit text.
-${suppBlock}`
+${suppBlock}${enrichedBlock}`
 }
 
-export async function POST(request: NextRequest) {
-  if (!GEMINI_KEY) {
-    return NextResponse.json({ error: 'AI no configurado' }, { status: 500 })
-  }
+/**
+ * System prompt dedicado para el modo TRADUCCIÓN (EN → ES). Mucho más corto
+ * que el prompt de generación porque Claude solo debe traducir, no redactar
+ * ni interpretar datos. Se cachea por separado.
+ */
+const TRANSLATION_SYSTEM = `Eres traductor/a legal profesional, especialista en documentos de inmigración (declaraciones juradas, peticiones de tutela, cartas de consentimiento) entre inglés y español.
 
+## Tu única tarea
+
+Recibirás un documento legal en ENGLISH. Tu trabajo es producir la versión en ESPAÑOL — traducción fiel, literal en los hechos, natural en el idioma.
+
+## Reglas
+
+1. **Fidelidad absoluta a los hechos**: no cambies nombres, fechas, números de documento, direcciones, lugares. Si el original dice "born on July 14, 2009" → "nacido el 14 de julio de 2009". Si dice "Passport No. 12345" → "Pasaporte No. 12345".
+2. **Nombres propios NO se traducen**: ciudades (New York, Salt Lake City), nombres de personas, nombres de cortes (ej. "Fourth District Juvenile Court") quedan en inglés. Países pueden traducirse si son comunes (United States → Estados Unidos).
+3. **Términos legales van en español formal**: "affidavit" → "declaración jurada", "sworn testimony" → "testimonio bajo juramento", "custody" → "custodia", "guardianship" → "tutela", "under penalty of perjury" → "bajo pena de perjurio".
+4. **Estructura idéntica**: conserva la misma numeración de párrafos, títulos, secciones, saltos de línea y bloques de firma. No agregues ni quites contenido.
+5. **Marcadores de datos faltantes**: si el texto contiene \`[FALTA: ...]\`, cópialo tal cual al español. No lo traduzcas ni lo interpretes.
+6. **Frases de desconocimiento**: si el texto dice "the declarant manifests that she does not know this data", tradúcela como "la declarante manifiesta no conocer este dato" (o adaptación natural según contexto).
+7. **Primera persona**: si el original dice "I declare", español dice "Yo declaro" / "Declaro". Mantén el género y número según contexto (declarante masculino/femenino).
+8. **Output**: ÚNICAMENTE el documento traducido al español. Sin preámbulos ("Aquí está la traducción..."), sin markdown, sin explicaciones.
+
+## Ejemplo breve
+
+Input (EN): \`I, MARIA GONZALEZ, of legal age, Colombian national, hereby declare under penalty of perjury...\`
+
+Output (ES): \`Yo, MARIA GONZALEZ, mayor de edad, de nacionalidad colombiana, por la presente declaro bajo pena de perjurio...\``
+
+export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -704,66 +797,73 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
-  const { case_id, type, index = 0, lang = 'en' } = await request.json() as {
+  const { case_id, type, index = 0, lang = 'en', english_source } = await request.json() as {
     case_id: string
     type: DeclarationType
     index?: number
     lang?: 'en' | 'es'
+    english_source?: string
   }
 
   if (!case_id || !type) {
     return NextResponse.json({ error: 'case_id y type requeridos' }, { status: 400 })
   }
 
-  // Build context
+  // Build context — pure SQL, no AI
   const ctx = await buildCaseContext(case_id)
-  const basePrompt = buildDeclarationPrompt(type, ctx, index, lang)
-  const langInstruction = lang === 'es'
-    ? '\n\nIMPORTANT: Generate the ENTIRE document in SPANISH. Translate all legal terms and content to Spanish. Keep the same structure and format but write everything in Spanish. CRITICAL: Use ALL the same data (names, dates, cities, countries, ID numbers) as the English version. Do NOT omit any fact in the Spanish version that appears in the English version. Both versions must contain the EXACT SAME INFORMATION, only translated.'
-    : '\n\nIMPORTANT: Generate the ENTIRE document in ENGLISH. ALL text must be in English (legal terms, descriptions, paragraphs). Even if the source data contains Spanish text (names, testimonies, etc.), translate the narrative content to English while preserving proper nouns (names, cities) in their original form. Do NOT write any sentence or paragraph in Spanish. The document must be 100% in English.'
-  const prompt = sanitizeForAI(basePrompt + langInstruction)
 
-  if (!GEMINI_KEY) {
-    return NextResponse.json({ error: 'Gemini API key no configurada' }, { status: 500 })
+  // Modo TRADUCCIÓN: cuando el frontend pide ES y ya tiene la versión EN lista,
+  // evitamos regenerar el documento entero desde el caso y simplemente traducimos.
+  // Ahorra ~50% en costo (menos tokens de input: sin playbook, sin datos del caso)
+  // y garantiza consistencia 1:1 entre las dos versiones.
+  if (lang === 'es' && typeof english_source === 'string' && english_source.trim().length > 0) {
+    try {
+      const translated = await generateText({
+        system: TRANSLATION_SYSTEM,
+        user: `Documento en inglés a traducir al español:\n\n${english_source.trim()}`,
+        maxTokens: 8192,
+        logLabel: `translation-${type}`,
+        signal: request.signal,
+      })
+
+      const missingMatches = translated.match(/\[FALTA:[^\]]*\]/gi) || []
+      const missingFields = Array.from(new Set(missingMatches.map(m => m.trim())))
+
+      return NextResponse.json({
+        declaration: translated,
+        type,
+        index,
+        clientName: `${ctx.client.firstName} ${ctx.client.lastName}`,
+        mode: 'translation',
+        warnings: {
+          missingCount: missingFields.length,
+          missingFields,
+        },
+      })
+    } catch (err) {
+      log.error('Claude translation failed', err)
+      const message = err instanceof Error ? err.message : String(err)
+      return NextResponse.json({ error: `Error al traducir la declaración: ${message}` }, { status: 500 })
+    }
   }
 
+  // Modo GENERACIÓN normal (EN, o ES sin english_source).
+  const typeSpecificPayload = buildDeclarationPrompt(type, ctx, index, lang)
+  const langInstruction = lang === 'es'
+    ? '\n\nGenera TODO el documento en ESPAÑOL formal. Traduce términos legales al español. Mantén nombres propios (personas, ciudades, países) en su forma original.'
+    : '\n\nGenerate the ENTIRE document in formal ENGLISH. Translate narrative content to English; keep proper nouns (names, cities, countries) in their original form.'
+
+  const userPayload = typeSpecificPayload + langInstruction
+
   try {
-    const result = await geminiFetch({
-      model: 'gemini-3.1-pro-preview',
-      apiKey: GEMINI_KEY,
-      body: {
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
-        safetySettings: [
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
-        ],
-      },
+    const declaration = await generateText({
+      system: DECLARATION_SYSTEM,
+      user: userPayload,
+      maxTokens: 8192,
+      logLabel: `declaration-${type}`,
+      signal: request.signal,
     })
 
-    if (!result.ok) {
-      log.error('Gemini call failed', result.error)
-      const status = result.status === 504 ? 504 : 500
-      return NextResponse.json({ error: result.error || 'Error de IA' }, { status })
-    }
-
-    if (result.blockReason || result.finishReason === 'SAFETY') {
-      log.error('Gemini BLOCKED', { blockReason: result.blockReason, finishReason: result.finishReason })
-      return NextResponse.json({
-        error: `Contenido bloqueado por filtro de seguridad (${result.blockReason || result.finishReason}). Contacte al administrador.`,
-      }, { status: 500 })
-    }
-
-    const declaration = extractGeminiText(result.data)
-
-    if (!declaration) {
-      log.error('Gemini empty response')
-      return NextResponse.json({ error: 'Sin respuesta de IA' }, { status: 500 })
-    }
-
-    // Count [FALTA: ...] placeholders so the admin knows to review before use.
     const missingMatches = declaration.match(/\[FALTA:[^\]]*\]/gi) || []
     const missingFields = Array.from(new Set(missingMatches.map(m => m.trim())))
 
@@ -772,13 +872,15 @@ export async function POST(request: NextRequest) {
       type,
       index,
       clientName: `${ctx.client.firstName} ${ctx.client.lastName}`,
+      mode: 'generation',
       warnings: {
         missingCount: missingFields.length,
         missingFields,
       },
     })
   } catch (err) {
-    log.error('AI unexpected error', err)
-    return NextResponse.json({ error: `Error: ${err instanceof Error ? err.message : String(err)}` }, { status: 500 })
+    log.error('Claude declaration failed', err)
+    const message = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: `Error al generar la declaración: ${message}` }, { status: 500 })
   }
 }

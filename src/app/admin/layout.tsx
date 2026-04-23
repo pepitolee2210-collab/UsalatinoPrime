@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import {
   LayoutDashboard, FileText, Users, CreditCard, LogOut, Menu, Shield,
-  MessageSquare, PenLine, CalendarClock, ClipboardList, PhoneCall, Briefcase, Bot,
+  MessageSquare, PenLine, CalendarClock, ClipboardList, PhoneCall, Briefcase, Bot, Scale,
   MessageCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -29,6 +29,7 @@ const navItems = [
   { href: '/admin/agenda', label: 'Agenda', icon: PhoneCall, badgeKey: 'agendaPending' as const },
   { href: '/admin/llamadas', label: 'Llamadas IA', icon: Bot, badgeKey: null },
   { href: '/admin/whatsapp', label: 'WhatsApp SIJS', icon: MessageCircle, badgeKey: 'whatsappActive' as const },
+  { href: '/admin/revisor-ia', label: 'LEX · Sistema Legal', icon: Scale, badgeKey: null },
   { href: '/admin/empleados', label: 'Empleados', icon: Briefcase, badgeKey: 'employeePending' as const },
   { href: '/admin/comunidad', label: 'Comunidad', icon: MessageSquare, badgeKey: null },
 ]

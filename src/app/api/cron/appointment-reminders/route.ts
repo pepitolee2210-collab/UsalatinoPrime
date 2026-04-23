@@ -22,6 +22,10 @@ const log = createLogger('cron-reminders')
  *  - `whatsapp-chatbot`, `voice-agent`, `chatbot` + guest_phone → Twilio WA
  *  - anything else with a client_id                            → Resend
  *  - anything else                                             → skipped
+ *
+ * Note on FK: after migration 024 `appointments` has two FKs to `profiles`
+ * (`client_id` and `consultant_id`). The embed must be disambiguated with
+ * `!appointments_client_id_fkey`, otherwise PostgREST returns a 400.
  */
 
 type ApptRow = {
@@ -45,7 +49,7 @@ async function loadRemindersDueWithin(args: {
   const { data, error } = await supabase
     .from('appointments')
     .select(
-      'id, scheduled_at, client_id, guest_phone, guest_name, source, client:profiles(first_name, email)',
+      'id, scheduled_at, client_id, guest_phone, guest_name, source, client:profiles!appointments_client_id_fkey(first_name, email)',
     )
     .eq('status', 'scheduled')
     .eq(requestedCol, true)
@@ -87,7 +91,6 @@ async function dispatchReminder(
   const supabase = createServiceClient()
   const timeframeEs = kind === '1h' ? '1 hora' : '24 horas'
 
-  // 1. WhatsApp channel for chatbot / voice-agent prospects.
   const isWhatsappLead =
     apt.source === 'whatsapp-chatbot' || apt.source === 'voice-agent' || apt.source === 'chatbot'
   if (isWhatsappLead && apt.guest_phone) {
@@ -99,11 +102,9 @@ async function dispatchReminder(
       return { ok: true, channel: 'whatsapp' }
     } catch (err) {
       log.warn(`whatsapp reminder ${kind} failed for ${apt.id}`, err)
-      // Fall through to email as a fallback if there's also a client_id.
     }
   }
 
-  // 2. Email channel for registered clients.
   if (apt.client?.email) {
     const emailSent = await sendEmail({
       to: apt.client.email,
@@ -117,13 +118,10 @@ async function dispatchReminder(
     return { ok: false, channel: 'email', reason: 'send failed' }
   }
 
-  // 3. No channel available — log and move on so we don't spin forever.
   log.warn(`no channel for reminder ${kind}`, { id: apt.id, source: apt.source })
   await supabase
     .from('appointments')
     .update({
-      // Mark as sent even though we couldn't — otherwise the cron retries
-      // the same row every 15 min. Admin can resend manually if needed.
       [kind === '1h' ? 'reminder_1h_sent' : 'reminder_24h_sent']: true,
     })
     .eq('id', apt.id)
@@ -140,9 +138,6 @@ export async function GET(request: NextRequest) {
   const now = new Date()
   const results = { sent_wa_1h: 0, sent_email_1h: 0, sent_wa_24h: 0, sent_email_24h: 0, skipped: 0, failed: 0 }
 
-  // 1h reminders: anything due in the next 75 min that hasn't been sent.
-  // Window is slightly wider than 60 min so a cron running every 15 min
-  // never misses an appointment that falls between tick boundaries.
   const in75min = new Date(now.getTime() + 75 * 60 * 1000)
   const reminders1h = await loadRemindersDueWithin({
     kind: '1h',
@@ -166,7 +161,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // 24h reminders: anything 23h45 to 25h away (wider window than default 1h).
   const in23h45 = new Date(now.getTime() + 23 * 60 * 60 * 1000 + 45 * 60 * 1000)
   const in25h = new Date(now.getTime() + 25 * 60 * 60 * 1000)
   const reminders24h = await loadRemindersDueWithin({

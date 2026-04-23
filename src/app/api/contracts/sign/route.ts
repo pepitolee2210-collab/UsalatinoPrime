@@ -14,7 +14,7 @@ export async function POST(request: Request) {
 
     if (!signature_image.startsWith('data:image/png;base64,')) {
       return NextResponse.json(
-        { error: 'Formato de firma inv\u00e1lido' },
+        { error: 'Formato de firma inválido' },
         { status: 400 }
       )
     }
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
     if (findError || !contract) {
       return NextResponse.json(
-        { error: 'Contrato no encontrado o enlace inv\u00e1lido' },
+        { error: 'Contrato no encontrado o enlace inválido' },
         { status: 404 }
       )
     }

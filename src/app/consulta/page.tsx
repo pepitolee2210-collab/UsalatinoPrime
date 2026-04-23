@@ -81,9 +81,9 @@ export default function ConsultaPage() {
         </span>
       </div>
 
-      {/* Emergency contact */}
-      <p className="consulta-fade-in text-white/20 text-[10px] mt-3" style={{ animationDelay: '0.85s' }}>
-        Urgencias: <a href="tel:8019413479" className="text-[#F2A900]/40 hover:text-[#F2A900]/70 transition-colors">801-941-3479</a>
+      {/* Disclaimer — plataforma tecnológica */}
+      <p className="consulta-fade-in text-white/20 text-[10px] mt-3 max-w-xs text-center leading-relaxed" style={{ animationDelay: '0.85s' }}>
+        UsaLatino Prime es una plataforma tecnológica. No ofrecemos asesoría legal.
       </p>
     </div>
   )

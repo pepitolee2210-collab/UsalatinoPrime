@@ -35,10 +35,17 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
       if (!resEN.ok) throw new Error()
       const dataEN = await resEN.json()
 
+      // Spanish = translation of English (cheaper, 1:1 consistency).
       const resES = await fetch('/api/ai/generate-declaration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ case_id: caseId, type: declarationType, index: 0, lang: 'es' }),
+        body: JSON.stringify({
+          case_id: caseId,
+          type: declarationType,
+          index: 0,
+          lang: 'es',
+          english_source: dataEN.declaration,
+        }),
       })
       if (!resES.ok) throw new Error()
       const dataES = await resES.json()

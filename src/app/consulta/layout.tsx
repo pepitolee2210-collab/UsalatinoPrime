@@ -8,8 +8,8 @@ const sora = Sora({
 })
 
 export const metadata: Metadata = {
-  title: 'Consulta — UsaLatinoPrime',
-  description: 'Asistente virtual de inmigración. Resuelve tus dudas y agenda una consulta con Henry.',
+  title: 'Consulta — UsaLatino Prime',
+  description: 'Plataforma tecnológica de guía para tu expediente de Visa Juvenil. Evaluación de documentos gratuita con una consultora senior.',
 }
 
 export default function ConsultaLayout({ children }: { children: React.ReactNode }) {
