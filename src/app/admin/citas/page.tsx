@@ -1,6 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { AdminCitasView } from './admin-citas-view'
 
+// Fuerza render dinámico: la lista cambia con cada agendamiento y el RSC
+// caching de Next 14 devolvía listas estales (vacías tras un cold start).
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default async function AdminCitasPage() {
   const supabase = await createClient()
 
@@ -30,6 +35,12 @@ export default async function AdminCitasPage() {
       .not('intake_status', 'eq', 'archived')
       .order('created_at', { ascending: false }),
   ])
+
+  // Surface Supabase errors that the original code silently swallowed —
+  // sin esto un fallo de auth/RLS se veía simplemente como lista vacía.
+  if (appointmentsRes.error) {
+    console.error('[admin/citas] appointments fetch error', appointmentsRes.error)
+  }
 
   return (
     <div className="space-y-6">
