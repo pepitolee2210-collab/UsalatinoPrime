@@ -9,21 +9,28 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
 import {
   LogOut, Menu, Briefcase, CalendarClock, Users, Scale,
-  PhoneCall, CalendarDays, FileSignature, BarChart3,
+  PhoneCall, CalendarDays, FileSignature, BarChart3, MessageCircle,
 } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
 type EmployeeType = 'paralegal' | 'senior_consultant' | 'contracts_manager' | null
+
+type BadgeKey = 'whatsappActive'
+type BadgeCounts = Record<BadgeKey, number>
 
 const navConfig: Array<{
   href: string
   label: string
   icon: typeof Briefcase
   show: (t: EmployeeType) => boolean
+  badgeKey?: BadgeKey
 }> = [
   { href: '/employee/dashboard', label: 'Mis Tareas', icon: Briefcase, show: () => true },
   // Prospectos IA — exclusivo consultora senior
   { href: '/employee/prospectos', label: 'Prospectos IA', icon: PhoneCall, show: (t) => t === 'senior_consultant' },
+  // WhatsApp SIJS — exclusivo consultora senior
+  { href: '/employee/whatsapp', label: 'WhatsApp SIJS', icon: MessageCircle, show: (t) => t === 'senior_consultant', badgeKey: 'whatsappActive' },
   // Agenda — exclusivo consultora senior
   { href: '/employee/agenda', label: 'Mi Agenda', icon: CalendarDays, show: (t) => t === 'senior_consultant' },
   // Contratos — exclusivo contracts_manager
@@ -47,6 +54,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userName, setUserName] = useState('')
   const [employeeType, setEmployeeType] = useState<EmployeeType>(null)
+  const [counts, setCounts] = useState<BadgeCounts>({ whatsappActive: 0 })
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -69,6 +77,14 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
     fetchProfile()
   }, [])
 
+  useEffect(() => {
+    if (employeeType !== 'senior_consultant') return
+    fetch('/api/employee/sidebar-counts')
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => { if (data) setCounts(data) })
+      .catch(() => {})
+  }, [pathname, employeeType])
+
   async function handleLogout() {
     await supabase.auth.signOut()
     router.push('/login')
@@ -88,22 +104,30 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
       </div>
       <Separator />
       <nav className="flex-1 p-4 space-y-1">
-        {visibleNavItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={() => setMobileOpen(false)}
-            className={cn(
-              'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-              pathname.startsWith(item.href)
-                ? 'bg-[#002855]/10 text-[#002855]'
-                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-            )}
-          >
-            <item.icon className="w-5 h-5" />
-            {item.label}
-          </Link>
-        ))}
+        {visibleNavItems.map((item) => {
+          const badgeCount = item.badgeKey ? counts[item.badgeKey] : 0
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setMobileOpen(false)}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                pathname.startsWith(item.href)
+                  ? 'bg-[#002855]/10 text-[#002855]'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+              )}
+            >
+              <item.icon className="w-5 h-5" />
+              <span className="flex-1">{item.label}</span>
+              {badgeCount > 0 && (
+                <Badge className="bg-[#F2A900] text-white text-xs px-1.5 py-0 min-w-[20px] h-5 flex items-center justify-center">
+                  {badgeCount}
+                </Badge>
+              )}
+            </Link>
+          )
+        })}
       </nav>
       <Separator />
       <div className="p-4">

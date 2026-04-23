@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   LayoutDashboard, FileText, Users, CreditCard, LogOut, Menu, Shield,
   MessageSquare, PenLine, CalendarClock, ClipboardList, PhoneCall, Briefcase, Bot, Scale,
+  MessageCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ClientSearch } from '@/components/admin/ClientSearch'
@@ -27,16 +28,17 @@ const navItems = [
   { href: '/admin/contratos', label: 'Contratos', icon: PenLine, badgeKey: null },
   { href: '/admin/agenda', label: 'Agenda', icon: PhoneCall, badgeKey: 'agendaPending' as const },
   { href: '/admin/llamadas', label: 'Llamadas IA', icon: Bot, badgeKey: null },
+  { href: '/admin/whatsapp', label: 'WhatsApp SIJS', icon: MessageCircle, badgeKey: 'whatsappActive' as const },
   { href: '/admin/revisor-ia', label: 'LEX · Sistema Legal', icon: Scale, badgeKey: null },
   { href: '/admin/empleados', label: 'Empleados', icon: Briefcase, badgeKey: 'employeePending' as const },
   { href: '/admin/comunidad', label: 'Comunidad', icon: MessageSquare, badgeKey: null },
 ]
 
-type BadgeCounts = { citasToday: number; formsPending: number; agendaPending: number; employeePending: number; prospectosPending: number }
+type BadgeCounts = { citasToday: number; formsPending: number; agendaPending: number; employeePending: number; prospectosPending: number; whatsappActive: number }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [counts, setCounts] = useState<BadgeCounts>({ citasToday: 0, formsPending: 0, agendaPending: 0, employeePending: 0, prospectosPending: 0 })
+  const [counts, setCounts] = useState<BadgeCounts>({ citasToday: 0, formsPending: 0, agendaPending: 0, employeePending: 0, prospectosPending: 0, whatsappActive: 0 })
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
