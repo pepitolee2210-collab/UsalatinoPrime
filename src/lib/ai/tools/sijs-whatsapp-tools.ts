@@ -9,7 +9,7 @@ import {
   bookProspectAppointment,
 } from '@/lib/appointments/prospect-booking'
 import { formatDateMT, formatToMT } from '@/lib/appointments/slots'
-import { sendPushToAdmins } from '@/lib/notifications/push'
+import { sendPushToStaff } from '@/lib/notifications/push'
 import {
   upsertSijsIntake,
   updateConversation,
@@ -396,12 +396,15 @@ async function handleBook(args: Record<string, unknown>, ctx: ToolContext) {
   // Push admin.
   const clientState = ctx.collected.state_us as string | undefined
   const clientTz = clientState ? tzForState(clientState) : 'America/Denver'
-  sendPushToAdmins({
+  sendPushToStaff({
     title: '✅ Nueva cita SIJS',
     body: `${fullName} — ${result.humanDate} ${result.humanTime} MT`,
-    url: `/admin/whatsapp/${ctx.conversation.id}`,
+    url: role =>
+      role === 'admin'
+        ? `/admin/whatsapp/${ctx.conversation.id}`
+        : `/employee/whatsapp/${ctx.conversation.id}`,
     tag: `wa-booked-${ctx.conversation.id}`,
-  }).catch(err => log.error('push admins (booked) failed', err))
+  }).catch(err => log.error('push staff (booked) failed', err))
 
   const clientLocalTime = new Intl.DateTimeFormat('en-US', {
     timeZone: clientTz,
@@ -473,12 +476,15 @@ async function handleCallNow(ctx: ToolContext) {
     status: 'closed',
     closedReason: 'requested_call_now',
   })
-  sendPushToAdmins({
+  sendPushToStaff({
     title: '📞 Llamada SIJS inmediata',
     body: `${ctx.collected.contact_full_name ?? ctx.waProfileName ?? 'Prospecto'} (${ctx.phoneE164}) quiere una llamada ahora.`,
-    url: `/admin/whatsapp/${ctx.conversation.id}`,
+    url: role =>
+      role === 'admin'
+        ? `/admin/whatsapp/${ctx.conversation.id}`
+        : `/employee/whatsapp/${ctx.conversation.id}`,
     tag: `wa-call-now-${ctx.conversation.id}`,
-  }).catch(err => log.error('push admins (call-now) failed', err))
+  }).catch(err => log.error('push staff (call-now) failed', err))
   return { result: { notified: true }, terminal: true }
 }
 

@@ -26,10 +26,13 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, employee_type')
     .eq('id', user.id)
     .single()
-  if (profile?.role !== 'admin') {
+  const isAdmin = profile?.role === 'admin'
+  const isSeniorConsultant =
+    profile?.role === 'employee' && profile?.employee_type === 'senior_consultant'
+  if (!isAdmin && !isSeniorConsultant) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
 
