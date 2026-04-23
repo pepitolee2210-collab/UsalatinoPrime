@@ -12,7 +12,7 @@ export default async function AdminCitasPage() {
   const [appointmentsRes, configRes, settingsRes, blockedDatesRes, casesRes] = await Promise.all([
     supabase
       .from('appointments')
-      .select('*, guest_name, client:profiles(first_name, last_name, email, phone), case:cases(case_number, service:service_catalog(name))')
+      .select('*, guest_name, client:profiles!appointments_client_id_fkey(first_name, last_name, email, phone), case:cases(case_number, service:service_catalog(name))')
       // Exclude leads booked by the voice agent — those live in
       // /admin/prospectos-citas so Henry can process them separately.
       .or('source.is.null,source.neq.voice-agent')

@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
   const { data: reminders1h } = await supabase
     .from('appointments')
-    .select('id, scheduled_at, client_id, client:profiles(first_name, email)')
+    .select('id, scheduled_at, client_id, client:profiles!appointments_client_id_fkey(first_name, email)')
     .eq('status', 'scheduled')
     .eq('reminder_1h_requested', true)
     .eq('reminder_1h_sent', false)
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
   const { data: reminders24h } = await supabase
     .from('appointments')
-    .select('id, scheduled_at, client_id, client:profiles(first_name, email)')
+    .select('id, scheduled_at, client_id, client:profiles!appointments_client_id_fkey(first_name, email)')
     .eq('status', 'scheduled')
     .eq('reminder_24h_requested', true)
     .eq('reminder_24h_sent', false)

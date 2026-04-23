@@ -19,7 +19,7 @@ export default async function EmployeeCitasPage() {
 
   const { data: appointments, error: aptErr } = await supabase
     .from('appointments')
-    .select('*, guest_name, employee_notes, client_id, client:profiles(first_name, last_name, email, phone), case:cases(case_number, service:service_catalog(name))')
+    .select('*, guest_name, employee_notes, client_id, client:profiles!appointments_client_id_fkey(first_name, last_name, email, phone), case:cases(case_number, service:service_catalog(name))')
     .order('scheduled_at', { ascending: false })
     .limit(100)
 
