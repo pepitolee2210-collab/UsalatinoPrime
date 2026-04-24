@@ -32,11 +32,17 @@ function isStale(verifiedAt: string | null | undefined): boolean {
 }
 
 /**
- * GET /api/admin/case-jurisdiction?caseId=X
+ * GET /api/admin/case-jurisdiction?caseId=X[&research=true]
  *
- * Devuelve la jurisdicción del caso. Si no existe en cache o está vencida,
- * la investiga con Claude+web_search y la persiste. Timeout generoso (60s)
- * porque la investigación puede hacer hasta 5 web_searches.
+ * Default: lee de cache y NO dispara research. Si no hay cache o está
+ * vencido, devuelve `{ jurisdiction: null, reason }` con 200.
+ *
+ * Con `?research=true` sí investiga con Claude+web_search y persiste. Este
+ * flag lo envía el panel admin solo cuando el usuario clickea explícitamente
+ * "Investigar ahora". Así evitamos gastar ~$0.40 cada vez que alguien abre
+ * el tab de Declaraciones de un caso sin cache.
+ *
+ * `?lookup=cache` sigue funcionando como alias del default (legacy readiness-panel).
  */
 export async function GET(req: NextRequest) {
   const auth = await ensureAdminOrEmployee()
@@ -47,9 +53,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'caseId requerido' }, { status: 400 })
   }
 
-  // `?lookup=cache` → no dispara research, solo lee lo que haya en DB. Usado
-  // por paneles secundarios (readiness) que no quieren gatillar llamadas caras.
-  const cacheOnly = req.nextUrl.searchParams.get('lookup') === 'cache'
+  const researchRequested = req.nextUrl.searchParams.get('research') === 'true'
 
   const { service } = auth
 
@@ -66,32 +70,34 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ jurisdiction: cached.data, clientLocation: location, cached: true })
   }
 
-  if (cacheOnly) {
+  // --- 2. Sin research explícito → devolvemos lo que haya sin gastar tokens ---
+  if (!researchRequested) {
     return NextResponse.json({
       jurisdiction: cached.data ?? null,
       clientLocation: location,
       cached: Boolean(cached.data),
-      reason: cached.data ? 'stale_cache_not_refreshed' : 'no_cache',
+      reason: cached.data
+        ? 'stale_cache_research_not_triggered'
+        : 'no_cache_research_not_triggered',
     })
   }
 
-  // --- 2. Si no hay ubicación resoluble, no podemos investigar ---
+  // --- 3. Research explícito pero sin ubicación → 400 ---
   if (!location) {
     return NextResponse.json({
       jurisdiction: null,
       clientLocation: null,
       cached: false,
       reason: 'no_location_detected',
-    })
+    }, { status: 400 })
   }
 
-  // --- 3. Investigar con Claude+web_search ---
+  // --- 4. Investigar con Claude+web_search ---
   let research: JurisdictionResearchResult
   try {
     research = await researchJurisdiction(location, req.signal)
   } catch (err) {
     log.error('researchJurisdiction failed', err)
-    // Degradación gracil: devolvemos lo que tengamos (location) y marcamos error
     return NextResponse.json({
       jurisdiction: cached.data ?? null,
       clientLocation: location,
@@ -100,7 +106,7 @@ export async function GET(req: NextRequest) {
     }, { status: cached.data ? 200 : 502 })
   }
 
-  // --- 4. Upsert ---
+  // --- 5. Upsert ---
   const upsertPayload = {
     case_id: caseId,
     state_code: research.state_code,
@@ -115,6 +121,11 @@ export async function GET(req: NextRequest) {
     sources: research.sources,
     confidence: research.confidence,
     notes: research.notes,
+    filing_channel: research.filing_channel,
+    required_forms: research.required_forms,
+    filing_steps: research.filing_steps,
+    attachments_required: research.attachments_required,
+    fees: research.fees,
     verified_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }
@@ -128,7 +139,7 @@ export async function GET(req: NextRequest) {
   if (upsertRes.error) {
     log.error('upsert case_jurisdictions failed', upsertRes.error)
     return NextResponse.json({
-      jurisdiction: research, // devolvemos igual lo investigado, aunque no quedó persistido
+      jurisdiction: research,
       clientLocation: location,
       cached: false,
       error: 'No se pudo persistir el resultado',
@@ -200,6 +211,11 @@ export async function POST(req: NextRequest) {
       sources: research.sources,
       confidence: research.confidence,
       notes: research.notes,
+      filing_channel: research.filing_channel,
+      required_forms: research.required_forms,
+      filing_steps: research.filing_steps,
+      attachments_required: research.attachments_required,
+      fees: research.fees,
       verified_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'case_id' })
