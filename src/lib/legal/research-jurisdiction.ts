@@ -140,9 +140,10 @@ Devuelve EXCLUSIVAMENTE el JSON estricto definido en el system prompt. Sin texto
     source: location.source,
   })
 
-  // El SDK 0.90.0 acepta parámetros extras en tools mediante extensión de tipo.
-  // `max_uses`, `allowed_domains` son parámetros válidos del web_search tool
-  // documentados en la API Anthropic — usamos cast para pasar por el tipo.
+  // Anthropic's `allowed_domains` no soporta wildcards (`*.gov` falla con
+  // invalid_request_error). En vez de enumerar cada .gov/.us posible,
+  // dejamos el tool sin restricción y validamos post-hoc que al menos una
+  // source esté en un dominio oficial (ver SOURCE_OFFICIAL_REGEX abajo).
   const message = await client.messages.create(
     {
       model: RESEARCH_MODEL,
@@ -153,7 +154,6 @@ Devuelve EXCLUSIVAMENTE el JSON estricto definido en el system prompt. Sin texto
           type: 'web_search_20250305',
           name: 'web_search',
           max_uses: 5,
-          allowed_domains: ['*.gov', '*.us'],
         },
       ] as unknown as Anthropic.Messages.Tool[],
       messages: [{ role: 'user', content: userPrompt }],
@@ -188,6 +188,19 @@ Devuelve EXCLUSIVAMENTE el JSON estricto definido en el system prompt. Sin texto
       err: err instanceof Error ? err.message : String(err),
     })
     throw new Error('Claude devolvió un JSON de jurisdicción inválido')
+  }
+
+  // Verificación post-hoc: al menos una source debe venir de un dominio oficial
+  // (*.gov, *.us, uscourts.gov, state judiciary .org verificable). Esto reemplaza
+  // `allowed_domains` que no soporta wildcards.
+  const SOURCE_OFFICIAL_REGEX = /\.(gov|us)(\/|$|\?|#)|uscourts\.gov|courts\.state\./i
+  const officialSources = parsed.sources.filter(u => SOURCE_OFFICIAL_REGEX.test(u))
+  if (officialSources.length === 0) {
+    log.warn('research returned no official .gov/.us sources', {
+      stateCode: parsed.state_code,
+      sources: parsed.sources,
+    })
+    throw new Error('Claude no citó ninguna fuente oficial (.gov/.us). Rehaga la investigación.')
   }
 
   const usage = message.usage as Anthropic.Usage & {
