@@ -2,6 +2,9 @@ import { after } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveClientLocation } from './resolve-client-location'
 import { researchJurisdiction } from './research-jurisdiction'
+import { detectAcroFormFields } from './acroform-service'
+import { detectOcrSchema } from './acroform-ocr'
+import { suggestFieldValues } from './acroform-suggestions'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('trigger-research-async')
@@ -134,6 +137,17 @@ export async function triggerJurisdictionResearchAsync(
         court: research.court_name,
         elapsedMs: Date.now() - startMs,
       })
+
+      // Una vez que el research está completo, inicializar los form instances.
+      // Corre en secuencia dentro del mismo after() para garantizar orden.
+      try {
+        await initializeCaseForms(caseId, service)
+      } catch (initErr) {
+        log.warn('form initialization failed (non-critical)', {
+          caseId,
+          err: initErr instanceof Error ? initErr.message : initErr,
+        })
+      }
     } catch (err) {
       log.error('background research failed', { caseId, err: err instanceof Error ? err.message : err })
 
@@ -149,4 +163,182 @@ export async function triggerJurisdictionResearchAsync(
   })
 
   return { triggered: true, reason: 'research_queued' }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// Inicialización de form instances después del research
+// ══════════════════════════════════════════════════════════════════
+
+interface FormSource {
+  name: string
+  url_official: string
+  description_es: string
+  is_mandatory: boolean
+}
+
+/**
+ * Una vez que la jurisdicción del caso tiene required_forms + intake_required_forms,
+ * creamos una instance por cada form y lanzamos detección de schema + AI
+ * suggestions para cada uno. Corre en secuencia dentro del mismo after().
+ *
+ * Usa el mismo pipeline que /api/admin/case-forms/initialize pero sin pasar
+ * por el endpoint HTTP (evita un round-trip y mantiene el work dentro de un
+ * solo after() por caseId).
+ */
+async function initializeCaseForms(
+  caseId: string,
+  service: SupabaseClient,
+): Promise<void> {
+  const { data: jurisdiction } = await service
+    .from('case_jurisdictions')
+    .select('required_forms, intake_required_forms')
+    .eq('case_id', caseId)
+    .maybeSingle()
+
+  if (!jurisdiction) return
+
+  const intakeForms = ((jurisdiction.intake_required_forms as FormSource[]) || []).map(f => ({
+    ...f, packet_type: 'intake' as const,
+  }))
+  const meritsForms = ((jurisdiction.required_forms as FormSource[]) || []).map(f => ({
+    ...f, packet_type: 'merits' as const,
+  }))
+  const allForms = [...intakeForms, ...meritsForms]
+  if (allForms.length === 0) {
+    log.info('no forms to initialize', { caseId })
+    return
+  }
+
+  const rows = allForms.map(f => ({
+    case_id: caseId,
+    packet_type: f.packet_type,
+    form_name: f.name,
+    form_url_official: f.url_official,
+    form_description_es: f.description_es,
+    is_mandatory: f.is_mandatory,
+    schema_source: 'pending',
+    status: 'detecting',
+  }))
+
+  const { data: inserted } = await service
+    .from('case_form_instances')
+    .upsert(rows, { onConflict: 'case_id,packet_type,form_name' })
+    .select('id, form_url_official, form_name, packet_type, schema_source')
+
+  const toProcess = (inserted || []).filter(r => r.schema_source === 'pending')
+  if (toProcess.length === 0) return
+
+  // Contexto del caso para las sugerencias de IA
+  const caseCtx = await buildCaseContextForSuggestions(service, caseId)
+
+  for (const instance of toProcess) {
+    try {
+      log.info('initializeCaseForms: detecting', { id: instance.id, form: instance.form_name })
+
+      let fields: import('./acroform-service').DetectedField[] = []
+      let source: 'acroform' | 'ocr_gemini' | 'failed' = 'failed'
+
+      const acro = await detectAcroFormFields(instance.form_url_official)
+      if (acro.source === 'acroform' && acro.fields.length > 0) {
+        fields = acro.fields
+        source = 'acroform'
+      } else {
+        try {
+          fields = await detectOcrSchema(instance.form_url_official)
+          source = 'ocr_gemini'
+        } catch (ocrErr) {
+          log.error('OCR failed', { id: instance.id, err: ocrErr })
+          await service
+            .from('case_form_instances')
+            .update({
+              schema_source: 'failed',
+              schema_error: ocrErr instanceof Error ? ocrErr.message : 'OCR error',
+              status: 'failed',
+            })
+            .eq('id', instance.id)
+          continue
+        }
+      }
+
+      let enriched = fields
+      try {
+        enriched = await suggestFieldValues(fields, caseCtx)
+      } catch (suggestErr) {
+        log.warn('suggestions failed', { err: suggestErr })
+      }
+
+      await service
+        .from('case_form_instances')
+        .update({
+          acroform_schema: enriched,
+          schema_source: source,
+          schema_error: null,
+          status: 'ready',
+        })
+        .eq('id', instance.id)
+
+      log.info('form ready', { id: instance.id, fields: enriched.length, source })
+    } catch (err) {
+      log.error('instance processing failed', { id: instance.id, err })
+      await service
+        .from('case_form_instances')
+        .update({
+          schema_source: 'failed',
+          schema_error: err instanceof Error ? err.message : 'Unknown error',
+          status: 'failed',
+        })
+        .eq('id', instance.id)
+    }
+  }
+}
+
+async function buildCaseContextForSuggestions(service: SupabaseClient, caseId: string) {
+  const { data: caseRow } = await service
+    .from('cases')
+    .select('case_number, client_id, form_data')
+    .eq('id', caseId)
+    .single()
+
+  if (!caseRow) return {}
+
+  const { data: profile } = await service
+    .from('profiles')
+    .select('first_name, last_name, date_of_birth, address_street, address_city, address_state, address_zip, passport_number')
+    .eq('id', caseRow.client_id)
+    .single()
+
+  const { data: contract } = await service
+    .from('contracts')
+    .select('client_full_name, client_passport, client_dob, client_address, client_city, client_state, client_zip, minors')
+    .eq('client_id', caseRow.client_id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const { data: jurisdiction } = await service
+    .from('case_jurisdictions')
+    .select('court_name')
+    .eq('case_id', caseId)
+    .maybeSingle()
+
+  const formData = (caseRow.form_data || {}) as Record<string, string>
+
+  return {
+    caseNumber: caseRow.case_number,
+    clientName: contract?.client_full_name || `${profile?.first_name ?? ''} ${profile?.last_name ?? ''}`.trim(),
+    clientPassport: contract?.client_passport || profile?.passport_number,
+    clientDOB: contract?.client_dob || profile?.date_of_birth,
+    clientAddress: contract?.client_address || profile?.address_street,
+    clientCity: contract?.client_city || profile?.address_city,
+    clientState: contract?.client_state || profile?.address_state,
+    clientZip: contract?.client_zip || profile?.address_zip,
+    minors: contract?.minors as Array<{ fullName: string; dob?: string; countryOfBirth?: string }> | undefined,
+    courtName: jurisdiction?.court_name,
+    motherName: formData.mother_first_name
+      ? `${formData.mother_first_name} ${formData.mother_last_name ?? ''}`.trim()
+      : null,
+    fatherName: formData.father_first_name
+      ? `${formData.father_first_name} ${formData.father_last_name ?? ''}`.trim()
+      : null,
+  }
 }

@@ -30,6 +30,7 @@ import { ParentalConsentGenerator } from './parental-consent-generator'
 import { LegalReviewer } from './legal-reviewer'
 import { SupplementaryDataForm } from './supplementary-data-form'
 import { JurisdictionPanel } from './jurisdiction-panel'
+import { CaseFormsSection } from './forms-section'
 import { CasePipeline } from '@/components/case-pipeline'
 import { uploadDirect } from '@/lib/upload-direct'
 import {
@@ -999,6 +1000,9 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
           <TabsContent value="declaraciones" className="mt-4 space-y-6">
             {/* Jurisdiction detection (court + filing procedure from official sources) */}
             <JurisdictionPanel caseId={caseData.id} />
+
+            {/* Formularios oficiales rellenables (intake + merits) */}
+            <CaseFormsSection caseId={caseData.id} />
 
             {/* Supplementary data for filling [PENDING] fields */}
             <SupplementaryDataForm
