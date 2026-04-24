@@ -190,12 +190,13 @@ Devuelve EXCLUSIVAMENTE el JSON estricto definido en el system prompt. Sin texto
     const rawParsed = JSON.parse(jsonText) as unknown
     parsed = ResearchSchema.parse(rawParsed) as JurisdictionResearchResult
   } catch (err) {
+    const preview = rawText.slice(0, 600).replace(/\s+/g, ' ')
     log.error('research JSON parse/validation failed', {
       rawPreview: rawText.slice(0, 800),
       extractedPreview: jsonText.slice(0, 500),
       err: err instanceof Error ? err.message : String(err),
     })
-    throw new Error('Claude devolvió un JSON de jurisdicción inválido')
+    throw new Error(`Claude devolvió un JSON de jurisdicción inválido. Preview: ${preview}`)
   }
 
   // Verificación post-hoc: al menos una source debe venir de un dominio oficial
