@@ -50,7 +50,7 @@ const RESEARCHER_SYSTEM = `Eres una investigadora legal senior especializada en 
 ## REGLAS
 
 1. **Usa la herramienta \`web_search\`** para consultar el sitio oficial del state judiciary, de la corte del condado correspondiente y, si aplica, de USCourts.gov. Busca hasta 5 veces; agota las búsquedas si la primera no da resultado claro.
-2. **Dominios permitidos**: únicamente .gov y .us. El sistema ya restringe las búsquedas a esos dominios; no intentes otros.
+2. **Dominios permitidos**: cita EXCLUSIVAMENTE URLs bajo .gov o .us (ej. utcourts.gov, courts.ca.gov, sc.gov). No uses wikipedia, blogs de abogados, ni páginas .com/.org como fuente primaria. El validador del sistema rechazará cualquier respuesta sin al menos una source .gov o .us.
 3. **Precisión sobre cobertura**: si no puedes identificar la corte con certeza alta, devuelve \`confidence: "low"\` y deja el campo en null — NUNCA inventes un nombre de corte ni un procedimiento.
 4. **Sources obligatorios**: cada dato factual debe estar respaldado por al menos una URL oficial concreta (no la URL raíz del judiciary — páginas específicas).
 5. **Output JSON estricto**: sin texto antes o después, sin markdown, sin bloques de código. Solo el JSON.
@@ -172,10 +172,17 @@ Devuelve EXCLUSIVAMENTE el JSON estricto definido en el system prompt. Sin texto
     throw new Error('Claude devolvió respuesta sin texto (solo tool_use blocks)')
   }
 
-  // Defensive: remove accidental fences
+  // Claude a veces envuelve el JSON en prosa explicativa o markdown. Extraemos
+  // el primer bloque {...} balanceado del output. Si hay fences ``` o ```json
+  // también los removemos.
   let jsonText = rawText
   if (jsonText.startsWith('```')) {
     jsonText = jsonText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '')
+  }
+  const firstBrace = jsonText.indexOf('{')
+  const lastBrace = jsonText.lastIndexOf('}')
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    jsonText = jsonText.slice(firstBrace, lastBrace + 1)
   }
 
   let parsed: JurisdictionResearchResult
@@ -184,7 +191,8 @@ Devuelve EXCLUSIVAMENTE el JSON estricto definido en el system prompt. Sin texto
     parsed = ResearchSchema.parse(rawParsed) as JurisdictionResearchResult
   } catch (err) {
     log.error('research JSON parse/validation failed', {
-      preview: jsonText.slice(0, 500),
+      rawPreview: rawText.slice(0, 800),
+      extractedPreview: jsonText.slice(0, 500),
       err: err instanceof Error ? err.message : String(err),
     })
     throw new Error('Claude devolvió un JSON de jurisdicción inválido')
