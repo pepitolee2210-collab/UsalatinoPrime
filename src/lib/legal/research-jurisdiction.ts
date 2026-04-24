@@ -52,6 +52,21 @@ export interface FeesInfo {
   waiver_form_url: string | null
 }
 
+/**
+ * Radicación de la presentación (intake) — etapa 1 según Henry.
+ * Los formularios administrativos que el clerk requiere ANTES de asignar
+ * número de caso. Cada juzgado tiene los suyos (coversheets, cartas de
+ * solicitud, formularios de registro inicial). Varían por distrito
+ * dentro del mismo estado.
+ */
+export interface IntakePacket {
+  required_forms: RequiredForm[]
+  filing_steps: FilingStep[]
+  filing_channel: FilingChannel | null
+  procedure_es: string | null
+  notes: string | null
+}
+
 export interface JurisdictionResearchResult {
   state_code: string
   state_name: string
@@ -64,6 +79,9 @@ export interface JurisdictionResearchResult {
   sources: string[]
   confidence: 'high' | 'medium' | 'low'
   notes: string | null
+  /** Radicación de la presentación (etapa 1) — formularios administrativos */
+  intake_packet: IntakePacket
+  /** Radicación del procedimiento del caso (etapa 2) — lo que evalúa el juez */
   filing_channel: FilingChannel | null
   required_forms: RequiredForm[]
   filing_steps: FilingStep[]
@@ -116,30 +134,91 @@ const ResearchSchema = z.object({
     waiver_form_name: z.string().nullable().optional().transform(v => v ?? null),
     waiver_form_url: z.string().url().nullable().optional().transform(v => v ?? null),
   }).nullable().optional().transform(v => v ?? null),
+  intake_packet: z.object({
+    required_forms: z.array(z.object({
+      name: z.string().min(1),
+      url_official: z.string().url(),
+      description_es: z.string().min(1),
+      is_mandatory: z.boolean(),
+    })).default([]),
+    filing_steps: z.array(z.object({
+      step_number: z.number().int().positive(),
+      title_es: z.string().min(1),
+      detail_es: z.string().min(1),
+      estimated_time: z.string().nullable().optional().transform(v => v ?? null),
+      requires_client_action: z.boolean(),
+    })).default([]),
+    filing_channel: z.enum(['in_person', 'email', 'portal', 'mail', 'hybrid'])
+      .nullable().optional().transform(v => v ?? null),
+    procedure_es: z.string().nullable().optional().transform(v => v ?? null),
+    notes: z.string().nullable().optional().transform(v => v ?? null),
+  }).default({
+    required_forms: [],
+    filing_steps: [],
+    filing_channel: null,
+    procedure_es: null,
+    notes: null,
+  }),
 })
 
-const RESEARCHER_SYSTEM = `Eres una investigadora legal senior especializada en derecho migratorio de EE.UU. y jurisdicción juvenil. Tu única tarea es determinar, con evidencia de fuentes oficiales (.gov/.us), cuál es la corte competente para una petición de custodia/tutela SIJS (Special Immigrant Juvenile Status) en un ZIP específico, y describir el procedimiento de radicación local.
+const RESEARCHER_SYSTEM = `Eres una investigadora legal senior especializada en derecho migratorio de EE.UU. y jurisdicción juvenil. Tu tarea es producir un dossier EXHAUSTIVO y verificado con fuentes oficiales (.gov/.us) sobre la corte competente y el procedimiento completo de radicación SIJS (Special Immigrant Juvenile Status) para un ZIP específico.
+
+## CONTEXTO LEGAL (crítico — lo explica Henry, el CEO)
+
+La ley SIJS de 1990 es federal y general para los 50 estados. CADA juzgado de distrito tiene autonomía administrativa para definir SU propio procedimiento de radicación local, sin violar la norma federal. Esto significa que el mismo estado puede tener 10–12 distritos judiciales con formularios DIFERENTES.
+
+El proceso tiene DOS ETAPAS BIEN DIFERENCIADAS que debes investigar por separado:
+
+### Etapa 1 — Radicación de la presentación (INTAKE)
+Son los formularios administrativos que el clerk/secretario pide ANTES de asignar número de caso. Es el "trámite de apertura". Pueden ser:
+- Family Court Coversheet / Civil Cover Sheet
+- Confidential Information Form
+- Letter of Intent to File / Petition Request letter
+- Registration/Intake form específico del condado
+- Cualquier hoja ("ficha de registro") que el juzgado pida llenar para abrir el expediente
+
+Ejemplo real de Utah (experiencia del CEO): en Utah él lleva una sola hoja que dice "solicito, señor juez, mi petición, soy [nombre], mi menor hijo [nombre], quien solicita..." con esa hoja presenta en ventanilla, el clerk asigna número de caso, y RECIÉN entonces puede traer el expediente sustantivo para la audiencia.
+
+### Etapa 2 — Radicación del procedimiento del caso (MERITS)
+Son los documentos sustantivos del caso que el juez evalúa para decidir: Petition for Guardianship/Custody, declaraciones del tutor y testigos, evidencias de abandono, certificaciones, formularios SIJS (findings). Esto es lo que se presenta DESPUÉS de tener el número de caso.
+
+Debes investigar y reportar LAS DOS ETAPAS por separado. El sistema las muestra como secciones distintas al admin.
 
 ## REGLAS
 
-1. **Usa la herramienta \`web_search\`** para consultar el sitio oficial del state judiciary, de la corte del condado correspondiente y, si aplica, de USCourts.gov. Busca hasta 5 veces; agota las búsquedas si la primera no da resultado claro.
-2. **Dominios permitidos**: cita EXCLUSIVAMENTE URLs bajo .gov o .us (ej. utcourts.gov, courts.ca.gov, sc.gov). No uses wikipedia, blogs de abogados, ni páginas .com/.org como fuente primaria. El validador del sistema rechazará cualquier respuesta sin al menos una source .gov o .us.
-3. **Precisión sobre cobertura**: si no puedes identificar la corte con certeza alta, devuelve \`confidence: "low"\` y deja el campo en null — NUNCA inventes un nombre de corte ni un procedimiento.
-4. **Sources obligatorios**: cada dato factual debe estar respaldado por al menos una URL oficial concreta (no la URL raíz del judiciary — páginas específicas).
-5. **Output JSON estricto**: sin texto antes o después, sin markdown, sin bloques de código. Solo el JSON.
-6. **court_name en inglés formal** como aparece en encabezados oficiales del tribunal. Ej: "Fourth District Juvenile Court, American Fork Location", "Superior Court of California, County of Los Angeles — Juvenile Division".
-7. **court_name_es**: traducción formal al español jurídico. Ej: "Cuarto Juzgado de Distrito de Familia de Utah, Sede American Fork".
-8. **filing_procedure**: descripción concisa (2-4 oraciones) de cómo se presenta una Petition for Custody / Guardianship / Support en esa corte: en persona, portal en línea, email, formularios previos, aranceles. Sin alucinaciones — si no encuentras el procedimiento local específico, di "Procedimiento estándar del estado: [descripción general]" y baja el \`confidence\`.
-9. **age_limit_sijs**: edad máxima hasta la que la corte retiene jurisdicción SIJS en ese estado (18 o 21). Solo verificado si aparece en la normativa oficial o jurisprudencia consultada.
-10. **confidence**:
-    - \`high\` → corte identificada con certeza desde fuente oficial del judiciary estatal + procedimiento documentado en el sitio oficial.
-    - \`medium\` → corte identificada pero procedimiento inferido de fuentes generales (p.ej. state judiciary rules).
-    - \`low\` → no se pudo confirmar con certeza la sub-jurisdicción (condado/distrito) — se cae al nivel estatal genérico.
-11. **required_forms**: SOLO formularios cuya URL oficial hayas encontrado en .gov/.us. Si no encontraste un formulario concreto, devuelve array vacío — NUNCA inventes nombres de forms. Cada url_official debe ser un PDF o página oficial (no la homepage del judiciary). Marca is_mandatory=true solo cuando la fuente oficial lo indique como obligatorio.
-12. **filing_steps**: lista ordenada con pasos concretos y accionables. title_es corto (<8 palabras), detail_es en 1-2 oraciones. estimated_time opcional ("30 min", "1-2 días", "mismo día"). requires_client_action=true cuando el cliente debe moverse/firmar/comparecer, false cuando es trámite interno del clerk.
-13. **attachments_required**: documentos que el cliente DEBE aportar al radicar. Usa exclusivamente los types del enum: birth_certificate, school_records, medical_records, psych_evaluation, parental_consent, abandonment_proof, other. Describe en español con precisión.
-14. **fees**: null si el judiciary no publica el monto. Si publica arancel y mecanismo de exención, llénalo completo. waiver_form_url solo si encuentras la URL oficial del formulario de exención (ej. fee waiver / in forma pauperis).
-15. **filing_channel**: canal primario de radicación. in_person si el clerk recibe físicamente, portal si hay e-filing, email si la corte acepta PDF por correo, mail si es correo postal, hybrid si la corte admite múltiples vías.
+1. **Usa la herramienta \`web_search\` de forma agresiva** — tienes hasta 10 búsquedas. Consulta: sitio oficial del state judiciary, página específica del county/district court, reglas locales (local rules), clerk's office instructions, filing fee schedules, formularios descargables. Si la primera query no da resultado claro, itera con refinements.
+2. **Dominios permitidos**: cita EXCLUSIVAMENTE URLs bajo .gov o .us. El validador del sistema rechaza respuestas sin al menos una source .gov/.us.
+3. **Precisión sobre cobertura**: si no puedes identificar un dato con certeza, déjalo null o array vacío. NUNCA inventes nombres de formularios, URLs o procedimientos.
+4. **Sources obligatorios**: cada dato factual debe estar respaldado por una URL oficial específica (no la homepage del judiciary).
+5. **Output JSON estricto**: sin texto antes o después, sin markdown, sin bloques de código. Solo el JSON del formato de salida.
+6. **court_name en inglés formal** como aparece en encabezados oficiales. Ej: "Fourth District Juvenile Court, American Fork Location".
+7. **court_name_es**: traducción formal al español jurídico.
+8. **filing_procedure**: resumen en prosa (2–4 oraciones) combinando AMBAS etapas para legibilidad global. Queda como fallback.
+9. **age_limit_sijs**: 18 o 21 según la normativa del estado. Verifica en fuente oficial.
+10. **confidence**: high = corte + ambas etapas documentadas en fuentes oficiales. medium = corte identificada pero alguna etapa inferida. low = no pude confirmar sub-jurisdicción.
+
+## BLOQUES ESTRUCTURADOS
+
+### intake_packet (Etapa 1 — presentación administrativa)
+- **required_forms**: formularios de intake específicos del juzgado (coversheets, cartas de registro, formularios de apertura). Cada entry con URL oficial. Array vacío si solo se presenta en persona con una carta libre.
+- **filing_steps**: pasos ordenados para abrir el caso y obtener número de expediente. Típicamente: (1) preparar carta/coversheet, (2) presentar en ventanilla o portal, (3) pagar fee inicial si aplica, (4) recibir case number.
+- **filing_channel**: in_person | email | portal | mail | hybrid. Para intake la mayoría es in_person, algunos estados avanzados tienen portal (eFiling inicial).
+- **procedure_es**: resumen en prosa de la etapa 1, en español jurídico claro.
+- **notes**: particularidades locales (ej. horario del clerk, requisitos de notarización previa, traducción certificada).
+
+### required_forms / filing_steps / filing_channel / attachments_required / fees (Etapa 2 — procedimiento sustantivo)
+Estos describen la radicación del expediente completo que el juez evalúa:
+- **required_forms**: Petition for Guardianship, declaraciones juradas, SIJS findings forms, etc.
+- **filing_steps**: pasos de radicación del expediente sustantivo (después de tener case number).
+- **filing_channel**: canal para subir/entregar el expediente sustantivo.
+- **attachments_required**: documentos del cliente (birth_certificate, school_records, etc).
+- **fees**: arancel principal del caso + mecanismo de exención si aplica.
+
+## REGLAS DE LIMPIEZA
+- required_forms / intake_packet.required_forms: SOLO entries cuya url_official esté en .gov/.us. NUNCA inventes.
+- filing_steps / intake_packet.filing_steps: pasos accionables; title_es <8 palabras; requires_client_action correctamente marcado.
+- attachments_required: usa solo los types del enum.
+- fees: null si no hay dato oficial del monto.
 
 ## FORMATO DE SALIDA (JSON estricto)
 
@@ -219,6 +298,42 @@ const RESEARCHER_SYSTEM = `Eres una investigadora legal senior especializada en 
     "waivable": true,
     "waiver_form_name": "Motion to Waive Fees (Form 982GE)",
     "waiver_form_url": "https://www.utcourts.gov/resources/forms/fees/982GE.pdf"
+  },
+  "intake_packet": {
+    "required_forms": [
+      {
+        "name": "Juvenile Court Cover Sheet",
+        "url_official": "https://www.utcourts.gov/resources/forms/juvenile/coversheet.pdf",
+        "description_es": "Hoja de carátula que la ventanilla requiere para abrir expediente juvenil. Incluye identificación del tutor, menor y tipo de petición.",
+        "is_mandatory": true
+      }
+    ],
+    "filing_steps": [
+      {
+        "step_number": 1,
+        "title_es": "Preparar carta y coversheet",
+        "detail_es": "Redactar carta breve de solicitud ('solicito, señor juez, mi petición, soy [nombre], mi menor hijo [nombre]...') y llenar el Juvenile Court Cover Sheet.",
+        "estimated_time": "30 min",
+        "requires_client_action": true
+      },
+      {
+        "step_number": 2,
+        "title_es": "Presentar en ventanilla",
+        "detail_es": "Acudir a la ventanilla del juvenile court en American Fork con la carta y el coversheet. El clerk verifica identidad y documentos preliminares.",
+        "estimated_time": "20 min presencial",
+        "requires_client_action": true
+      },
+      {
+        "step_number": 3,
+        "title_es": "Recibir número de caso",
+        "detail_es": "El clerk asigna número de caso el mismo día y entrega una constancia. Con ese número ya se puede traer el expediente sustantivo completo.",
+        "estimated_time": "mismo día",
+        "requires_client_action": false
+      }
+    ],
+    "filing_channel": "in_person",
+    "procedure_es": "La radicación de la presentación (etapa 1) en Utah requiere acudir en persona a la ventanilla del juvenile court con una carta breve de solicitud y el coversheet. El clerk asigna número de caso inmediatamente. Solo después de obtener ese número se entrega el expediente sustantivo para la audiencia.",
+    "notes": "El clerk de American Fork atiende de 8am a 5pm MT. No requiere cita previa. Si se acude sin el coversheet, lo entregan impreso en ventanilla."
   }
 }
 `
@@ -249,7 +364,7 @@ export async function researchJurisdiction(
   const client = getClient()
   const hint = getStateCourtHint(location.stateCode)
 
-  const userPrompt = `Investiga en fuentes oficiales la corte competente y el procedimiento de radicación para una petición SIJS de este cliente:
+  const userPrompt = `Investiga EXHAUSTIVAMENTE las DOS etapas de radicación SIJS para este cliente. Haz hasta 10 web_searches; no te quedes cortes en la primera ronda.
 
 - Estado: ${location.stateName} (${location.stateCode})
 - ZIP: ${location.zip ?? '(desconocido — usa la corte estatal genérica)'}
@@ -262,15 +377,36 @@ export async function researchJurisdiction(
 - Nivel típico de corte esperado en este estado: ${hint.likelyCourtLevel}
 - Edad máxima SIJS conocida en este estado (verifica en fuente oficial): ${hint.sijsAgeCeiling}
 
-## Lo que necesito
+## Lo que necesito — AMBAS ETAPAS
 
-1. Nombre oficial EXACTO de la corte competente para una Petition for Custody / Guardianship / Support en ese ZIP (como aparece en encabezados oficiales del tribunal).
-2. Dirección física de la corte si está documentada.
-3. Procedimiento local de radicación (en persona, portal en línea, email, formularios previos, aranceles, tiempos).
-4. Edad máxima hasta la que esta corte retiene jurisdicción SIJS en este estado.
-5. URLs oficiales (.gov/.us) que respaldan cada dato.
+### ETAPA 1: Radicación de la presentación (intake_packet)
+Los formularios administrativos que el clerk pide ANTES de asignar número de caso. Busca:
+- "[county] juvenile court intake forms"
+- "[state] family court coversheet guardianship"
+- "[county] courts clerk filing requirements minor"
+- "[state] petition to open juvenile case forms"
 
-Haz hasta 5 web_search queries. Empieza por el judiciary estatal oficial. Si el ZIP identifica un condado/distrito específico, busca la corte de ese condado/distrito.
+Reporta qué formularios/cartas se presentan, dónde (ventanilla, portal, email), qué tarda, qué fee de apertura (si hay).
+
+### ETAPA 2: Radicación del procedimiento del caso (merits)
+Los documentos sustantivos que el juez evalúa. Busca:
+- "[state] petition for guardianship minor forms"
+- "[state] SIJS findings order"
+- "[county] guardianship filing fee"
+- Formularios estándar de custody/guardianship con URL oficial
+
+### Datos generales
+1. Nombre oficial EXACTO de la corte competente (como aparece en encabezados oficiales).
+2. Dirección física documentada.
+3. Edad máxima SIJS en el estado (18 o 21).
+4. URLs oficiales (.gov/.us) que respaldan cada dato.
+
+## Método
+- Empieza por el judiciary estatal oficial (${hint.officialJudiciaryUrl}).
+- Si el ZIP identifica condado/distrito específico, busca la corte exacta.
+- Para intake, investiga "clerk's office" / "local rules" / "filing instructions".
+- Para merits, investiga los formularios sustantivos descargables (PDFs).
+- Si una búsqueda no da resultado, reformula. No te rindas con 2-3 intentos.
 
 Devuelve EXCLUSIVAMENTE el JSON estricto definido en el system prompt. Sin texto alrededor, sin markdown, sin backticks.`
 
@@ -284,21 +420,25 @@ Devuelve EXCLUSIVAMENTE el JSON estricto definido en el system prompt. Sin texto
   // invalid_request_error). En vez de enumerar cada .gov/.us posible,
   // dejamos el tool sin restricción y validamos post-hoc que al menos una
   // source esté en un dominio oficial (ver SOURCE_OFFICIAL_REGEX abajo).
+  // Budget amplio (max_uses 10, max_tokens 8192) porque ahora investigamos
+  // dos etapas completas (intake + merits) con formularios específicos por
+  // distrito. Henry pidió investigación exhaustiva sin importar tiempo o
+  // tokens. El research corre en background — el usuario no espera.
   const message = await client.messages.create(
     {
       model: RESEARCH_MODEL,
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: RESEARCHER_SYSTEM,
       tools: [
         {
           type: 'web_search_20250305',
           name: 'web_search',
-          max_uses: 5,
+          max_uses: 10,
         },
       ] as unknown as Anthropic.Messages.Tool[],
       messages: [{ role: 'user', content: userPrompt }],
     },
-    { signal },
+    { signal, timeout: 120_000 }, // 2 min — background job, puede tardar
   )
 
   // Extraemos solo los text blocks (ignoramos tool_use y server_tool_use blocks)
@@ -368,6 +508,18 @@ Devuelve EXCLUSIVAMENTE el JSON estricto definido en el system prompt. Sin texto
   if (parsed.fees?.waiver_form_url && !isOfficial(parsed.fees.waiver_form_url)) {
     log.warn('fees.waiver_form_url dropped — URL no oficial', { url: parsed.fees.waiver_form_url })
     parsed.fees = { ...parsed.fees, waiver_form_url: null, waiver_form_name: parsed.fees.waiver_form_name ?? null }
+  }
+
+  // Limpieza de intake_packet.required_forms — misma regla que merits.
+  if (parsed.intake_packet?.required_forms?.length) {
+    const cleanedIntake = parsed.intake_packet.required_forms.filter(f => {
+      const ok = isOfficial(f.url_official)
+      if (!ok) {
+        log.warn('intake_form dropped — URL no oficial', { name: f.name, url: f.url_official })
+      }
+      return ok
+    })
+    parsed.intake_packet = { ...parsed.intake_packet, required_forms: cleanedIntake }
   }
 
   const usage = message.usage as Anthropic.Usage & {

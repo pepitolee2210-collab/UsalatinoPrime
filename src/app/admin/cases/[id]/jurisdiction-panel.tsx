@@ -70,6 +70,12 @@ interface CachedJurisdiction {
   fees?: FeesInfo | null
   research_status?: 'pending' | 'completed' | 'failed' | null
   research_error?: string | null
+  // Etapa 1 — radicación de la presentación (intake)
+  intake_required_forms?: RequiredForm[] | null
+  intake_filing_steps?: FilingStep[] | null
+  intake_filing_channel?: FilingChannel | null
+  intake_procedure_es?: string | null
+  intake_notes?: string | null
 }
 
 interface ClientLocation {
@@ -390,22 +396,38 @@ export function JurisdictionPanel({ caseId }: Props) {
                     )}
                   </section>
 
-                  {/* Canal primario */}
-                  {data.jurisdiction.filing_channel && (
-                    <ChannelBlock channel={data.jurisdiction.filing_channel} address={data.jurisdiction.court_address} />
-                  )}
+                  {/* ══════════════════════════════════════════════ */}
+                  {/* ETAPA 1 — Radicación de la presentación        */}
+                  {/* ══════════════════════════════════════════════ */}
+                  <PacketSection
+                    title="Radicación de la presentación"
+                    subtitle="Etapa 1 — formularios administrativos para abrir el caso y obtener número de expediente."
+                    accent="violet"
+                    channel={data.jurisdiction.intake_filing_channel ?? null}
+                    channelAddress={data.jurisdiction.court_address}
+                    forms={data.jurisdiction.intake_required_forms ?? []}
+                    steps={data.jurisdiction.intake_filing_steps ?? []}
+                    procedureProse={data.jurisdiction.intake_procedure_es ?? null}
+                    notes={data.jurisdiction.intake_notes ?? null}
+                  />
 
-                  {/* Formularios requeridos */}
-                  <FormsBlock forms={data.jurisdiction.required_forms ?? []} />
+                  {/* ══════════════════════════════════════════════ */}
+                  {/* ETAPA 2 — Radicación del procedimiento         */}
+                  {/* ══════════════════════════════════════════════ */}
+                  <PacketSection
+                    title="Radicación del procedimiento del caso"
+                    subtitle="Etapa 2 — documentos sustantivos que evalúa el juez para decidir el caso."
+                    accent="amber"
+                    channel={data.jurisdiction.filing_channel ?? null}
+                    channelAddress={data.jurisdiction.court_address}
+                    forms={data.jurisdiction.required_forms ?? []}
+                    steps={data.jurisdiction.filing_steps ?? []}
+                    attachments={data.jurisdiction.attachments_required ?? []}
+                    fees={data.jurisdiction.fees ?? null}
+                  />
 
-                  {/* Pasos de radicación */}
-                  <StepsBlock steps={data.jurisdiction.filing_steps ?? []} />
-
-                  {/* Anexos del cliente */}
-                  <AttachmentsBlock items={data.jurisdiction.attachments_required ?? []} />
-
-                  {/* Aranceles */}
-                  {data.jurisdiction.fees && <FeesBlock fees={data.jurisdiction.fees} />}
+                  {/* Aranceles combinados — si solo hay fee en merits lo mostramos arriba
+                      dentro de PacketSection. No duplicamos aquí. */}
 
                   {/* Fuentes */}
                   {data.jurisdiction.sources.length > 0 && (
@@ -613,6 +635,74 @@ function AttachmentsBlock({ items }: { items: AttachmentRequirement[] }) {
           </li>
         ))}
       </ul>
+    </section>
+  )
+}
+
+/**
+ * Sección reutilizable para una de las dos etapas de radicación.
+ * Muestra: canal, formularios, pasos, (opcional) anexos, (opcional) fees.
+ * El accent define el color del borde lateral y del título.
+ */
+function PacketSection({
+  title,
+  subtitle,
+  accent,
+  channel,
+  channelAddress,
+  forms,
+  steps,
+  attachments,
+  fees,
+  procedureProse,
+  notes,
+}: {
+  title: string
+  subtitle: string
+  accent: 'violet' | 'amber'
+  channel: FilingChannel | null
+  channelAddress: string | null
+  forms: RequiredForm[]
+  steps: FilingStep[]
+  attachments?: AttachmentRequirement[]
+  fees?: FeesInfo | null
+  procedureProse?: string | null
+  notes?: string | null
+}) {
+  const accentBorder = accent === 'violet'
+    ? 'border-l-4 border-l-violet-400'
+    : 'border-l-4 border-l-amber-400'
+  const titleColor = accent === 'violet' ? 'text-violet-900' : 'text-amber-900'
+
+  const hasAnything = forms.length > 0 || steps.length > 0 || channel || procedureProse || notes
+    || (attachments && attachments.length > 0) || fees
+
+  return (
+    <section className={`rounded-lg bg-gray-50/60 pl-4 pr-3 py-3 space-y-4 ${accentBorder}`}>
+      <div>
+        <p className={`text-xs font-bold uppercase tracking-wider ${titleColor}`}>{title}</p>
+        <p className="text-[11px] text-gray-500 mt-0.5">{subtitle}</p>
+      </div>
+
+      {!hasAnything && (
+        <p className="text-[11px] text-gray-400 italic">
+          Sin información específica encontrada en fuentes oficiales.
+        </p>
+      )}
+
+      {channel && <ChannelBlock channel={channel} address={channelAddress} />}
+      <FormsBlock forms={forms} />
+      <StepsBlock steps={steps} />
+      {attachments && <AttachmentsBlock items={attachments} />}
+      {fees && <FeesBlock fees={fees} />}
+      {procedureProse && (
+        <p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap italic border-l-2 border-gray-200 pl-2">
+          {procedureProse}
+        </p>
+      )}
+      {notes && (
+        <p className="text-[11px] text-gray-600 italic">💡 {notes}</p>
+      )}
     </section>
   )
 }
