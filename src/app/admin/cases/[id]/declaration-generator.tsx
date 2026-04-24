@@ -318,6 +318,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
         minorStories={minorStories}
         absentParents={absentParents}
         supplementaryData={supplementaryData}
+        caseId={caseId}
       />
 
       {/* Preview modal — soporta lectura, edición inline (#3) y corrección dirigida (#4) */}

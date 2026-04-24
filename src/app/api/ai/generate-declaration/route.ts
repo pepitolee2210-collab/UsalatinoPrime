@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { buildCaseContext } from '@/lib/ai/prompts/chat-system'
 import { generateText } from '@/lib/ai/anthropic-client'
+import { researchJurisdiction } from '@/lib/legal/research-jurisdiction'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('generate-declaration')
@@ -117,6 +119,73 @@ function mergeWitnesses(
   return merged
 }
 
+/**
+ * Construye el bloque JURISDICTION que se inyecta al prompt. Ajusta contenido
+ * según el tipo de documento:
+ *   - petition_guardianship / parental_consent / tutor / minor / witness:
+ *       incluye nombre de corte, dirección, procedimiento y sources.
+ *   - parental_consent_collaborative:
+ *       la regla del playbook dice "NO debe mencionar la corte juvenil ni la
+ *       declaración SIJS". La jurisdicción entra solo como contexto de país
+ *       (Estados Unidos); el nombre específico de la corte se suprime.
+ *
+ * Si el admin llenó manualmente `supplementaryData.court.name`, ese valor
+ * tiene prioridad absoluta sobre el cacheado (override manual). En ese caso
+ * se señala explícitamente al modelo que use el override.
+ *
+ * Si no hay ni jurisdicción cacheada ni ubicación resuelta, se retorna string
+ * vacío — el prompt cae al comportamiento legacy con `[FALTA: Nombre del tribunal]`.
+ */
+function buildJurisdictionBlock(
+  ctx: Awaited<ReturnType<typeof buildCaseContext>>,
+  type: DeclarationType,
+): string {
+  const j = ctx.jurisdiction
+  const loc = ctx.clientLocation
+  const supp = ctx.supplementaryData as Record<string, unknown> | null
+  const suppCourt = supp?.court as { name?: string } | undefined
+  const manualCourt = suppCourt?.name?.trim() || ''
+
+  // Override manual explícito — siempre gana.
+  if (manualCourt) {
+    if (type === 'parental_consent_collaborative') {
+      // Igual en renuncia colaborativa se omite la corte del output — pero se
+      // documenta que el admin la tiene identificada.
+      return `\n\n=== JURISDICTION (admin manual override — CONTEXT ONLY, do NOT mention in document output) ===\nAdmin-provided court: ${manualCourt}\nRULE FOR THIS DOCUMENT TYPE: the voluntary relinquishment must not mention any specific juvenile court. Use only the generic phrasing "corte juvenil en los Estados Unidos de América" / "juvenile court in the United States of America".`
+    }
+    return `\n\n=== JURISDICTION (admin manual override — authoritative) ===\nUse EXACTLY this court name in the document heading and throughout: ${manualCourt}\nDo NOT substitute with any other court name, even if other data suggests a different jurisdiction.`
+  }
+
+  // Sin override — usar cacheado si existe.
+  if (j) {
+    if (type === 'parental_consent_collaborative') {
+      return `\n\n=== JURISDICTION (CONTEXT ONLY — do NOT mention specific court in document output) ===\nClient state: ${j.state_name} (${j.state_code})\nRULE FOR THIS DOCUMENT TYPE: the voluntary relinquishment must not reference any juvenile court, the SIJ declaration, or the child's immigration case. Use only the generic phrasing "corte juvenil en los Estados Unidos de América" / "juvenile court in the United States of America".`
+    }
+
+    const sourcesBlock = j.sources.length > 0
+      ? `\nOfficial sources verified on ${j.verified_at}:\n${j.sources.map(u => `  - ${u}`).join('\n')}`
+      : ''
+    const addressLine = j.court_address ? `\nCourt address: ${j.court_address}` : ''
+    const ageLine = j.age_limit_sijs ? `\nSIJS age ceiling in ${j.state_name}: ${j.age_limit_sijs} years` : ''
+    const procLine = j.filing_procedure ? `\nFiling procedure (informational): ${j.filing_procedure}` : ''
+    const notesLine = j.notes ? `\nNotes: ${j.notes}` : ''
+    const esCourtLine = j.court_name_es ? `\nCorte (ES): ${j.court_name_es}` : ''
+
+    return `\n\n=== JURISDICTION (auto-resolved from client ZIP ${j.client_zip ?? '—'} via official sources, confidence: ${j.confidence}) ===\nState: ${j.state_name} (${j.state_code})\nPrimary court (EN): ${j.court_name}${esCourtLine}${addressLine}${ageLine}${procLine}${notesLine}${sourcesBlock}\n\nCRITICAL: Use EXACTLY this court name ("${j.court_name}") in any heading like "TO THE [COURT NAME]". Do not substitute, translate, or abbreviate the court name. If the document needs a signing location, prefer the client's city + "${j.state_name}".`
+  }
+
+  // Sin jurisdicción cacheada, pero tenemos ubicación — damos al menos el estado.
+  if (loc) {
+    if (type === 'parental_consent_collaborative') {
+      return `\n\n=== JURISDICTION (CONTEXT ONLY — do NOT mention specific court in document output) ===\nClient state: ${loc.stateName} (${loc.stateCode})\nRULE FOR THIS DOCUMENT TYPE: the voluntary relinquishment must not reference any juvenile court, the SIJ declaration, or the child's immigration case.`
+    }
+    return `\n\n=== CLIENT LOCATION (jurisdiction NOT yet researched) ===\nState: ${loc.stateName} (${loc.stateCode})\nCity: ${loc.city ?? '(unknown)'}\nZIP: ${loc.zip ?? '(unknown)'}\nIMPORTANT: no specific court name was auto-resolved for this case. In headings like "TO THE [COURT NAME]" use the placeholder [FALTA: Nombre del tribunal del estado de ${loc.stateName}] so the admin can fill it in manually. Use the client's city + "${loc.stateName}" for signing locations.`
+  }
+
+  // Nada resuelto — comportamiento legacy (placeholder).
+  return ''
+}
+
 function buildDeclarationPrompt(
   type: DeclarationType,
   ctx: Awaited<ReturnType<typeof buildCaseContext>>,
@@ -210,6 +279,11 @@ function buildDeclarationPrompt(
   // immigration_status, city_of_birth, civil_status, detained_by_immigration,
   // orr_sponsor, court_order_date, etc.). Empty string if no data captured.
   const enrichedBlock = buildEnrichedContextBlock(tutor, minorBasic)
+
+  // Auto-resolved jurisdiction block. Includes court name + filing procedure
+  // when the panel has investigated the case; falls back to [FALTA:...] hint
+  // otherwise. See buildJurisdictionBlock for per-type rules.
+  const jurisdictionBlock = buildJurisdictionBlock(ctx, type)
 
   const baseInstructions = `
 You are an expert immigration paralegal specializing in SIJS (Special Immigrant Juvenile Status) cases.
@@ -311,9 +385,9 @@ IMPORTANT:
 - If you find a passport number in the documents or forms, USE IT.
 - If you cannot find a specific piece of data, write what is missing in Spanish: [FALTA: descripción del dato].
 - Use today's date if no signing date is specified.
-- Use the court name from the supplementary data if provided. Do NOT default to Utah.
+- Use the court name from the JURISDICTION block below (if present) or from the SUPPLEMENTARY DATA override (if the admin filled it). Never default to Utah unless the client actually lives there.
 - Output ONLY the letter text, nothing else. No explanations.
-${suppBlock}${enrichedBlock}`
+${suppBlock}${enrichedBlock}${jurisdictionBlock}`
   }
 
   if (type === 'parental_consent_collaborative') {
@@ -426,7 +500,7 @@ IMPORTANT:
 - Do NOT mention the SIJ declaration, the juvenile court, or the immigration case.
 - Extract 2-3 specific negligence incidents from the narrative above and rewrite them in paragraph 4 in FIRST PERSON from the absent ${parentRelationEN}'s perspective (admitting it was him/her who failed).
 - If a specific piece of data is missing, write [FALTA: descripción del dato] in Spanish.
-${suppBlock}${enrichedBlock}`
+${suppBlock}${enrichedBlock}${jurisdictionBlock}`
   }
 
   if (type === 'petition_guardianship') {
@@ -440,7 +514,7 @@ HERE IS THE EXACT STRUCTURE TO FOLLOW:
 
 PETITION FOR TEMPORARY GUARDIANSHIP OF [CHILD FULL NAME IN CAPS]
 
-TO THE [COURT NAME, e.g. FOURTH DISTRICT JUVENILE COURT OF THE STATE OF UTAH – AMERICAN FORK LOCATION]
+TO THE [COURT NAME — read from the JURISDICTION block appended at the end of this prompt; if no jurisdiction is resolved, use the placeholder [FALTA: Nombre del tribunal]]
 
 I, [GUARDIAN FULL NAME IN CAPS], of legal age, [NATIONALITY] national, residing at [GUARDIAN FULL ADDRESS], respectfully request this Honorable Court to grant me temporary guardianship of [CHILD FULL NAME IN CAPS], based on the following considerations:
 
@@ -521,7 +595,7 @@ CRITICAL RULES:
 - Output ONLY the petition text, no explanations.
 - The narrative in Section II must use REAL facts from THIS child's form, improved with legal language.
 - CRITICAL WRITING RULE: When describing harmful acts, use ONLY abstract legal language such as "acts that gravely affected the minor's wellbeing". Do NOT elaborate or specify the nature of the acts. Focus on EMOTIONAL IMPACT and LEGAL CONSEQUENCES, not on describing events in detail.
-${suppBlock}${enrichedBlock}`
+${suppBlock}${enrichedBlock}${jurisdictionBlock}`
   }
 
   if (type === 'tutor') {
@@ -585,7 +659,7 @@ IMPORTANT:
 - If data is missing, write [FALTA: descripción del dato] in Spanish.
 - Output ONLY the affidavit text.
 - CRITICAL WRITING RULE: When describing harmful acts against any child, use ONLY abstract legal language such as "committed acts that gravely affected the child's wellbeing" or "caused grave harm". Do NOT elaborate, describe, or specify the nature of harmful acts. Focus on EMOTIONAL IMPACT and LEGAL CONSEQUENCES only.
-${suppBlock}${enrichedBlock}`
+${suppBlock}${enrichedBlock}${jurisdictionBlock}`
   }
 
   if (type === 'minor') {
@@ -666,7 +740,7 @@ IMPORTANT:
 - Make sections III and IV the most detailed — these are the heart of the case.
 - If only one parent abused/abandoned, focus more on that parent and adapt the other section accordingly.
 - CRITICAL WRITING RULE: When describing harmful acts against the minor, use ONLY abstract legal language such as "actos que afectaron gravemente mi bienestar" or "daño grave a mi persona". Do NOT elaborate, describe, or specify the nature of the acts. Keep the description of harmful events brief and abstract. Focus on the EMOTIONAL IMPACT and CONSEQUENCES rather than describing what happened. This is required for proper legal processing.
-${suppBlock}${enrichedBlock}`
+${suppBlock}${enrichedBlock}${jurisdictionBlock}`
   }
 
   // type === 'witness'
@@ -751,7 +825,7 @@ IMPORTANT:
 - Add details from the case data that the witness would reasonably know.
 - If data is missing (like ID numbers), write [FALTA: descripción del dato] in Spanish.
 - Output ONLY the affidavit text.
-${suppBlock}${enrichedBlock}`
+${suppBlock}${enrichedBlock}${jurisdictionBlock}`
 }
 
 /**
@@ -810,7 +884,51 @@ export async function POST(request: NextRequest) {
   }
 
   // Build context — pure SQL, no AI
-  const ctx = await buildCaseContext(case_id)
+  let ctx = await buildCaseContext(case_id)
+
+  // Auto-trigger de research de jurisdicción: si tenemos ubicación resuelta pero
+  // nadie ha investigado aún la corte, lo hacemos ahora. Esto cubre el caso
+  // donde el admin clica "Generar" sin haber abierto antes el JurisdictionPanel
+  // (el panel lo dispara al montar). Se hace solo en modo generación (no en
+  // traducción) para no repetir el research en el segundo fetch EN→ES.
+  const isTranslation = lang === 'es' && typeof english_source === 'string' && english_source.trim().length > 0
+  if (!isTranslation && !ctx.jurisdiction && ctx.clientLocation) {
+    try {
+      log.info('auto-researching jurisdiction before declaration generation', {
+        caseId: case_id,
+        stateCode: ctx.clientLocation.stateCode,
+      })
+      const research = await researchJurisdiction(ctx.clientLocation, request.signal)
+      const service = createServiceClient()
+      await service.from('case_jurisdictions').upsert({
+        case_id,
+        state_code: research.state_code,
+        state_name: research.state_name,
+        client_zip: ctx.clientLocation.zip,
+        court_name: research.court_name,
+        court_name_es: research.court_name_es,
+        court_address: research.court_address,
+        filing_procedure: research.filing_procedure,
+        filing_procedure_es: research.filing_procedure_es,
+        age_limit_sijs: research.age_limit_sijs,
+        sources: research.sources,
+        confidence: research.confidence,
+        notes: research.notes,
+        verified_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'case_id' })
+      // Re-carga el contexto con la jurisdicción recién persistida.
+      ctx = await buildCaseContext(case_id)
+    } catch (err) {
+      // No bloqueamos la generación si el research falla — el documento
+      // sale con el fallback "[FALTA: Nombre del tribunal]" y el admin puede
+      // reintentar desde el panel.
+      log.warn('auto-research jurisdiction failed, continuing without it', {
+        caseId: case_id,
+        err: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
 
   // Modo TRADUCCIÓN: cuando el frontend pide ES y ya tiene la versión EN lista,
   // evitamos regenerar el documento entero desde el caso y simplemente traducimos.
@@ -884,3 +1002,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Error al generar la declaración: ${message}` }, { status: 500 })
   }
 }
+
+// Timeout amplio: la primera generación de un caso puede incluir auto-research
+// de jurisdicción (~30s con web_search) + la generación propiamente dicha.
+export const maxDuration = 90

@@ -1,4 +1,28 @@
 import { createServiceClient } from '@/lib/supabase/service'
+import { resolveClientLocation, type ClientLocation } from '@/lib/legal/resolve-client-location'
+
+/**
+ * Jurisdicción cacheada en `case_jurisdictions`. Se genera la primera vez que
+ * el admin abre el panel de jurisdicción del caso (llamada a Claude + web_search)
+ * y queda disponible para que cualquier generación de documento la inyecte al
+ * prompt sin tener que volver a consultar.
+ */
+export interface CachedJurisdiction {
+  case_id: string
+  state_code: string
+  state_name: string
+  client_zip: string | null
+  court_name: string
+  court_name_es: string | null
+  court_address: string | null
+  filing_procedure: string | null
+  filing_procedure_es: string | null
+  age_limit_sijs: number | null
+  sources: string[]
+  confidence: 'high' | 'medium' | 'low'
+  notes: string | null
+  verified_at: string
+}
 
 interface CaseContext {
   caseId: string
@@ -21,12 +45,24 @@ interface CaseContext {
   tutorGuardian: Record<string, unknown> | null
   allMinorStories: { minorIndex: number; formData: Record<string, unknown>; status: string }[]
   supplementaryData: Record<string, unknown> | null
+  /**
+   * Ubicación del cliente resuelta desde la cascada contracts > profiles >
+   * tutor.full_address > zip-lookup. Null si no se pudo determinar.
+   */
+  clientLocation: ClientLocation | null
+  /**
+   * Jurisdicción investigada (corte + procedimiento). Se lee del cache —
+   * el research solo se dispara desde el endpoint dedicado
+   * `/api/admin/case-jurisdiction` para no acoplar la generación de
+   * documentos con llamadas pesadas a web_search.
+   */
+  jurisdiction: CachedJurisdiction | null
 }
 
 export async function buildCaseContext(caseId: string): Promise<CaseContext> {
   const supabase = createServiceClient()
 
-  const [caseRes, docsRes, storyRes, witnessRes, parentRes, tutorRes, allStoriesRes, supplementaryRes, allParentsRes] = await Promise.all([
+  const [caseRes, docsRes, storyRes, witnessRes, parentRes, tutorRes, allStoriesRes, supplementaryRes, allParentsRes, jurisdictionRes, clientLocation] = await Promise.all([
     supabase
       .from('cases')
       .select('*, client:profiles(first_name, last_name, email, phone), service:service_catalog(name, slug)')
@@ -83,6 +119,15 @@ export async function buildCaseContext(caseId: string): Promise<CaseContext> {
       .eq('case_id', caseId)
       .eq('form_type', 'client_absent_parent')
       .order('minor_index', { ascending: true }),
+    // Cached jurisdiction (court + filing procedure) — populated by the
+    // /api/admin/case-jurisdiction endpoint when the admin opens the case.
+    supabase
+      .from('case_jurisdictions')
+      .select('*')
+      .eq('case_id', caseId)
+      .maybeSingle(),
+    // Client location cascade (contracts > profiles > tutor.full_address > zip)
+    resolveClientLocation(caseId, supabase),
   ])
 
   const caseData = caseRes.data
@@ -114,6 +159,8 @@ export async function buildCaseContext(caseId: string): Promise<CaseContext> {
       status: s.status,
     })),
     supplementaryData: supplementaryRes.data?.form_data || null,
+    clientLocation,
+    jurisdiction: (jurisdictionRes.data as CachedJurisdiction | null) || null,
   }
 }
 
@@ -174,6 +221,24 @@ ${formatFormData(ctx.clientAbsentParent)}`)
     const notes = typeof ctx.henryNotes === 'string' ? ctx.henryNotes : JSON.stringify(ctx.henryNotes)
     parts.push(`\n## NOTAS DE HENRY
 ${notes}`)
+  }
+
+  // Jurisdiction (court + filing procedure) — only when cached.
+  if (ctx.jurisdiction) {
+    const j = ctx.jurisdiction
+    const sourcesLines = j.sources.map(u => `  - ${u}`).join('\n')
+    parts.push(`\n## JURISDICCIÓN DETECTADA (fuente: ${j.confidence} confidence)
+- Estado: ${j.state_name} (${j.state_code})
+- Corte competente (EN): ${j.court_name}${j.court_name_es ? `\n- Corte competente (ES): ${j.court_name_es}` : ''}${j.court_address ? `\n- Dirección: ${j.court_address}` : ''}
+- Edad máxima SIJS en este estado: ${j.age_limit_sijs ?? 'no verificado'}
+- Procedimiento de radicación: ${j.filing_procedure ?? 'no documentado'}
+- Fuentes oficiales verificadas el ${j.verified_at}:
+${sourcesLines}${j.notes ? `\n- Notas: ${j.notes}` : ''}`)
+  } else if (ctx.clientLocation) {
+    parts.push(`\n## UBICACIÓN DETECTADA (sin jurisdicción aún)
+- Estado: ${ctx.clientLocation.stateName} (${ctx.clientLocation.stateCode})
+- Fuente del dato: ${ctx.clientLocation.source}, confidence ${ctx.clientLocation.confidence}
+- El panel de jurisdicción aún no ha investigado la corte para este caso.`)
   }
 
   return parts.join('\n')

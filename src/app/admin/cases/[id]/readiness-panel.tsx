@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { CheckCircle, AlertCircle, AlertTriangle, ChevronDown, ChevronUp, HelpCircle } from 'lucide-react'
+import { useState, useMemo, useEffect } from 'react'
+import { CheckCircle, AlertCircle, AlertTriangle, ChevronDown, ChevronUp, HelpCircle, Scale } from 'lucide-react'
 
 const UNKNOWN_VALUE = '__UNKNOWN__'
 
@@ -23,6 +23,19 @@ interface ReadinessPanelProps {
   minorStories: { minorIndex: number; formData: Record<string, unknown> }[]
   absentParents?: { formData: Record<string, unknown> }[]
   supplementaryData?: Record<string, unknown> | null
+  /**
+   * Opcional — si se pasa, el panel incluye una sección "Jurisdicción" que
+   * consulta `/api/admin/case-jurisdiction?lookup=cache` (no dispara
+   * research, solo lee el cache llenado por el JurisdictionPanel principal).
+   */
+  caseId?: string
+}
+
+interface JurisdictionStatus {
+  hasCourt: boolean
+  stateLabel: string | null
+  courtName: string | null
+  confidence: 'high' | 'medium' | 'low' | null
 }
 
 /**
@@ -45,8 +58,31 @@ function StatusIcon({ status }: { status: FieldStatus }) {
   return <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
 }
 
-export function ReadinessPanel({ tutorData, minorStories, absentParents, supplementaryData }: ReadinessPanelProps) {
+export function ReadinessPanel({ tutorData, minorStories, absentParents, supplementaryData, caseId }: ReadinessPanelProps) {
   const [open, setOpen] = useState(false)
+  const [jurisdiction, setJurisdiction] = useState<JurisdictionStatus | null>(null)
+
+  useEffect(() => {
+    if (!caseId) return
+    let cancelled = false
+    fetch(`/api/admin/case-jurisdiction?caseId=${encodeURIComponent(caseId)}&lookup=cache`)
+      .then(r => r.json())
+      .then((data: { jurisdiction?: Record<string, unknown> | null; clientLocation?: { stateName?: string; stateCode?: string } | null }) => {
+        if (cancelled) return
+        const loc = data.clientLocation
+        const j = data.jurisdiction as {
+          court_name?: string; state_name?: string; state_code?: string; confidence?: 'high' | 'medium' | 'low'
+        } | null | undefined
+        setJurisdiction({
+          hasCourt: Boolean(j?.court_name),
+          stateLabel: j?.state_name ? `${j.state_name} (${j.state_code})` : (loc?.stateName ? `${loc.stateName} (${loc.stateCode})` : null),
+          courtName: j?.court_name ?? null,
+          confidence: j?.confidence ?? null,
+        })
+      })
+      .catch(() => { if (!cancelled) setJurisdiction(null) })
+    return () => { cancelled = true }
+  }, [caseId])
 
   const report = useMemo(() => {
     const tutor = tutorData || {}
@@ -214,6 +250,50 @@ export function ReadinessPanel({ tutorData, minorStories, absentParents, supplem
               <code className="text-[10px] bg-red-100 px-1 rounded">[FALTA:...]</code>
             </span>
           </div>
+
+          {/* Jurisdiction status row (court + state) — populated from the
+             cache populated by the JurisdictionPanel above. */}
+          {caseId && jurisdiction && (
+            <div className={`rounded-lg border p-2.5 ${
+              jurisdiction.hasCourt && jurisdiction.confidence === 'high'
+                ? 'border-green-200 bg-white/60'
+                : jurisdiction.hasCourt
+                  ? 'border-amber-200 bg-white'
+                  : jurisdiction.stateLabel
+                    ? 'border-amber-200 bg-white'
+                    : 'border-red-200 bg-white'
+            }`}>
+              <div className="flex items-center gap-2 mb-1">
+                <Scale className="w-3.5 h-3.5 text-[#002855]" />
+                <span className="text-xs font-bold text-gray-800">Jurisdicción</span>
+                {jurisdiction.hasCourt ? (
+                  jurisdiction.confidence === 'high' ? (
+                    <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                  ) : (
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                  )
+                ) : (
+                  <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                )}
+              </div>
+              <div className="pl-5 text-[11px] text-gray-700 leading-relaxed">
+                {jurisdiction.hasCourt ? (
+                  <>
+                    <span className="text-gray-600">Corte detectada:</span>{' '}
+                    <strong>{jurisdiction.courtName}</strong>{' '}
+                    <span className="text-gray-500">— {jurisdiction.stateLabel}</span>
+                  </>
+                ) : jurisdiction.stateLabel ? (
+                  <>
+                    Estado detectado: <strong>{jurisdiction.stateLabel}</strong> — aún no se ha investigado la corte.{' '}
+                    Abre el panel <em>Jurisdicción detectada</em> arriba para investigar.
+                  </>
+                ) : (
+                  <>No se pudo detectar el estado del cliente — los documentos saldrán con <code className="text-[10px] bg-red-100 px-1 rounded">[FALTA: Nombre del tribunal]</code>.</>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             {report.sections.map((section, si) => {
