@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { triggerJurisdictionResearchAsync } from '@/lib/legal/trigger-research-async'
 
 function normalizePhone(raw: string): string {
   const digits = raw.replace(/\D/g, '')
@@ -205,6 +206,20 @@ export async function POST(request: NextRequest) {
         .from('contracts')
         .update({ client_id: clientId })
         .eq('id', contract_id)
+    }
+
+    // Step 6: Auto-disparar research de jurisdicción para visa juvenil.
+    // Corre en background — el user ve contrato creado de inmediato y el panel
+    // de jurisdicción en /admin/cases/[id] hace polling hasta que termine.
+    // NO bloquea el response. Solo para SIJS.
+    if (service_slug === 'visa-juvenil') {
+      try {
+        const result = await triggerJurisdictionResearchAsync(caseId, service)
+        console.log('[register-client] jurisdiction research trigger:', result)
+      } catch (err) {
+        // Nunca fallar el register por un problema del trigger.
+        console.error('[register-client] trigger error (ignorado):', err)
+      }
     }
 
     return NextResponse.json({

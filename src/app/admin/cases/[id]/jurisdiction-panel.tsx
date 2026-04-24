@@ -68,6 +68,8 @@ interface CachedJurisdiction {
   filing_steps?: FilingStep[] | null
   attachments_required?: AttachmentRequirement[] | null
   fees?: FeesInfo | null
+  research_status?: 'pending' | 'completed' | 'failed' | null
+  research_error?: string | null
 }
 
 interface ClientLocation {
@@ -139,22 +141,32 @@ export function JurisdictionPanel({ caseId }: Props) {
   const [open, setOpen] = useState(true)
   const [showProcedureProse, setShowProcedureProse] = useState(false)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent: boolean = false) => {
+    if (!silent) setLoading(true)
     try {
       // Default: cache-only. NO dispara research al montar.
       const res = await fetch(`/api/admin/case-jurisdiction?caseId=${encodeURIComponent(caseId)}&lookup=cache`)
       const json = (await res.json()) as JurisdictionResponse
       setData(json)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Error al cargar jurisdicción')
+      if (!silent) toast.error(err instanceof Error ? err.message : 'Error al cargar jurisdicción')
       setData({ jurisdiction: null, clientLocation: null, error: 'load_failed' })
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [caseId])
 
   useEffect(() => { void load() }, [load])
+
+  // Polling mientras research_status = pending. El research en background
+  // toma ~30-60s; poleamos cada 5s para no saturar. Paramos al completar
+  // o fallar.
+  const isPending = data?.jurisdiction?.research_status === 'pending'
+  useEffect(() => {
+    if (!isPending) return
+    const id = setInterval(() => { void load(true) }, 5000)
+    return () => clearInterval(id)
+  }, [isPending, load])
 
   // Dispara research con clic explícito. Usamos POST {force:true} (mismo endpoint
   // que Re-verificar): borra cache + investiga. Si no hay cache, simplemente
@@ -180,14 +192,19 @@ export function JurisdictionPanel({ caseId }: Props) {
     }
   }
 
-  const hasCache = Boolean(data?.jurisdiction)
+  const researchStatus = data?.jurisdiction?.research_status
+  const isResearchPending = researchStatus === 'pending'
+  const isResearchFailed = researchStatus === 'failed'
+  const isResearchCompleted = Boolean(data?.jurisdiction && (researchStatus === 'completed' || researchStatus == null))
+  const hasCache = isResearchCompleted
   const needsInvestigation = Boolean(
-    !loading && data && data.clientLocation && !hasCache
+    !loading && data && data.clientLocation && !hasCache && !isResearchPending && !isResearchFailed
   )
 
   const borderColor = (() => {
-    if (loading || researching) return 'border-blue-200 bg-blue-50/40'
+    if (loading || researching || isResearchPending) return 'border-blue-200 bg-blue-50/40'
     if (!data) return 'border-gray-200 bg-gray-50'
+    if (isResearchFailed) return 'border-red-200 bg-red-50/40'
     if (data.error && !data.jurisdiction) return 'border-red-200 bg-red-50/40'
     if (!data.clientLocation) return 'border-red-200 bg-red-50/40'
     if (!data.jurisdiction) return 'border-amber-200 bg-amber-50/40'
@@ -197,7 +214,8 @@ export function JurisdictionPanel({ caseId }: Props) {
   })()
 
   const headerIcon = (() => {
-    if (loading || researching) return <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+    if (loading || researching || isResearchPending) return <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+    if (isResearchFailed) return <AlertCircle className="w-4 h-4 text-red-600" />
     if (!data?.clientLocation) return <AlertCircle className="w-4 h-4 text-red-600" />
     if (!data.jurisdiction) return <AlertTriangle className="w-4 h-4 text-amber-600" />
     if (data.jurisdiction.confidence === 'high') return <CheckCircle className="w-4 h-4 text-green-600" />
@@ -206,7 +224,9 @@ export function JurisdictionPanel({ caseId }: Props) {
 
   const headerBadgeText = (() => {
     if (loading) return 'Cargando…'
+    if (isResearchPending) return `Investigando en ${data?.jurisdiction?.state_name ?? 'background'}…`
     if (researching) return 'Investigando con fuentes oficiales…'
+    if (isResearchFailed) return 'La investigación automática falló'
     if (!data) return ''
     if (!data.clientLocation) return 'Sin estado detectado'
     if (!data.jurisdiction) return `${data.clientLocation.stateName} — sin investigar`
@@ -269,6 +289,56 @@ export function JurisdictionPanel({ caseId }: Props) {
                   Fuente: {SOURCE_LABELS[data.clientLocation.source]} · confianza {data.clientLocation.confidence}
                 </p>
               </div>
+
+              {/* Pending: research en background disparado al crear contrato */}
+              {isResearchPending && data.jurisdiction && (
+                <div className="rounded-lg bg-white border border-blue-200 p-4">
+                  <div className="flex items-start gap-3">
+                    <Loader2 className="w-5 h-5 animate-spin text-blue-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-900 mb-1">
+                        Investigando la corte competente en {data.jurisdiction.state_name}…
+                      </p>
+                      <p className="text-[11px] text-gray-600">
+                        La IA está consultando fuentes oficiales (.gov/.us) para identificar la corte, el procedimiento y los formularios requeridos. Esto toma ~30–60 segundos.
+                      </p>
+                      <p className="text-[10px] text-gray-400 mt-2">
+                        Se disparó automáticamente al crear el contrato. La página se actualiza sola.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Failed: mostrar error + botón reintentar */}
+              {isResearchFailed && data.jurisdiction && (
+                <div className="rounded-lg bg-white border border-red-200 p-4">
+                  <div className="flex items-start gap-3 mb-3">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-900 mb-1">
+                        La investigación falló
+                      </p>
+                      {data.jurisdiction.research_error && (
+                        <p className="text-[11px] text-red-700 font-mono bg-red-50 rounded px-2 py-1 mt-1">
+                          {data.jurisdiction.research_error}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={investigate}
+                    disabled={researching}
+                    className="bg-[#F2A900] hover:bg-[#D4940A] text-white"
+                  >
+                    {researching
+                      ? <><Loader2 className="w-4 h-4 animate-spin mr-1.5" /> Reintentando…</>
+                      : <><RotateCw className="w-4 h-4 mr-1.5" /> Reintentar investigación</>
+                    }
+                  </Button>
+                </div>
+              )}
 
               {/* Sin cache → CTA grande para investigar */}
               {needsInvestigation && (

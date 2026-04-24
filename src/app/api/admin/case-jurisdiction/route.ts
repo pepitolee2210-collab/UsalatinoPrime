@@ -7,8 +7,9 @@ import { createLogger } from '@/lib/logger'
 
 const log = createLogger('case-jurisdiction')
 
-/** Cache TTL: 30 días. Pasado ese tiempo, al próximo GET se re-investiga. */
-const CACHE_TTL_DAYS = 30
+// La jurisdicción se guarda en BD y se considera válida indefinidamente.
+// Para refrescarla hay que usar el botón "Re-verificar" en la UI (POST force=true).
+// Ya no se re-investiga automáticamente por antigüedad.
 
 async function ensureAdminOrEmployee() {
   const supabase = await createClient()
@@ -21,14 +22,6 @@ async function ensureAdminOrEmployee() {
     .single()
   if (profile?.role !== 'admin' && profile?.role !== 'employee') return null
   return { userId: user.id, service: createServiceClient() }
-}
-
-function isStale(verifiedAt: string | null | undefined): boolean {
-  if (!verifiedAt) return true
-  const verified = new Date(verifiedAt).getTime()
-  const ageMs = Date.now() - verified
-  const ageDays = ageMs / (1000 * 60 * 60 * 24)
-  return ageDays >= CACHE_TTL_DAYS
 }
 
 /**
@@ -66,7 +59,10 @@ export async function GET(req: NextRequest) {
 
   const location = await resolveClientLocation(caseId, service)
 
-  if (cached.data && !isStale(cached.data.verified_at)) {
+  // Cualquier row en BD con status 'completed' se considera válida.
+  // Una row 'pending' también la devolvemos — la UI muestra el spinner.
+  // Solo una row 'failed' permite disparar retry via ?research=true.
+  if (cached.data && cached.data.research_status !== 'failed') {
     return NextResponse.json({ jurisdiction: cached.data, clientLocation: location, cached: true })
   }
 
@@ -77,7 +73,7 @@ export async function GET(req: NextRequest) {
       clientLocation: location,
       cached: Boolean(cached.data),
       reason: cached.data
-        ? 'stale_cache_research_not_triggered'
+        ? 'previous_research_failed'
         : 'no_cache_research_not_triggered',
     })
   }
@@ -216,6 +212,8 @@ export async function POST(req: NextRequest) {
       filing_steps: research.filing_steps,
       attachments_required: research.attachments_required,
       fees: research.fees,
+      research_status: 'completed',
+      research_error: null,
       verified_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }, { onConflict: 'case_id' })
