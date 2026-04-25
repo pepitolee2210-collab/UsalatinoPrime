@@ -93,63 +93,72 @@ export interface JurisdictionResearchResult {
  * Zod schema — Claude a veces omite campos opcionales. `.nullable()` donde
  * aplica; el client hace el fallback a null.
  */
+// Schema permisivo: Claude no siempre se ajusta a enums estrechos.
+// Validamos lo crítico (state_code, court_name, sources) y dejamos pasar
+// el resto con coerciones suaves. La limpieza fina (filtro .gov/.us, etc.)
+// la hace post-hoc el código abajo.
+const FormSchema = z.object({
+  name: z.string().min(1),
+  url_official: z.string().min(1),
+  description_es: z.string().min(1),
+  is_mandatory: z.boolean().catch(true),
+})
+
+const StepSchema = z.object({
+  step_number: z.number().int().positive().catch(1),
+  title_es: z.string().min(1),
+  detail_es: z.string().min(1),
+  estimated_time: z.string().nullable().optional().transform(v => v ?? null),
+  requires_client_action: z.boolean().catch(true),
+})
+
 const ResearchSchema = z.object({
-  state_code: z.string().length(2),
+  state_code: z.string().min(2).max(4),
   state_name: z.string().min(1),
   court_name: z.string().min(3),
   court_name_es: z.string().nullable().optional().transform(v => v ?? null),
   court_address: z.string().nullable().optional().transform(v => v ?? null),
   filing_procedure: z.string().nullable().optional().transform(v => v ?? null),
   filing_procedure_es: z.string().nullable().optional().transform(v => v ?? null),
-  age_limit_sijs: z.union([z.literal(18), z.literal(21)]).nullable().optional().transform(v => v ?? null),
-  sources: z.array(z.string().url()).min(1, 'sources must include at least one official URL'),
-  confidence: z.enum(['high', 'medium', 'low']).default('medium'),
+  age_limit_sijs: z.coerce.number().int().nullable().optional().transform(v => {
+    if (v === 18 || v === 21) return v as 18 | 21
+    return null
+  }),
+  sources: z.array(z.string().min(1)).min(1, 'sources must include at least one URL'),
+  confidence: z.enum(['high', 'medium', 'low']).catch('medium'),
   notes: z.string().nullable().optional().transform(v => v ?? null),
-  filing_channel: z.enum(['in_person', 'email', 'portal', 'mail', 'hybrid'])
-    .nullable().optional().transform(v => v ?? null),
-  required_forms: z.array(z.object({
-    name: z.string().min(1),
-    url_official: z.string().url(),
-    description_es: z.string().min(1),
-    is_mandatory: z.boolean(),
-  })).default([]),
-  filing_steps: z.array(z.object({
-    step_number: z.number().int().positive(),
-    title_es: z.string().min(1),
-    detail_es: z.string().min(1),
-    estimated_time: z.string().nullable().optional().transform(v => v ?? null),
-    requires_client_action: z.boolean(),
-  })).default([]),
+  filing_channel: z.string().nullable().optional().transform(v => {
+    if (!v) return null
+    const valid = ['in_person', 'email', 'portal', 'mail', 'hybrid']
+    return valid.includes(v) ? (v as 'in_person' | 'email' | 'portal' | 'mail' | 'hybrid') : null
+  }),
+  required_forms: z.array(FormSchema).catch([]).default([]),
+  filing_steps: z.array(StepSchema).catch([]).default([]),
   attachments_required: z.array(z.object({
-    type: z.enum([
-      'birth_certificate', 'school_records', 'medical_records',
-      'psych_evaluation', 'parental_consent', 'abandonment_proof', 'other',
-    ]),
+    // Tolerante: Claude usa nombres libres tipo "affidavit", "police_report",
+    // "identification". Mapea cualquier string al type 'other' si no encaja.
+    type: z.string().transform(v => {
+      const valid = ['birth_certificate', 'school_records', 'medical_records',
+        'psych_evaluation', 'parental_consent', 'abandonment_proof', 'other']
+      return valid.includes(v) ? (v as AttachmentType) : 'other' as AttachmentType
+    }),
     description_es: z.string().min(1),
-  })).default([]),
+  })).catch([]).default([]),
   fees: z.object({
-    amount_usd: z.number().nonnegative(),
-    currency: z.literal('USD'),
-    waivable: z.boolean(),
+    amount_usd: z.coerce.number().nonnegative().catch(0),
+    currency: z.string().transform(() => 'USD' as const),
+    waivable: z.boolean().catch(false),
     waiver_form_name: z.string().nullable().optional().transform(v => v ?? null),
-    waiver_form_url: z.string().url().nullable().optional().transform(v => v ?? null),
+    waiver_form_url: z.string().nullable().optional().transform(v => v ?? null),
   }).nullable().optional().transform(v => v ?? null),
   intake_packet: z.object({
-    required_forms: z.array(z.object({
-      name: z.string().min(1),
-      url_official: z.string().url(),
-      description_es: z.string().min(1),
-      is_mandatory: z.boolean(),
-    })).default([]),
-    filing_steps: z.array(z.object({
-      step_number: z.number().int().positive(),
-      title_es: z.string().min(1),
-      detail_es: z.string().min(1),
-      estimated_time: z.string().nullable().optional().transform(v => v ?? null),
-      requires_client_action: z.boolean(),
-    })).default([]),
-    filing_channel: z.enum(['in_person', 'email', 'portal', 'mail', 'hybrid'])
-      .nullable().optional().transform(v => v ?? null),
+    required_forms: z.array(FormSchema).catch([]).default([]),
+    filing_steps: z.array(StepSchema).catch([]).default([]),
+    filing_channel: z.string().nullable().optional().transform(v => {
+      if (!v) return null
+      const valid = ['in_person', 'email', 'portal', 'mail', 'hybrid']
+      return valid.includes(v) ? (v as 'in_person' | 'email' | 'portal' | 'mail' | 'hybrid') : null
+    }),
     procedure_es: z.string().nullable().optional().transform(v => v ?? null),
     notes: z.string().nullable().optional().transform(v => v ?? null),
   }).default({
