@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { z } from 'zod'
+import { jsonrepair } from 'jsonrepair'
 import { createLogger } from '@/lib/logger'
 import type { ClientLocation } from './resolve-client-location'
 import { getStateCourtHint } from './state-court-registry'
@@ -199,7 +200,9 @@ Debes investigar y reportar LAS DOS ETAPAS por separado. El sistema las muestra 
 2. **Dominios permitidos**: cita EXCLUSIVAMENTE URLs bajo .gov o .us. El validador del sistema rechaza respuestas sin al menos una source .gov/.us.
 3. **Precisión sobre cobertura**: si no puedes identificar un dato con certeza, déjalo null o array vacío. NUNCA inventes nombres de formularios, URLs o procedimientos.
 4. **Sources obligatorios**: cada dato factual debe estar respaldado por una URL oficial específica (no la homepage del judiciary).
-5. **Output JSON estricto** (CRÍTICO): tu respuesta debe empezar EXACTAMENTE con \`{\` y terminar EXACTAMENTE con \`}\`. NO escribas "I'll research...", "Let me search...", "Good - I've confirmed...", ni ningún otro narrativo de tu proceso. Tampoco markdown ni \`\`\`json fences. Si necesitas razonar, hazlo internamente. El parser del sistema rechaza CUALQUIER carácter fuera del bloque JSON balanceado y devuelve "Claude devolvió un JSON inválido".
+5. **Output JSON estricto** (CRÍTICO): tu respuesta debe empezar EXACTAMENTE con \`{\` y terminar EXACTAMENTE con \`}\`. NO escribas "I'll research...", "Let me search...", "Good - I've confirmed...", ni ningún otro narrativo de tu proceso. Tampoco markdown ni \`\`\`json fences. Si necesitas razonar, hazlo internamente. El parser del sistema rechaza CUALQUIER carácter fuera del bloque JSON balanceado.
+
+5.b **Comillas dentro de strings**: si necesitas citar texto en español o inglés DENTRO de un valor string del JSON, usa comillas SIMPLES o paréntesis, NUNCA dobles. Ejemplo correcto: \`"description_es": "Petición principal (Original Petition in SAPCR) según el Código de Familia de Texas."\` Ejemplo INCORRECTO: \`"description_es": "Petición principal "Original Petition in SAPCR" según el Código."\` — esto rompe el JSON.
 6. **court_name en inglés formal** como aparece en encabezados oficiales. Ej: "Fourth District Juvenile Court, American Fork Location".
 7. **court_name_es**: traducción formal al español jurídico.
 8. **filing_procedure**: resumen en prosa (2–4 oraciones) combinando AMBAS etapas para legibilidad global. Queda como fallback.
@@ -553,7 +556,18 @@ Empieza tu respuesta con \`{\` ahora.`
 
   let parsed: JurisdictionResearchResult
   try {
-    const rawParsed = JSON.parse(jsonText) as unknown
+    let rawParsed: unknown
+    try {
+      rawParsed = JSON.parse(jsonText) as unknown
+    } catch (parseErr) {
+      // Claude a veces produce JSON con comillas internas mal escapadas o
+      // comas faltantes. jsonrepair arregla la mayoría de estos errores.
+      log.warn('JSON.parse falló — aplicando jsonrepair', {
+        err: parseErr instanceof Error ? parseErr.message : String(parseErr),
+      })
+      const repaired = jsonrepair(jsonText)
+      rawParsed = JSON.parse(repaired) as unknown
+    }
     parsed = ResearchSchema.parse(rawParsed) as JurisdictionResearchResult
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err)
