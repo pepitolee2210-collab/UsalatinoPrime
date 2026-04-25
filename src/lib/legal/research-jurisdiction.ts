@@ -186,7 +186,7 @@ Debes investigar y reportar LAS DOS ETAPAS por separado. El sistema las muestra 
 
 ## REGLAS
 
-1. **Usa la herramienta \`web_search\` de forma agresiva** — tienes hasta 10 búsquedas. Consulta: sitio oficial del state judiciary, página específica del county/district court, reglas locales (local rules), clerk's office instructions, filing fee schedules, formularios descargables. Si la primera query no da resultado claro, itera con refinements.
+1. **Usa la herramienta \`web_search\` de forma agresiva** — tienes hasta 15 búsquedas. Consulta: sitio oficial del state judiciary, página específica del county/district court, reglas locales (local rules), clerk's office instructions, filing fee schedules, formularios descargables, plataforma de e-filing del estado (eFileTexas, NYSCEF, etc). Si la primera query no da resultado claro, itera con refinements.
 2. **Dominios permitidos**: cita EXCLUSIVAMENTE URLs bajo .gov o .us. El validador del sistema rechaza respuestas sin al menos una source .gov/.us.
 3. **Precisión sobre cobertura**: si no puedes identificar un dato con certeza, déjalo null o array vacío. NUNCA inventes nombres de formularios, URLs o procedimientos.
 4. **Sources obligatorios**: cada dato factual debe estar respaldado por una URL oficial específica (no la homepage del judiciary).
@@ -196,6 +196,10 @@ Debes investigar y reportar LAS DOS ETAPAS por separado. El sistema las muestra 
 8. **filing_procedure**: resumen en prosa (2–4 oraciones) combinando AMBAS etapas para legibilidad global. Queda como fallback.
 9. **age_limit_sijs**: 18 o 21 según la normativa del estado. Verifica en fuente oficial.
 10. **confidence**: high = corte + ambas etapas documentadas en fuentes oficiales. medium = corte identificada pero alguna etapa inferida. low = no pude confirmar sub-jurisdicción.
+11. **EXHAUSTIVIDAD OBLIGATORIA**: el sistema sirve a una abogada que radica casos reales. Si OMITES un documento conocido, ella lo descubre en ventanilla y se cae el trámite. Por eso:
+    - \`intake_packet.required_forms\` NUNCA puede estar vacío salvo que documentes en \`intake_packet.notes\` por qué este juzgado solo acepta carta libre. Todos los condados grandes (Harris TX, Kings NY, Cook IL, Maricopa AZ, Los Angeles CA, etc.) tienen Civil Case Information Sheet o Family Court Coversheet.
+    - \`required_forms\` (Etapa 2) DEBE incluir TODOS los formularios sustantivos conocidos para SIJS estatal (petition for guardianship/SAPCR, motion for SIJ findings, affidavits del menor + del peticionario + de testigos, proposed order con findings, certificate of conference si aplica).
+    - Si el estado no publica un template oficial para alguno, dilo en \`notes\` — no lo omitas.
 
 ## BLOQUES ESTRUCTURADOS
 
@@ -213,6 +217,29 @@ Estos describen la radicación del expediente completo que el juez evalúa:
 - **filing_channel**: canal para subir/entregar el expediente sustantivo.
 - **attachments_required**: documentos del cliente (birth_certificate, school_records, etc).
 - **fees**: arancel principal del caso + mecanismo de exención si aplica.
+
+## CATÁLOGO MÍNIMO SIJS (úsalo como checklist mental)
+
+### Etapa 1 — intake estatal (lo que el clerk pide para abrir caso)
+Busca explícitamente:
+- Civil Case Information Sheet (TX, FL, CO, etc) o Family Court Coversheet (NY, NJ, MA)
+- Confidential Information Form / Confidential Cover Sheet (cuando hay menor involucrado)
+- Letter of Intent to File / Petition Request Letter (cortes que aceptan petición libre)
+- Local intake form del condado (Harris County, Kings County, Cook County, etc.)
+- Si el estado tiene e-filing obligatorio (Texas eFileTexas, NY NYSCEF, IL eFileIL): cita el portal y el envelope/case-initiation form.
+
+### Etapa 2 — merits estatal (lo que el juez evalúa)
+Busca explícitamente:
+- Petition for Appointment of Guardian (NY/CA/TX/FL) o Petition in SAPCR (Texas) o Petition for Custody (estados con custody-only).
+- Motion for Findings Regarding SIJ Status (template DFPS en TX, template ILRC para otros estados).
+- Affidavits: del menor, del peticionario, de testigos.
+- Birth certificate certificada (suele requerir traducción certificada si es de otro idioma).
+- Proposed Order con SIJS findings explícitos: (a) dependent on court / placed in custody, (b) reunification with one or both parents not viable due to abuse/neglect/abandonment, (c) not in best interest to return to country of nationality.
+- Certificate of Conference si las local rules lo exigen (Harris TX lo pide).
+
+### Bonus: aspectos federales (USCIS) — si encuentras data clara, agrégalos en \`notes\`
+- I-360 + G-28 + copia certificada del predicate order + evidencia de "reasonable factual basis" se presentan en USCIS National Benefits Center (Overland Park, KS).
+- Tarifa I-360 SIJS desde Julio 2025: $250 (OBBBA).
 
 ## REGLAS DE LIMPIEZA
 - required_forms / intake_packet.required_forms: SOLO entries cuya url_official esté en .gov/.us. NUNCA inventes.
@@ -364,7 +391,7 @@ export async function researchJurisdiction(
   const client = getClient()
   const hint = getStateCourtHint(location.stateCode)
 
-  const userPrompt = `Investiga EXHAUSTIVAMENTE las DOS etapas de radicación SIJS para este cliente. Haz hasta 10 web_searches; no te quedes cortes en la primera ronda.
+  const userPrompt = `Investiga EXHAUSTIVAMENTE las DOS etapas de radicación SIJS para este cliente. Tienes hasta 15 web_searches — úsalas. NO devuelvas el JSON con arrays vacíos sin antes haber gastado por lo menos 8 búsquedas activas.
 
 - Estado: ${location.stateName} (${location.stateCode})
 - ZIP: ${location.zip ?? '(desconocido — usa la corte estatal genérica)'}
@@ -377,23 +404,29 @@ export async function researchJurisdiction(
 - Nivel típico de corte esperado en este estado: ${hint.likelyCourtLevel}
 - Edad máxima SIJS conocida en este estado (verifica en fuente oficial): ${hint.sijsAgeCeiling}
 
-## Lo que necesito — AMBAS ETAPAS
+## Lo que necesito — AMBAS ETAPAS (sin omisiones)
 
 ### ETAPA 1: Radicación de la presentación (intake_packet)
-Los formularios administrativos que el clerk pide ANTES de asignar número de caso. Busca:
-- "[county] juvenile court intake forms"
-- "[state] family court coversheet guardianship"
-- "[county] courts clerk filing requirements minor"
-- "[state] petition to open juvenile case forms"
+Los formularios administrativos que el clerk pide ANTES de asignar número de caso. Queries específicos a probar:
+- \`"[county] courts coversheet" OR "civil case information sheet" site:.gov\`
+- \`"[county] family court intake form" guardianship site:.gov\`
+- \`"[state] eFiling case initiation" minor guardianship site:.gov\`
+- \`"[county] district clerk family intake" site:.gov\`
+- \`"[state] confidential information form" family court site:.gov\`
 
-Reporta qué formularios/cartas se presentan, dónde (ventanilla, portal, email), qué tarda, qué fee de apertura (si hay).
+Reporta qué formularios/cartas se presentan, dónde (ventanilla, portal, email), qué tarda, qué fee de apertura (si hay). Si el portal de e-filing es obligatorio para abogados (eFileTexas, NYSCEF, IL eFile), indícalo.
 
 ### ETAPA 2: Radicación del procedimiento del caso (merits)
-Los documentos sustantivos que el juez evalúa. Busca:
-- "[state] petition for guardianship minor forms"
-- "[state] SIJS findings order"
-- "[county] guardianship filing fee"
-- Formularios estándar de custody/guardianship con URL oficial
+Los documentos sustantivos que el juez evalúa. Queries específicos:
+- \`"[state] petition for appointment of guardian" minor form site:.gov\`
+- \`"[state] motion findings SIJ status" template site:.gov\`
+- \`"[state] SAPCR petition form" site:.gov\` (solo Texas)
+- \`"[state] proposed order SIJS findings" site:.gov\`
+- \`"[state] DFPS SIJS attorneys guide" template site:.gov\` (Texas)
+- \`"[state] affidavit minor guardianship" form site:.gov\`
+- \`"[state] certificate of conference" family local rules site:.gov\` (cuando aplique)
+
+Cuando un estado tiene template oficial publicado (ej. Texas DFPS Section 13 Tools), incluye la URL exacta del .docx/.pdf, no la página índice.
 
 ### Datos generales
 1. Nombre oficial EXACTO de la corte competente (como aparece en encabezados oficiales).
@@ -403,10 +436,11 @@ Los documentos sustantivos que el juez evalúa. Busca:
 
 ## Método
 - Empieza por el judiciary estatal oficial (${hint.officialJudiciaryUrl}).
-- Si el ZIP identifica condado/distrito específico, busca la corte exacta.
-- Para intake, investiga "clerk's office" / "local rules" / "filing instructions".
-- Para merits, investiga los formularios sustantivos descargables (PDFs).
-- Si una búsqueda no da resultado, reformula. No te rindas con 2-3 intentos.
+- Si el ZIP identifica condado/distrito específico, busca la corte exacta de ese condado.
+- Para intake, investiga "clerk's office" / "local rules" / "filing instructions" / e-filing portal.
+- Para merits, investiga los formularios sustantivos descargables (PDFs/DOCX).
+- Si una búsqueda no da resultado, reformula con sinónimos. No te rindas con 2-3 intentos.
+- Antes de cerrar el JSON, RE-CHEQUEA tu propia respuesta: ¿incluiste al menos un coversheet en intake? ¿al menos petition + motion findings en merits? Si no, busca de nuevo.
 
 Devuelve EXCLUSIVAMENTE el JSON estricto definido en el system prompt. Sin texto alrededor, sin markdown, sin backticks.`
 
@@ -433,7 +467,7 @@ Devuelve EXCLUSIVAMENTE el JSON estricto definido en el system prompt. Sin texto
         {
           type: 'web_search_20250305',
           name: 'web_search',
-          max_uses: 10,
+          max_uses: 15,
         },
       ] as unknown as Anthropic.Messages.Tool[],
       messages: [{ role: 'user', content: userPrompt }],

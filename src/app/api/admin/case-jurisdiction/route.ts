@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
-import { resolveClientLocation, type ClientLocation } from '@/lib/legal/resolve-client-location'
-import { researchJurisdiction, type JurisdictionResearchResult } from '@/lib/legal/research-jurisdiction'
+import { resolveClientLocation } from '@/lib/legal/resolve-client-location'
+import { triggerJurisdictionResearchAsync } from '@/lib/legal/trigger-research-async'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('case-jurisdiction')
 
-// La jurisdicción se guarda en BD y se considera válida indefinidamente.
-// Para refrescarla hay que usar el botón "Re-verificar" en la UI (POST force=true).
-// Ya no se re-investiga automáticamente por antigüedad.
+// El research vive 100% en background (after()): el handler sólo encola
+// y responde el placeholder. El frontend ya pollea la fila cada 5s.
 
 async function ensureAdminOrEmployee() {
   const supabase = await createClient()
@@ -27,15 +26,13 @@ async function ensureAdminOrEmployee() {
 /**
  * GET /api/admin/case-jurisdiction?caseId=X[&research=true]
  *
- * Default: lee de cache y NO dispara research. Si no hay cache o está
- * vencido, devuelve `{ jurisdiction: null, reason }` con 200.
+ * Default: lee de cache y NO dispara research. Si no hay cache devuelve
+ * `{ jurisdiction: null, reason }` con 200.
  *
- * Con `?research=true` sí investiga con Claude+web_search y persiste. Este
- * flag lo envía el panel admin solo cuando el usuario clickea explícitamente
- * "Investigar ahora". Así evitamos gastar ~$0.40 cada vez que alguien abre
- * el tab de Declaraciones de un caso sin cache.
- *
- * `?lookup=cache` sigue funcionando como alias del default (legacy readiness-panel).
+ * Con `?research=true` encola el research en background vía
+ * triggerJurisdictionResearchAsync (placeholder pending + after()) y
+ * devuelve la fila placeholder. El frontend ya pollea cada 5s mientras
+ * `research_status === 'pending'`.
  */
 export async function GET(req: NextRequest) {
   const auth = await ensureAdminOrEmployee()
@@ -50,7 +47,7 @@ export async function GET(req: NextRequest) {
 
   const { service } = auth
 
-  // --- 1. Intenta cache ---
+  // --- 1. Cache ---
   const cached = await service
     .from('case_jurisdictions')
     .select('*')
@@ -59,14 +56,17 @@ export async function GET(req: NextRequest) {
 
   const location = await resolveClientLocation(caseId, service)
 
-  // Cualquier row en BD con status 'completed' se considera válida.
-  // Una row 'pending' también la devolvemos — la UI muestra el spinner.
-  // Solo una row 'failed' permite disparar retry via ?research=true.
+  // Cualquier row 'completed' o 'pending' la devolvemos tal cual.
+  // Sólo 'failed' permite retry vía ?research=true.
   if (cached.data && cached.data.research_status !== 'failed') {
-    return NextResponse.json({ jurisdiction: cached.data, clientLocation: location, cached: true })
+    return NextResponse.json({
+      jurisdiction: cached.data,
+      clientLocation: location,
+      cached: true,
+    })
   }
 
-  // --- 2. Sin research explícito → devolvemos lo que haya sin gastar tokens ---
+  // --- 2. Sin research explícito → devolvemos lo que haya ---
   if (!researchRequested) {
     return NextResponse.json({
       jurisdiction: cached.data ?? null,
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  // --- 3. Research explícito pero sin ubicación → 400 ---
+  // --- 3. Research pedido pero no hay ubicación ---
   if (!location) {
     return NextResponse.json({
       jurisdiction: null,
@@ -88,64 +88,22 @@ export async function GET(req: NextRequest) {
     }, { status: 400 })
   }
 
-  // --- 4. Investigar con Claude+web_search ---
-  let research: JurisdictionResearchResult
-  try {
-    research = await researchJurisdiction(location, req.signal)
-  } catch (err) {
-    log.error('researchJurisdiction failed', err)
-    return NextResponse.json({
-      jurisdiction: cached.data ?? null,
-      clientLocation: location,
-      cached: Boolean(cached.data),
-      error: err instanceof Error ? err.message : 'Research failed',
-    }, { status: cached.data ? 200 : 502 })
-  }
+  // --- 4. Encolar research en background (devuelve en <2s) ---
+  const triggered = await triggerJurisdictionResearchAsync(caseId, service, { force: true })
+  log.info('GET ?research=true encolado', { caseId, triggered })
 
-  // --- 5. Upsert ---
-  const upsertPayload = {
-    case_id: caseId,
-    state_code: research.state_code,
-    state_name: research.state_name,
-    client_zip: location.zip,
-    court_name: research.court_name,
-    court_name_es: research.court_name_es,
-    court_address: research.court_address,
-    filing_procedure: research.filing_procedure,
-    filing_procedure_es: research.filing_procedure_es,
-    age_limit_sijs: research.age_limit_sijs,
-    sources: research.sources,
-    confidence: research.confidence,
-    notes: research.notes,
-    filing_channel: research.filing_channel,
-    required_forms: research.required_forms,
-    filing_steps: research.filing_steps,
-    attachments_required: research.attachments_required,
-    fees: research.fees,
-    verified_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  }
-
-  const upsertRes = await service
+  const placeholder = await service
     .from('case_jurisdictions')
-    .upsert(upsertPayload, { onConflict: 'case_id' })
     .select('*')
-    .single()
-
-  if (upsertRes.error) {
-    log.error('upsert case_jurisdictions failed', upsertRes.error)
-    return NextResponse.json({
-      jurisdiction: research,
-      clientLocation: location,
-      cached: false,
-      error: 'No se pudo persistir el resultado',
-    }, { status: 200 })
-  }
+    .eq('case_id', caseId)
+    .maybeSingle()
 
   return NextResponse.json({
-    jurisdiction: upsertRes.data,
+    jurisdiction: placeholder.data,
     clientLocation: location,
     cached: false,
+    queued: triggered.triggered,
+    reason: triggered.reason,
   })
 }
 
@@ -153,10 +111,11 @@ export async function GET(req: NextRequest) {
  * POST /api/admin/case-jurisdiction
  * Body: { caseId: string, force?: boolean }
  *
- * `force: true` → borra cache + re-investiga. Usado por el botón
- * "Re-verificar" del panel de jurisdicción en el admin.
+ * `force: true` → borra cache + encola re-investigación. Usado por el
+ * botón "Re-verificar" del panel de jurisdicción en el admin.
  *
- * Sin `force` se comporta como GET (idempotente: devuelve cached si válido).
+ * Sin `force` se comporta como GET (idempotente: devuelve cached si válido,
+ * encola si no había).
  */
 export async function POST(req: NextRequest) {
   const auth = await ensureAdminOrEmployee()
@@ -171,7 +130,7 @@ export async function POST(req: NextRequest) {
     await service.from('case_jurisdictions').delete().eq('case_id', caseId)
   }
 
-  const location: ClientLocation | null = await resolveClientLocation(caseId, service)
+  const location = await resolveClientLocation(caseId, service)
   if (!location) {
     return NextResponse.json({
       jurisdiction: null,
@@ -180,63 +139,24 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  let research: JurisdictionResearchResult
-  try {
-    research = await researchJurisdiction(location, req.signal)
-  } catch (err) {
-    log.error('force re-research failed', err)
-    return NextResponse.json({
-      clientLocation: location,
-      error: err instanceof Error ? err.message : 'Research failed',
-    }, { status: 502 })
-  }
+  const triggered = await triggerJurisdictionResearchAsync(caseId, service, { force })
+  log.info('POST encolado', { caseId, force, triggered })
 
-  const upsertRes = await service
+  const placeholder = await service
     .from('case_jurisdictions')
-    .upsert({
-      case_id: caseId,
-      state_code: research.state_code,
-      state_name: research.state_name,
-      client_zip: location.zip,
-      court_name: research.court_name,
-      court_name_es: research.court_name_es,
-      court_address: research.court_address,
-      filing_procedure: research.filing_procedure,
-      filing_procedure_es: research.filing_procedure_es,
-      age_limit_sijs: research.age_limit_sijs,
-      sources: research.sources,
-      confidence: research.confidence,
-      notes: research.notes,
-      filing_channel: research.filing_channel,
-      required_forms: research.required_forms,
-      filing_steps: research.filing_steps,
-      attachments_required: research.attachments_required,
-      fees: research.fees,
-      intake_required_forms: research.intake_packet.required_forms,
-      intake_filing_steps: research.intake_packet.filing_steps,
-      intake_filing_channel: research.intake_packet.filing_channel,
-      intake_procedure_es: research.intake_packet.procedure_es,
-      intake_notes: research.intake_packet.notes,
-      research_status: 'completed',
-      research_error: null,
-      verified_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'case_id' })
     .select('*')
-    .single()
-
-  if (upsertRes.error) {
-    log.error('forced upsert failed', upsertRes.error)
-    return NextResponse.json({ jurisdiction: research, clientLocation: location, error: 'Persistencia falló' })
-  }
+    .eq('case_id', caseId)
+    .maybeSingle()
 
   return NextResponse.json({
-    jurisdiction: upsertRes.data,
+    jurisdiction: placeholder.data,
     clientLocation: location,
     cached: false,
+    queued: triggered.triggered,
+    reason: triggered.reason,
   })
 }
 
-// Aumentamos el timeout de la ruta porque el research puede hacer 5 web_searches
-// y tardar hasta 60s en total.
+// El handler ya no espera al research (corre en after() ~5min). Mantener
+// 60s de margen es de sobra para el upsert + 1-2 lecturas.
 export const maxDuration = 60

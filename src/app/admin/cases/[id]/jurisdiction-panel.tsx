@@ -93,7 +93,21 @@ interface JurisdictionResponse {
   clientLocation: ClientLocation | null
   cached?: boolean
   reason?: string
+  queued?: boolean
   error?: string
+}
+
+async function readJsonSafe(res: Response): Promise<JurisdictionResponse> {
+  // Vercel a veces devuelve text/plain "An error occurred..." en timeout o
+  // FUNCTION_INVOCATION_FAILED. Leemos como texto y parseamos a mano para
+  // dar un error útil en vez de "Unexpected token 'A'".
+  const text = await res.text()
+  try {
+    return JSON.parse(text) as JurisdictionResponse
+  } catch {
+    const preview = text.slice(0, 180).replace(/\s+/g, ' ').trim()
+    throw new Error(`Respuesta no-JSON del servidor (status ${res.status}): ${preview || '(body vacío)'}`)
+  }
 }
 
 interface Props {
@@ -152,7 +166,7 @@ export function JurisdictionPanel({ caseId }: Props) {
     try {
       // Default: cache-only. NO dispara research al montar.
       const res = await fetch(`/api/admin/case-jurisdiction?caseId=${encodeURIComponent(caseId)}&lookup=cache`)
-      const json = (await res.json()) as JurisdictionResponse
+      const json = await readJsonSafe(res)
       setData(json)
     } catch (err) {
       if (!silent) toast.error(err instanceof Error ? err.message : 'Error al cargar jurisdicción')
@@ -174,9 +188,9 @@ export function JurisdictionPanel({ caseId }: Props) {
     return () => clearInterval(id)
   }, [isPending, load])
 
-  // Dispara research con clic explícito. Usamos POST {force:true} (mismo endpoint
-  // que Re-verificar): borra cache + investiga. Si no hay cache, simplemente
-  // investiga y persiste.
+  // Dispara research con clic explícito. Usamos POST {force:true} — el endpoint
+  // borra cache, encola la investigación en background (after()) y devuelve
+  // el placeholder pending de inmediato. El polling de arriba toma el control.
   async function investigate() {
     setResearching(true)
     try {
@@ -185,12 +199,19 @@ export function JurisdictionPanel({ caseId }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ caseId, force: true }),
       })
-      const json = (await res.json()) as JurisdictionResponse
+      const json = await readJsonSafe(res)
       if (!res.ok && !json.jurisdiction) {
         throw new Error(json.error || 'No se pudo investigar')
       }
       setData(json)
-      toast.success(json.jurisdiction ? 'Jurisdicción actualizada' : 'Sin ubicación detectada')
+      const isPendingNow = json.queued || json.jurisdiction?.research_status === 'pending'
+      if (isPendingNow) {
+        toast.success('Investigación encolada — la pantalla se actualiza sola en ~30-60s')
+      } else if (json.jurisdiction) {
+        toast.success('Jurisdicción actualizada')
+      } else {
+        toast.error('Sin ubicación detectada')
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al investigar')
     } finally {
@@ -541,11 +562,31 @@ function FormsBlock({ forms }: { forms: RequiredForm[] }) {
     )
   }
 
+  function downloadAll() {
+    // Stagger 60ms entre pop-ups para evitar que el navegador bloquee como
+    // pop-up automation. Toast informa al admin por si el navegador bloquea.
+    forms.forEach((f, i) => {
+      setTimeout(() => window.open(f.url_official, '_blank', 'noopener,noreferrer'), i * 60)
+    })
+    toast.success(`Abriendo ${forms.length} ${forms.length === 1 ? 'documento' : 'documentos'} oficial${forms.length === 1 ? '' : 'es'} en nuevas pestañas`)
+  }
+
   return (
     <section>
-      <div className="flex items-center gap-2 mb-2">
-        <FileText className="w-3.5 h-3.5 text-gray-500" />
-        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-600">Formularios requeridos</p>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center gap-2">
+          <FileText className="w-3.5 h-3.5 text-gray-500" />
+          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-600">Formularios requeridos</p>
+        </div>
+        {forms.length > 1 && (
+          <button
+            type="button"
+            onClick={downloadAll}
+            className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700 hover:text-blue-900 hover:underline"
+          >
+            <Download className="w-3 h-3" /> Descargar todos los oficiales
+          </button>
+        )}
       </div>
       <div className="space-y-2">
         {forms.map((f, i) => (
