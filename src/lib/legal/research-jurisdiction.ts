@@ -190,7 +190,7 @@ Debes investigar y reportar LAS DOS ETAPAS por separado. El sistema las muestra 
 2. **Dominios permitidos**: cita EXCLUSIVAMENTE URLs bajo .gov o .us. El validador del sistema rechaza respuestas sin al menos una source .gov/.us.
 3. **Precisión sobre cobertura**: si no puedes identificar un dato con certeza, déjalo null o array vacío. NUNCA inventes nombres de formularios, URLs o procedimientos.
 4. **Sources obligatorios**: cada dato factual debe estar respaldado por una URL oficial específica (no la homepage del judiciary).
-5. **Output JSON estricto**: sin texto antes o después, sin markdown, sin bloques de código. Solo el JSON del formato de salida.
+5. **Output JSON estricto** (CRÍTICO): tu respuesta debe empezar EXACTAMENTE con \`{\` y terminar EXACTAMENTE con \`}\`. NO escribas "I'll research...", "Let me search...", "Good - I've confirmed...", ni ningún otro narrativo de tu proceso. Tampoco markdown ni \`\`\`json fences. Si necesitas razonar, hazlo internamente. El parser del sistema rechaza CUALQUIER carácter fuera del bloque JSON balanceado y devuelve "Claude devolvió un JSON inválido".
 6. **court_name en inglés formal** como aparece en encabezados oficiales. Ej: "Fourth District Juvenile Court, American Fork Location".
 7. **court_name_es**: traducción formal al español jurídico.
 8. **filing_procedure**: resumen en prosa (2–4 oraciones) combinando AMBAS etapas para legibilidad global. Queda como fallback.
@@ -442,7 +442,13 @@ Cuando un estado tiene template oficial publicado (ej. Texas DFPS Section 13 Too
 - Si una búsqueda no da resultado, reformula con sinónimos. No te rindas con 2-3 intentos.
 - Antes de cerrar el JSON, RE-CHEQUEA tu propia respuesta: ¿incluiste al menos un coversheet en intake? ¿al menos petition + motion findings en merits? Si no, busca de nuevo.
 
-Devuelve EXCLUSIVAMENTE el JSON estricto definido en el system prompt. Sin texto alrededor, sin markdown, sin backticks.`
+## FORMATO DE RESPUESTA — LEE OTRA VEZ ANTES DE EMITIR
+
+Tu respuesta debe ser SOLO el JSON. Nada más. El primer carácter de tu output tiene que ser \`{\`. Si añades cualquier texto ("I'll research...", "Good - I've confirmed...", "Let me get specific details..."), el parser falla y el admin ve "JSON inválido".
+
+Razonamiento interno OK. Texto en la respuesta NO.
+
+Empieza tu respuesta con \`{\` ahora.`
 
   log.debug('researchJurisdiction: calling Claude with web_search', {
     stateCode: location.stateCode,
@@ -473,25 +479,33 @@ Devuelve EXCLUSIVAMENTE el JSON estricto definido en el system prompt. Sin texto
           max_uses: 7,
         },
       ] as unknown as Anthropic.Messages.Tool[],
-      messages: [{ role: 'user', content: userPrompt }],
+      messages: [
+        { role: 'user', content: userPrompt },
+        // Prefill: forzamos a Claude a empezar su respuesta con `{`. Esto
+        // elimina la prosa explicativa ("I'll research...") y garantiza
+        // que rawText sea JSON parseable. Truco oficial de Anthropic.
+        { role: 'assistant', content: '{' },
+      ],
     },
     { signal, timeout: 120_000 }, // 2 min — background job, puede tardar
   )
 
   // Extraemos solo los text blocks (ignoramos tool_use y server_tool_use blocks)
-  const rawText = message.content
+  const rawTextBody = message.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')
     .map(b => b.text)
     .join('')
     .trim()
 
-  if (!rawText) {
+  if (!rawTextBody) {
     throw new Error('Claude devolvió respuesta sin texto (solo tool_use blocks)')
   }
 
-  // Claude a veces envuelve el JSON en prosa explicativa o markdown. Extraemos
-  // el primer bloque {...} balanceado del output. Si hay fences ``` o ```json
-  // también los removemos.
+  // Como hicimos prefill con `{`, lo prepend manualmente al rawText.
+  const rawText = '{' + rawTextBody
+
+  // Defensa adicional: si Claude aún así envuelve el JSON en prosa o markdown,
+  // extraemos el primer bloque {...} balanceado.
   let jsonText = rawText
   if (jsonText.startsWith('```')) {
     jsonText = jsonText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '')
