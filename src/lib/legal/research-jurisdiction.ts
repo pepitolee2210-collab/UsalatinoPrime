@@ -365,6 +365,34 @@ Busca explícitamente:
 }
 `
 
+/**
+ * Encuentra el primer bloque {...} balanceado en el texto. Maneja strings
+ * con llaves dentro (ignora `{` y `}` dentro de strings JSON). Devuelve
+ * null si no encuentra un objeto bien formado.
+ */
+function extractBalancedJson(text: string): string | null {
+  const start = text.indexOf('{')
+  if (start === -1) return null
+
+  let depth = 0
+  let inString = false
+  let escape = false
+
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i]
+    if (escape) { escape = false; continue }
+    if (ch === '\\') { escape = true; continue }
+    if (ch === '"') { inString = !inString; continue }
+    if (inString) continue
+    if (ch === '{') depth++
+    else if (ch === '}') {
+      depth--
+      if (depth === 0) return text.slice(start, i + 1)
+    }
+  }
+  return null // no balanceado
+}
+
 let _client: Anthropic | null = null
 
 function getClient(): Anthropic {
@@ -467,7 +495,7 @@ Empieza tu respuesta con \`{\` ahora.`
   const message = await client.messages.create(
     {
       model: RESEARCH_MODEL,
-      max_tokens: 8192,
+      max_tokens: 12000,
       system: RESEARCHER_SYSTEM,
       tools: [
         {
@@ -479,41 +507,39 @@ Empieza tu respuesta con \`{\` ahora.`
           max_uses: 7,
         },
       ] as unknown as Anthropic.Messages.Tool[],
-      messages: [
-        { role: 'user', content: userPrompt },
-        // Prefill: forzamos a Claude a empezar su respuesta con `{`. Esto
-        // elimina la prosa explicativa ("I'll research...") y garantiza
-        // que rawText sea JSON parseable. Truco oficial de Anthropic.
-        { role: 'assistant', content: '{' },
-      ],
+      messages: [{ role: 'user', content: userPrompt }],
     },
     { signal, timeout: 120_000 }, // 2 min — background job, puede tardar
   )
 
   // Extraemos solo los text blocks (ignoramos tool_use y server_tool_use blocks)
-  const rawTextBody = message.content
+  const rawText = message.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')
     .map(b => b.text)
     .join('')
     .trim()
 
-  if (!rawTextBody) {
+  if (!rawText) {
     throw new Error('Claude devolvió respuesta sin texto (solo tool_use blocks)')
   }
 
-  // Como hicimos prefill con `{`, lo prepend manualmente al rawText.
-  const rawText = '{' + rawTextBody
-
-  // Defensa adicional: si Claude aún así envuelve el JSON en prosa o markdown,
-  // extraemos el primer bloque {...} balanceado.
-  let jsonText = rawText
-  if (jsonText.startsWith('```')) {
-    jsonText = jsonText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '')
-  }
-  const firstBrace = jsonText.indexOf('{')
-  const lastBrace = jsonText.lastIndexOf('}')
-  if (firstBrace !== -1 && lastBrace > firstBrace) {
-    jsonText = jsonText.slice(firstBrace, lastBrace + 1)
+  // Claude a veces precede el JSON con prosa ("I'll research...", "Good - I've...")
+  // o lo envuelve en ```json fences. Extraemos el JSON balanceado escaneando
+  // por brace matching: primer `{` válido + busqueda balanceada hacia adelante.
+  let jsonText = extractBalancedJson(rawText)
+  if (!jsonText) {
+    // Fallback: tal vez está en fence de markdown
+    let stripped = rawText
+    if (stripped.startsWith('```')) {
+      stripped = stripped.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '')
+    }
+    const firstBrace = stripped.indexOf('{')
+    const lastBrace = stripped.lastIndexOf('}')
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      jsonText = stripped.slice(firstBrace, lastBrace + 1)
+    } else {
+      jsonText = stripped
+    }
   }
 
   let parsed: JurisdictionResearchResult
