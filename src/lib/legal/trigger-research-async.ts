@@ -149,8 +149,14 @@ export async function runJurisdictionResearchSync(caseId: string): Promise<void>
 
   log.info('research started', { caseId, state: location.stateCode })
 
+  // AbortSignal de seguridad: si Claude tarda > 240s (típico ~60-120s),
+  // rendimos antes de los 300s de Vercel para poder persistir `failed`.
+  const safetyAbort = new AbortController()
+  const safetyTimer = setTimeout(() => safetyAbort.abort(new Error('Safety timeout 240s — research demoró demasiado')), 240_000)
+
   try {
-    const research = await researchJurisdiction(location)
+    const research = await researchJurisdiction(location, safetyAbort.signal)
+    clearTimeout(safetyTimer)
 
     const { error: updateErr } = await service
       .from('case_jurisdictions')
@@ -196,6 +202,7 @@ export async function runJurisdictionResearchSync(caseId: string): Promise<void>
       elapsedMs: Date.now() - startMs,
     })
   } catch (err) {
+    clearTimeout(safetyTimer)
     log.error('research failed', { caseId, err: err instanceof Error ? err.message : err })
 
     await service

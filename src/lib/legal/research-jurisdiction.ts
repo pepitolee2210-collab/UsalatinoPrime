@@ -391,7 +391,7 @@ export async function researchJurisdiction(
   const client = getClient()
   const hint = getStateCourtHint(location.stateCode)
 
-  const userPrompt = `Investiga EXHAUSTIVAMENTE las DOS etapas de radicación SIJS para este cliente. Tienes hasta 15 web_searches — úsalas. NO devuelvas el JSON con arrays vacíos sin antes haber gastado por lo menos 8 búsquedas activas.
+  const userPrompt = `Investiga las DOS etapas de radicación SIJS para este cliente. Tienes hasta 7 web_searches — sé eficiente: una para confirmar la corte/condado, dos para intake (coversheet/CCIS), tres para merits (petition + motion findings + proposed order), una de holgura.
 
 - Estado: ${location.stateName} (${location.stateCode})
 - ZIP: ${location.zip ?? '(desconocido — usa la corte estatal genérica)'}
@@ -467,7 +467,10 @@ Devuelve EXCLUSIVAMENTE el JSON estricto definido en el system prompt. Sin texto
         {
           type: 'web_search_20250305',
           name: 'web_search',
-          max_uses: 15,
+          // 7 búsquedas son suficientes con el catálogo SIJS prefijado
+          // en el prompt. Subir a 15 hizo que Claude se demorara > 300s
+          // y Vercel matara el handler. 7 cabe en 60-120s típico.
+          max_uses: 7,
         },
       ] as unknown as Anthropic.Messages.Tool[],
       messages: [{ role: 'user', content: userPrompt }],
