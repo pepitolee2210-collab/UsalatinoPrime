@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { resolveClientLocation } from '@/lib/legal/resolve-client-location'
-import { triggerJurisdictionResearchAsync } from '@/lib/legal/trigger-research-async'
+import { runJurisdictionResearchSync } from '@/lib/legal/trigger-research-async'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('case-jurisdiction')
 
-// El research vive 100% en background (after()): el handler sólo encola
-// y responde el placeholder. El frontend ya pollea la fila cada 5s.
+// El research corre SÍNCRONO en este handler porque QStash y after() en
+// Vercel resultaron poco fiables para esta carga (deployment protection,
+// reciclaje de isolate). Con maxDuration=300 (Vercel Pro) cabe sin sobrar:
+// 15 web_searches + Claude Opus + persistencia ≈ 60-120s.
 
 async function ensureAdminOrEmployee() {
   const supabase = await createClient()
@@ -23,16 +25,23 @@ async function ensureAdminOrEmployee() {
   return { userId: user.id, service: createServiceClient() }
 }
 
+async function readCachedRow(service: ReturnType<typeof createServiceClient>, caseId: string) {
+  const { data } = await service
+    .from('case_jurisdictions')
+    .select('*')
+    .eq('case_id', caseId)
+    .maybeSingle()
+  return data
+}
+
 /**
  * GET /api/admin/case-jurisdiction?caseId=X[&research=true]
  *
  * Default: lee de cache y NO dispara research. Si no hay cache devuelve
  * `{ jurisdiction: null, reason }` con 200.
  *
- * Con `?research=true` encola el research en background vía
- * triggerJurisdictionResearchAsync (placeholder pending + after()) y
- * devuelve la fila placeholder. El frontend ya pollea cada 5s mientras
- * `research_status === 'pending'`.
+ * Con `?research=true` corre el research SÍNCRONO (60-120s); el frontend
+ * mantiene el spinner durante la espera. Devuelve la fila final.
  */
 export async function GET(req: NextRequest) {
   const auth = await ensureAdminOrEmployee()
@@ -44,41 +53,26 @@ export async function GET(req: NextRequest) {
   }
 
   const researchRequested = req.nextUrl.searchParams.get('research') === 'true'
-
   const { service } = auth
 
-  // --- 1. Cache ---
-  const cached = await service
-    .from('case_jurisdictions')
-    .select('*')
-    .eq('case_id', caseId)
-    .maybeSingle()
-
+  const cached = await readCachedRow(service, caseId)
   const location = await resolveClientLocation(caseId, service)
 
   // Cualquier row 'completed' o 'pending' la devolvemos tal cual.
-  // Sólo 'failed' permite retry vía ?research=true.
-  if (cached.data && cached.data.research_status !== 'failed') {
-    return NextResponse.json({
-      jurisdiction: cached.data,
-      clientLocation: location,
-      cached: true,
-    })
+  // 'failed' permite retry vía ?research=true.
+  if (cached && cached.research_status !== 'failed') {
+    return NextResponse.json({ jurisdiction: cached, clientLocation: location, cached: true })
   }
 
-  // --- 2. Sin research explícito → devolvemos lo que haya ---
   if (!researchRequested) {
     return NextResponse.json({
-      jurisdiction: cached.data ?? null,
+      jurisdiction: cached ?? null,
       clientLocation: location,
-      cached: Boolean(cached.data),
-      reason: cached.data
-        ? 'previous_research_failed'
-        : 'no_cache_research_not_triggered',
+      cached: Boolean(cached),
+      reason: cached ? 'previous_research_failed' : 'no_cache_research_not_triggered',
     })
   }
 
-  // --- 3. Research pedido pero no hay ubicación ---
   if (!location) {
     return NextResponse.json({
       jurisdiction: null,
@@ -88,22 +82,14 @@ export async function GET(req: NextRequest) {
     }, { status: 400 })
   }
 
-  // --- 4. Encolar research en background (devuelve en <2s) ---
-  const triggered = await triggerJurisdictionResearchAsync(caseId, service, { force: true })
-  log.info('GET ?research=true encolado', { caseId, triggered })
-
-  const placeholder = await service
-    .from('case_jurisdictions')
-    .select('*')
-    .eq('case_id', caseId)
-    .maybeSingle()
+  log.info('GET research síncrono iniciado', { caseId, state: location.stateCode })
+  await runJurisdictionResearchSync(caseId)
+  const final = await readCachedRow(service, caseId)
 
   return NextResponse.json({
-    jurisdiction: placeholder.data,
+    jurisdiction: final,
     clientLocation: location,
     cached: false,
-    queued: triggered.triggered,
-    reason: triggered.reason,
   })
 }
 
@@ -111,11 +97,10 @@ export async function GET(req: NextRequest) {
  * POST /api/admin/case-jurisdiction
  * Body: { caseId: string, force?: boolean }
  *
- * `force: true` → borra cache + encola re-investigación. Usado por el
- * botón "Re-verificar" del panel de jurisdicción en el admin.
+ * `force: true` → borra cache + corre research SÍNCRONO. Usado por el
+ * botón "Re-verificar" del panel admin. El admin ve spinner ~60-120s.
  *
- * Sin `force` se comporta como GET (idempotente: devuelve cached si válido,
- * encola si no había).
+ * Sin `force` se comporta como GET (idempotente).
  */
 export async function POST(req: NextRequest) {
   const auth = await ensureAdminOrEmployee()
@@ -139,24 +124,24 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  const triggered = await triggerJurisdictionResearchAsync(caseId, service, { force })
-  log.info('POST encolado', { caseId, force, triggered })
+  // Idempotencia: si ya hay row 'completed' y no es force, devolverla.
+  if (!force) {
+    const cached = await readCachedRow(service, caseId)
+    if (cached && cached.research_status === 'completed') {
+      return NextResponse.json({ jurisdiction: cached, clientLocation: location, cached: true })
+    }
+  }
 
-  const placeholder = await service
-    .from('case_jurisdictions')
-    .select('*')
-    .eq('case_id', caseId)
-    .maybeSingle()
+  log.info('POST research síncrono iniciado', { caseId, force, state: location.stateCode })
+  await runJurisdictionResearchSync(caseId)
+  const final = await readCachedRow(service, caseId)
 
   return NextResponse.json({
-    jurisdiction: placeholder.data,
+    jurisdiction: final,
     clientLocation: location,
     cached: false,
-    queued: triggered.triggered,
-    reason: triggered.reason,
   })
 }
 
-// El handler ya no espera al research (corre en after() ~5min). Mantener
-// 60s de margen es de sobra para el upsert + 1-2 lecturas.
-export const maxDuration = 60
+// Vercel Pro permite hasta 300s. El research síncrono toma 60-120s típico.
+export const maxDuration = 300

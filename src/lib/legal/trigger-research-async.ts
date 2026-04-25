@@ -2,25 +2,21 @@ import { after } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveClientLocation } from './resolve-client-location'
 import { researchJurisdiction } from './research-jurisdiction'
-import { enqueueJob } from '@/lib/qstash/client'
 import { createServiceClient } from '@/lib/supabase/service'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('trigger-research-async')
 
 /**
- * Encola la investigación de jurisdicción para un caso.
+ * Encola investigación de jurisdicción en background — usado por el flujo
+ * de creación de contrato (no hay admin esperando). Marca placeholder
+ * pending y corre la investigación dentro de `after()`. Si `after()` no
+ * sobrevive al reciclaje del isolate, la fila queda `pending`; el primer
+ * "Re-verificar" manual del admin la arregla con la versión síncrona del
+ * route handler.
  *
- * Flujo:
- *  1. Marca placeholder `research_status='pending'` en `case_jurisdictions`.
- *  2. Encola un job a QStash → /api/workers/jurisdiction-research, que tiene
- *     maxDuration=300 y puede tardar lo necesario (15 web_searches + Claude
- *     Opus). El handler HTTP no espera al research.
- *  3. Si QStash falla (token mal configurado, red caída), cae a `after()`
- *     como red de seguridad — funciona en local y en deploys sin QStash.
- *
- * El frontend (jurisdiction-panel.tsx) pollea cada 5s mientras la fila esté
- * en `pending` y refresca al verla en `completed` o `failed`.
+ * Para cuando hay admin esperando (botón Re-verificar), usa directamente
+ * `runJurisdictionResearchSync` desde el route handler con maxDuration=300.
  */
 export async function triggerJurisdictionResearchAsync(
   caseId: string,
@@ -29,7 +25,6 @@ export async function triggerJurisdictionResearchAsync(
 ): Promise<{ triggered: boolean; reason: string }> {
   const force = Boolean(opts.force)
 
-  // 1. Idempotencia (saltable con force).
   if (!force) {
     const { data: existing } = await service
       .from('case_jurisdictions')
@@ -48,14 +43,12 @@ export async function triggerJurisdictionResearchAsync(
     }
   }
 
-  // 2. Resolver ubicación antes de marcar pending.
   const location = await resolveClientLocation(caseId, service)
   if (!location) {
     log.warn('trigger skipped — no location resoluble', { caseId })
     return { triggered: false, reason: 'no_location' }
   }
 
-  // 3. Placeholder pending.
   const placeholder = {
     case_id: caseId,
     state_code: location.stateCode,
@@ -95,27 +88,6 @@ export async function triggerJurisdictionResearchAsync(
     return { triggered: false, reason: 'placeholder_failed' }
   }
 
-  // 4. Preferir QStash (worker tiene 300s); si no hay token, after() como
-  //    red de seguridad (sirve en local y deploys sin QStash configurada).
-  const workerUrl = process.env.JURISDICTION_WORKER_URL ?? deriveWorkerUrl()
-
-  if (process.env.QSTASH_TOKEN && workerUrl) {
-    try {
-      await enqueueJob({
-        endpoint: workerUrl,
-        body: { caseId },
-        deduplicationId: `jurisdiction-${caseId}-${Date.now()}`,
-      })
-      log.info('research enqueued to QStash', { caseId, workerUrl })
-      return { triggered: true, reason: 'research_queued_qstash' }
-    } catch (err) {
-      log.error('QStash enqueue failed, falling back to after()', { caseId, err: err instanceof Error ? err.message : err })
-      // fall through al after()
-    }
-  }
-
-  // 5. Fallback: after() — funciona en dev y deploys sin QStash, pero limita
-  //    a ~5 min en Vercel y a veces el isolate se recicla antes.
   after(async () => {
     try {
       await runJurisdictionResearchSync(caseId)
@@ -128,12 +100,11 @@ export async function triggerJurisdictionResearchAsync(
 }
 
 /**
- * Ejecuta el research SYNC: lee la fila pending, hace el research con Claude,
- * y persiste resultado o `failed` con error. Esta es la función que llama el
- * worker de QStash (que ya está fuera del handler HTTP del usuario).
+ * Ejecuta el research SYNC: lee fila pending, llama a Claude con
+ * web_search, y persiste resultado o `failed`. Esta es la función que el
+ * route handler llama directamente (con maxDuration=300).
  *
- * Idempotente: si la fila ya está `completed` no rehace nada (la deduplicación
- * de QStash hace su parte, esto es defensa adicional).
+ * Idempotente: si la fila ya está `completed` no rehace nada.
  */
 export async function runJurisdictionResearchSync(caseId: string): Promise<void> {
   const service = createServiceClient()
@@ -144,14 +115,37 @@ export async function runJurisdictionResearchSync(caseId: string): Promise<void>
     log.warn('runJurisdictionResearchSync: no location', { caseId })
     await service
       .from('case_jurisdictions')
-      .update({
+      .upsert({
+        case_id: caseId,
+        state_code: 'XX',
+        state_name: 'Desconocido',
+        court_name: 'Sin ubicación',
+        sources: [],
+        confidence: 'low' as const,
         research_status: 'failed',
         research_error: 'No se pudo resolver la ubicación del cliente',
+        verified_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      })
-      .eq('case_id', caseId)
+      }, { onConflict: 'case_id' })
     return
   }
+
+  // Marca placeholder por si el route handler lo invoca sin haberlo creado.
+  await service
+    .from('case_jurisdictions')
+    .upsert({
+      case_id: caseId,
+      state_code: location.stateCode,
+      state_name: location.stateName,
+      client_zip: location.zip,
+      court_name: 'Investigando…',
+      sources: [],
+      confidence: 'low' as const,
+      research_status: 'pending',
+      research_error: null,
+      verified_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'case_id', ignoreDuplicates: false })
 
   log.info('research started', { caseId, state: location.stateCode })
 
@@ -213,11 +207,4 @@ export async function runJurisdictionResearchSync(caseId: string): Promise<void>
       })
       .eq('case_id', caseId)
   }
-}
-
-function deriveWorkerUrl(): string | null {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? process.env.VERCEL_URL ?? null
-  if (!base) return null
-  const url = base.startsWith('http') ? base : `https://${base}`
-  return `${url}/api/workers/jurisdiction-research`
 }
