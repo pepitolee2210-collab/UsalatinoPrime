@@ -547,13 +547,24 @@ Empieza tu respuesta con \`{\` ahora.`
     const rawParsed = JSON.parse(jsonText) as unknown
     parsed = ResearchSchema.parse(rawParsed) as JurisdictionResearchResult
   } catch (err) {
-    const preview = rawText.slice(0, 600).replace(/\s+/g, ' ')
+    const errMsg = err instanceof Error ? err.message : String(err)
+    const isZodError = errMsg.includes('ZodError') || errMsg.startsWith('[')
+    const errorType = isZodError ? 'Validación Zod' : 'JSON.parse'
+    const tail = jsonText.slice(-200).replace(/\s+/g, ' ')
+    const head = jsonText.slice(0, 200).replace(/\s+/g, ' ')
     log.error('research JSON parse/validation failed', {
-      rawPreview: rawText.slice(0, 800),
-      extractedPreview: jsonText.slice(0, 500),
-      err: err instanceof Error ? err.message : String(err),
+      errorType,
+      jsonTextLength: jsonText.length,
+      rawTextLength: rawText.length,
+      rawPreview: rawText.slice(0, 1200),
+      extractedPreview: jsonText.slice(0, 800),
+      extractedTail: jsonText.slice(-300),
+      err: errMsg,
     })
-    throw new Error(`Claude devolvió un JSON de jurisdicción inválido. Preview: ${preview}`)
+    throw new Error(
+      `Claude JSON inválido (${errorType}). ` +
+      `jsonText[${jsonText.length}c] head="${head}" tail="${tail}" — error: ${errMsg.slice(0, 200)}`
+    )
   }
 
   // Verificación post-hoc: al menos una source debe venir de un dominio oficial
