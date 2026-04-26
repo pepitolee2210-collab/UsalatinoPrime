@@ -7,7 +7,10 @@ import {
   Scale, Loader2, AlertCircle, AlertTriangle, CheckCircle, ChevronDown, ChevronUp,
   ExternalLink, RotateCw, MapPin, Search, FileText, ListOrdered, Building2,
   Mail, Globe2, MailOpen, Shuffle, Paperclip, DollarSign, Clock, BookOpen, Download,
+  Pencil, Printer,
 } from 'lucide-react'
+import { AutomatedFormModal } from './automated-form-modal'
+import { resolveAutomatedFormSlug } from '@/lib/legal/automated-forms-registry'
 
 type FilingChannel = 'in_person' | 'email' | 'portal' | 'mail' | 'hybrid'
 
@@ -25,6 +28,7 @@ interface RequiredForm {
   url_official: string
   description_es: string
   is_mandatory: boolean
+  slug?: string | null
 }
 
 interface FilingStep {
@@ -430,6 +434,7 @@ export function JurisdictionPanel({ caseId }: Props) {
                     steps={data.jurisdiction.intake_filing_steps ?? []}
                     procedureProse={data.jurisdiction.intake_procedure_es ?? null}
                     notes={data.jurisdiction.intake_notes ?? null}
+                    caseId={caseId}
                   />
 
                   {/* ══════════════════════════════════════════════ */}
@@ -445,6 +450,7 @@ export function JurisdictionPanel({ caseId }: Props) {
                     steps={data.jurisdiction.filing_steps ?? []}
                     attachments={data.jurisdiction.attachments_required ?? []}
                     fees={data.jurisdiction.fees ?? null}
+                    caseId={caseId}
                   />
 
                   {/* Aranceles combinados — si solo hay fee en merits lo mostramos arriba
@@ -547,7 +553,10 @@ function ChannelBlock({ channel, address }: { channel: FilingChannel; address: s
   )
 }
 
-function FormsBlock({ forms }: { forms: RequiredForm[] }) {
+function FormsBlock({ forms, caseId }: { forms: RequiredForm[]; caseId: string }) {
+  const [openModalSlug, setOpenModalSlug] = useState<string | null>(null)
+  const [printing, setPrinting] = useState<string | null>(null)
+
   if (!forms || forms.length === 0) {
     return (
       <section>
@@ -563,12 +572,44 @@ function FormsBlock({ forms }: { forms: RequiredForm[] }) {
   }
 
   function downloadAll() {
-    // Stagger 60ms entre pop-ups para evitar que el navegador bloquee como
-    // pop-up automation. Toast informa al admin por si el navegador bloquea.
     forms.forEach((f, i) => {
       setTimeout(() => window.open(f.url_official, '_blank', 'noopener,noreferrer'), i * 60)
     })
     toast.success(`Abriendo ${forms.length} ${forms.length === 1 ? 'documento' : 'documentos'} oficial${forms.length === 1 ? '' : 'es'} en nuevas pestañas`)
+  }
+
+  async function handlePrint(slug: string) {
+    setPrinting(slug)
+    try {
+      const res = await fetch(`/api/admin/case-forms/${encodeURIComponent(slug)}/print`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ caseId }),
+      })
+      if (!res.ok) {
+        let msg = 'Error al generar PDF'
+        try {
+          const err = await res.json()
+          if (err?.message) msg = err.message
+          else if (err?.error) msg = err.error
+        } catch { /* ignore */ }
+        toast.error(msg)
+        return
+      }
+      const blob = await res.blob()
+      const filename = res.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)?.[1] ?? 'documento.pdf'
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('PDF generado y archivado en Documentos del caso')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al imprimir')
+    } finally {
+      setPrinting(null)
+    }
   }
 
   return (
@@ -589,29 +630,65 @@ function FormsBlock({ forms }: { forms: RequiredForm[] }) {
         )}
       </div>
       <div className="space-y-2">
-        {forms.map((f, i) => (
-          <div key={i} className="rounded-lg border border-gray-200 p-2.5 bg-gray-50/50">
-            <div className="flex items-start justify-between gap-2 flex-wrap">
-              <p className="text-xs font-semibold text-gray-900 flex-1 min-w-0">{f.name}</p>
-              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
-                f.is_mandatory ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-600'
-              }`}>
-                {f.is_mandatory ? 'Obligatorio' : 'Opcional'}
-              </span>
+        {forms.map((f, i) => {
+          const interactiveSlug = resolveAutomatedFormSlug(f)
+          return (
+            <div key={i} className="rounded-lg border border-gray-200 p-2.5 bg-gray-50/50">
+              <div className="flex items-start justify-between gap-2 flex-wrap">
+                <p className="text-xs font-semibold text-gray-900 flex-1 min-w-0">{f.name}</p>
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
+                  f.is_mandatory ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-600'
+                }`}>
+                  {f.is_mandatory ? 'Obligatorio' : 'Opcional'}
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-600 mt-1">{f.description_es}</p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
+                <a
+                  href={f.url_official}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] text-blue-700 hover:underline"
+                >
+                  <Download className="w-3 h-3" /> Descargar oficial
+                  <ExternalLink className="w-2.5 h-2.5 opacity-60" />
+                </a>
+                {interactiveSlug && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setOpenModalSlug(interactiveSlug)}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-violet-700 hover:underline"
+                    >
+                      <Pencil className="w-3 h-3" /> Abrir formulario
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePrint(interactiveSlug)}
+                      disabled={printing === interactiveSlug}
+                      className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:underline disabled:opacity-50"
+                    >
+                      {printing === interactiveSlug
+                        ? <><Loader2 className="w-3 h-3 animate-spin" /> Generando…</>
+                        : <><Printer className="w-3 h-3" /> Imprimir</>
+                      }
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-            <p className="text-[11px] text-gray-600 mt-1">{f.description_es}</p>
-            <a
-              href={f.url_official}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 mt-1.5 text-[11px] text-blue-700 hover:underline"
-            >
-              <Download className="w-3 h-3" /> Descargar oficial
-              <ExternalLink className="w-2.5 h-2.5 opacity-60" />
-            </a>
-          </div>
-        ))}
+          )
+        })}
       </div>
+
+      {openModalSlug && (
+        <AutomatedFormModal
+          caseId={caseId}
+          slug={openModalSlug}
+          open={true}
+          onOpenChange={(open) => { if (!open) setOpenModalSlug(null) }}
+        />
+      )}
     </section>
   )
 }
@@ -697,6 +774,7 @@ function PacketSection({
   fees,
   procedureProse,
   notes,
+  caseId,
 }: {
   title: string
   subtitle: string
@@ -709,6 +787,7 @@ function PacketSection({
   fees?: FeesInfo | null
   procedureProse?: string | null
   notes?: string | null
+  caseId: string
 }) {
   const accentBorder = accent === 'violet'
     ? 'border-l-4 border-l-violet-400'
@@ -732,7 +811,7 @@ function PacketSection({
       )}
 
       {channel && <ChannelBlock channel={channel} address={channelAddress} />}
-      <FormsBlock forms={forms} />
+      <FormsBlock forms={forms} caseId={caseId} />
       <StepsBlock steps={steps} />
       {attachments && <AttachmentsBlock items={attachments} />}
       {fees && <FeesBlock fees={fees} />}

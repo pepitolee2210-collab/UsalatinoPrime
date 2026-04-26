@@ -30,6 +30,13 @@ export interface RequiredForm {
   url_official: string
   description_es: string
   is_mandatory: boolean
+  /**
+   * Slug estable para identificar el form en la UI (ej. 'tx-fm-sapcr-100').
+   * Cuando esté presente, la UI puede activar features extras (formulario
+   * interactivo, prefill, generación local). Sin slug, el form se trata como
+   * link externo solamente.
+   */
+  slug?: string | null
 }
 
 export interface FilingStep {
@@ -103,6 +110,7 @@ const FormSchema = z.object({
   url_official: z.string().min(1),
   description_es: z.string().min(1),
   is_mandatory: z.boolean().catch(true),
+  slug: z.string().optional().nullable().transform(v => v ?? null),
 })
 
 const StepSchema = z.object({
@@ -280,6 +288,21 @@ Busca explícitamente:
 ## REGLAS DE LIMPIEZA
 - required_forms / intake_packet.required_forms: SOLO entries cuya url_official esté en .gov/.us. NUNCA inventes.
 - filing_steps / intake_packet.filing_steps: pasos accionables; title_es <8 palabras; requires_client_action correctamente marcado.
+
+## SLUGS DE FORMULARIOS CONOCIDOS
+
+Cuando reconozcas uno de estos formularios oficiales por su nombre/número, incluye el campo \`slug\` con el valor exacto en la entry de \`required_forms\` o \`intake_packet.required_forms\`. Esto permite a la app activar features extras (formulario interactivo en español + generación local del PDF). Si no es un slug conocido, omite el campo o pasa \`null\`.
+
+| Form oficial | slug |
+|---|---|
+| TX FM-SAPCR-100 (Petition in Suit Affecting the Parent-Child Relationship) | tx-fm-sapcr-100 |
+| TX FM-SAPCR-205 (Order in SAPCR — Nonparent Custody Order) | tx-fm-sapcr-205 |
+| TX FM-OSP-302 (Out-of-State Party Declaration) | tx-fm-osp-302 |
+| TX VS-165 (Vital Statistics Information on Suit) | tx-vs-165 |
+| TX Civil Case Information Sheet (OCA Form 11-0009) | tx-civil-case-info-sheet |
+| TX PR-DJ-110 (Certificate of Last Known Address) | tx-pr-dj-110 |
+| TX PR-DJ-111 (Military Status Affidavit) | tx-pr-dj-111 |
+| TX FM-Chil-313 (Modified Possession Order — Nonparent) | tx-fm-chil-313 |
 - attachments_required: usa solo los types del enum.
 - fees: null si no hay dato oficial del monto.
 
