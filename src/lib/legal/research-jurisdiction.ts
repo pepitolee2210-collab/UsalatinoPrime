@@ -253,6 +253,30 @@ Busca explícitamente:
 - I-360 + G-28 + copia certificada del predicate order + evidencia de "reasonable factual basis" se presentan en USCIS National Benefits Center (Overland Park, KS).
 - Tarifa I-360 SIJS desde Julio 2025: $250 (OBBBA).
 
+## REGLAS POR ESTADO — URLs canónicas conocidas (úsalas siempre)
+
+### Texas (TX) — TODOS los condados (Harris, Dallas, Bexar, Travis, Tarrant, El Paso, etc.)
+- **NUNCA uses URLs de un solo condado** (ej: \`fortbendlibraries.gov\`, \`harriscounty.gov\`, \`dallascounty.org\`) para forms FM-SAPCR-*. Esos packets solo aplican a su condado.
+- **SIEMPRE usa TexasLawHelp.org como source de los forms FM-SAPCR-*** — son promulgados por el Texas Access to Justice Commission y válidos en los 254 condados:
+  - Civil Case Information Sheet: \`https://texaslawhelp.org/sites/default/files/pr-gen-116_civil_case_information_sheet.pdf\` (PR-GEN-116)
+  - Original Petition in SAPCR (Rev. 09-2025): \`https://texaslawhelp.org/sites/default/files/2025-09/fm-sapcr-100_sapcr_petition_2025_legis_update.pdf\` (FM-SAPCR-100)
+  - **Affidavit for Standing of Nonparent (Rev. 09-2025)**: \`https://texaslawhelp.org/sites/default/files/2025-09/fm-sapcr-aff-100_affidavit_for_standing_of_nonparent_2025.pdf\` (FM-SAPCR-AFF-100) — **OBLIGATORIO desde 09-01-2025 bajo TFC § 102.0031** para TODA petición de no-padre. NUNCA omitir si el peticionario no es el padre biológico.
+  - Order in SAPCR Nonparent Custody (Rev. 05-2024): \`https://texaslawhelp.org/sites/default/files/2024-03/fm-sapcr-205_sapcr_nonparent_order_english_2024.pdf\` (FM-SAPCR-205)
+  - Statement of Inability (Fee Waiver, bilingüe): \`https://texaslawhelp.org/sites/default/files/2023-02/tlsc_fee_waiver_02_2023.pdf\` (CB-CFFW-100)
+- **DFPS Section 13 Tools** — usa SOLO URLs DIRECTAS al .docx, NUNCA la página índice \`Section-13.asp\`:
+  - Motion for Findings: \`https://www.dfps.texas.gov/Child_Protection/Attorneys_Guide/documents/Section_13_Tools/Citizenship_and_Immigration/Motion_for_Findings_Regarding_SIJ_Status.docx\`
+  - Order Regarding SIJS Findings: \`https://www.dfps.texas.gov/Child_Protection/Attorneys_Guide/documents/Section_13_Tools/Citizenship_and_Immigration/2019_Order_SIJ_Findings.docx\`
+  - Affidavit to Support SIJ Motion: \`https://www.dfps.texas.gov/Child_Protection/Attorneys_Guide/documents/Section_13_Tools/Citizenship_and_Immigration/2019_Affidavit_to_Support_SIJ_Motion.doc\`
+- **txcourts.gov**: tiene Cloudflare WAF que devuelve 403 a bots. PREFIERE el mirror de TexasLawHelp.org cuando exista. Si solo está en txcourts.gov (ej: instructions PDF) úsalo apuntando al PDF directo, no a \`/rules-forms/forms/\` (página índice).
+- e-filing obligatorio para abogados en TX: eFileTexas.gov.
+
+## REGLAS GENERALES SOBRE URLs (todos los estados)
+
+- **NO uses páginas índice** del judiciary o de DFPS. Si la URL termina en \`.asp\`, \`.html\`, \`.aspx\` y NO en un PDF/DOCX/DOC, es página índice — busca el link directo al documento.
+- **NO uses URLs con \`/rules-forms/forms/\`**, \`/forms/all-forms\`, \`/library/forms\` cuando son índices. Encuentra el documento específico.
+- **Verifica el dominio**: si te ofrecen un PDF en \`fortbendlibraries.gov\`, \`harriscountylawlibrary.org/library/file/X\`, etc., revisa si es el form oficial estatal o un packet local. Si es packet local, busca el form individual en la source estatal.
+- **Para forms con número estable** (FM-SAPCR-*, PR-GEN-*, JD-FM-* en CT, UJ-* en NY, GC-* en CA), el número del form es la verdad — encuentra la versión más reciente en el repositorio estatal autoritativo.
+
 ## REGLAS DE LIMPIEZA
 - required_forms / intake_packet.required_forms: SOLO entries cuya url_official esté en .gov/.us. NUNCA inventes.
 - filing_steps / intake_packet.filing_steps: pasos accionables; title_es <8 palabras; requires_client_action correctamente marcado.
