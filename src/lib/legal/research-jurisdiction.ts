@@ -4,6 +4,7 @@ import { jsonrepair } from 'jsonrepair'
 import { createLogger } from '@/lib/logger'
 import type { ClientLocation } from './resolve-client-location'
 import { getStateCourtHint } from './state-court-registry'
+import { getRegisteredSlugCatalogMarkdown } from './automated-forms-registry'
 
 const log = createLogger('research-jurisdiction')
 
@@ -289,20 +290,18 @@ Busca explícitamente:
 - required_forms / intake_packet.required_forms: SOLO entries cuya url_official esté en .gov/.us. NUNCA inventes.
 - filing_steps / intake_packet.filing_steps: pasos accionables; title_es <8 palabras; requires_client_action correctamente marcado.
 
-## SLUGS DE FORMULARIOS CONOCIDOS
+## SLUGS DE FORMULARIOS AUTOMATIZADOS — REGLA OBLIGATORIA
 
-Cuando reconozcas uno de estos formularios oficiales por su nombre/número, incluye el campo \`slug\` con el valor exacto en la entry de \`required_forms\` o \`intake_packet.required_forms\`. Esto permite a la app activar features extras (formulario interactivo en español + generación local del PDF). Si no es un slug conocido, omite el campo o pasa \`null\`.
+El sistema mantiene un registry de formularios oficiales que ya tienen formulario interactivo + generación local de PDF rellenado. Cuando reconozcas uno de los formularios listados abajo (por su número/nombre/tema), DEBES incluir el campo \`slug\` con el valor exacto en la entry de \`required_forms\` o \`intake_packet.required_forms\`. Sin el slug, el cliente pierde acceso al formulario interactivo y al PDF prellenado, y tiene que llenar el oficial a mano.
 
-| Form oficial | slug |
-|---|---|
-| TX FM-SAPCR-100 (Petition in Suit Affecting the Parent-Child Relationship) | tx-fm-sapcr-100 |
-| TX FM-SAPCR-205 (Order in SAPCR — Nonparent Custody Order) | tx-fm-sapcr-205 |
-| TX FM-OSP-302 (Out-of-State Party Declaration) | tx-fm-osp-302 |
-| TX VS-165 (Vital Statistics Information on Suit) | tx-vs-165 |
-| TX Civil Case Information Sheet (OCA Form 11-0009) | tx-civil-case-info-sheet |
-| TX PR-DJ-110 (Certificate of Last Known Address) | tx-pr-dj-110 |
-| TX PR-DJ-111 (Military Status Affidavit) | tx-pr-dj-111 |
-| TX FM-Chil-313 (Modified Possession Order — Nonparent) | tx-fm-chil-313 |
+Reglas:
+- Si el form en cuestión está en la tabla, AGREGA el slug. No es opcional.
+- Si NO está en la tabla, omite el campo o pasa \`null\`.
+- El emparejamiento se hace por nombre/número del form (no por descripción). Sé generoso: si el nombre del form que encontraste en la fuente oficial contiene el código del slug (ej. "FM-SAPCR-AFF-100" → \`tx-fm-sapcr-aff-100\`), úsalo.
+- La tabla se genera automáticamente desde el registry del código — siempre refleja la versión actual.
+
+{{SLUG_CATALOG}}
+
 - attachments_required: usa solo los types del enum.
 - fees: null si no hay dato oficial del monto.
 
@@ -537,6 +536,11 @@ Razonamiento interno OK. Texto en la respuesta NO.
 
 Empieza tu respuesta con \`{\` ahora.`
 
+  // Inyectar el catálogo de slugs automatizados desde el registry. Se renderiza
+  // al momento de cada call para que cualquier nuevo form añadido al registry
+  // aparezca automáticamente sin necesidad de tocar este prompt.
+  const systemPrompt = RESEARCHER_SYSTEM.replace('{{SLUG_CATALOG}}', getRegisteredSlugCatalogMarkdown())
+
   log.debug('researchJurisdiction: calling Claude with web_search', {
     stateCode: location.stateCode,
     zip: location.zip,
@@ -555,7 +559,7 @@ Empieza tu respuesta con \`{\` ahora.`
     {
       model: RESEARCH_MODEL,
       max_tokens: 12000,
-      system: RESEARCHER_SYSTEM,
+      system: systemPrompt,
       tools: [
         {
           type: 'web_search_20250305',

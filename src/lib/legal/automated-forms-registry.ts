@@ -224,3 +224,79 @@ export function resolveAutomatedFormSlug(
 export function isSlugAutomated(slug: string | null | undefined): boolean {
   return !!slug && slug in AUTOMATED_FORMS
 }
+
+// ──────────────────────────────────────────────────────────────────
+// Catálogo dinámico para el prompt de la IA de research
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * Render markdown table del catálogo de slugs automatizados, agrupado por
+ * estado, para inyectar en el system prompt de `research-jurisdiction.ts`.
+ *
+ * Cuando se añade un nuevo form al registry (nueva entrada en
+ * `AUTOMATED_FORMS`), la tabla se actualiza sola y la IA empezará a
+ * etiquetar ese form con su slug en futuras investigaciones — sin tener
+ * que tocar el prompt manualmente. Es la pieza que hace la automatización
+ * "escalable" tras un solo registry.
+ *
+ * Output ejemplo:
+ *
+ * ```md
+ * ### Texas (TX)
+ * | Form oficial | slug |
+ * |---|---|
+ * | TX FM-SAPCR-100 Petition | tx-fm-sapcr-100 |
+ * | TX FM-SAPCR-AFF-100 Affidavit | tx-fm-sapcr-aff-100 |
+ * ```
+ */
+export function getRegisteredSlugCatalogMarkdown(): string {
+  const byState = new Map<string, AutomatedFormDefinition[]>()
+  for (const def of Object.values(AUTOMATED_FORMS)) {
+    const states = def.states.length > 0 ? def.states : ['ALL']
+    for (const st of states) {
+      const list = byState.get(st) ?? []
+      list.push(def)
+      byState.set(st, list)
+    }
+  }
+
+  if (byState.size === 0) {
+    return '_(El registry está vacío — no hay formularios automatizados todavía.)_'
+  }
+
+  const STATE_NAMES: Record<string, string> = {
+    TX: 'Texas',
+    CA: 'California',
+    NY: 'New York',
+    FL: 'Florida',
+    UT: 'Utah',
+    IL: 'Illinois',
+    NJ: 'New Jersey',
+    AZ: 'Arizona',
+    GA: 'Georgia',
+    NC: 'North Carolina',
+    VA: 'Virginia',
+    MA: 'Massachusetts',
+    CO: 'Colorado',
+    WA: 'Washington',
+    PA: 'Pennsylvania',
+    OH: 'Ohio',
+    NV: 'Nevada',
+    OR: 'Oregon',
+    MD: 'Maryland',
+    CT: 'Connecticut',
+    ALL: 'Multi-estado / Federal',
+  }
+
+  const sortedStates = [...byState.keys()].sort()
+  const blocks: string[] = []
+  for (const st of sortedStates) {
+    const defs = byState.get(st)!.sort((a, b) => a.slug.localeCompare(b.slug))
+    const stateLabel = STATE_NAMES[st] ?? st
+    const rows = defs
+      .map((d) => `| ${d.formName} (${d.formDescriptionEs}) | \`${d.slug}\` |`)
+      .join('\n')
+    blocks.push(`### ${stateLabel} (${st})\n\n| Form oficial | slug |\n|---|---|\n${rows}`)
+  }
+  return blocks.join('\n\n')
+}
