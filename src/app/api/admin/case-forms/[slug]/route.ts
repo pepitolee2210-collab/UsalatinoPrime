@@ -82,7 +82,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
     instance = created
   }
 
-  const prefilledValues = await def.buildPrefilledValues(caseId, auth.service)
+  const [prefilledValues, legalWarnings] = await Promise.all([
+    def.buildPrefilledValues(caseId, auth.service),
+    def.computeLegalWarnings ? def.computeLegalWarnings(caseId, auth.service) : Promise.resolve<string[]>([]),
+  ])
 
   return NextResponse.json({
     slug: def.slug,
@@ -99,6 +102,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
     schemaSections: def.sections,
     prefilledValues,
     savedValues: instance.filled_values ?? {},
+    legalWarnings,
     case: {
       id: caseRow.id,
       caseNumber: caseRow.case_number,

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Loader2, RotateCcw, AlertCircle, Printer, Check, Pencil, ListOrdered } from 'lucide-react'
+import { Loader2, RotateCcw, AlertCircle, AlertTriangle, Printer, Check, Pencil, ListOrdered } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 
@@ -56,6 +56,7 @@ interface FormResponse {
   schemaSections: FormSection[]
   prefilledValues: Record<string, string | boolean>
   savedValues: Record<string, string | boolean>
+  legalWarnings?: string[]
   case: { id: string; caseNumber: string; clientId: string }
 }
 
@@ -242,6 +243,21 @@ export function AutomatedFormModal({ caseId, slug, open, onOpenChange }: Props) 
           <DialogDescription className="text-xs">
             {data?.formDescriptionEs ?? 'Cargando descripción del formulario…'} Los campos se guardan automáticamente. Al imprimir se rellena el PDF oficial con estos datos y se archiva una copia en Documentos del caso.
           </DialogDescription>
+          {data?.legalWarnings && data.legalWarnings.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {data.legalWarnings.map((msg, i) => (
+                <div
+                  key={i}
+                  className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2"
+                >
+                  <AlertTriangle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+                  <p className="text-[11px] leading-relaxed text-amber-900">
+                    <strong className="font-semibold">Aviso legal:</strong> {msg}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </DialogHeader>
 
         {loading && (

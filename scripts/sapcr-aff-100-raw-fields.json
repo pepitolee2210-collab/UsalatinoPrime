@@ -1,0 +1,309 @@
+{
+  "pdf_path": "public/forms/fm-sapcr-aff-100.pdf",
+  "sha256": "15def7191f35a18bfec93c6572a26b37c1251e95640af419d2e1f23d2f3ccef0",
+  "bytes": 764245,
+  "total_fields": 31,
+  "inspected_at": "2026-04-27T03:27:14.326Z",
+  "fields": [
+    {
+      "name": "Cause Number",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "County Court at Law",
+      "type": "checkbox",
+      "checkboxOnValue": "On",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "County",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Not applicable",
+      "type": "checkbox",
+      "checkboxOnValue": "On",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "The parents physically hurt or neglected the child on the following occasions",
+      "type": "checkbox",
+      "checkboxOnValue": "On",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Not applicable_2",
+      "type": "checkbox",
+      "checkboxOnValue": "On",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "The parents emotionally harmed the child through the following acts or behavior",
+      "type": "checkbox",
+      "checkboxOnValue": "On",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Not applicable_3",
+      "type": "checkbox",
+      "checkboxOnValue": "On",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "The parents are unable to provide care thus causing physical or emotional",
+      "type": "checkbox",
+      "checkboxOnValue": "On",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Not applicable_4",
+      "type": "checkbox",
+      "checkboxOnValue": "On",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "The following facts are also important",
+      "type": "checkbox",
+      "checkboxOnValue": "On",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Your Signature",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Print Your Name",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Notary State",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Notary County",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Date Affiant Swore",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Child's Name 1",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Child's Name 2",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Child's Name 3",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Child's Name 4",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Child's Name 5",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "District Court Number",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "District Court",
+      "type": "checkbox",
+      "checkboxOnValue": "Yes",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "County Court at Law Number",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Your Full Name",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Harm to Emotional Development Facts",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Harm to Emotional Development Facts Continued",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Harm to Physical Health Facts",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Harm to Physical Health Facts Continued",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Harm Due to Parental Incapacity",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Other Facts",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    }
+  ]
+}

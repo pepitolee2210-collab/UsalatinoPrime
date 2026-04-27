@@ -36,6 +36,25 @@ import {
 } from './sapcr100-form-schema'
 import { buildSapcrPrefilledValues } from './sapcr100-prefill'
 
+import {
+  PDF_PUBLIC_PATH as SAPCR_AFF_100_PDF_PUBLIC,
+  PDF_DISK_PATH as SAPCR_AFF_100_PDF_DISK,
+  PDF_SHA256 as SAPCR_AFF_100_SHA,
+  SAPCR_AFF_VERSION as SAPCR_AFF_100_VERSION,
+  FORM_SLUG as SAPCR_AFF_100_SLUG,
+  FORM_NAME as SAPCR_AFF_100_NAME,
+  FORM_DESCRIPTION_ES as SAPCR_AFF_100_DESC,
+  SAPCR_AFF_SECTIONS as SAPCR_AFF_100_SECTIONS,
+  HARDCODED_VALUES as SAPCR_AFF_100_HARDCODED,
+  REQUIRED_FOR_PRINT as SAPCR_AFF_100_REQUIRED,
+  FIELD_BY_KEY as SAPCR_AFF_100_FIELD_BY_KEY,
+  sapcrAffFormSchema as SAPCR_AFF_100_ZOD_SCHEMA,
+} from './sapcr-aff-100-form-schema'
+import {
+  buildSapcrAffPrefilledValues,
+  isPetitionerBiologicalParent,
+} from './sapcr-aff-100-prefill'
+
 // ──────────────────────────────────────────────────────────────────
 // Tipos públicos del registry
 // ──────────────────────────────────────────────────────────────────
@@ -73,6 +92,14 @@ export interface AutomatedFormDefinition {
   buildPrefilledValues: (caseId: string, service: SupabaseClient) => Promise<Record<string, string | boolean | undefined | null>>
   /** Heurística de detección por nombre de form para casos legacy sin slug. */
   detectByName: (name: string) => boolean
+  /**
+   * Opcional: calcula advertencias legales que la API/UI deben mostrar para
+   * este form. Por ejemplo, si la peticionaria es la madre/padre biológico
+   * y este form es exclusivo para no-padres. Retornar [] si no aplica.
+   *
+   * Cada string se renderiza como banner amarillo en el header del modal.
+   */
+  computeLegalWarnings?: (caseId: string, service: SupabaseClient) => Promise<string[]>
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -114,6 +141,47 @@ const SAPCR100_DEFINITION: AutomatedFormDefinition = {
   },
 }
 
+const SAPCR_AFF_100_DEFINITION: AutomatedFormDefinition = {
+  slug: SAPCR_AFF_100_SLUG,
+  formName: SAPCR_AFF_100_NAME,
+  formDescriptionEs: SAPCR_AFF_100_DESC,
+  states: ['TX'],
+  packetType: 'merits',
+  pdfPublicPath: SAPCR_AFF_100_PDF_PUBLIC,
+  pdfDiskPath: SAPCR_AFF_100_PDF_DISK,
+  pdfSha256: SAPCR_AFF_100_SHA,
+  schemaVersion: SAPCR_AFF_100_VERSION,
+  sections: SAPCR_AFF_100_SECTIONS,
+  hardcodedValues: SAPCR_AFF_100_HARDCODED,
+  requiredForPrint: SAPCR_AFF_100_REQUIRED,
+  fieldByKey: SAPCR_AFF_100_FIELD_BY_KEY,
+  zodSchema: SAPCR_AFF_100_ZOD_SCHEMA,
+  buildPrefilledValues: async (caseId, service) => {
+    const raw = await buildSapcrAffPrefilledValues(caseId, service)
+    const out: Record<string, string | boolean | null | undefined> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      if (v === null || v === undefined || typeof v === 'string' || typeof v === 'boolean') {
+        out[k] = v
+      }
+    }
+    return out
+  },
+  detectByName: (name) => {
+    const n = name.toLowerCase()
+    return (
+      n.includes('fm-sapcr-aff-100') ||
+      (n.includes('affidavit') && n.includes('standing') && n.includes('nonparent'))
+    )
+  },
+  computeLegalWarnings: async (caseId, service) => {
+    const isBio = await isPetitionerBiologicalParent(caseId, service)
+    if (!isBio) return []
+    return [
+      'Por TFC §102.0031, este afidávit es exclusivo para no-padres (abuelos, tíos, cuidadores 6+ meses). La peticionaria está registrada como madre/padre biológico en el intake. Si es correcto, considera removerlo de la jurisdicción y radicar la FM-SAPCR-100 directamente bajo §102.003(a)(1). Si el equipo legal confirmó que aplica, ignora este aviso.',
+    ]
+  },
+}
+
 // ──────────────────────────────────────────────────────────────────
 // Map público
 // ──────────────────────────────────────────────────────────────────
@@ -124,6 +192,7 @@ const SAPCR100_DEFINITION: AutomatedFormDefinition = {
  */
 export const AUTOMATED_FORMS: Record<string, AutomatedFormDefinition> = {
   [SAPCR100_SLUG]: SAPCR100_DEFINITION,
+  [SAPCR_AFF_100_SLUG]: SAPCR_AFF_100_DEFINITION,
 }
 
 /** Slugs registrados (para validación en rutas dinámicas). */
