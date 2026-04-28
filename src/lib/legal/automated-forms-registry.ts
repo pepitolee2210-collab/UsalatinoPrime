@@ -55,6 +55,23 @@ import {
   isPetitionerBiologicalParent,
 } from './sapcr-aff-100-prefill'
 
+import {
+  PDF_PUBLIC_PATH as PR_GEN_116_PDF_PUBLIC,
+  PDF_DISK_PATH as PR_GEN_116_PDF_DISK,
+  PDF_SHA256 as PR_GEN_116_SHA,
+  SCHEMA_VERSION as PR_GEN_116_VERSION,
+  FORM_SLUG as PR_GEN_116_SLUG,
+  FORM_NAME as PR_GEN_116_NAME,
+  FORM_DESCRIPTION_ES as PR_GEN_116_DESC,
+  CCIS_SECTIONS as PR_GEN_116_SECTIONS,
+  HARDCODED_VALUES as PR_GEN_116_HARDCODED,
+  REQUIRED_FOR_PRINT as PR_GEN_116_REQUIRED,
+  FIELD_BY_KEY as PR_GEN_116_FIELD_BY_KEY,
+  ccisFormSchema as PR_GEN_116_ZOD_SCHEMA,
+  processForPrint as prGen116ProcessForPrint,
+} from './pr-gen-116-form-schema'
+import { buildPrGen116PrefilledValues } from './pr-gen-116-prefill'
+
 // ──────────────────────────────────────────────────────────────────
 // Tipos públicos del registry
 // ──────────────────────────────────────────────────────────────────
@@ -100,6 +117,20 @@ export interface AutomatedFormDefinition {
    * Cada string se renderiza como banner amarillo en el header del modal.
    */
   computeLegalWarnings?: (caseId: string, service: SupabaseClient) => Promise<string[]>
+  /**
+   * Opcional: transforma los valores efectivos (hardcoded + prefill + saved)
+   * antes de que el endpoint /print los mapee a pdfFieldName.
+   *
+   * Útil para forms con campos virtuales (`pdfFieldName: null`) cuyo valor
+   * se traduce a otro field real. Ejemplo: PR-GEN-116 tiene un selector
+   * `case_type` (string) que se traduce al checkbox AcroForm correspondiente.
+   *
+   * Si retorna un objeto, ese reemplaza al `effective`. Mutaciones in-place
+   * permitidas pero no recomendadas (mejor copiar).
+   */
+  processForPrint?: (
+    values: Record<string, string | boolean | null | undefined>
+  ) => Record<string, string | boolean | null | undefined>
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -182,6 +213,42 @@ const SAPCR_AFF_100_DEFINITION: AutomatedFormDefinition = {
   },
 }
 
+const PR_GEN_116_DEFINITION: AutomatedFormDefinition = {
+  slug: PR_GEN_116_SLUG,
+  formName: PR_GEN_116_NAME,
+  formDescriptionEs: PR_GEN_116_DESC,
+  states: ['TX'],
+  packetType: 'intake',
+  pdfPublicPath: PR_GEN_116_PDF_PUBLIC,
+  pdfDiskPath: PR_GEN_116_PDF_DISK,
+  pdfSha256: PR_GEN_116_SHA,
+  schemaVersion: PR_GEN_116_VERSION,
+  sections: PR_GEN_116_SECTIONS as AutomatedFormDefinition['sections'],
+  hardcodedValues: PR_GEN_116_HARDCODED,
+  requiredForPrint: PR_GEN_116_REQUIRED,
+  fieldByKey: PR_GEN_116_FIELD_BY_KEY as AutomatedFormDefinition['fieldByKey'],
+  zodSchema: PR_GEN_116_ZOD_SCHEMA,
+  buildPrefilledValues: async (caseId, service) => {
+    const raw = await buildPrGen116PrefilledValues(caseId, service)
+    const out: Record<string, string | boolean | null | undefined> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      if (v === null || v === undefined || typeof v === 'string' || typeof v === 'boolean') {
+        out[k] = v
+      }
+    }
+    return out
+  },
+  detectByName: (name) => {
+    const n = name.toLowerCase()
+    return (
+      n.includes('pr-gen-116') ||
+      n.includes('pr gen 116') ||
+      (n.includes('civil case information sheet') && !n.includes('instructions'))
+    )
+  },
+  processForPrint: prGen116ProcessForPrint,
+}
+
 // ──────────────────────────────────────────────────────────────────
 // Map público
 // ──────────────────────────────────────────────────────────────────
@@ -193,6 +260,7 @@ const SAPCR_AFF_100_DEFINITION: AutomatedFormDefinition = {
 export const AUTOMATED_FORMS: Record<string, AutomatedFormDefinition> = {
   [SAPCR100_SLUG]: SAPCR100_DEFINITION,
   [SAPCR_AFF_100_SLUG]: SAPCR_AFF_100_DEFINITION,
+  [PR_GEN_116_SLUG]: PR_GEN_116_DEFINITION,
 }
 
 /** Slugs registrados (para validación en rutas dinámicas). */

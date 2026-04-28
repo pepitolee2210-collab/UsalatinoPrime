@@ -99,9 +99,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     if (typeof v === 'string' || typeof v === 'boolean') effective[k] = v
   }
 
-  // Verificar required.
+  // Aplicar transformación específica del form (ej: PR-GEN-116 traduce el campo
+  // virtual `case_type` al checkbox AcroForm correspondiente).
+  const processed: Record<string, string | boolean | null | undefined> = def.processForPrint
+    ? def.processForPrint(effective)
+    : effective
+
+  // Verificar required (sobre el resultado procesado).
   const missing = def.requiredForPrint.filter((k) => {
-    const v = effective[k]
+    const v = processed[k]
     return v === undefined || v === null || v === '' || v === false
   })
   if (missing.length > 0) {
@@ -115,9 +121,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     )
   }
 
-  // Mapear semanticKey → pdfFieldName.
+  // Mapear semanticKey → pdfFieldName (campos virtuales con pdfFieldName: null se ignoran).
   const valuesByPdfName: Record<string, string | boolean> = {}
-  for (const [semKey, value] of Object.entries(effective)) {
+  for (const [semKey, value] of Object.entries(processed)) {
+    if (value === null || value === undefined) continue
+    if (typeof value !== 'string' && typeof value !== 'boolean') continue
     const spec = def.fieldByKey[semKey]
     if (!spec || !spec.pdfFieldName) continue
     valuesByPdfName[spec.pdfFieldName] = value

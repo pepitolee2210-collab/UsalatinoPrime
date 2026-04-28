@@ -118,6 +118,17 @@ export async function fillAcroForm(
       const field = form.getField(name)
 
       if (field instanceof PDFTextField) {
+        // Algunos PDFs (ej. Texas PR-GEN-116) tienen MaxLen muy bajo en fields
+        // como `Name` (28 chars) que es insuficiente para nombres completos
+        // hispanos. Remover el límite antes de escribir — el flatten posterior
+        // hará que el ancho visual sea el del rectángulo del widget, no el
+        // dictado por MaxLen.
+        try {
+          const maxLen = field.getMaxLength()
+          if (typeof maxLen === 'number' && maxLen > 0 && String(rawValue).length > maxLen) {
+            field.setMaxLength(undefined)
+          }
+        } catch { /* ignore */ }
         field.setText(String(rawValue))
         filledCount++
       } else if (field instanceof PDFCheckBox) {

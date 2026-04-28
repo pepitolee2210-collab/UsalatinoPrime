@@ -18,11 +18,18 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface FieldSpec {
   semanticKey: string
   pdfFieldName: string | null
-  type: 'text' | 'textarea' | 'checkbox' | 'date' | 'phone' | 'state' | 'zip'
+  type: 'text' | 'textarea' | 'checkbox' | 'date' | 'phone' | 'state' | 'zip' | 'select'
   labelEs: string
   helpEs?: string
   page?: number
@@ -32,6 +39,10 @@ interface FieldSpec {
   groupKey?: string
   options?: { value: string; labelEs: string }[]
   maxLength?: number
+  /** Si true, sólo se muestra cuando algún field con valor sentinela lo activa
+   * (ej: en PR-GEN-116, los 80 checkboxes individuales sólo aparecen cuando
+   * `case_type === '__show_all__'`). El control sentinela vive en cada form. */
+  hiddenByDefault?: boolean
 }
 
 interface FormSection {
@@ -168,12 +179,33 @@ export function AutomatedFormModal({ caseId, slug, open, onOpenChange }: Props) 
     })
   }
 
+  // Convención: cuando algún field tipo 'select' tiene valor '__show_all__',
+  // los fields con `hiddenByDefault: true` se hacen visibles. Permite UIs como
+  // PR-GEN-116 donde un dropdown "Mostrar las 80 categorías" expande la sección 2.
+  const showHiddenFields = useMemo(() => {
+    if (!data) return false
+    for (const section of data.schemaSections) {
+      for (const f of section.fields) {
+        if (f.type === 'select' && values[f.semanticKey] === '__show_all__') return true
+      }
+    }
+    return false
+  }, [data, values])
+
+  function isFieldVisible(f: FieldSpec): boolean {
+    if (f.hiddenByDefault && !showHiddenFields) return false
+    return true
+  }
+
   const missingRequired = useMemo(() => {
     if (!data) return []
     const missing: { semanticKey: string; labelEs: string; sectionId: number }[] = []
     for (const section of data.schemaSections) {
       for (const f of section.fields) {
         if (!f.required) continue
+        // Fields ocultos no cuentan para "missing required" — su valor no está
+        // pidiéndose al usuario en este momento.
+        if (f.hiddenByDefault && !showHiddenFields) continue
         const v = values[f.semanticKey]
         if (v === undefined || v === null || v === '' || v === false) {
           missing.push({ semanticKey: f.semanticKey, labelEs: f.labelEs, sectionId: section.id })
@@ -181,7 +213,7 @@ export function AutomatedFormModal({ caseId, slug, open, onOpenChange }: Props) 
       }
     }
     return missing
-  }, [data, values])
+  }, [data, values, showHiddenFields])
 
   async function handlePrint() {
     setPrinting(true)
@@ -325,13 +357,13 @@ export function AutomatedFormModal({ caseId, slug, open, onOpenChange }: Props) 
                         <p className="text-[11px] text-gray-500 mt-0.5">{section.descriptionEs}</p>
                       </div>
                       <span className="text-[10px] text-gray-400 flex-shrink-0">
-                        {collapsed ? 'Mostrar' : 'Ocultar'} ({section.fields.length})
+                        {collapsed ? 'Mostrar' : 'Ocultar'} ({section.fields.filter(isFieldVisible).length})
                       </span>
                     </button>
 
                     {!collapsed && (
                       <div className="border-t px-4 py-4 space-y-3">
-                        {section.fields.map((f) => (
+                        {section.fields.filter(isFieldVisible).map((f) => (
                           <FieldRow
                             key={f.semanticKey}
                             field={f}
@@ -393,6 +425,28 @@ function FieldRow({
   onReset: () => void
 }) {
   const isOverridden = prefillValue !== undefined && prefillValue !== value && value !== undefined
+
+  if (field.type === 'select') {
+    const text = (value as string) ?? ''
+    return (
+      <div>
+        <FieldLabel field={field} isOverridden={isOverridden} onReset={onReset} />
+        <Select value={text} onValueChange={(v) => onChange(v)}>
+          <SelectTrigger id={`f-${field.semanticKey}`} className="text-xs h-9">
+            <SelectValue placeholder="Selecciona una opción" />
+          </SelectTrigger>
+          <SelectContent>
+            {(field.options ?? []).map((opt) => (
+              <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                {opt.labelEs}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {field.helpEs && <p className="text-[10px] text-gray-500 mt-0.5">{field.helpEs}</p>}
+      </div>
+    )
+  }
 
   if (field.type === 'checkbox') {
     const checked = value === true || value === 'true' || value === 'Yes' || value === 'on'
