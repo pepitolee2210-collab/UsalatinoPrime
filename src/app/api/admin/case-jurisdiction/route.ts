@@ -3,9 +3,40 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { resolveClientLocation } from '@/lib/legal/resolve-client-location'
 import { runJurisdictionResearchSync } from '@/lib/legal/trigger-research-async'
+import { getInjectedFormsForState, mergeWithInjectedForms } from '@/lib/legal/automated-forms-registry'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('case-jurisdiction')
+
+/**
+ * Enriquece la fila cacheada de jurisdicción con los formularios del registry
+ * que aplican al estado, sin tocar la BD. Permite que casos investigados ANTES
+ * de que un formulario se automatizara empiecen a mostrar los botones "Abrir
+ * formulario" + "Imprimir" inmediatamente, sin re-research costoso.
+ *
+ * Es runtime-only: la fila en BD queda intacta. Cuando se haga re-investigar,
+ * la IA registrará los slugs nativamente (vía SLUG_CATALOG en su prompt).
+ */
+function enrichWithRegistryForms<T extends { state_code?: string | null; intake_required_forms?: unknown; required_forms?: unknown } | null>(
+  row: T
+): T {
+  if (!row) return row
+  const stateCode = row.state_code ?? null
+  const intakeInjected = getInjectedFormsForState(stateCode, 'intake')
+  const meritsInjected = getInjectedFormsForState(stateCode, 'merits')
+
+  return {
+    ...row,
+    intake_required_forms: mergeWithInjectedForms(
+      (row.intake_required_forms as Parameters<typeof mergeWithInjectedForms>[0]) ?? [],
+      intakeInjected
+    ),
+    required_forms: mergeWithInjectedForms(
+      (row.required_forms as Parameters<typeof mergeWithInjectedForms>[0]) ?? [],
+      meritsInjected
+    ),
+  } as T
+}
 
 // El research corre SÍNCRONO en este handler porque QStash y after() en
 // Vercel resultaron poco fiables para esta carga (deployment protection,
@@ -61,12 +92,12 @@ export async function GET(req: NextRequest) {
   // Cualquier row 'completed' o 'pending' la devolvemos tal cual.
   // 'failed' permite retry vía ?research=true.
   if (cached && cached.research_status !== 'failed') {
-    return NextResponse.json({ jurisdiction: cached, clientLocation: location, cached: true })
+    return NextResponse.json({ jurisdiction: enrichWithRegistryForms(cached), clientLocation: location, cached: true })
   }
 
   if (!researchRequested) {
     return NextResponse.json({
-      jurisdiction: cached ?? null,
+      jurisdiction: cached ? enrichWithRegistryForms(cached) : null,
       clientLocation: location,
       cached: Boolean(cached),
       reason: cached ? 'previous_research_failed' : 'no_cache_research_not_triggered',
@@ -87,7 +118,7 @@ export async function GET(req: NextRequest) {
   const final = await readCachedRow(service, caseId)
 
   return NextResponse.json({
-    jurisdiction: final,
+    jurisdiction: enrichWithRegistryForms(final),
     clientLocation: location,
     cached: false,
   })
@@ -128,7 +159,7 @@ export async function POST(req: NextRequest) {
   if (!force) {
     const cached = await readCachedRow(service, caseId)
     if (cached && cached.research_status === 'completed') {
-      return NextResponse.json({ jurisdiction: cached, clientLocation: location, cached: true })
+      return NextResponse.json({ jurisdiction: enrichWithRegistryForms(cached), clientLocation: location, cached: true })
     }
   }
 
@@ -137,7 +168,7 @@ export async function POST(req: NextRequest) {
   const final = await readCachedRow(service, caseId)
 
   return NextResponse.json({
-    jurisdiction: final,
+    jurisdiction: enrichWithRegistryForms(final),
     clientLocation: location,
     cached: false,
   })

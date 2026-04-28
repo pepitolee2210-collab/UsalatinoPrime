@@ -294,6 +294,100 @@ export function isSlugAutomated(slug: string | null | undefined): boolean {
 }
 
 // ──────────────────────────────────────────────────────────────────
+// Auto-injection runtime para casos cacheados
+// ──────────────────────────────────────────────────────────────────
+
+/**
+ * Forma genérica de RequiredForm — duplica la del research para evitar import
+ * circular (research-jurisdiction depende del registry).
+ */
+interface InjectedRequiredForm {
+  name: string
+  url_official: string
+  description_es: string
+  is_mandatory: boolean
+  slug: string
+}
+
+/**
+ * Devuelve los formularios del registry que aplican a un (stateCode, packetType)
+ * dado, en formato `RequiredForm`. Pensado para INYECTARSE en el response de
+ * `case-jurisdiction` cuando el cache es viejo y la IA aún no etiquetó los slugs.
+ *
+ * - `stateCode`: código de estado en mayúsculas (ej. 'TX'). Si la definition
+ *   tiene `states: []` se considera multi-estado y se inyecta siempre.
+ * - `packetType`: 'intake' o 'merits'. Determina si va a `intake_required_forms`
+ *   o `required_forms`.
+ *
+ * No toca BD: el merge se hace en memoria antes de devolver al cliente.
+ */
+export function getInjectedFormsForState(
+  stateCode: string | null | undefined,
+  packetType: 'intake' | 'merits'
+): InjectedRequiredForm[] {
+  if (!stateCode) return []
+  const upper = stateCode.toUpperCase()
+  const out: InjectedRequiredForm[] = []
+  for (const def of Object.values(AUTOMATED_FORMS)) {
+    if (def.packetType !== packetType) continue
+    const matchesState = def.states.length === 0 || def.states.includes(upper)
+    if (!matchesState) continue
+    out.push({
+      name: def.formName,
+      // El "url_official" del registry apunta al PDF en blanco interno (servido
+      // por Next desde public/forms/). Si la fila cacheada de la BD trae el
+      // url_official externo (texaslawhelp.org/etc.), ese gana — el merge lo
+      // preserva. Esto es solo un fallback para forms inyectados de novo.
+      url_official: def.pdfPublicPath,
+      description_es: def.formDescriptionEs,
+      is_mandatory: true,
+      slug: def.slug,
+    })
+  }
+  return out
+}
+
+/**
+ * Mergea los formularios inyectados con la lista existente, evitando duplicados
+ * y enriqueciendo entries existentes con su slug si la IA no los etiquetó.
+ *
+ * Reglas:
+ * 1. Si una entry existente matchea por `detectByName` (o por `slug` ya
+ *    presente), se enriquece con el slug del registry — `url_official` y
+ *    `description_es` originales se preservan (la IA suele tener mejores
+ *    metadatos que el registry).
+ * 2. Si un form del registry no está en la lista, se inyecta como entry nueva.
+ * 3. Filas que no matchean el registry quedan intactas.
+ */
+export function mergeWithInjectedForms<
+  T extends { name: string; url_official?: string; description_es?: string; is_mandatory?: boolean; slug?: string | null }
+>(
+  existing: T[] | null | undefined,
+  injected: InjectedRequiredForm[]
+): (T | InjectedRequiredForm)[] {
+  const list: (T | InjectedRequiredForm)[] = []
+  const matchedSlugs = new Set<string>()
+
+  for (const e of existing ?? []) {
+    const slug = resolveAutomatedFormSlug(e)
+    if (slug) {
+      matchedSlugs.add(slug)
+      list.push({ ...e, slug })
+    } else {
+      list.push(e)
+    }
+  }
+
+  for (const inj of injected) {
+    if (!matchedSlugs.has(inj.slug)) {
+      list.push(inj)
+    }
+  }
+
+  return list
+}
+
+// ──────────────────────────────────────────────────────────────────
 // Catálogo dinámico para el prompt de la IA de research
 // ──────────────────────────────────────────────────────────────────
 
