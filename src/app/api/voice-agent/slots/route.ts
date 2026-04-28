@@ -54,31 +54,46 @@ export async function GET(request: NextRequest) {
   if (consultantIds.length > 0) {
     const { data: availability } = await supabase
       .from('consultant_availability')
-      .select('day_of_week, start_hour, end_hour, is_available')
+      .select('day_of_week, start_hour, end_hour, is_available, time_blocks')
       .in('consultant_id', consultantIds)
       .eq('is_available', true)
 
     if (availability && availability.length > 0) {
-      // Unión de disponibilidades por día (si un día tiene 2 consultoras, el rango se extiende)
-      const byDay = new Map<number, { start: number; end: number }>()
+      // Unión de bloques por día. Cada consultora puede tener N bloques
+      // (ej. 9-12 + 15-18) — los unimos todos por día y luego, por simplicidad
+      // del slot generator, calculamos el envelope total. El generator hará
+      // el split fino con time_blocks dentro del config.
+      type Block = { start: number; end: number }
+      const blocksByDay = new Map<number, Block[]>()
+
       for (const row of availability) {
         const day = row.day_of_week as number
-        const start = row.start_hour as number
-        const end = row.end_hour as number
-        const existing = byDay.get(day)
-        if (!existing) {
-          byDay.set(day, { start, end })
-        } else {
-          byDay.set(day, { start: Math.min(existing.start, start), end: Math.max(existing.end, end) })
-        }
+        const tbRaw = (row as { time_blocks?: Array<{ start_hour: number; end_hour: number }> }).time_blocks
+        const blocks: Block[] = (tbRaw && tbRaw.length > 0)
+          ? tbRaw.map(b => ({ start: b.start_hour, end: b.end_hour }))
+          : [{ start: row.start_hour as number, end: row.end_hour as number }]
+        const list = blocksByDay.get(day) ?? []
+        list.push(...blocks)
+        blocksByDay.set(day, list)
       }
 
-      config = Array.from(byDay.entries()).map(([day_of_week, r]) => ({
-        day_of_week,
-        start_hour: r.start,
-        end_hour: r.end,
-        is_available: true,
-      }))
+      config = Array.from(blocksByDay.entries()).map(([day_of_week, blocks]) => {
+        const sorted = [...blocks].sort((a, b) => a.start - b.start)
+        // Merge bloques solapados (la unión entre consultoras puede solaparse)
+        const merged: Block[] = []
+        for (const b of sorted) {
+          const last = merged[merged.length - 1]
+          if (last && b.start <= last.end) last.end = Math.max(last.end, b.end)
+          else merged.push({ ...b })
+        }
+        return {
+          day_of_week,
+          start_hour: merged[0].start,
+          end_hour: merged[merged.length - 1].end,
+          is_available: true,
+          time_blocks: merged.map(b => ({ start_hour: b.start, end_hour: b.end })),
+        }
+      })
 
       // Bloqueos puntuales
       const { data: blocksData } = await supabase
