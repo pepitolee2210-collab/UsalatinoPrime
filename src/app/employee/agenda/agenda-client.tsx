@@ -4,15 +4,18 @@ import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { Loader2, CalendarDays, Plus, Trash2, Clock, Info } from 'lucide-react'
+import { Loader2, CalendarDays, Plus, Trash2, Clock, Info, X } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
-interface AvailabilityRow {
-  id?: string
-  day_of_week: number
+interface TimeBlock {
   start_hour: number
   end_hour: number
+}
+
+interface AvailabilityRow {
+  day_of_week: number
+  time_blocks: TimeBlock[]
   is_available: boolean
 }
 
@@ -25,10 +28,12 @@ interface BlockRow {
 
 const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
+// Bloque por defecto cuando se activa un día (1 bloque 9-18)
+const defaultBlocks = (): TimeBlock[] => [{ start_hour: 9, end_hour: 18 }]
+
 const DEFAULT_WEEK: AvailabilityRow[] = Array.from({ length: 7 }).map((_, day) => ({
   day_of_week: day,
-  start_hour: day === 0 || day === 6 ? 0 : 9,
-  end_hour: day === 0 || day === 6 ? 0 : 18,
+  time_blocks: day === 0 || day === 6 ? [] : defaultBlocks(),
   is_available: day !== 0 && day !== 6,
 }))
 
@@ -49,9 +54,20 @@ export function AgendaClient() {
       if (!res.ok) throw new Error()
       const data = await res.json()
 
+      type RawRow = { day_of_week: number; start_hour: number; end_hour: number; time_blocks?: TimeBlock[] | null }
+      const rawList = (data.availability as RawRow[]) || []
+
       const mapped: AvailabilityRow[] = DEFAULT_WEEK.map(def => {
-        const existing = (data.availability as AvailabilityRow[]).find(a => a.day_of_week === def.day_of_week)
-        return existing ? { ...existing, is_available: true } : { ...def, is_available: false }
+        const existing = rawList.find(a => a.day_of_week === def.day_of_week)
+        if (!existing) return { ...def, is_available: false, time_blocks: [] }
+        const blocks = (existing.time_blocks && existing.time_blocks.length > 0)
+          ? existing.time_blocks
+          : [{ start_hour: existing.start_hour, end_hour: existing.end_hour }]
+        return {
+          day_of_week: def.day_of_week,
+          is_available: true,
+          time_blocks: blocks,
+        }
       })
       setAvailability(mapped)
       setBlocks(data.blocks || [])
@@ -64,8 +80,53 @@ export function AgendaClient() {
 
   useEffect(() => { load() }, [load])
 
-  function updateDay(idx: number, patch: Partial<AvailabilityRow>) {
-    setAvailability(prev => prev.map((row, i) => (i === idx ? { ...row, ...patch } : row)))
+  function toggleDay(idx: number, available: boolean) {
+    setAvailability(prev => prev.map((row, i) => {
+      if (i !== idx) return row
+      return {
+        ...row,
+        is_available: available,
+        time_blocks: available
+          ? (row.time_blocks.length > 0 ? row.time_blocks : defaultBlocks())
+          : [],
+      }
+    }))
+  }
+
+  function updateBlock(dayIdx: number, blockIdx: number, patch: Partial<TimeBlock>) {
+    setAvailability(prev => prev.map((row, i) => {
+      if (i !== dayIdx) return row
+      return {
+        ...row,
+        time_blocks: row.time_blocks.map((b, j) => j === blockIdx ? { ...b, ...patch } : b),
+      }
+    }))
+  }
+
+  function addBlockToDay(dayIdx: number) {
+    setAvailability(prev => prev.map((row, i) => {
+      if (i !== dayIdx) return row
+      // Sugerir un bloque que empiece después del último (máx 22-23)
+      const last = row.time_blocks[row.time_blocks.length - 1]
+      const nextStart = last ? Math.min(last.end_hour + 1, 22) : 9
+      const nextEnd = Math.min(nextStart + 3, 23)
+      return {
+        ...row,
+        time_blocks: [...row.time_blocks, { start_hour: nextStart, end_hour: nextEnd }],
+      }
+    }))
+  }
+
+  function removeBlockFromDay(dayIdx: number, blockIdx: number) {
+    setAvailability(prev => prev.map((row, i) => {
+      if (i !== dayIdx) return row
+      const newBlocks = row.time_blocks.filter((_, j) => j !== blockIdx)
+      // Si era el único bloque, desactivamos el día
+      if (newBlocks.length === 0) {
+        return { ...row, time_blocks: [], is_available: false }
+      }
+      return { ...row, time_blocks: newBlocks }
+    }))
   }
 
   async function saveAvailability() {
@@ -89,7 +150,7 @@ export function AgendaClient() {
     }
   }
 
-  async function addBlock() {
+  async function addPunctualBlock() {
     if (!blockStart || !blockEnd) return toast.error('Fechas requeridas')
     try {
       const res = await fetch('/api/consultant/blocks', {
@@ -111,7 +172,7 @@ export function AgendaClient() {
     }
   }
 
-  async function deleteBlock(id: string) {
+  async function deletePunctualBlock(id: string) {
     if (!confirm('¿Eliminar este bloqueo?')) return
     try {
       const res = await fetch(`/api/consultant/blocks?id=${id}`, { method: 'DELETE' })
@@ -148,53 +209,31 @@ export function AgendaClient() {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-gray-900">Horario semanal</h2>
             <Button size="sm" onClick={saveAvailability} disabled={saving}>
-              {saving ? 'Guardando…' : 'Guardar'}
+              {saving ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> Guardando…</> : 'Guardar'}
             </Button>
           </div>
+
           <div className="rounded-lg bg-blue-50 border border-blue-100 p-3 flex gap-2">
             <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-blue-900">
-              Todas las horas están en tu zona horaria local. Marca solo los días en los que aceptas llamadas.
-            </p>
+            <div className="text-xs text-blue-900 leading-relaxed">
+              <p className="font-semibold mb-0.5">Mountain Time (Utah · El Salvador)</p>
+              <p className="text-blue-800">
+                Las horas se interpretan en horario de las Montañas (UTC-7 / UTC-6 en horario de verano), igual que Utah y El Salvador. Puedes definir varios bloques por día, por ejemplo: 9 a 12, 15 a 18, y 20 a 21.
+              </p>
+            </div>
           </div>
-          <div className="space-y-2">
-            {availability.map((row, idx) => (
-              <div key={idx} className="flex items-center gap-3 py-2 border-b border-gray-100 last:border-b-0">
-                <label className="flex items-center gap-2 w-32 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={row.is_available}
-                    onChange={(e) => updateDay(idx, { is_available: e.target.checked })}
-                    className="w-4 h-4"
-                  />
-                  <span className="font-medium text-gray-700">{DAYS[row.day_of_week]}</span>
-                </label>
-                {row.is_available ? (
-                  <div className="flex items-center gap-2 flex-1">
-                    <select
-                      value={row.start_hour}
-                      onChange={(e) => updateDay(idx, { start_hour: Number(e.target.value) })}
-                      className="rounded-md border border-gray-200 px-2 py-1 text-sm"
-                    >
-                      {Array.from({ length: 24 }).map((_, h) => (
-                        <option key={h} value={h}>{h.toString().padStart(2, '0')}:00</option>
-                      ))}
-                    </select>
-                    <span className="text-sm text-gray-400">a</span>
-                    <select
-                      value={row.end_hour}
-                      onChange={(e) => updateDay(idx, { end_hour: Number(e.target.value) })}
-                      className="rounded-md border border-gray-200 px-2 py-1 text-sm"
-                    >
-                      {Array.from({ length: 24 }).map((_, h) => (
-                        <option key={h + 1} value={h + 1}>{(h + 1).toString().padStart(2, '0')}:00</option>
-                      ))}
-                    </select>
-                  </div>
-                ) : (
-                  <span className="text-sm text-gray-400 flex-1">No disponible</span>
-                )}
-              </div>
+
+          <div className="space-y-3">
+            {availability.map((row, dayIdx) => (
+              <DayRow
+                key={dayIdx}
+                row={row}
+                dayIdx={dayIdx}
+                onToggleDay={toggleDay}
+                onUpdateBlock={updateBlock}
+                onAddBlock={addBlockToDay}
+                onRemoveBlock={removeBlockFromDay}
+              />
             ))}
           </div>
         </CardContent>
@@ -247,7 +286,7 @@ export function AgendaClient() {
               </label>
               <div className="flex gap-2 justify-end">
                 <Button size="sm" variant="outline" onClick={() => setShowBlockForm(false)}>Cancelar</Button>
-                <Button size="sm" onClick={addBlock}>Añadir</Button>
+                <Button size="sm" onClick={addPunctualBlock}>Añadir</Button>
               </div>
             </div>
           )}
@@ -268,7 +307,7 @@ export function AgendaClient() {
                       {b.reason && <p className="text-xs text-gray-500">{b.reason}</p>}
                     </div>
                   </div>
-                  <Button size="icon" variant="ghost" onClick={() => deleteBlock(b.id)}>
+                  <Button size="icon" variant="ghost" onClick={() => deletePunctualBlock(b.id)}>
                     <Trash2 className="w-4 h-4 text-red-500" />
                   </Button>
                 </div>
@@ -277,6 +316,83 @@ export function AgendaClient() {
           </div>
         </CardContent>
       </Card>
+    </div>
+  )
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Fila por día con N bloques editables
+// ──────────────────────────────────────────────────────────────────
+function DayRow({
+  row, dayIdx, onToggleDay, onUpdateBlock, onAddBlock, onRemoveBlock,
+}: {
+  row: AvailabilityRow
+  dayIdx: number
+  onToggleDay: (idx: number, on: boolean) => void
+  onUpdateBlock: (dayIdx: number, blockIdx: number, patch: Partial<TimeBlock>) => void
+  onAddBlock: (dayIdx: number) => void
+  onRemoveBlock: (dayIdx: number, blockIdx: number) => void
+}) {
+  return (
+    <div className="rounded-lg border border-gray-100 px-3 py-2.5">
+      <div className="flex items-start gap-3">
+        <label className="flex items-center gap-2 w-32 text-sm flex-shrink-0 pt-1.5">
+          <input
+            type="checkbox"
+            checked={row.is_available}
+            onChange={(e) => onToggleDay(dayIdx, e.target.checked)}
+            className="w-4 h-4"
+          />
+          <span className="font-medium text-gray-700">{DAYS[row.day_of_week]}</span>
+        </label>
+
+        {!row.is_available ? (
+          <span className="text-sm text-gray-400 flex-1 pt-1.5">No disponible</span>
+        ) : (
+          <div className="flex-1 space-y-1.5">
+            {row.time_blocks.map((block, blockIdx) => (
+              <div key={blockIdx} className="flex items-center gap-2">
+                <select
+                  value={block.start_hour}
+                  onChange={(e) => onUpdateBlock(dayIdx, blockIdx, { start_hour: Number(e.target.value) })}
+                  className="rounded-md border border-gray-200 px-2 py-1 text-sm"
+                >
+                  {Array.from({ length: 24 }).map((_, h) => (
+                    <option key={h} value={h}>{h.toString().padStart(2, '0')}:00</option>
+                  ))}
+                </select>
+                <span className="text-sm text-gray-400">a</span>
+                <select
+                  value={block.end_hour}
+                  onChange={(e) => onUpdateBlock(dayIdx, blockIdx, { end_hour: Number(e.target.value) })}
+                  className="rounded-md border border-gray-200 px-2 py-1 text-sm"
+                >
+                  {Array.from({ length: 24 }).map((_, h) => (
+                    <option key={h + 1} value={h + 1}>{(h + 1).toString().padStart(2, '0')}:00</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => onRemoveBlock(dayIdx, blockIdx)}
+                  title="Eliminar este bloque"
+                  className="w-7 h-7 rounded-md hover:bg-red-50 flex items-center justify-center text-gray-400 hover:text-red-600 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => onAddBlock(dayIdx)}
+              className="text-xs text-blue-600 hover:text-blue-800 font-medium inline-flex items-center gap-1 mt-1"
+            >
+              <Plus className="w-3 h-3" />
+              Agregar otro bloque
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
