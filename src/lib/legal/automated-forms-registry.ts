@@ -95,6 +95,22 @@ import {
 } from './motion-sij-findings-form-schema'
 import { buildMotionSijPrefilledValues } from './motion-sij-findings-prefill'
 
+import {
+  PDF_PUBLIC_PATH as AFFIDAVIT_SIJ_PDF_PUBLIC,
+  PDF_DISK_PATH as AFFIDAVIT_SIJ_PDF_DISK,
+  PDF_SHA256 as AFFIDAVIT_SIJ_SHA,
+  SCHEMA_VERSION as AFFIDAVIT_SIJ_VERSION,
+  FORM_SLUG as AFFIDAVIT_SIJ_SLUG,
+  FORM_NAME as AFFIDAVIT_SIJ_NAME,
+  FORM_DESCRIPTION_ES as AFFIDAVIT_SIJ_DESC,
+  FORM_SECTIONS as AFFIDAVIT_SIJ_SECTIONS,
+  HARDCODED_VALUES as AFFIDAVIT_SIJ_HARDCODED,
+  REQUIRED_FOR_PRINT as AFFIDAVIT_SIJ_REQUIRED,
+  FIELD_BY_KEY as AFFIDAVIT_SIJ_FIELD_BY_KEY,
+  affidavitSijFormSchema as AFFIDAVIT_SIJ_ZOD_SCHEMA,
+} from './affidavit-sij-form-schema'
+import { buildAffidavitSijPrefilledValues } from './affidavit-sij-prefill'
+
 // ──────────────────────────────────────────────────────────────────
 // Tipos públicos del registry
 // ──────────────────────────────────────────────────────────────────
@@ -315,6 +331,42 @@ const MOTION_SIJ_DEFINITION: AutomatedFormDefinition = {
   },
 }
 
+const AFFIDAVIT_SIJ_DEFINITION: AutomatedFormDefinition = {
+  slug: AFFIDAVIT_SIJ_SLUG,
+  formName: AFFIDAVIT_SIJ_NAME,
+  formDescriptionEs: AFFIDAVIT_SIJ_DESC,
+  states: ['TX'],
+  packetType: 'merits',
+  templateType: 'docx-template',
+  pdfPublicPath: AFFIDAVIT_SIJ_PDF_PUBLIC,
+  pdfDiskPath: AFFIDAVIT_SIJ_PDF_DISK,
+  pdfSha256: AFFIDAVIT_SIJ_SHA,
+  schemaVersion: AFFIDAVIT_SIJ_VERSION,
+  sections: AFFIDAVIT_SIJ_SECTIONS as AutomatedFormDefinition['sections'],
+  hardcodedValues: AFFIDAVIT_SIJ_HARDCODED,
+  requiredForPrint: AFFIDAVIT_SIJ_REQUIRED,
+  fieldByKey: AFFIDAVIT_SIJ_FIELD_BY_KEY as AutomatedFormDefinition['fieldByKey'],
+  zodSchema: AFFIDAVIT_SIJ_ZOD_SCHEMA,
+  buildPrefilledValues: async (caseId, service) => {
+    const raw = await buildAffidavitSijPrefilledValues(caseId, service)
+    const out: Record<string, string | boolean | null | undefined> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      if (v === null || v === undefined || typeof v === 'string' || typeof v === 'boolean') {
+        out[k] = v
+      }
+    }
+    return out
+  },
+  detectByName: (name) => {
+    const n = name.toLowerCase()
+    return (
+      n.includes('affidavit') &&
+      (n.includes('sij') || n.includes('special immigrant juvenile')) &&
+      n.includes('support')
+    )
+  },
+}
+
 // ──────────────────────────────────────────────────────────────────
 // Map público
 // ──────────────────────────────────────────────────────────────────
@@ -328,6 +380,7 @@ export const AUTOMATED_FORMS: Record<string, AutomatedFormDefinition> = {
   [SAPCR_AFF_100_SLUG]: SAPCR_AFF_100_DEFINITION,
   [PR_GEN_116_SLUG]: PR_GEN_116_DEFINITION,
   [MOTION_SIJ_SLUG]: MOTION_SIJ_DEFINITION,
+  [AFFIDAVIT_SIJ_SLUG]: AFFIDAVIT_SIJ_DEFINITION,
 }
 
 /** Slugs registrados (para validación en rutas dinámicas). */
