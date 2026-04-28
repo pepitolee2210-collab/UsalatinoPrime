@@ -989,3 +989,8 @@
   90% { opacity: 1; }
   100% { transform: translateY(-100vh) translateX(50px); opacity: 0; }
 }
+/* Voice input — shimmer del texto "Transcribiendo tu voz…" */
+@keyframes shimmer {
+  0% { background-position: -200% 50%; }
+  100% { background-position: 200% 50%; }
+}
