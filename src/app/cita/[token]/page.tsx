@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/service'
 import { XCircle } from 'lucide-react'
 import { ClientPortal } from './client-portal'
+import { VoiceProvider } from '@/components/voice/voice-context'
 import type { Appointment } from '@/types/database'
 
 export default async function CitaPage({ params }: { params: Promise<{ token: string }> }) {
@@ -99,6 +100,7 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
       </div>
 
       <div className="max-w-2xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
+        <VoiceProvider token={token}>
         <ClientPortal
           token={token}
           clientId={tokenData.client_id}
@@ -119,6 +121,7 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
           minorData={minorData}
           hasSignedContract={hasSignedContract}
         />
+        </VoiceProvider>
       </div>
     </div>
   )

@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { ChevronDown, ChevronUp, UserPlus, Trash2, User } from 'lucide-react'
 import { AIImproveButton } from '@/components/ai-improve-button'
 import { FieldLabel, LegalFieldInput, ValidatedInput } from './form-components'
+import { VoiceTextarea } from '@/components/voice/VoiceTextarea'
+import { useVoiceToken } from '@/components/voice/voice-context'
 
 function TInput({ value, onChange, placeholder, type = 'text' }: {
   value: string; onChange: (v: string) => void; placeholder?: string; type?: string
@@ -17,6 +19,21 @@ function TInput({ value, onChange, placeholder, type = 'text' }: {
 function TArea({ value, onChange, placeholder, rows = 4 }: {
   value: string; onChange: (v: string) => void; placeholder?: string; rows?: number
 }) {
+  // Para campos narrativos largos (rows >= 4), permitir grabación de voz +
+  // transcripción automática. El cliente puede dictar en lugar de escribir.
+  const token = useVoiceToken()
+  if (rows >= 4 && token) {
+    return (
+      <VoiceTextarea
+        token={token}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        rows={rows}
+        micAccentClass="text-[#9a6500] hover:text-[#F2A900]"
+      />
+    )
+  }
   return (
     <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={rows}
       className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40 resize-none" />
