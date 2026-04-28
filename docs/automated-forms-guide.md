@@ -4,7 +4,11 @@
 >
 > **Resultado esperado al seguir esta guía**: los admins del sistema verán los botones **"Abrir formulario"** y **"Imprimir"** en la tarjeta del formulario en el panel `Jurisdicción detectada` de cualquier caso del estado correspondiente. El modal precarga datos del cliente desde la BD; el botón Imprimir descarga un PDF rellenado, lo archiva en Storage + `documents` + `case_form_instances` + `case_activity`.
 >
-> **Estado a 2026-04-28**: tres formularios automatizados en producción (`tx-fm-sapcr-100`, `tx-fm-sapcr-aff-100`, `tx-pr-gen-116`). La arquitectura está estabilizada — añadir un nuevo formulario NO requiere tocar UI, endpoints, ni schemas de BD.
+> **Estado a 2026-04-28**: cuatro formularios automatizados en producción —
+> tres AcroForm PDF (`tx-fm-sapcr-100`, `tx-fm-sapcr-aff-100`, `tx-pr-gen-116`)
+> y uno DOCX template (`tx-dfps-sij-findings-motion`). La arquitectura está
+> estabilizada — añadir un nuevo formulario NO requiere tocar UI, endpoints,
+> ni schemas de BD, sin importar si es AcroForm o DOCX.
 
 ---
 
@@ -118,16 +122,38 @@ HTTP 200 application/pdf descarga al cliente
 
 ## 3. Receta paso a paso
 
-### 3.1 Obtener el PDF oficial
+### 3.1 Obtener el documento oficial y elegir `templateType`
 
 Antes de automatizar, asegúrate de tener:
-- El PDF oficial del estado correspondiente, descargado de su fuente `.gov`/`.us` autoritativa.
-- Confirmar el slug que vas a usar. Convención: `<state-code>-<form-code>` en minúsculas, separadores con guión. Ejemplos: `tx-fm-sapcr-100`, `tx-pr-gen-116`, `ca-gc-210`, `ny-uj-145`.
+- El archivo oficial del estado/agencia correspondiente, descargado de su fuente `.gov`/`.us` autoritativa.
+- Confirmar el slug que vas a usar. Convención: `<state-code>-<form-code>` en minúsculas, separadores con guión. Ejemplos: `tx-fm-sapcr-100`, `tx-pr-gen-116`, `tx-dfps-sij-findings-motion`, `ca-gc-210`, `ny-uj-145`.
 - Confirmar el `packetType`: `'intake'` (radicación inicial / coversheet) o `'merits'` (sustantivo).
+- **Elegir el `templateType` antes de continuar**:
+
+| Inspección del archivo | Diagnóstico | `templateType` | Continuación |
+|---|---|---|---|
+| `.pdf` que abre en Acrobat → "Prepare Form" muestra fields rellenables (text boxes, checkboxes con on-values) | AcroForm estándar | `'acroform'` (default — puedes omitirlo) | §3.2 → §3.4 |
+| `.pdf` con form fields visibles pero `pdf-lib.getForm().getFields()` devuelve 0 + warnings `Invalid object ref` | AcroForm con object streams comprimidos + encryption (PR-GEN-116) | `'acroform'` | §3.2 (normalize con mupdf primero) → §3.4 |
+| `.pdf` escaneado o "PDF impreso" sin fields rellenables | Imagen, no AcroForm | — | Convertir a docx con Acrobat o pasarlo a Word; luego seguir la ruta `docx-template` |
+| `.docx` (Microsoft Word 2007+) con texto narrativo, placeholders tipo `[NAME]`, `[DATE]`, `[COUNTRY]`, `_____` | Template Word narrativo (DFPS Section 13, etc.) | `'docx-template'` | §7.2 (tokenizar) → §3.4 |
+| `.docx` con `<w:fldChar>` o `<w:sdt>` (Content Controls) | Word Form interactivo | `'docx-template'` con tokenize ad-hoc del Content Control | §7.2 + leer `<w:sdtContent>` para extraer ids → §3.4 |
+
+**Verificación rápida sin abrir Acrobat**:
 
 ```bash
-# Coloca el PDF en su sitio canónico
+# Un PDF — ¿tiene AcroForm con fields legibles?
+node -e "const{PDFDocument}=require('pdf-lib');require('fs').promises.readFile('archivo.pdf').then(b=>PDFDocument.load(b,{ignoreEncryption:true})).then(d=>console.log('Fields:',d.getForm().getFields().length))"
+
+# Un DOCX — ¿qué tipo de placeholders tiene?
+unzip -p archivo.docx word/document.xml | grep -oE '\[[A-Z][A-Z /]+\]|<w:fldChar [^>]+>|<w:sdt>' | sort -u
+```
+
+```bash
+# Coloca el archivo en su sitio canónico
+# Para AcroForm:
 cp /path/to/original.pdf repo/public/forms/{{slug}}.pdf
+# Para DOCX template:
+cp /path/to/original.docx repo/public/forms/{{slug}}.original.docx
 ```
 
 ### 3.2 (Si aplica) Normalizar el PDF
@@ -422,6 +448,13 @@ const {{SLUG_UPPER}}_DEFINITION: AutomatedFormDefinition = {
   formDescriptionEs: {{SLUG_UPPER}}_DESC,
   states: ['{{STATE_CODE}}'],   // ej. ['TX']. Vacío [] = multi-estado/federal.
   packetType: 'intake',          // o 'merits'
+  templateType: 'acroform',      // OBLIGATORIO si es DOCX → 'docx-template'.
+                                 // Default es 'acroform' — puedes omitir el campo
+                                 // si el archivo en disco es un PDF AcroForm.
+                                 // El endpoint /print ramifica al motor correcto
+                                 // automáticamente; las 3 vías de detección
+                                 // (slug nativo IA, detectByName, injection
+                                 // runtime) funcionan idénticamente para ambos.
   pdfPublicPath: {{SLUG_UPPER}}_PDF_PUBLIC,
   pdfDiskPath: {{SLUG_UPPER}}_PDF_DISK,
   pdfSha256: {{SLUG_UPPER}}_SHA,
@@ -643,6 +676,43 @@ Ejemplo: `pr-gen-116-prefill.ts:121-163` lee `petitioner_mailing_address` del SA
 | Estado matchea, jurisdicción NUEVA (post-deploy) | (A) slug nativo de la IA | ✓ Botones aparecen |
 | Estado NO matchea | — | ✓ Sin botones (correcto) |
 
+### 6.4 Las 3 garantías aplican IGUAL a `docx-template`
+
+> Las garantías de §6.1, §6.2 y §6.3 son **agnósticas al `templateType`**. Una
+> definition con `templateType: 'docx-template'` es indistinguible de
+> `'acroform'` para los helpers de auto-detección y auto-injection del
+> registry: `getInjectedFormsForState`, `mergeWithInjectedForms`,
+> `resolveAutomatedFormSlug`, y `getRegisteredSlugCatalogMarkdown`.
+
+**Mecanismo**: ningún chequeo en `automated-forms-registry.ts:391-455` filtra
+por `def.templateType`. Sólo se filtra por `packetType` y `states`. El
+ramificado entre `fillAcroForm` vs `fillDocxTemplate` ocurre exclusivamente en
+`/api/admin/case-forms/[slug]/print` *después* de que el form ya fue
+seleccionado por el frontend.
+
+**Validado en producción** (2026-04-28):
+- Caso `120a16d4-…` (Jennifer Velasquez, Houston Harris County): la
+  jurisdicción cacheada NO listaba el Motion. Tras registrar
+  `tx-dfps-sij-findings-motion` con `states: ['TX']`, la tarjeta apareció
+  automáticamente con los 3 botones y el modal mostró prefill de Jennifer.
+- Caso `2f42535a-…` (Ana Martinez, Tarrant County TX): la jurisdicción
+  cacheada NO listaba el Motion. Sin tocar BD, la tarjeta aparece con los 3
+  botones y el modal abre con prefill de **Ana** (`Petitioner Ana lisseth
+  lipe de Martinez, Pro Se`, `child_caption_name: Dominic Adonay Martinez
+  lipe`, `county_name: Tarrant`). Click Imprimir descarga el `.docx`
+  rellenado con datos de Ana, no de Jennifer.
+
+**Implicación para futuras automatizaciones DOCX**:
+- Para añadir un nuevo template DFPS (ej. `Affidavit to Support SIJ Motion`),
+  registrar con `templateType: 'docx-template'` + `states: ['TX']` es
+  suficiente. Todos los casos TX existentes verán los botones inmediatamente.
+- Para forms multi-estado (templates federales, USCIS, etc.), usar
+  `states: []` (interpretado como "todos los estados"). Funciona para
+  `'acroform'` y `'docx-template'` por igual.
+- Para forms de un estado nuevo (ej. CA `gc-210` o NY `uj-145`), simplemente
+  `states: ['CA']` o `states: ['NY']`. Los casos del estado correcto reciben
+  los botones; los demás no, sin filtros adicionales.
+
 ---
 
 ## 7. Catálogo actual
@@ -727,6 +797,9 @@ Ejemplos vivos para inspirar la próxima automatización:
 | PDF impreso tiene campos vacíos donde sí había datos | El `pdfFieldName` no matchea el nombre real del AcroForm | Revisa el JSON del paso 3.3 — los nombres son case-sensitive, espacios cuentan |
 | El admin marcó un campo virtual y al imprimir NO se reflejó en el PDF | `processForPrint` no se asignó en el registry, o el mapeo `case_type_cb_X` no existe en el schema | Verifica que `processForPrint: nuestraFn` esté en el `*_DEFINITION` y el checkbox tenga `pdfFieldName` correcto |
 | Casos cacheados no muestran botones tras el deploy | Cliente apuntando a un deploy viejo | Verifica `X-Vercel-Id` en headers; espera ~60s post-push |
+| `tokenize-<slug>.mjs` falla con "Placeholders no encontrados" para un texto que SÍ está en el .docx | Word fragmentó el placeholder en múltiples `<w:r>` runs (ej. `[NAME]` quedó como `[`+`NAME`+`]`) | Abrir el .docx en Word, editar levemente (cambiar un espacio) y re-guardar — Word consolida runs adyacentes con mismo formato. Si persiste, ajustar el script para hacer find-replace cross-tag con regex que tolere `</w:t>...<w:t>` entre tokens |
+| Otros casos del mismo estado no muestran los botones del nuevo `docx-template` | Browser cache o deploy aún propagándose | El injection runtime es server-side (`enrichWithRegistryForms` en `/api/admin/case-jurisdiction`), basta hard refresh. Si persiste, verificar que `def.states` incluya el `state_code` correcto en mayúsculas |
+| El `.docx` descargado en producción tiene tokens `{{key}}` sin reemplazar visibles para el juez | El semanticKey del schema no matchea el nombre del token en el `.docx` tokenizado | Inspeccionar `unzip -p public/forms/<slug>.docx word/document.xml \| grep -oE '\{\{[a-z_]+\}\}'` y confirmar que cada token corresponda a un `pdfFieldName` (o `semanticKey` cuando `pdfFieldName: null`) en el schema |
 
 ---
 
@@ -762,6 +835,28 @@ import('./src/lib/legal/automated-forms-registry.ts').then(m =>
 ```
 
 (Funciona si tu `package.json` tiene `"type": "module"` — si no, usa tsx).
+
+### Detectar si un placeholder DOCX está fragmentado en runs
+
+```bash
+# Si tokenize-<slug>.mjs falla con "placeholder no encontrado", verifica si está
+# fragmentado en múltiples <w:r> runs:
+unzip -p public/forms/<slug>.original.docx word/document.xml \
+  | grep -oE "<w:t[^>]*>[^<]*\[NAME\][^<]*</w:t>" | head -3
+
+# Si NO devuelve nada, el placeholder está fragmentado — re-guarda el .docx
+# en Word (consolida runs) o usa un find-replace cross-tag.
+```
+
+### Ver tokens activos en un .docx tokenizado (post-tokenize)
+
+```bash
+unzip -p public/forms/<slug>.docx word/document.xml \
+  | grep -oE '\{\{[a-zA-Z0-9_]+\}\}' | sort -u
+```
+
+Útil para confirmar que tu `tokenize-<slug>.mjs` cubrió todos los placeholders
+y que cada token del .docx tiene un `FieldSpec` correspondiente en el schema.
 
 ---
 
