@@ -39,26 +39,76 @@ interface ChildEntry {
 }
 
 interface EmploymentEntry {
-  emp_employer: string; emp_address: string; emp_city: string; emp_state: string;
-  emp_occupation: string; emp_from: string; emp_to: string;
+  emp_employer: string;        // Nombre de la empresa
+  emp_supervisor: string;      // Nombre del jefe / supervisor
+  emp_occupation: string;      // Cargo
+  emp_address: string;
+  emp_country: string;
+  emp_city: string;
+  emp_state: string;
+  emp_zip: string;
+  emp_from: string;            // dd/mm/aaaa
+  emp_to: string;              // dd/mm/aaaa o "actualidad"
 }
 
 interface EducationEntry {
-  edu_school: string; edu_type: string; edu_address: string; edu_from: string; edu_to: string;
+  edu_school: string;          // Nombre del colegio / institucion
+  edu_type: string;            // Primaria | Secundaria | Profesional | Tecnico | Otro
+  edu_address: string;
+  edu_country: string;
+  edu_city: string;
+  edu_state: string;
+  edu_zip: string;
+  edu_from: string;            // dd/mm/aaaa
+  edu_to: string;              // dd/mm/aaaa
 }
 
+interface AddressHistoryEntry {
+  addr_street: string;
+  addr_country: string;
+  addr_city: string;
+  addr_state: string;          // Estado o provincia
+  addr_zip: string;
+  addr_from: string;           // dd/mm/aaaa
+  addr_to: string;             // dd/mm/aaaa o "actualidad"
+}
+
+const EDUCATION_TYPES = ['Primaria', 'Secundaria', 'Profesional / Universidad', 'Tecnico', 'Otro']
+const RACE_OPTIONS = [
+  'American Indian or Alaska Native',
+  'Asian',
+  'Black or African American',
+  'Native Hawaiian or Other Pacific Islander',
+  'White',
+]
+const EYE_COLORS = ['Negro', 'Azul', 'Cafe', 'Gris', 'Verde', 'Avellana', 'Marron', 'Rosa', 'Otro / Desconocido']
+const HAIR_COLORS = ['Calvo', 'Negro', 'Rubio', 'Cafe', 'Gris', 'Rojo', 'Castano claro', 'Blanco', 'Otro / Desconocido']
+
 const emptyChild: ChildEntry = { child_full_name: '', child_dob: '', child_country_of_birth: '', child_a_number: '', child_in_us: false, child_included: false }
-const emptyEmployment: EmploymentEntry = { emp_employer: '', emp_address: '', emp_city: '', emp_state: '', emp_occupation: '', emp_from: '', emp_to: '' }
-const emptyEducation: EducationEntry = { edu_school: '', edu_type: '', edu_address: '', edu_from: '', edu_to: '' }
+const emptyEmployment: EmploymentEntry = {
+  emp_employer: '', emp_supervisor: '', emp_occupation: '', emp_address: '',
+  emp_country: '', emp_city: '', emp_state: '', emp_zip: '',
+  emp_from: '', emp_to: '',
+}
+const emptyEducation: EducationEntry = {
+  edu_school: '', edu_type: '', edu_address: '',
+  edu_country: '', edu_city: '', edu_state: '', edu_zip: '',
+  edu_from: '', edu_to: '',
+}
+const emptyAddressHistory: AddressHistoryEntry = {
+  addr_street: '', addr_country: '', addr_city: '', addr_state: '', addr_zip: '',
+  addr_from: '', addr_to: '',
+}
 
 const sections = [
   { id: 1, title: 'Informacion Personal del Solicitante' },
   { id: 2, title: 'Informacion de Inmigracion' },
   { id: 3, title: 'Informacion del Peticionario/Patrocinador' },
   { id: 4, title: 'Informacion Familiar' },
-  { id: 5, title: 'Historial de Empleo y Educacion' },
+  { id: 5, title: 'Historial de Empleo y Educacion (ultimos 5 anios)' },
   { id: 6, title: 'Preguntas de Admisibilidad' },
   { id: 7, title: 'Documentos y Declaracion' },
+  { id: 8, title: 'Informacion Biografica' },
 ]
 
 export default function AjusteFormPage() {
@@ -82,6 +132,16 @@ export default function AjusteFormPage() {
   const [resZip, setResZip] = useState('')
   const [resPhone, setResPhone] = useState('')
   const [email, setEmail] = useState('')
+  // Section 1.b: Historial de direcciones de los ultimos 5 anios
+  const [addressHistory, setAddressHistory] = useState<AddressHistoryEntry[]>([])
+  // Section 1.c: Ultima direccion en pais de origen
+  const [originStreet, setOriginStreet] = useState('')
+  const [originCountry, setOriginCountry] = useState('')
+  const [originCity, setOriginCity] = useState('')
+  const [originState, setOriginState] = useState('')
+  const [originZip, setOriginZip] = useState('')
+  const [originFrom, setOriginFrom] = useState('')
+  const [originTo, setOriginTo] = useState('')
 
   // Section 2: Informacion de Inmigracion
   const [currentImmigrationStatus, setCurrentImmigrationStatus] = useState('')
@@ -152,6 +212,15 @@ export default function AjusteFormPage() {
   const [additionalInfo, setAdditionalInfo] = useState('')
   const [applicantDeclaration, setApplicantDeclaration] = useState(false)
 
+  // Section 8: Informacion Biografica (Part 8 del I-485)
+  const [bioEthnicity, setBioEthnicity] = useState<'' | 'hispanic' | 'not_hispanic'>('')
+  const [bioRaces, setBioRaces] = useState<string[]>([])
+  const [bioHeightFeet, setBioHeightFeet] = useState('')
+  const [bioHeightInches, setBioHeightInches] = useState('')
+  const [bioWeightLbs, setBioWeightLbs] = useState('')
+  const [bioEyeColor, setBioEyeColor] = useState('')
+  const [bioHairColor, setBioHairColor] = useState('')
+
   // Form state
   const [openSections, setOpenSections] = useState<Set<number>>(new Set([1]))
   const [submitting, setSubmitting] = useState(false)
@@ -176,6 +245,7 @@ export default function AjusteFormPage() {
       case 5: return true
       case 6: return true
       case 7: return applicantDeclaration
+      case 8: return !!(bioEthnicity && bioHeightFeet && bioWeightLbs && bioEyeColor && bioHairColor)
       default: return false
     }
   }
@@ -287,6 +357,31 @@ export default function AjusteFormPage() {
       // Section 7
       has_medical_exam: hasMedicalExam, has_affidavit_support: hasAffidavitSupport,
       additional_info: additionalInfo, applicant_declaration: applicantDeclaration,
+
+      // Section 1.b: Historial de direcciones (ultimos 5 anios)
+      address_history: addressHistory,
+
+      // Section 1.c: Ultima direccion en pais de origen
+      last_origin_address: {
+        street: originStreet,
+        country: originCountry,
+        city: originCity,
+        state: originState,
+        zip: originZip,
+        from: originFrom,
+        to: originTo,
+      },
+
+      // Section 8: Informacion Biografica (Part 8 del I-485 oficial)
+      biographic: {
+        ethnicity: bioEthnicity,            // 'hispanic' | 'not_hispanic' | ''
+        races: bioRaces,                    // Multi-select array
+        height_feet: bioHeightFeet,
+        height_inches: bioHeightInches,
+        weight_lbs: bioWeightLbs,
+        eye_color: bioEyeColor,
+        hair_color: bioHairColor,
+      },
     }
 
     setSubmitting(true)
@@ -465,6 +560,86 @@ export default function AjusteFormPage() {
               <Field label="Correo electronico">
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="correo@ejemplo.com" className={inputClass()} />
               </Field>
+
+              {/* ── Section 1.b: Historial de direcciones (ultimos 5 anios) ── */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                  <p className="text-sm font-semibold text-blue-900 mb-1">Historial de direcciones de los ultimos 5 anios</p>
+                  <p className="text-xs text-blue-800">
+                    Incluya TODAS las direcciones donde vivio en los ultimos 5 anios — tanto dentro como fuera de EE.UU. Si vivio en su pais de origen y luego se mudo a EE.UU., agregue ambas. Use formato dd/mm/aaaa para las fechas.
+                  </p>
+                </div>
+                <RepeatableGroup<AddressHistoryEntry>
+                  label="Direcciones de los ultimos 5 anios"
+                  items={addressHistory}
+                  setItems={setAddressHistory}
+                  emptyItem={emptyAddressHistory}
+                  renderItem={(addr, _i, update) => (
+                    <div className="space-y-3">
+                      <Field label="Direccion (calle)">
+                        <input type="text" value={addr.addr_street} onChange={e => update('addr_street', e.target.value)} placeholder="Calle, numero, apartamento" className={inputClass()} />
+                      </Field>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <Field label="Pais">
+                          <input type="text" value={addr.addr_country} onChange={e => update('addr_country', e.target.value)} placeholder="Ej: Mexico, USA, Guatemala" className={inputClass()} />
+                        </Field>
+                        <Field label="Ciudad">
+                          <input type="text" value={addr.addr_city} onChange={e => update('addr_city', e.target.value)} className={inputClass()} />
+                        </Field>
+                        <Field label="Estado / Provincia">
+                          <input type="text" value={addr.addr_state} onChange={e => update('addr_state', e.target.value)} placeholder="Estado o provincia" className={inputClass()} />
+                        </Field>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <Field label="Codigo postal (si lo hay)">
+                          <input type="text" value={addr.addr_zip} onChange={e => update('addr_zip', e.target.value)} placeholder="Opcional" className={inputClass()} />
+                        </Field>
+                        <Field label="Desde (dd/mm/aaaa)">
+                          <input type="date" value={addr.addr_from} onChange={e => update('addr_from', e.target.value)} className={inputClass()} />
+                        </Field>
+                        <Field label="Hasta (dd/mm/aaaa)">
+                          <input type="date" value={addr.addr_to} onChange={e => update('addr_to', e.target.value)} className={inputClass()} />
+                        </Field>
+                      </div>
+                    </div>
+                  )}
+                />
+              </div>
+
+              {/* ── Section 1.c: Ultima direccion en pais de origen ── */}
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                  <p className="text-sm font-semibold text-amber-900 mb-1">Ultima direccion donde vivio en su pais de origen</p>
+                  <p className="text-xs text-amber-800">
+                    Esta es la direccion completa donde vivio por ultima vez ANTES de venir a EE.UU. Es informacion clave para USCIS.
+                  </p>
+                </div>
+                <Field label="Direccion (calle)">
+                  <input type="text" value={originStreet} onChange={e => setOriginStreet(e.target.value)} placeholder="Calle, numero, apartamento, barrio..." className={inputClass()} />
+                </Field>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                  <Field label="Pais">
+                    <input type="text" value={originCountry} onChange={e => setOriginCountry(e.target.value)} placeholder="Pais de origen" className={inputClass()} />
+                  </Field>
+                  <Field label="Ciudad">
+                    <input type="text" value={originCity} onChange={e => setOriginCity(e.target.value)} className={inputClass()} />
+                  </Field>
+                  <Field label="Estado / Provincia">
+                    <input type="text" value={originState} onChange={e => setOriginState(e.target.value)} className={inputClass()} />
+                  </Field>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                  <Field label="Codigo postal (si lo hay)">
+                    <input type="text" value={originZip} onChange={e => setOriginZip(e.target.value)} placeholder="Opcional" className={inputClass()} />
+                  </Field>
+                  <Field label="Desde (dd/mm/aaaa)">
+                    <input type="date" value={originFrom} onChange={e => setOriginFrom(e.target.value)} className={inputClass()} />
+                  </Field>
+                  <Field label="Hasta (dd/mm/aaaa)">
+                    <input type="date" value={originTo} onChange={e => setOriginTo(e.target.value)} className={inputClass()} />
+                  </Field>
+                </div>
+              </div>
             </div>
           </SectionAccordion>
 
@@ -666,63 +841,95 @@ export default function AjusteFormPage() {
             </div>
           </SectionAccordion>
 
-          {/* ── Section 5: Historial de Empleo y Educacion ── */}
+          {/* ── Section 5: Historial de Empleo y Educacion (ultimos 5 anios) ── */}
           <SectionAccordion section={sections[4]} isOpen={openSections.has(5)} onToggle={() => toggleSection(5)}>
             <div className="space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <p className="text-sm font-semibold text-amber-900 mb-1">Informacion de los ultimos 5 anios</p>
+                <p className="text-xs text-amber-800">
+                  Incluya empleos y estudios tanto en su pais de origen como en EE.UU. durante los ultimos 5 anios. Use el formato dd/mm/aaaa en las fechas.
+                </p>
+              </div>
+
               <RepeatableGroup<EmploymentEntry> label="Historial de empleo" items={employments} setItems={setEmployments} emptyItem={emptyEmployment}
-                renderItem={(emp, i, update) => (
+                renderItem={(emp, _i, update) => (
                   <div className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <Field label="Empleador">
+                      <Field label="Nombre de la empresa">
                         <input type="text" value={emp.emp_employer} onChange={e => update('emp_employer', e.target.value)} className={inputClass()} />
                       </Field>
-                      <Field label="Ocupacion">
-                        <input type="text" value={emp.emp_occupation} onChange={e => update('emp_occupation', e.target.value)} className={inputClass()} />
+                      <Field label="Nombre del jefe / supervisor">
+                        <input type="text" value={emp.emp_supervisor} onChange={e => update('emp_supervisor', e.target.value)} className={inputClass()} />
                       </Field>
                     </div>
+                    <Field label="Cargo / Ocupacion">
+                      <input type="text" value={emp.emp_occupation} onChange={e => update('emp_occupation', e.target.value)} className={inputClass()} />
+                    </Field>
                     <Field label="Direccion">
                       <input type="text" value={emp.emp_address} onChange={e => update('emp_address', e.target.value)} className={inputClass()} />
                     </Field>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <Field label="Pais">
+                        <input type="text" value={emp.emp_country} onChange={e => update('emp_country', e.target.value)} placeholder="Ej: Mexico, USA" className={inputClass()} />
+                      </Field>
                       <Field label="Ciudad">
                         <input type="text" value={emp.emp_city} onChange={e => update('emp_city', e.target.value)} className={inputClass()} />
                       </Field>
-                      <Field label="Estado">
-                        <select value={emp.emp_state} onChange={e => update('emp_state', e.target.value)} className={inputClass()}>
-                          <option value="">-</option>
-                          {US_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                      <Field label="Estado / Provincia">
+                        <input type="text" value={emp.emp_state} onChange={e => update('emp_state', e.target.value)} placeholder="Estado o provincia" className={inputClass()} />
                       </Field>
-                      <Field label="Desde">
-                        <input type="text" value={emp.emp_from} onChange={e => update('emp_from', e.target.value)} placeholder="MM/AAAA" className={inputClass()} />
+                      <Field label="Codigo postal (si lo hay)">
+                        <input type="text" value={emp.emp_zip} onChange={e => update('emp_zip', e.target.value)} placeholder="Opcional" className={inputClass()} />
                       </Field>
-                      <Field label="Hasta">
-                        <input type="text" value={emp.emp_to} onChange={e => update('emp_to', e.target.value)} placeholder="MM/AAAA" className={inputClass()} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Desde (dd/mm/aaaa)">
+                        <input type="date" value={emp.emp_from} onChange={e => update('emp_from', e.target.value)} className={inputClass()} />
+                      </Field>
+                      <Field label="Hasta (dd/mm/aaaa)">
+                        <input type="date" value={emp.emp_to} onChange={e => update('emp_to', e.target.value)} className={inputClass()} />
                       </Field>
                     </div>
                   </div>
                 )} />
 
               <RepeatableGroup<EducationEntry> label="Historial de educacion" items={educationList} setItems={setEducationList} emptyItem={emptyEducation}
-                renderItem={(edu, i, update) => (
+                renderItem={(edu, _i, update) => (
                   <div className="space-y-3">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <Field label="Escuela / Institucion">
+                      <Field label="Nombre del colegio / institucion">
                         <input type="text" value={edu.edu_school} onChange={e => update('edu_school', e.target.value)} className={inputClass()} />
                       </Field>
-                      <Field label="Tipo de estudio">
-                        <input type="text" value={edu.edu_type} onChange={e => update('edu_type', e.target.value)} placeholder="Ej: Secundaria, Universidad..." className={inputClass()} />
+                      <Field label="Que estudio">
+                        <select value={edu.edu_type} onChange={e => update('edu_type', e.target.value)} className={inputClass()}>
+                          <option value="">Seleccione</option>
+                          {EDUCATION_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
                       </Field>
                     </div>
                     <Field label="Direccion">
                       <input type="text" value={edu.edu_address} onChange={e => update('edu_address', e.target.value)} className={inputClass()} />
                     </Field>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Desde">
-                        <input type="text" value={edu.edu_from} onChange={e => update('edu_from', e.target.value)} placeholder="MM/AAAA" className={inputClass()} />
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <Field label="Pais">
+                        <input type="text" value={edu.edu_country} onChange={e => update('edu_country', e.target.value)} className={inputClass()} />
                       </Field>
-                      <Field label="Hasta">
-                        <input type="text" value={edu.edu_to} onChange={e => update('edu_to', e.target.value)} placeholder="MM/AAAA" className={inputClass()} />
+                      <Field label="Ciudad">
+                        <input type="text" value={edu.edu_city} onChange={e => update('edu_city', e.target.value)} className={inputClass()} />
+                      </Field>
+                      <Field label="Estado / Provincia">
+                        <input type="text" value={edu.edu_state} onChange={e => update('edu_state', e.target.value)} className={inputClass()} />
+                      </Field>
+                      <Field label="Codigo postal (si lo hay)">
+                        <input type="text" value={edu.edu_zip} onChange={e => update('edu_zip', e.target.value)} placeholder="Opcional" className={inputClass()} />
+                      </Field>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Field label="Desde (dd/mm/aaaa)">
+                        <input type="date" value={edu.edu_from} onChange={e => update('edu_from', e.target.value)} className={inputClass()} />
+                      </Field>
+                      <Field label="Hasta (dd/mm/aaaa)">
+                        <input type="date" value={edu.edu_to} onChange={e => update('edu_to', e.target.value)} className={inputClass()} />
                       </Field>
                     </div>
                   </div>
@@ -817,6 +1024,112 @@ export default function AjusteFormPage() {
                   </span>
                 </label>
                 {errors.applicantDeclaration && <p className="text-xs text-red-600 mt-2 ml-8">{errors.applicantDeclaration}</p>}
+              </div>
+            </div>
+          </SectionAccordion>
+
+          {/* ── Section 8: Informacion Biografica (Part 8 del I-485 oficial) ── */}
+          <SectionAccordion section={sections[7]} isOpen={openSections.has(8)} onToggle={() => toggleSection(8)}>
+            <div className="space-y-5">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm font-semibold text-blue-900 mb-1">Part 8 — Informacion Biografica</p>
+                <p className="text-xs text-blue-800">
+                  Estos datos los pide USCIS en el formulario oficial I-485 Part 8. Responda con la informacion que mejor describa su apariencia fisica.
+                </p>
+              </div>
+
+              {/* Etnicidad */}
+              <Field label="Etnicidad (seleccione una)" required>
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { value: 'hispanic', label: 'Hispano o Latino' },
+                    { value: 'not_hispanic', label: 'No Hispano ni Latino' },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setBioEthnicity(opt.value as 'hispanic' | 'not_hispanic')}
+                      className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        bioEthnicity === opt.value
+                          ? 'border-[#002855] bg-[#002855]/10 text-[#002855]'
+                          : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+
+              {/* Raza */}
+              <Field label="Raza (seleccione todas las que apliquen)">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {RACE_OPTIONS.map(race => {
+                    const checked = bioRaces.includes(race)
+                    return (
+                      <label
+                        key={race}
+                        className={`flex items-center gap-2 cursor-pointer rounded-lg p-2 border transition-colors ${
+                          checked ? 'border-[#002855] bg-[#002855]/5' : 'border-gray-200 hover:bg-gray-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            if (e.target.checked) setBioRaces(prev => [...prev, race])
+                            else setBioRaces(prev => prev.filter(r => r !== race))
+                          }}
+                          className="w-4 h-4 rounded border-gray-300 text-[#002855] focus:ring-[#002855]"
+                        />
+                        <span className="text-sm text-gray-700">{race}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </Field>
+
+              {/* Estatura y peso */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Field label="Estatura — Pies" required>
+                  <select value={bioHeightFeet} onChange={e => setBioHeightFeet(e.target.value)} className={inputClass()}>
+                    <option value="">-</option>
+                    {[3, 4, 5, 6, 7].map(f => <option key={f} value={String(f)}>{f}</option>)}
+                  </select>
+                </Field>
+                <Field label="Estatura — Pulgadas">
+                  <select value={bioHeightInches} onChange={e => setBioHeightInches(e.target.value)} className={inputClass()}>
+                    <option value="">-</option>
+                    {Array.from({ length: 12 }).map((_, i) => <option key={i} value={String(i)}>{i}</option>)}
+                  </select>
+                </Field>
+                <Field label="Peso (libras / lbs)" required>
+                  <input
+                    type="number"
+                    value={bioWeightLbs}
+                    onChange={e => setBioWeightLbs(e.target.value)}
+                    placeholder="Ej: 150"
+                    min={50}
+                    max={500}
+                    className={inputClass()}
+                  />
+                </Field>
+              </div>
+
+              {/* Color de ojos y pelo */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Field label="Color de ojos" required>
+                  <select value={bioEyeColor} onChange={e => setBioEyeColor(e.target.value)} className={inputClass()}>
+                    <option value="">Seleccione</option>
+                    {EYE_COLORS.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </Field>
+                <Field label="Color de pelo" required>
+                  <select value={bioHairColor} onChange={e => setBioHairColor(e.target.value)} className={inputClass()}>
+                    <option value="">Seleccione</option>
+                    {HAIR_COLORS.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </Field>
               </div>
             </div>
           </SectionAccordion>
