@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import { ChevronLeft, ChevronRight, CheckCircle, Loader2, Send } from 'lucide-react'
+import { VoiceTextarea } from '@/components/voice/VoiceTextarea'
+import { useVoiceToken } from '@/components/voice/voice-context'
 
 // ══ INTERFACES ════════════════════════════════════════════════════
 
@@ -625,15 +627,39 @@ function Step5Contact({ data, upd }: { data: I360Data; upd: (f: keyof I360Data, 
 
       <p className="text-xs font-bold text-gray-500 uppercase mt-3">Part 15 — Información adicional</p>
       <div className="p-3 bg-gray-50 rounded-lg text-xs text-gray-500">
-        Aquí puede escribir información adicional relevante. Por ejemplo: "La corte juvenil determinó que la reunificación no es viable con ambos padres debido a abandono y negligencia. Los nombres de los padres son: ..."
+        Aquí puede escribir información adicional relevante. Por ejemplo: &quot;La corte juvenil determinó que la reunificación no es viable con ambos padres debido a abandono y negligencia. Los nombres de los padres son: ...&quot;
       </div>
+      <I360AdditionalInfo
+        value={data.additional_info}
+        onChange={(v) => upd('additional_info', v)}
+      />
+    </div>
+  )
+}
+
+function I360AdditionalInfo({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const token = useVoiceToken()
+  if (token) {
+    return (
       <div>
         <FieldLabel>Información adicional</FieldLabel>
-        <textarea value={data.additional_info} onChange={e => upd('additional_info', e.target.value)}
-          placeholder="Escriba información adicional que desee incluir en la petición..."
+        <VoiceTextarea
+          token={token}
+          value={value}
+          onChange={onChange}
+          placeholder="Escriba o dicte información adicional que desee incluir en la petición..."
           rows={6}
-          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400/40 resize-none" />
+        />
       </div>
+    )
+  }
+  return (
+    <div>
+      <FieldLabel>Información adicional</FieldLabel>
+      <textarea value={value} onChange={e => onChange(e.target.value)}
+        placeholder="Escriba información adicional que desee incluir en la petición..."
+        rows={6}
+        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400/40 resize-none" />
     </div>
   )
 }
