@@ -18,7 +18,7 @@ import { z } from 'zod'
 
 export const PDF_PUBLIC_PATH = '/forms/affidavit-sij.docx'
 export const PDF_DISK_PATH = 'public/forms/affidavit-sij.docx'
-export const PDF_SHA256 = 'c2bf32a8af1c6c2c83f952542d8a9dbf8e2d6562cd6f579e81ab76ffad70605c'
+export const PDF_SHA256 = '8a84099c49675eeadabe0d1db105078191b1c6579f1a325a909d733ccdaf0646'
 export const SCHEMA_VERSION = '2019-dfps-section-13'
 export const FORM_SLUG = 'tx-dfps-affidavit-sij'
 export const FORM_NAME = 'TX DFPS Affidavit to Support SIJ Motion'
