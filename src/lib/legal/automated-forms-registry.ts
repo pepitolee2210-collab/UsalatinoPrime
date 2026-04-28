@@ -79,6 +79,22 @@ import {
 } from './pr-gen-116-form-schema'
 import { buildPrGen116PrefilledValues } from './pr-gen-116-prefill'
 
+import {
+  PDF_PUBLIC_PATH as MOTION_SIJ_PDF_PUBLIC,
+  PDF_DISK_PATH as MOTION_SIJ_PDF_DISK,
+  PDF_SHA256 as MOTION_SIJ_SHA,
+  SCHEMA_VERSION as MOTION_SIJ_VERSION,
+  FORM_SLUG as MOTION_SIJ_SLUG,
+  FORM_NAME as MOTION_SIJ_NAME,
+  FORM_DESCRIPTION_ES as MOTION_SIJ_DESC,
+  MOTION_SECTIONS as MOTION_SIJ_SECTIONS,
+  HARDCODED_VALUES as MOTION_SIJ_HARDCODED,
+  REQUIRED_FOR_PRINT as MOTION_SIJ_REQUIRED,
+  FIELD_BY_KEY as MOTION_SIJ_FIELD_BY_KEY,
+  motionSijFormSchema as MOTION_SIJ_ZOD_SCHEMA,
+} from './motion-sij-findings-form-schema'
+import { buildMotionSijPrefilledValues } from './motion-sij-findings-prefill'
+
 // ──────────────────────────────────────────────────────────────────
 // Tipos públicos del registry
 // ──────────────────────────────────────────────────────────────────
@@ -94,7 +110,15 @@ export interface AutomatedFormDefinition {
   states: string[]
   /** packet_type para `case_form_instances`: 'intake' | 'merits'. */
   packetType: 'intake' | 'merits'
-  /** Path público del PDF (servido por Next.js desde `public/`). */
+  /**
+   * Tipo de template del archivo en disco. Determina qué motor de fill se usa
+   * en /print y qué Content-Type devuelve la respuesta:
+   *  - 'acroform'      → PDF con AcroForms (pdf-lib + fillAcroForm)
+   *  - 'docx-template' → DOCX con tokens {{key}} (jszip + fillDocxTemplate)
+   * Default 'acroform' por compatibilidad con SAPCR-100, SAPCR-AFF-100, PR-GEN-116.
+   */
+  templateType?: 'acroform' | 'docx-template'
+  /** Path público del archivo (PDF o DOCX) servido por Next.js desde `public/`. */
   pdfPublicPath: string
   /** Path en disco (relativo a process.cwd()) para fs.readFile en API routes. */
   pdfDiskPath: string
@@ -256,6 +280,41 @@ const PR_GEN_116_DEFINITION: AutomatedFormDefinition = {
   processForPrint: prGen116ProcessForPrint,
 }
 
+const MOTION_SIJ_DEFINITION: AutomatedFormDefinition = {
+  slug: MOTION_SIJ_SLUG,
+  formName: MOTION_SIJ_NAME,
+  formDescriptionEs: MOTION_SIJ_DESC,
+  states: ['TX'],
+  packetType: 'merits',
+  templateType: 'docx-template',
+  pdfPublicPath: MOTION_SIJ_PDF_PUBLIC,
+  pdfDiskPath: MOTION_SIJ_PDF_DISK,
+  pdfSha256: MOTION_SIJ_SHA,
+  schemaVersion: MOTION_SIJ_VERSION,
+  sections: MOTION_SIJ_SECTIONS as AutomatedFormDefinition['sections'],
+  hardcodedValues: MOTION_SIJ_HARDCODED,
+  requiredForPrint: MOTION_SIJ_REQUIRED,
+  fieldByKey: MOTION_SIJ_FIELD_BY_KEY as AutomatedFormDefinition['fieldByKey'],
+  zodSchema: MOTION_SIJ_ZOD_SCHEMA,
+  buildPrefilledValues: async (caseId, service) => {
+    const raw = await buildMotionSijPrefilledValues(caseId, service)
+    const out: Record<string, string | boolean | null | undefined> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      if (v === null || v === undefined || typeof v === 'string' || typeof v === 'boolean') {
+        out[k] = v
+      }
+    }
+    return out
+  },
+  detectByName: (name) => {
+    const n = name.toLowerCase()
+    return (
+      n.includes('motion for findings') &&
+      (n.includes('sij') || n.includes('special immigrant juvenile'))
+    )
+  },
+}
+
 // ──────────────────────────────────────────────────────────────────
 // Map público
 // ──────────────────────────────────────────────────────────────────
@@ -268,6 +327,7 @@ export const AUTOMATED_FORMS: Record<string, AutomatedFormDefinition> = {
   [SAPCR100_SLUG]: SAPCR100_DEFINITION,
   [SAPCR_AFF_100_SLUG]: SAPCR_AFF_100_DEFINITION,
   [PR_GEN_116_SLUG]: PR_GEN_116_DEFINITION,
+  [MOTION_SIJ_SLUG]: MOTION_SIJ_DEFINITION,
 }
 
 /** Slugs registrados (para validación en rutas dinámicas). */

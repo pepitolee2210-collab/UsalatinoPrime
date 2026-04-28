@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { fillAcroForm } from '@/lib/legal/acroform-service'
+import { fillDocxTemplate, DOCX_CONTENT_TYPE } from '@/lib/legal/docx-template-service'
 import { AUTOMATED_FORMS } from '@/lib/legal/automated-forms-registry'
 import { createLogger } from '@/lib/logger'
 import fs from 'node:fs/promises'
@@ -121,32 +122,57 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
     )
   }
 
-  // Mapear semanticKey → pdfFieldName (campos virtuales con pdfFieldName: null se ignoran).
-  const valuesByPdfName: Record<string, string | boolean> = {}
-  for (const [semKey, value] of Object.entries(processed)) {
-    if (value === null || value === undefined) continue
-    if (typeof value !== 'string' && typeof value !== 'boolean') continue
-    const spec = def.fieldByKey[semKey]
-    if (!spec || !spec.pdfFieldName) continue
-    valuesByPdfName[spec.pdfFieldName] = value
+  // Ramificar según el tipo de template del form.
+  const templateType = def.templateType ?? 'acroform'
+  const isDocx = templateType === 'docx-template'
+
+  let filledBytes: Uint8Array
+  if (isDocx) {
+    // Para .docx, los valores se inyectan en tokens {{semanticKey}} dentro
+    // del XML. El campo virtual (pdfFieldName: null) se sigue ignorando porque
+    // su valor ya fue traducido por processForPrint a otro semanticKey real.
+    const tokenValues: Record<string, string | boolean | null | undefined> = {}
+    for (const [semKey, value] of Object.entries(processed)) {
+      if (value === null || value === undefined) continue
+      if (typeof value !== 'string' && typeof value !== 'boolean') continue
+      const spec = def.fieldByKey[semKey]
+      // En docx, el "pdfFieldName" se reinterpreta como nombre del token.
+      // Si está vacío/null, se asume que el semanticKey ES el token.
+      if (!spec) continue
+      const tokenName = spec.pdfFieldName ?? semKey
+      tokenValues[tokenName] = value
+    }
+    filledBytes = await fillDocxTemplate(new Uint8Array(pdfBytes), tokenValues)
+  } else {
+    // Mapear semanticKey → pdfFieldName (campos virtuales con pdfFieldName: null se ignoran).
+    const valuesByPdfName: Record<string, string | boolean> = {}
+    for (const [semKey, value] of Object.entries(processed)) {
+      if (value === null || value === undefined) continue
+      if (typeof value !== 'string' && typeof value !== 'boolean') continue
+      const spec = def.fieldByKey[semKey]
+      if (!spec || !spec.pdfFieldName) continue
+      valuesByPdfName[spec.pdfFieldName] = value
+    }
+    filledBytes = await fillAcroForm(new Uint8Array(pdfBytes), valuesByPdfName, { flatten: true })
   }
 
-  const filledBytes = await fillAcroForm(new Uint8Array(pdfBytes), valuesByPdfName, { flatten: true })
+  const fileExt = isDocx ? 'docx' : 'pdf'
+  const fileContentType = isDocx ? DOCX_CONTENT_TYPE : 'application/pdf'
 
   // Subir a Storage para audit.
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
-  const storagePath = `${caseRow.client_id}/${caseRow.id}/${slug}/${timestamp}.pdf`
+  const storagePath = `${caseRow.client_id}/${caseRow.id}/${slug}/${timestamp}.${fileExt}`
   const { error: uploadErr } = await auth.service.storage
     .from('case-documents')
     .upload(storagePath, filledBytes, {
-      contentType: 'application/pdf',
+      contentType: fileContentType,
       upsert: false,
     })
   if (uploadErr) {
     log.error('upload error', { slug, uploadErr: uploadErr.message })
   }
 
-  const filename = `${slug}_${caseRow.case_number ?? caseRow.id.slice(0, 8)}_${timestamp.slice(0, 10)}.pdf`
+  const filename = `${slug}_${caseRow.case_number ?? caseRow.id.slice(0, 8)}_${timestamp.slice(0, 10)}.${fileExt}`
   if (!uploadErr) {
     await auth.service.from('documents').insert({
       case_id: caseRow.id,
@@ -154,7 +180,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       document_key: `${slug}_filled`,
       name: `${def.formName} (rellenado)`,
       file_path: storagePath,
-      file_type: 'application/pdf',
+      file_type: fileContentType,
       file_size: filledBytes.length,
       status: 'uploaded',
       uploaded_by: auth.userId,
@@ -176,9 +202,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       case_id: caseRow.id,
       actor_id: auth.userId,
       action: `${slug}_pdf_generated`,
-      description: `Generó PDF ${def.formName} rellenado (${filename})`,
+      description: `Generó ${isDocx ? 'DOCX' : 'PDF'} ${def.formName} rellenado (${filename})`,
       metadata: {
         slug,
+        template_type: templateType,
         instance_id: instance?.id,
         storage_path: storagePath,
         schema_version: def.schemaVersion,
@@ -191,7 +218,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
   return new NextResponse(Buffer.from(filledBytes), {
     status: 200,
     headers: {
-      'Content-Type': 'application/pdf',
+      'Content-Type': fileContentType,
       'Content-Disposition': `attachment; filename="${filename}"`,
       'Cache-Control': 'no-store',
     },

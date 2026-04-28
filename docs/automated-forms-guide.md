@@ -647,11 +647,65 @@ Ejemplo: `pr-gen-116-prefill.ts:121-163` lee `petitioner_mailing_address` del SA
 
 ## 7. Catálogo actual
 
-| Slug | Estado | Packet | Form | Notas |
-|---|---|---|---|---|
-| `tx-fm-sapcr-100` | TX | merits | Petición SAPCR (filed by parent) | Patrón base, 7 secciones, ~120 fields |
-| `tx-fm-sapcr-aff-100` | TX | merits | Affidavit of Standing of Nonparent | Incluye `computeLegalWarnings` para no-padres |
-| `tx-pr-gen-116` | TX | intake | Civil Case Information Sheet | Incluye campo virtual `case_type` + `processForPrint`, `hiddenByDefault` con `__show_all__`, normalize requerido |
+| Slug | Estado | Packet | Tipo | Form | Notas |
+|---|---|---|---|---|---|
+| `tx-fm-sapcr-100` | TX | merits | acroform | Petición SAPCR (filed by parent) | Patrón base, 7 secciones, ~120 fields |
+| `tx-fm-sapcr-aff-100` | TX | merits | acroform | Affidavit of Standing of Nonparent | Incluye `computeLegalWarnings` para no-padres |
+| `tx-pr-gen-116` | TX | intake | acroform | Civil Case Information Sheet | Incluye campo virtual `case_type` + `processForPrint`, `hiddenByDefault` con `__show_all__`, normalize requerido |
+| `tx-dfps-sij-findings-motion` | TX | merits | docx-template | DFPS Section 13 Motion for SIJ Findings | Primer template DOCX. Tokens `{{key}}` pre-inyectados con `tokenize-motion-sij-findings.mjs`. Reusa data bag del SAPCR-100 |
+
+### 7.1 Templates DOCX vs AcroForms — cuándo usar cada uno
+
+| Característica | AcroForm (PDF) | DOCX template |
+|---|---|---|
+| Origen del documento oficial | PDF con form fields ya definidos por la corte/agencia | DOCX narrativo de DFPS / agencias estatales |
+| Detección de fields | `pdf-lib.getForm().getFields()` | Tokens `{{key}}` que YO inyecto en pre-procesamiento |
+| Schema | `pdfFieldName` = nombre real del field AcroForm | `pdfFieldName` = nombre del token (sin las `{{}}`). Si null, el `semanticKey` se usa como token |
+| Llenado | `fillAcroForm` con flatten | `fillDocxTemplate` con find-replace en `document.xml` + headers/footers |
+| Output | PDF aplanado (no editable) | DOCX rellenado (editable a mano si el abogado quiere ajustar la prosa) |
+| Content-Type del download | `application/pdf` | `application/vnd.openxmlformats-officedocument.wordprocessingml.document` |
+| `templateType` en registry | `'acroform'` (default) o omitir | `'docx-template'` (obligatorio) |
+
+**Regla de decisión**: si el documento oficial es un **PDF con AcroForms estructurados** (cualquier form de TexasLawHelp, USCIS, etc.), usa **acroform**. Si es un **template narrativo en Word** (DFPS Section 13, plantillas de motion), usa **docx-template**.
+
+### 7.2 Tokenizado de un .docx (paso adicional sólo para `docx-template`)
+
+Antes de poder usar `fillDocxTemplate`, el .docx oficial debe pre-procesarse para reemplazar sus placeholders nativos (`[NAME]`, `[DATE]`, `[COUNTRY]`, `_____`, etc.) con tokens `{{semanticKey}}` que el runtime entiende.
+
+Patrón: `scripts/tokenize-motion-sij-findings.mjs` — define una lista de pares `[texto-original, texto-tokenizado]` y los aplica al `word/document.xml` del .docx.
+
+```bash
+# 1. Coloca el .docx oficial como `<slug>.original.docx` en public/forms/
+cp /path/to/official.docx repo/public/forms/<slug>.original.docx
+
+# 2. Crea repo/scripts/tokenize-<slug>.mjs copiando tokenize-motion-sij-findings.mjs
+#    Cambia INPUT/OUTPUT y la lista REPLACEMENTS según tu form
+
+# 3. Ejecuta — genera <slug>.docx tokenizado y emite SHA-256
+node scripts/tokenize-<slug>.mjs
+
+# 4. Hardcodea el SHA-256 en `<slug>-form-schema.ts` (PDF_SHA256)
+```
+
+**Fragmentación de runs en OOXML**: Word a veces parte un texto en múltiples `<w:r>` runs (ej. `[NAME]` puede ser `<w:r><w:t>[</w:t></w:r><w:r><w:t>NAME</w:t></w:r><w:r><w:t>]</w:t></w:r>`). Antes de tokenizar, verifica con `grep -oE "<w:t[^>]*>[^<]*PLACEHOLDER[^<]*</w:t>" word/document.xml`. Si el placeholder aparece completo en un solo `<w:t>`, el reemplazo string es directo. Si está fragmentado, abre el .docx en Word, edítalo levemente (cambia un espacio) y re-guarda — Word consolida los runs.
+
+### 7.3 Diferencias en el schema cuando es `docx-template`
+
+```ts
+// AcroForm
+{ semanticKey: 'petitioner_name', pdfFieldName: 'Name', type: 'text', /* ... */ }
+//                                ^^^^^^^^^^^^^^^^^^^ nombre EXACTO del AcroForm field
+
+// DOCX template
+{ semanticKey: 'petitioner_name', pdfFieldName: 'petitioner_name', type: 'text', /* ... */ }
+//                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ nombre del token
+//                                                                  (el {{...}} se omite)
+// O equivalente (más conciso):
+{ semanticKey: 'petitioner_name', pdfFieldName: null, type: 'text', /* ... */ }
+//                                ^^^^^^^^^^^^^^^^^^^^^ null = usar semanticKey como token
+```
+
+`processForPrint`, `hiddenByDefault`, y otros patrones avanzados funcionan igual con `docx-template`. La única diferencia es el motor de fill.
 
 Ejemplos vivos para inspirar la próxima automatización:
 - **Más simple**: `sapcr-aff-100-form-schema.ts` — sin processForPrint, sin hiddenByDefault, secciones lineales.
