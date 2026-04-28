@@ -1,16 +1,23 @@
 // Registry escalable de formularios oficiales con automatización completa
 // (formulario interactivo + prefill desde BD + generación PDF rellenado).
 //
-// Para añadir un nuevo formulario:
-//   1. Crear repo/public/forms/<slug>.pdf
-//   2. Correr `node scripts/inspect-<form>-fields.mjs` para descubrir
-//      pdfFieldName + sha256
-//   3. Crear repo/src/lib/legal/<slug>-form-schema.ts con SAPCR_SECTIONS,
-//      HARDCODED_VALUES, REQUIRED_FOR_PRINT, sapcrFormSchema
-//   4. Crear repo/src/lib/legal/<slug>-prefill.ts con buildPrefilledValues
-//   5. Añadir entry aquí en AUTOMATED_FORMS
-//   6. Actualizar el prompt de research-jurisdiction.ts para incluir el slug
-//   7. (Opcional) backfill SQL de slug en case_jurisdictions filas existentes
+// 📖 GUÍA COMPLETA: docs/automated-forms-guide.md
+//
+// Resumen de pasos para añadir un formulario (la guía detalla cada uno):
+//   1. Colocar el PDF en repo/public/forms/<slug>.pdf
+//   2. (Si aplica) Normalizar con mupdf: scripts/normalize-<slug>.mjs
+//   3. Inspeccionar fields: scripts/inspect-<slug>-fields.mjs (genera SHA + JSON)
+//   4. Crear repo/src/lib/legal/<slug>-form-schema.ts (secciones, hardcoded, Zod)
+//   5. Crear repo/src/lib/legal/<slug>-prefill.ts (data bag desde profiles +
+//      tutor_guardian + client_story + case_jurisdictions + otros forms)
+//   6. Añadir entry abajo en AUTOMATED_FORMS con `states: ['XX']` correcto
+//   7. Probar con scripts/test-<slug>-fill.mjs
+//   8. Commit + push — el deploy activa los botones automáticamente
+//
+// Las 3 vías de detección (slug nativo de la IA, detectByName runtime, e
+// injection por estado vía getInjectedFormsForState) garantizan que clientes
+// existentes y futuros del estado correspondiente reciban la automatización
+// sin tocar BD ni re-research.
 //
 // La UI (jurisdiction-panel.tsx) y las API routes (/api/admin/case-forms/[slug])
 // no requieren cambio adicional — leen directamente desde este registry.
