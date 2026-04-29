@@ -9,16 +9,16 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import {
-  LayoutDashboard, FileText, Users, CreditCard, LogOut, Menu, Shield,
+  FileText, Users, CreditCard, LogOut, Menu, Shield,
   MessageSquare, PenLine, CalendarClock, ClipboardList, PhoneCall, Briefcase, Bot, Scale,
-  MessageCircle, FileCheck,
+  MessageCircle, FileCheck, Crown,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ClientSearch } from '@/components/admin/ClientSearch'
 import { ErrorBoundary } from '@/components/error-boundary'
 
 const navItems = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, badgeKey: null },
+  { href: '/ceo', label: 'Vista CEO', icon: Crown, badgeKey: null },
   { href: '/admin/citas', label: 'Citas', icon: CalendarClock, badgeKey: 'citasToday' as const },
   { href: '/admin/prospectos-citas', label: 'Prospectos IA', icon: Bot, badgeKey: 'prospectosPending' as const },
   { href: '/admin/cases', label: 'Casos', icon: FileText, badgeKey: null },
