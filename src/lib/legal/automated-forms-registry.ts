@@ -111,6 +111,22 @@ import {
 } from './affidavit-sij-form-schema'
 import { buildAffidavitSijPrefilledValues } from './affidavit-sij-prefill'
 
+import {
+  PDF_PUBLIC_PATH as ORDER_SIJ_PDF_PUBLIC,
+  PDF_DISK_PATH as ORDER_SIJ_PDF_DISK,
+  PDF_SHA256 as ORDER_SIJ_SHA,
+  SCHEMA_VERSION as ORDER_SIJ_VERSION,
+  FORM_SLUG as ORDER_SIJ_SLUG,
+  FORM_NAME as ORDER_SIJ_NAME,
+  FORM_DESCRIPTION_ES as ORDER_SIJ_DESC,
+  FORM_SECTIONS as ORDER_SIJ_SECTIONS,
+  HARDCODED_VALUES as ORDER_SIJ_HARDCODED,
+  REQUIRED_FOR_PRINT as ORDER_SIJ_REQUIRED,
+  FIELD_BY_KEY as ORDER_SIJ_FIELD_BY_KEY,
+  orderSijFormSchema as ORDER_SIJ_ZOD_SCHEMA,
+} from './order-sij-findings-form-schema'
+import { buildOrderSijPrefilledValues } from './order-sij-findings-prefill'
+
 // ──────────────────────────────────────────────────────────────────
 // Tipos públicos del registry
 // ──────────────────────────────────────────────────────────────────
@@ -375,12 +391,49 @@ const AFFIDAVIT_SIJ_DEFINITION: AutomatedFormDefinition = {
  * Map slug → AutomatedFormDefinition. Cualquier código que necesite saber
  * "¿este form tiene formulario interactivo?" debe consultar este registry.
  */
+const ORDER_SIJ_DEFINITION: AutomatedFormDefinition = {
+  slug: ORDER_SIJ_SLUG,
+  formName: ORDER_SIJ_NAME,
+  formDescriptionEs: ORDER_SIJ_DESC,
+  states: ['TX'],
+  packetType: 'merits',
+  templateType: 'docx-template',
+  pdfPublicPath: ORDER_SIJ_PDF_PUBLIC,
+  pdfDiskPath: ORDER_SIJ_PDF_DISK,
+  pdfSha256: ORDER_SIJ_SHA,
+  schemaVersion: ORDER_SIJ_VERSION,
+  sections: ORDER_SIJ_SECTIONS as AutomatedFormDefinition['sections'],
+  hardcodedValues: ORDER_SIJ_HARDCODED,
+  requiredForPrint: ORDER_SIJ_REQUIRED,
+  fieldByKey: ORDER_SIJ_FIELD_BY_KEY as AutomatedFormDefinition['fieldByKey'],
+  zodSchema: ORDER_SIJ_ZOD_SCHEMA,
+  buildPrefilledValues: async (caseId, service) => {
+    const raw = await buildOrderSijPrefilledValues(caseId, service)
+    const out: Record<string, string | boolean | null | undefined> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      if (v === null || v === undefined || typeof v === 'string' || typeof v === 'boolean') {
+        out[k] = v
+      }
+    }
+    return out
+  },
+  detectByName: (name) => {
+    const n = name.toLowerCase()
+    return (
+      n.includes('order') &&
+      (n.includes('sij') || n.includes('special immigrant juvenile')) &&
+      (n.includes('finding') || n.includes('predicate'))
+    )
+  },
+}
+
 export const AUTOMATED_FORMS: Record<string, AutomatedFormDefinition> = {
   [SAPCR100_SLUG]: SAPCR100_DEFINITION,
   [SAPCR_AFF_100_SLUG]: SAPCR_AFF_100_DEFINITION,
   [PR_GEN_116_SLUG]: PR_GEN_116_DEFINITION,
   [MOTION_SIJ_SLUG]: MOTION_SIJ_DEFINITION,
   [AFFIDAVIT_SIJ_SLUG]: AFFIDAVIT_SIJ_DEFINITION,
+  [ORDER_SIJ_SLUG]: ORDER_SIJ_DEFINITION,
 }
 
 /** Slugs registrados (para validación en rutas dinámicas). */
