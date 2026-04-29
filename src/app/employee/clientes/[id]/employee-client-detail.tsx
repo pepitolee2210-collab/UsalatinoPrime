@@ -12,6 +12,8 @@ import {
 import { DeclarationGenerator } from '@/app/admin/cases/[id]/declaration-generator'
 import { ParentalConsentGenerator } from '@/app/admin/cases/[id]/parental-consent-generator'
 import { SupplementaryDataForm } from '@/app/admin/cases/[id]/supplementary-data-form'
+import { JurisdictionPanel } from '@/app/admin/cases/[id]/jurisdiction-panel'
+import { PhaseHistoryTab } from '@/app/admin/cases/[id]/phase-history-tab'
 import { CasePipeline } from '@/components/case-pipeline'
 
 interface Client {
@@ -32,7 +34,7 @@ interface FormSub {
   status: string; updated_at: string; case_id: string; minor_index: number
 }
 
-type TabId = 'docs' | 'client-docs' | 'notas' | 'historia' | 'declaraciones' | 'i360'
+type TabId = 'docs' | 'client-docs' | 'notas' | 'historia' | 'radicacion' | 'historico' | 'declaraciones' | 'i360'
 
 export function EmployeeClientDetail({ client, cases, documents, henryDocuments, formSubmissions, appointments }: {
   client: Client; cases: Case[]; documents: Doc[]; henryDocuments: Doc[]; formSubmissions: FormSub[]
@@ -72,6 +74,8 @@ export function EmployeeClientDetail({ client, cases, documents, henryDocuments,
     { id: 'notas', label: 'Notas' },
     { id: 'historia', label: 'Historia' },
     ...(isVisaJuvenil ? [
+      { id: 'radicacion' as TabId, label: 'Radicación · PDFs' },
+      { id: 'historico' as TabId, label: 'Histórico fases' },
       { id: 'declaraciones' as TabId, label: 'Declaraciones' },
       { id: 'i360' as TabId, label: 'I-360' },
     ] : []),
@@ -237,6 +241,18 @@ export function EmployeeClientDetail({ client, cases, documents, henryDocuments,
             <p className="text-center text-gray-400 py-8 text-sm">El cliente no ha llenado la historia.</p>
           )}
         </div>
+      )}
+
+      {/* === RADICACIÓN — jurisdicción, formularios oficiales SIJS Fase 1 === */}
+      {tab === 'radicacion' && isVisaJuvenil && selectedCase && (
+        <div>
+          <JurisdictionPanel caseId={selectedCase} />
+        </div>
+      )}
+
+      {/* === HISTÓRICO FASES === */}
+      {tab === 'historico' && isVisaJuvenil && selectedCase && (
+        <PhaseHistoryTab caseId={selectedCase} />
       )}
 
       {/* === DECLARACIONES === */}
