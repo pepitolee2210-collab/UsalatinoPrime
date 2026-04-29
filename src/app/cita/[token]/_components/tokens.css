@@ -103,6 +103,7 @@
   /* ─── Alturas fijas (top bar / bottom nav) ─── */
   --height-ulp-topbar:    64px;
   --height-ulp-bottomnav: 88px;
+  --width-ulp-sidenav:    260px;
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -205,6 +206,28 @@
   border-radius: 16px 16px 0 0;
   box-shadow: 0 -4px 20px 0 rgba(10, 20, 40, 0.05);
   z-index: 40;
+}
+
+/* ─── Desktop overrides (≥ md = 768px) ─────────────────────────────── */
+@media (min-width: 768px) {
+  .ulp-portal-root {
+    --ulp-content-pt: 32px;
+    --ulp-content-pb: 32px;
+  }
+  .ulp-portal-root .ulp-sidenav {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: var(--width-ulp-sidenav);
+    background: var(--color-ulp-surface-container-lowest);
+    border-right: 1px solid var(--color-ulp-outline-variant);
+    z-index: 40;
+    overflow-y: auto;
+  }
+  .ulp-portal-root .ulp-main {
+    margin-left: var(--width-ulp-sidenav);
+  }
 }
 
 /* Animaciones específicas del portal */

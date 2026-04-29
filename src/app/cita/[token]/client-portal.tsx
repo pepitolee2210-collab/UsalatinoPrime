@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { AppShell } from './_components/app-shell'
 import { TopBar } from './_components/top-bar'
 import { BottomNav, type ScreenId } from './_components/bottom-nav'
+import { SideNav } from './_components/side-nav'
 import { InicioScreen, type QuickContact, type PhaseAsset } from './_components/screens/inicio-screen'
 import { CitasScreen } from './_components/screens/citas-screen'
 import { DocumentosScreen } from './_components/screens/documentos-screen'
@@ -136,6 +137,15 @@ export function ClientPortal(props: ClientPortalProps) {
           activeScreen={activeScreen}
           onChange={setActiveScreen}
           badges={badges}
+        />
+      }
+      sideNav={
+        <SideNav
+          activeScreen={activeScreen}
+          onChange={setActiveScreen}
+          badges={badges}
+          clientName={clientName}
+          avatarUrl={avatarUrl}
         />
       }
     >
