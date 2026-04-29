@@ -80,37 +80,64 @@ export function UploadModal({
 
     setSubmitting(true)
     try {
-      const fd = new FormData()
-      fd.append('case_id', selected.case_id)
-      fd.append('client_id', selected.client_id)
-      fd.append('category', category)
-      fd.append('upload_notes', notes)
-      fd.append('file', file)
-      if (parentDocumentId) fd.append('parent_document_id', parentDocumentId)
-
-      // credentials: cookie de Supabase auth necesaria server-side.
-      // cache: 'no-store' evita que un Service Worker stale del PWA intercepte
-      //   este POST y devuelva una respuesta cacheada incorrecta (visto en
-      //   Chrome con SW antiguo de versiones previas que no conocía estos
-      //   endpoints).
-      const res = await fetch('/api/internal-documents/upload', {
+      // Paso 1: pedir signed URL al backend (payload chico, sin archivo).
+      // Esto crea un row con status='uploading' en internal_documents.
+      const initRes = await fetch('/api/internal-documents/upload', {
         method: 'POST',
-        body: fd,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          case_id: selected.case_id,
+          client_id: selected.client_id,
+          category,
+          file_name: file.name,
+          file_size: file.size,
+          file_mime: file.type || 'application/octet-stream',
+          upload_notes: notes,
+          parent_document_id: parentDocumentId,
+        }),
         credentials: 'same-origin',
         cache: 'no-store',
       })
 
-      let json: { error?: string } = {}
-      try {
-        json = await res.json()
-      } catch {
-        // El body puede no ser JSON si un proxy/SW intercepto la respuesta
-      }
-
-      if (!res.ok) {
-        toast.error(json.error || `Error al subir (HTTP ${res.status})`)
+      const initJson = await initRes.json().catch(() => ({}))
+      if (!initRes.ok) {
+        toast.error(initJson.error || `Error al iniciar la subida (HTTP ${initRes.status})`)
         return
       }
+
+      const { document_id, signed_url } = initJson as {
+        document_id: string
+        signed_url: string
+      }
+
+      // Paso 2: subir el archivo DIRECTO a Supabase Storage con PUT.
+      // No pasa por Vercel — bypass del límite de 4.5 MB.
+      const uploadRes = await fetch(signed_url, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      })
+
+      if (!uploadRes.ok) {
+        toast.error(`Error al subir el archivo (HTTP ${uploadRes.status})`)
+        return
+      }
+
+      // Paso 3: finalizar — marcar el doc como pending_review.
+      const finRes = await fetch('/api/internal-documents/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ document_id }),
+        credentials: 'same-origin',
+        cache: 'no-store',
+      })
+
+      const finJson = await finRes.json().catch(() => ({}))
+      if (!finRes.ok) {
+        toast.error(finJson.error || 'Error al finalizar la subida')
+        return
+      }
+
       toast.success('Documento subido. Esperando revisión de Henry.')
       onUploaded()
     } catch (err) {
