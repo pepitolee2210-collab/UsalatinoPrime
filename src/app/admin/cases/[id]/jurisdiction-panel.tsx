@@ -73,8 +73,9 @@ interface CachedJurisdiction {
   filing_steps?: FilingStep[] | null
   attachments_required?: AttachmentRequirement[] | null
   fees?: FeesInfo | null
-  research_status?: 'pending' | 'completed' | 'failed' | null
+  research_status?: 'pending' | 'completed' | 'incomplete' | 'failed' | null
   research_error?: string | null
+  research_warnings?: string[] | null
   // Etapa 1 — radicación de la presentación (intake)
   intake_required_forms?: RequiredForm[] | null
   intake_filing_steps?: FilingStep[] | null
@@ -227,8 +228,10 @@ export function JurisdictionPanel({ caseId }: Props) {
   const researchStatus = data?.jurisdiction?.research_status
   const isResearchPending = researchStatus === 'pending'
   const isResearchFailed = researchStatus === 'failed'
+  const isResearchIncomplete = researchStatus === 'incomplete'
+  // 'completed' o null (legacy sin status) cuentan como completados.
   const isResearchCompleted = Boolean(data?.jurisdiction && (researchStatus === 'completed' || researchStatus == null))
-  const hasCache = isResearchCompleted
+  const hasCache = isResearchCompleted || isResearchIncomplete
   const needsInvestigation = Boolean(
     !loading && data && data.clientLocation && !hasCache && !isResearchPending && !isResearchFailed
   )
@@ -237,6 +240,7 @@ export function JurisdictionPanel({ caseId }: Props) {
     if (loading || researching || isResearchPending) return 'border-blue-200 bg-blue-50/40'
     if (!data) return 'border-gray-200 bg-gray-50'
     if (isResearchFailed) return 'border-red-200 bg-red-50/40'
+    if (isResearchIncomplete) return 'border-amber-300 bg-amber-50/60'
     if (data.error && !data.jurisdiction) return 'border-red-200 bg-red-50/40'
     if (!data.clientLocation) return 'border-red-200 bg-red-50/40'
     if (!data.jurisdiction) return 'border-amber-200 bg-amber-50/40'
@@ -248,6 +252,7 @@ export function JurisdictionPanel({ caseId }: Props) {
   const headerIcon = (() => {
     if (loading || researching || isResearchPending) return <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
     if (isResearchFailed) return <AlertCircle className="w-4 h-4 text-red-600" />
+    if (isResearchIncomplete) return <AlertTriangle className="w-4 h-4 text-amber-600" />
     if (!data?.clientLocation) return <AlertCircle className="w-4 h-4 text-red-600" />
     if (!data.jurisdiction) return <AlertTriangle className="w-4 h-4 text-amber-600" />
     if (data.jurisdiction.confidence === 'high') return <CheckCircle className="w-4 h-4 text-green-600" />
@@ -259,6 +264,7 @@ export function JurisdictionPanel({ caseId }: Props) {
     if (isResearchPending) return `Investigando en ${data?.jurisdiction?.state_name ?? 'background'}…`
     if (researching) return 'Investigando con fuentes oficiales…'
     if (isResearchFailed) return 'La investigación automática falló'
+    if (isResearchIncomplete) return `${data?.jurisdiction?.court_name ?? 'Corte detectada'} · investigación incompleta`
     if (!data) return ''
     if (!data.clientLocation) return 'Sin estado detectado'
     if (!data.jurisdiction) return `${data.clientLocation.stateName} — sin investigar`
@@ -367,6 +373,45 @@ export function JurisdictionPanel({ caseId }: Props) {
                     {researching
                       ? <><Loader2 className="w-4 h-4 animate-spin mr-1.5" /> Reintentando…</>
                       : <><RotateCw className="w-4 h-4 mr-1.5" /> Reintentar investigación</>
+                    }
+                  </Button>
+                </div>
+              )}
+
+              {/* Incomplete: la IA cacheó algo válido pero faltan familias core SIJS.
+                  Mostramos qué falta y un botón para re-verificar (ejecuta retry validado). */}
+              {isResearchIncomplete && data.jurisdiction && (
+                <div className="rounded-lg bg-white border border-amber-300 p-4">
+                  <div className="flex items-start gap-3 mb-3">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-900 mb-1">
+                        Investigación incompleta — faltan formularios SIJS core
+                      </p>
+                      <p className="text-[11px] text-gray-700 mb-2">
+                        La IA encontró la corte y la mayoría de los formularios, pero <strong>el set legalmente requerido para SIJS está incompleto</strong>. Sin estos documentos, USCIS rechazará el I-360.
+                      </p>
+                      {data.jurisdiction.research_warnings && data.jurisdiction.research_warnings.length > 0 && (
+                        <ul className="text-[11px] text-amber-900 bg-amber-50 rounded px-2 py-1.5 mt-1 space-y-0.5">
+                          {data.jurisdiction.research_warnings.map((w) => (
+                            <li key={w} className="flex items-start gap-1.5">
+                              <span className="text-amber-600">•</span>
+                              <span className="font-mono">{w}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={investigate}
+                    disabled={researching}
+                    className="bg-[#F2A900] hover:bg-[#D4940A] text-white"
+                  >
+                    {researching
+                      ? <><Loader2 className="w-4 h-4 animate-spin mr-1.5" /> Re-verificando…</>
+                      : <><RotateCw className="w-4 h-4 mr-1.5" /> Re-verificar con retry dirigido</>
                     }
                   </Button>
                 </div>

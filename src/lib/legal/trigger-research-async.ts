@@ -75,6 +75,7 @@ export async function triggerJurisdictionResearchAsync(
     intake_notes: null,
     research_status: 'pending',
     research_error: null,
+    research_warnings: [],
     verified_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }
@@ -158,6 +159,16 @@ export async function runJurisdictionResearchSync(caseId: string): Promise<void>
     const research = await researchJurisdiction(location, safetyAbort.signal)
     clearTimeout(safetyTimer)
 
+    // El research devuelve `_missing_families` cuando pasó por retry pero
+    // no logró cubrir todas las familias core SIJS. En ese caso persistimos
+    // 'incomplete' (no 'completed') para que la UI muestre badge y Henry
+    // sepa que falta completar manualmente o re-investigar.
+    const missingFamilies = research._missing_families ?? []
+    const finalStatus = missingFamilies.length > 0 ? 'incomplete' : 'completed'
+    const errorMessage = missingFamilies.length > 0
+      ? `Investigación incompleta — faltan familias core SIJS: ${missingFamilies.join(', ')}. Re-verificar.`
+      : null
+
     const { error: updateErr } = await service
       .from('case_jurisdictions')
       .update({
@@ -182,8 +193,9 @@ export async function runJurisdictionResearchSync(caseId: string): Promise<void>
         intake_filing_channel: research.intake_packet.filing_channel,
         intake_procedure_es: research.intake_packet.procedure_es,
         intake_notes: research.intake_packet.notes,
-        research_status: 'completed',
-        research_error: null,
+        research_status: finalStatus,
+        research_error: errorMessage,
+        research_warnings: missingFamilies,
         verified_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
@@ -199,6 +211,8 @@ export async function runJurisdictionResearchSync(caseId: string): Promise<void>
       court: research.court_name,
       intakeForms: research.intake_packet.required_forms.length,
       meritsForms: research.required_forms.length,
+      finalStatus,
+      missingFamilies,
       elapsedMs: Date.now() - startMs,
     })
   } catch (err) {

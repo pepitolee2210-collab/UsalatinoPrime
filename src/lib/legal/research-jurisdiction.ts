@@ -5,6 +5,13 @@ import { createLogger } from '@/lib/logger'
 import type { ClientLocation } from './resolve-client-location'
 import { getStateCourtHint } from './state-court-registry'
 import { getRegisteredSlugCatalogMarkdown } from './automated-forms-registry'
+import {
+  validateSIJCorePackage,
+  buildTargetedQueries,
+  describeMissingFamilies,
+  type SIJCoreFamily,
+} from './sij-core-validator'
+import type { UsStateCode } from '@/lib/timezones/us-states'
 
 const log = createLogger('research-jurisdiction')
 
@@ -96,6 +103,14 @@ export interface JurisdictionResearchResult {
   filing_steps: FilingStep[]
   attachments_required: AttachmentRequirement[]
   fees: FeesInfo | null
+  /**
+   * Familias SIJS core que la IA NO encontró tras los reintentos. Vacío
+   * cuando la investigación pasó la validación. Cuando contiene entries,
+   * el caller persiste research_status='incomplete' en lugar de 'completed'
+   * y muestra un badge en la UI para que Henry sepa qué falta agregar a
+   * mano (o re-investigar después).
+   */
+  _missing_families?: SIJCoreFamily[]
 }
 
 /**
@@ -218,9 +233,18 @@ Debes investigar y reportar LAS DOS ETAPAS por separado. El sistema las muestra 
 9. **age_limit_sijs**: 18 o 21 según la normativa del estado. Verifica en fuente oficial.
 10. **confidence**: high = corte + ambas etapas documentadas en fuentes oficiales. medium = corte identificada pero alguna etapa inferida. low = no pude confirmar sub-jurisdicción.
 11. **EXHAUSTIVIDAD OBLIGATORIA**: el sistema sirve a una abogada que radica casos reales. Si OMITES un documento conocido, ella lo descubre en ventanilla y se cae el trámite. Por eso:
-    - \`intake_packet.required_forms\` NUNCA puede estar vacío salvo que documentes en \`intake_packet.notes\` por qué este juzgado solo acepta carta libre. Todos los condados grandes (Harris TX, Kings NY, Cook IL, Maricopa AZ, Los Angeles CA, etc.) tienen Civil Case Information Sheet o Family Court Coversheet.
+    - \`intake_packet.required_forms\` NUNCA puede estar vacío salvo que documentes en \`intake_packet.notes\` por qué este juzgado solo acepta carta libre o por qué la propia petición sustantiva funciona como commencement document (caso típico de NY Family Court). Todos los condados grandes (Harris TX, Kings NY, Cook IL, Maricopa AZ, Los Angeles CA, etc.) tienen Civil Case Information Sheet o Family Court Coversheet.
     - \`required_forms\` (Etapa 2) DEBE incluir TODOS los formularios sustantivos conocidos para SIJS estatal (petition for guardianship/SAPCR, motion for SIJ findings, affidavits del menor + del peticionario + de testigos, proposed order con findings, certificate of conference si aplica).
     - Si el estado no publica un template oficial para alguno, dilo en \`notes\` — no lo omitas.
+
+12. **CHECKLIST INTERNA OBLIGATORIA — antes de cerrar el JSON, responde mentalmente las 5 preguntas**:
+    ☐ ¿\`required_forms\` contiene una **Petition** (Guardianship/Custody/SAPCR/Appointment)? Si NO, busca otra vez con la query del estado (FM-SAPCR-100 en TX, Form 6-1 en NY, GC-210 en CA, Form 12.961 en FL).
+    ☐ ¿\`required_forms\` contiene una **Motion for SIJ Findings** (o Notice of Motion for Special Findings)? Si NO, busca explícitamente con \`"motion for SIJ findings" site:.gov\` y la variante específica del estado.
+    ☐ ¿\`required_forms\` contiene una **Affirmation/Affidavit en apoyo del Motion**? Si NO, busca \`"affirmation in support" SIJ findings site:.gov\`.
+    ☐ ¿\`required_forms\` contiene un **Proposed Order con Special Findings** (en NY = GF-42; en TX = 2019_Order_SIJ_Findings; en otros = "Order Regarding SIJ Status")? Si NO, busca explícitamente. **Sin esta orden, USCIS rechaza el I-360 — es el documento más crítico de todo el paquete.**
+    ☐ ¿\`intake_packet.required_forms\` contiene al menos un coversheet/intake form (o las notes documentan que el estado no exige coversheet separado)?
+
+    Si fallaste alguno de los 5 checks, NO emitas el JSON aún — vuelve a buscar. Tienes presupuesto para hacerlo.
 
 ## BLOQUES ESTRUCTURADOS
 
@@ -263,6 +287,9 @@ Busca explícitamente:
 - Tarifa I-360 SIJS desde Julio 2025: $250 (OBBBA).
 
 ## REGLAS POR ESTADO — URLs canónicas conocidas (úsalas siempre)
+
+{{STATE_SIJ_RULES}}
+
 
 ### Texas (TX) — TODOS los condados (Harris, Dallas, Bexar, Travis, Tarrant, El Paso, etc.)
 - **NUNCA uses URLs de un solo condado** (ej: \`fortbendlibraries.gov\`, \`harriscounty.gov\`, \`dallascounty.org\`) para forms FM-SAPCR-*. Esos packets solo aplican a su condado.
@@ -466,18 +493,314 @@ function getClient(): Anthropic {
  * y devuelve la jurisdicción estructurada. Lanza si no se pudo parsear JSON o
  * si Claude no devolvió sources oficiales.
  *
- * Costo típico: ~5 web_search_requests + ~15k tokens input + ~2k tokens output
- * ≈ $0.35-0.45 USD por invocación. Se cachea por caseId en
- * `case_jurisdictions` por 30 días.
+ * Estrategia de dos pasadas:
+ *   1. Primera llamada con prompt principal + max_uses=10.
+ *   2. Si validateSIJCorePackage detecta familias faltantes (ej. GF-42 en NY,
+ *      DFPS Order en TX), corre una segunda llamada DIRIGIDA con queries
+ *      explícitas para los gaps detectados (max_uses=5).
+ *   3. Hace merge único por nombre, re-valida, y devuelve. Si tras retry
+ *      siguen faltando familias, marca `_missing_families` para que el
+ *      caller persista research_status='incomplete'.
+ *
+ * Costo típico: ~7-10 web_search_requests + ~15k tokens input + ~2k tokens output
+ * ≈ $0.35-0.55 USD por invocación. Se cachea por caseId en
+ * `case_jurisdictions` por 30 días. Si se dispara retry: +$0.20 ≈ $0.75 total.
  */
 export async function researchJurisdiction(
   location: ClientLocation,
   signal?: AbortSignal,
 ): Promise<JurisdictionResearchResult> {
+  const stateCode = location.stateCode as UsStateCode
+
+  // Pasada 1: prompt principal con max_uses=10 (subido desde 7 — el budget
+  // anterior se quedaba corto cuando el catálogo SIJS exigía buscar
+  // explícitamente petition + motion + affidavit + order + coversheet por
+  // estado/condado).
+  const firstAttempt = await callClaudeForResearch(location, {
+    signal,
+    maxUses: 10,
+    retryContext: null,
+  })
+
+  const validation = validateSIJCorePackage(firstAttempt, stateCode)
+  if (validation.ok) {
+    log.info('research first-attempt passed validator', {
+      stateCode,
+      meritsForms: firstAttempt.required_forms.length,
+      intakeForms: firstAttempt.intake_packet.required_forms.length,
+    })
+    return firstAttempt
+  }
+
+  log.warn('research first-attempt missing core families — running targeted retry', {
+    stateCode,
+    missing: validation.missing,
+    warnings: validation.warnings,
+  })
+
+  // Pasada 2: retry dirigido con queries específicas para los gaps.
+  const targetedQueries = buildTargetedQueries(stateCode, validation.missing)
+  const missingDescriptions = describeMissingFamilies(validation.missing)
+
+  let secondAttempt: JurisdictionResearchResult | null = null
+  try {
+    secondAttempt = await callClaudeForResearch(location, {
+      signal,
+      maxUses: 5,
+      retryContext: {
+        previousResult: firstAttempt,
+        missingFamilies: missingDescriptions,
+        suggestedQueries: targetedQueries,
+      },
+    })
+  } catch (err) {
+    log.error('targeted retry failed — keeping first attempt with warnings', {
+      stateCode,
+      err: err instanceof Error ? err.message : err,
+    })
+  }
+
+  // Merge: priorizar entries de la primera pasada (ya tienen el contexto general),
+  // agregar entries nuevas del retry que no estuvieran ya por nombre.
+  const merged: JurisdictionResearchResult = secondAttempt
+    ? mergeResearchResults(firstAttempt, secondAttempt)
+    : firstAttempt
+
+  const finalValidation = validateSIJCorePackage(merged, stateCode)
+  if (finalValidation.ok) {
+    log.info('research passed validator after retry', {
+      stateCode,
+      meritsForms: merged.required_forms.length,
+      intakeForms: merged.intake_packet.required_forms.length,
+      retryAdded: secondAttempt
+        ? merged.required_forms.length - firstAttempt.required_forms.length
+        : 0,
+    })
+    return merged
+  }
+
+  log.warn('research still incomplete after retry — marking warnings', {
+    stateCode,
+    stillMissing: finalValidation.missing,
+  })
+
+  return { ...merged, _missing_families: finalValidation.missing }
+}
+
+/**
+ * Combina dos resultados de research. Mantiene los datos generales (court_name,
+ * filing_procedure, etc.) del PRIMARIO, y solo agrega entries de required_forms
+ * / intake_packet.required_forms / sources del SECUNDARIO que no existan ya
+ * (matching por nombre normalizado, case-insensitive).
+ */
+function mergeResearchResults(
+  primary: JurisdictionResearchResult,
+  secondary: JurisdictionResearchResult,
+): JurisdictionResearchResult {
+  const normalizeName = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ')
+
+  const mergeForms = (a: RequiredForm[], b: RequiredForm[]): RequiredForm[] => {
+    const seen = new Set(a.map(f => normalizeName(f.name)))
+    const additions = b.filter(f => !seen.has(normalizeName(f.name)))
+    return [...a, ...additions]
+  }
+
+  const mergedSources = Array.from(new Set([...primary.sources, ...secondary.sources]))
+
+  return {
+    ...primary,
+    sources: mergedSources,
+    required_forms: mergeForms(primary.required_forms, secondary.required_forms),
+    intake_packet: {
+      ...primary.intake_packet,
+      required_forms: mergeForms(
+        primary.intake_packet.required_forms,
+        secondary.intake_packet.required_forms,
+      ),
+    },
+  }
+}
+
+interface CallOptions {
+  signal?: AbortSignal
+  maxUses: number
+  /** Si está presente, esta llamada es un retry dirigido. */
+  retryContext: {
+    previousResult: JurisdictionResearchResult
+    missingFamilies: string[]
+    suggestedQueries: string[]
+  } | null
+}
+
+/**
+ * Helper interno: arma el system + user prompt e invoca Claude. Reutilizado
+ * para la pasada principal y para los retries dirigidos. Retorna el JSON
+ * parseado y validado (Zod), pero NO ejecuta validación SIJS — eso lo hace
+ * el caller.
+ */
+async function callClaudeForResearch(
+  location: ClientLocation,
+  opts: CallOptions,
+): Promise<JurisdictionResearchResult> {
   const client = getClient()
   const hint = getStateCourtHint(location.stateCode)
+  const isRetry = Boolean(opts.retryContext)
 
-  const userPrompt = `Investiga las DOS etapas de radicación SIJS para este cliente. Tienes hasta 7 web_searches — sé eficiente: una para confirmar la corte/condado, dos para intake (coversheet/CCIS), tres para merits (petition + motion findings + proposed order), una de holgura.
+  // System prompt: inyectamos catálogo de slugs + reglas SIJS específicas del estado.
+  const stateSijRules = hint.sijRules ?? ''
+  const systemPrompt = RESEARCHER_SYSTEM
+    .replace('{{SLUG_CATALOG}}', getRegisteredSlugCatalogMarkdown())
+    .replace('{{STATE_SIJ_RULES}}', stateSijRules)
+
+  const userPrompt = isRetry
+    ? buildRetryUserPrompt(location, hint, opts.retryContext!)
+    : buildPrimaryUserPrompt(location, hint, opts.maxUses)
+
+  log.debug('callClaudeForResearch', {
+    stateCode: location.stateCode,
+    zip: location.zip,
+    source: location.source,
+    isRetry,
+    maxUses: opts.maxUses,
+  })
+
+  const message = await client.messages.create(
+    {
+      model: RESEARCH_MODEL,
+      max_tokens: 12000,
+      system: systemPrompt,
+      tools: [
+        {
+          type: 'web_search_20250305',
+          name: 'web_search',
+          max_uses: opts.maxUses,
+        },
+      ] as unknown as Anthropic.Messages.Tool[],
+      messages: [{ role: 'user', content: userPrompt }],
+    },
+    { signal: opts.signal, timeout: 120_000 },
+  )
+
+  const rawText = message.content
+    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+    .map(b => b.text)
+    .join('')
+    .trim()
+
+  if (!rawText) {
+    throw new Error('Claude devolvió respuesta sin texto (solo tool_use blocks)')
+  }
+
+  let jsonText = extractBalancedJson(rawText)
+  if (!jsonText) {
+    let stripped = rawText
+    if (stripped.startsWith('```')) {
+      stripped = stripped.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '')
+    }
+    const firstBrace = stripped.indexOf('{')
+    const lastBrace = stripped.lastIndexOf('}')
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      jsonText = stripped.slice(firstBrace, lastBrace + 1)
+    } else {
+      jsonText = stripped
+    }
+  }
+
+  let parsed: JurisdictionResearchResult
+  try {
+    let rawParsed: unknown
+    try {
+      rawParsed = JSON.parse(jsonText) as unknown
+    } catch (parseErr) {
+      log.warn('JSON.parse falló — aplicando jsonrepair', {
+        err: parseErr instanceof Error ? parseErr.message : String(parseErr),
+      })
+      const repaired = jsonrepair(jsonText)
+      rawParsed = JSON.parse(repaired) as unknown
+    }
+    parsed = ResearchSchema.parse(rawParsed) as JurisdictionResearchResult
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err)
+    const isZodError = errMsg.includes('ZodError') || errMsg.startsWith('[')
+    const errorType = isZodError ? 'Validación Zod' : 'JSON.parse'
+    const tail = jsonText.slice(-200).replace(/\s+/g, ' ')
+    const head = jsonText.slice(0, 200).replace(/\s+/g, ' ')
+    log.error('research JSON parse/validation failed', {
+      errorType,
+      isRetry,
+      jsonTextLength: jsonText.length,
+      rawTextLength: rawText.length,
+      rawPreview: rawText.slice(0, 1200),
+      extractedPreview: jsonText.slice(0, 800),
+      extractedTail: jsonText.slice(-300),
+      err: errMsg,
+    })
+    throw new Error(
+      `Claude JSON inválido (${errorType}). ` +
+      `jsonText[${jsonText.length}c] head="${head}" tail="${tail}" — error: ${errMsg.slice(0, 200)}`
+    )
+  }
+
+  // Verificación post-hoc: al menos una source debe venir de un dominio oficial.
+  const SOURCE_OFFICIAL_REGEX = /\.(gov|us)(\/|$|\?|#)|uscourts\.gov|courts\.state\./i
+  const officialSources = parsed.sources.filter(u => SOURCE_OFFICIAL_REGEX.test(u))
+  if (officialSources.length === 0) {
+    log.warn('research returned no official .gov/.us sources', {
+      stateCode: parsed.state_code,
+      sources: parsed.sources,
+      isRetry,
+    })
+    throw new Error('Claude no citó ninguna fuente oficial (.gov/.us). Rehaga la investigación.')
+  }
+
+  // Limpieza de URLs no oficiales en required_forms / waiver_form_url / intake.
+  const isOfficial = (u: string | null | undefined) => !!u && SOURCE_OFFICIAL_REGEX.test(u)
+  parsed.required_forms = parsed.required_forms.filter(f => {
+    const ok = isOfficial(f.url_official)
+    if (!ok) log.warn('required_form dropped — URL no oficial', { name: f.name, url: f.url_official })
+    return ok
+  })
+
+  if (parsed.fees?.waiver_form_url && !isOfficial(parsed.fees.waiver_form_url)) {
+    log.warn('fees.waiver_form_url dropped — URL no oficial', { url: parsed.fees.waiver_form_url })
+    parsed.fees = { ...parsed.fees, waiver_form_url: null, waiver_form_name: parsed.fees.waiver_form_name ?? null }
+  }
+
+  if (parsed.intake_packet?.required_forms?.length) {
+    parsed.intake_packet = {
+      ...parsed.intake_packet,
+      required_forms: parsed.intake_packet.required_forms.filter(f => {
+        const ok = isOfficial(f.url_official)
+        if (!ok) log.warn('intake_form dropped — URL no oficial', { name: f.name, url: f.url_official })
+        return ok
+      }),
+    }
+  }
+
+  const usage = message.usage as Anthropic.Usage & {
+    server_tool_use?: { web_search_requests?: number }
+  }
+  log.info(isRetry ? 'research retry complete' : 'research primary call complete', {
+    stateCode: parsed.state_code,
+    court: parsed.court_name,
+    confidence: parsed.confidence,
+    sources: parsed.sources.length,
+    meritsForms: parsed.required_forms.length,
+    intakeForms: parsed.intake_packet?.required_forms?.length ?? 0,
+    webSearchRequests: usage.server_tool_use?.web_search_requests,
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
+  })
+
+  return parsed
+}
+
+function buildPrimaryUserPrompt(
+  location: ClientLocation,
+  hint: ReturnType<typeof getStateCourtHint>,
+  maxUses: number,
+): string {
+  return `Investiga las DOS etapas de radicación SIJS para este cliente. Tienes hasta ${maxUses} web_searches — sé eficiente: una para confirmar la corte/condado, dos para intake (coversheet/CCIS), tres-cuatro para merits (petition + motion findings + affidavit + proposed order), las restantes de holgura para verificar cualquier familia que no encuentres a la primera.
 
 - Estado: ${location.stateName} (${location.stateCode})
 - ZIP: ${location.zip ?? '(desconocido — usa la corte estatal genérica)'}
@@ -535,167 +858,52 @@ Tu respuesta debe ser SOLO el JSON. Nada más. El primer carácter de tu output 
 Razonamiento interno OK. Texto en la respuesta NO.
 
 Empieza tu respuesta con \`{\` ahora.`
+}
 
-  // Inyectar el catálogo de slugs automatizados desde el registry. Se renderiza
-  // al momento de cada call para que cualquier nuevo form añadido al registry
-  // aparezca automáticamente sin necesidad de tocar este prompt.
-  const systemPrompt = RESEARCHER_SYSTEM.replace('{{SLUG_CATALOG}}', getRegisteredSlugCatalogMarkdown())
+function buildRetryUserPrompt(
+  location: ClientLocation,
+  hint: ReturnType<typeof getStateCourtHint>,
+  ctx: NonNullable<CallOptions['retryContext']>,
+): string {
+  const previousFormsList = ctx.previousResult.required_forms
+    .map(f => `  - ${f.name}`)
+    .join('\n') || '  (ninguno encontrado)'
+  const previousIntakeList = ctx.previousResult.intake_packet.required_forms
+    .map(f => `  - ${f.name}`)
+    .join('\n') || '  (ninguno encontrado)'
 
-  log.debug('researchJurisdiction: calling Claude with web_search', {
-    stateCode: location.stateCode,
-    zip: location.zip,
-    source: location.source,
-  })
+  return `RETRY DIRIGIDO — tu primera investigación pasó la mayoría del trabajo pero OMITIÓ formularios SIJS legalmente requeridos. Ahora SOLO tienes que llenar los gaps.
 
-  // Anthropic's `allowed_domains` no soporta wildcards (`*.gov` falla con
-  // invalid_request_error). En vez de enumerar cada .gov/.us posible,
-  // dejamos el tool sin restricción y validamos post-hoc que al menos una
-  // source esté en un dominio oficial (ver SOURCE_OFFICIAL_REGEX abajo).
-  // Budget amplio (max_uses 10, max_tokens 8192) porque ahora investigamos
-  // dos etapas completas (intake + merits) con formularios específicos por
-  // distrito. Henry pidió investigación exhaustiva sin importar tiempo o
-  // tokens. El research corre en background — el usuario no espera.
-  const message = await client.messages.create(
-    {
-      model: RESEARCH_MODEL,
-      max_tokens: 12000,
-      system: systemPrompt,
-      tools: [
-        {
-          type: 'web_search_20250305',
-          name: 'web_search',
-          // 7 búsquedas son suficientes con el catálogo SIJS prefijado
-          // en el prompt. Subir a 15 hizo que Claude se demorara > 300s
-          // y Vercel matara el handler. 7 cabe en 60-120s típico.
-          max_uses: 7,
-        },
-      ] as unknown as Anthropic.Messages.Tool[],
-      messages: [{ role: 'user', content: userPrompt }],
-    },
-    { signal, timeout: 120_000 }, // 2 min — background job, puede tardar
-  )
+## Contexto del caso (no cambió)
+- Estado: ${location.stateName} (${location.stateCode})
+- ZIP: ${location.zip ?? '(desconocido)'}
+- Ciudad: ${location.city ?? '(desconocida)'}
+- Sitio judiciary: ${hint.officialJudiciaryUrl}
 
-  // Extraemos solo los text blocks (ignoramos tool_use y server_tool_use blocks)
-  const rawText = message.content
-    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-    .map(b => b.text)
-    .join('')
-    .trim()
+## Lo que YA encontraste (no busques esto otra vez)
+**Merits forms ya identificados**:
+${previousFormsList}
 
-  if (!rawText) {
-    throw new Error('Claude devolvió respuesta sin texto (solo tool_use blocks)')
-  }
+**Intake forms ya identificados**:
+${previousIntakeList}
 
-  // Claude a veces precede el JSON con prosa ("I'll research...", "Good - I've...")
-  // o lo envuelve en ```json fences. Extraemos el JSON balanceado escaneando
-  // por brace matching: primer `{` válido + busqueda balanceada hacia adelante.
-  let jsonText = extractBalancedJson(rawText)
-  if (!jsonText) {
-    // Fallback: tal vez está en fence de markdown
-    let stripped = rawText
-    if (stripped.startsWith('```')) {
-      stripped = stripped.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '')
-    }
-    const firstBrace = stripped.indexOf('{')
-    const lastBrace = stripped.lastIndexOf('}')
-    if (firstBrace !== -1 && lastBrace > firstBrace) {
-      jsonText = stripped.slice(firstBrace, lastBrace + 1)
-    } else {
-      jsonText = stripped
-    }
-  }
+## Lo que FALTA (busca explícitamente esto, en este orden)
 
-  let parsed: JurisdictionResearchResult
-  try {
-    let rawParsed: unknown
-    try {
-      rawParsed = JSON.parse(jsonText) as unknown
-    } catch (parseErr) {
-      // Claude a veces produce JSON con comillas internas mal escapadas o
-      // comas faltantes. jsonrepair arregla la mayoría de estos errores.
-      log.warn('JSON.parse falló — aplicando jsonrepair', {
-        err: parseErr instanceof Error ? parseErr.message : String(parseErr),
-      })
-      const repaired = jsonrepair(jsonText)
-      rawParsed = JSON.parse(repaired) as unknown
-    }
-    parsed = ResearchSchema.parse(rawParsed) as JurisdictionResearchResult
-  } catch (err) {
-    const errMsg = err instanceof Error ? err.message : String(err)
-    const isZodError = errMsg.includes('ZodError') || errMsg.startsWith('[')
-    const errorType = isZodError ? 'Validación Zod' : 'JSON.parse'
-    const tail = jsonText.slice(-200).replace(/\s+/g, ' ')
-    const head = jsonText.slice(0, 200).replace(/\s+/g, ' ')
-    log.error('research JSON parse/validation failed', {
-      errorType,
-      jsonTextLength: jsonText.length,
-      rawTextLength: rawText.length,
-      rawPreview: rawText.slice(0, 1200),
-      extractedPreview: jsonText.slice(0, 800),
-      extractedTail: jsonText.slice(-300),
-      err: errMsg,
-    })
-    throw new Error(
-      `Claude JSON inválido (${errorType}). ` +
-      `jsonText[${jsonText.length}c] head="${head}" tail="${tail}" — error: ${errMsg.slice(0, 200)}`
-    )
-  }
+${ctx.missingFamilies.map((m, i) => `${i + 1}. **${m}**`).join('\n')}
 
-  // Verificación post-hoc: al menos una source debe venir de un dominio oficial
-  // (*.gov, *.us, uscourts.gov, state judiciary .org verificable). Esto reemplaza
-  // `allowed_domains` que no soporta wildcards.
-  const SOURCE_OFFICIAL_REGEX = /\.(gov|us)(\/|$|\?|#)|uscourts\.gov|courts\.state\./i
-  const officialSources = parsed.sources.filter(u => SOURCE_OFFICIAL_REGEX.test(u))
-  if (officialSources.length === 0) {
-    log.warn('research returned no official .gov/.us sources', {
-      stateCode: parsed.state_code,
-      sources: parsed.sources,
-    })
-    throw new Error('Claude no citó ninguna fuente oficial (.gov/.us). Rehaga la investigación.')
-  }
+## Queries específicas a probar (úsalas literal o con pequeñas variaciones)
 
-  // Las URLs dentro de required_forms y fees.waiver_form_url también deben ser
-  // .gov/.us — si no, degradamos grácilmente (el modelo a veces cita una URL
-  // parcial). Nunca fallamos la request entera por esto.
-  const isOfficial = (u: string | null | undefined) => !!u && SOURCE_OFFICIAL_REGEX.test(u)
-  const cleanedForms = parsed.required_forms.filter(f => {
-    const ok = isOfficial(f.url_official)
-    if (!ok) {
-      log.warn('required_form dropped — URL no oficial', { name: f.name, url: f.url_official })
-    }
-    return ok
-  })
-  parsed.required_forms = cleanedForms
+${ctx.suggestedQueries.map(q => `- \`${q}\``).join('\n')}
 
-  if (parsed.fees?.waiver_form_url && !isOfficial(parsed.fees.waiver_form_url)) {
-    log.warn('fees.waiver_form_url dropped — URL no oficial', { url: parsed.fees.waiver_form_url })
-    parsed.fees = { ...parsed.fees, waiver_form_url: null, waiver_form_name: parsed.fees.waiver_form_name ?? null }
-  }
+## Reglas del retry
 
-  // Limpieza de intake_packet.required_forms — misma regla que merits.
-  if (parsed.intake_packet?.required_forms?.length) {
-    const cleanedIntake = parsed.intake_packet.required_forms.filter(f => {
-      const ok = isOfficial(f.url_official)
-      if (!ok) {
-        log.warn('intake_form dropped — URL no oficial', { name: f.name, url: f.url_official })
-      }
-      return ok
-    })
-    parsed.intake_packet = { ...parsed.intake_packet, required_forms: cleanedIntake }
-  }
+1. **Tienes 5 web_searches**. Úsalos enfocadamente en las queries de arriba.
+2. **NO repitas búsquedas** que ya diste en la primera pasada — eso lo cubre el listado de "ya encontraste".
+3. **Devuelve un JSON COMPLETO** con la jurisdicción ENTERA: misma corte, mismos datos generales, pero con \`required_forms\` y \`intake_packet.required_forms\` AMPLIADOS para incluir lo que faltaba. Sí — repite los forms que ya encontraste; el sistema deduplica por nombre.
+4. **Si encuentras el form**: lista la URL oficial (.gov/.us) y descripción en español.
+5. **Si NO encuentras URL oficial pero el form claramente aplica al estado**: documéntalo en \`notes\` con un párrafo explicando que el form es obligatorio pero no hay template publicado, y NO lo agregues a \`required_forms\` (porque romperá el filtro de URL oficial).
+6. **Reglas estrictas por estado siguen activas** (NY exige GF-42, TX exige los 3 DFPS Section 13 Tools, CA exige Findings and Order Regarding SIJ Status).
+7. **Output**: JSON puro. Empieza con \`{\` y termina con \`}\`. Sin prosa.
 
-  const usage = message.usage as Anthropic.Usage & {
-    server_tool_use?: { web_search_requests?: number }
-  }
-  log.info('research complete', {
-    stateCode: parsed.state_code,
-    court: parsed.court_name,
-    confidence: parsed.confidence,
-    sources: parsed.sources.length,
-    webSearchRequests: usage.server_tool_use?.web_search_requests,
-    inputTokens: usage.input_tokens,
-    outputTokens: usage.output_tokens,
-  })
-
-  return parsed
+Empieza tu respuesta con \`{\` ahora.`
 }
