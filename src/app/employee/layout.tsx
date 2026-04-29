@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
 import {
   LogOut, Menu, Briefcase, CalendarClock, Users, Scale,
-  PhoneCall, CalendarDays, FileSignature, BarChart3, MessageCircle,
+  PhoneCall, CalendarDays, FileSignature, BarChart3, MessageCircle, FileCheck,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -40,6 +40,7 @@ const navConfig: Array<{
   // Generales (todos)
   { href: '/employee/citas', label: 'Citas', icon: CalendarClock, show: () => true },
   { href: '/employee/clientes', label: 'Clientes', icon: Users, show: () => true },
+  { href: '/employee/revision-interna', label: 'Revisión Interna', icon: FileCheck, show: () => true },
   { href: '/employee/lex', label: 'LEX · Sistema Legal', icon: Scale, show: (t) => t !== 'contracts_manager' },
 ]
 

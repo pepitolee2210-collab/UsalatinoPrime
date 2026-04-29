@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   LayoutDashboard, FileText, Users, CreditCard, LogOut, Menu, Shield,
   MessageSquare, PenLine, CalendarClock, ClipboardList, PhoneCall, Briefcase, Bot, Scale,
-  MessageCircle,
+  MessageCircle, FileCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ClientSearch } from '@/components/admin/ClientSearch'
@@ -26,6 +26,7 @@ const navItems = [
   { href: '/admin/payments', label: 'Pagos', icon: CreditCard, badgeKey: null },
   { href: '/admin/formularios', label: 'Formularios', icon: ClipboardList, badgeKey: 'formsPending' as const },
   { href: '/admin/contratos', label: 'Contratos', icon: PenLine, badgeKey: null },
+  { href: '/admin/revision-interna', label: 'Revisión Interna', icon: FileCheck, badgeKey: 'internalDocsPending' as const },
   { href: '/admin/agenda', label: 'Agenda', icon: PhoneCall, badgeKey: 'agendaPending' as const },
   { href: '/admin/llamadas', label: 'Llamadas IA', icon: Bot, badgeKey: null },
   { href: '/admin/whatsapp', label: 'WhatsApp SIJS', icon: MessageCircle, badgeKey: 'whatsappActive' as const },
@@ -34,11 +35,11 @@ const navItems = [
   { href: '/admin/comunidad', label: 'Comunidad', icon: MessageSquare, badgeKey: null },
 ]
 
-type BadgeCounts = { citasToday: number; formsPending: number; agendaPending: number; employeePending: number; prospectosPending: number; whatsappActive: number }
+type BadgeCounts = { citasToday: number; formsPending: number; agendaPending: number; employeePending: number; prospectosPending: number; whatsappActive: number; internalDocsPending: number }
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [counts, setCounts] = useState<BadgeCounts>({ citasToday: 0, formsPending: 0, agendaPending: 0, employeePending: 0, prospectosPending: 0, whatsappActive: 0 })
+  const [counts, setCounts] = useState<BadgeCounts>({ citasToday: 0, formsPending: 0, agendaPending: 0, employeePending: 0, prospectosPending: 0, whatsappActive: 0, internalDocsPending: 0 })
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
