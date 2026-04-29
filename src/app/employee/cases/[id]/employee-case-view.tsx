@@ -14,6 +14,8 @@ import Link from 'next/link'
 import { DeclarationGenerator } from '@/app/admin/cases/[id]/declaration-generator'
 import { ParentalConsentGenerator } from '@/app/admin/cases/[id]/parental-consent-generator'
 import { SupplementaryDataForm } from '@/app/admin/cases/[id]/supplementary-data-form'
+import { JurisdictionPanel } from '@/app/admin/cases/[id]/jurisdiction-panel'
+import { PhaseHistoryTab } from '@/app/admin/cases/[id]/phase-history-tab'
 
 interface CaseData {
   id: string
@@ -58,7 +60,7 @@ interface Submission {
   updated_at: string
 }
 
-type TabId = 'docs' | 'client-docs' | 'notas' | 'historia' | 'declaraciones' | 'i360' | 'mi-trabajo'
+type TabId = 'docs' | 'client-docs' | 'notas' | 'historia' | 'radicacion' | 'historico' | 'declaraciones' | 'i360' | 'mi-trabajo'
 
 export function EmployeeCaseView({ caseData, assignment, documents, henryDocuments, formSubmissions = [], submissions, henryNotes }: {
   caseData: CaseData
@@ -96,6 +98,8 @@ export function EmployeeCaseView({ caseData, assignment, documents, henryDocumen
     { id: 'notas', label: 'Notas' },
     { id: 'historia', label: 'Historia' },
     ...(isVisaJuvenil ? [
+      { id: 'radicacion' as TabId, label: 'Radicación · PDFs' },
+      { id: 'historico' as TabId, label: 'Histórico fases' },
       { id: 'declaraciones' as TabId, label: 'Declaraciones' },
       { id: 'i360' as TabId, label: 'I-360' },
     ] : []),
@@ -219,6 +223,18 @@ export function EmployeeCaseView({ caseData, assignment, documents, henryDocumen
             <p className="text-center text-gray-400 py-8 text-sm">El cliente no ha llenado la historia.</p>
           )}
         </div>
+      )}
+
+      {/* === RADICACIÓN TAB — proceso, formularios oficiales, PDF llenados === */}
+      {tab === 'radicacion' && isVisaJuvenil && (
+        <div>
+          <JurisdictionPanel caseId={caseData.id} />
+        </div>
+      )}
+
+      {/* === HISTÓRICO FASES TAB === */}
+      {tab === 'historico' && isVisaJuvenil && (
+        <PhaseHistoryTab caseId={caseData.id} />
       )}
 
       {/* === DECLARACIONES TAB === */}
