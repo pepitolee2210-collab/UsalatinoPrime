@@ -81,4 +81,15 @@ export default withPWA({
   fallbacks: {
     document: "/offline",
   },
+  // El SW por default registra GET/* incluyendo /api/*. POST debería pasar
+  // sin interceptación pero algunas versiones de Chrome tratan FormData con
+  // file uploads de forma rara cuando hay un SW activo. Le decimos a Workbox
+  // que NO precachee NADA bajo /api/ ni /auth/ para evitar respuestas stale.
+  workboxOptions: {
+    exclude: [
+      /^\/api\//,
+      /^\/auth\//,
+      /^\/_next\/data\//,
+    ],
+  },
 })(nextConfig);

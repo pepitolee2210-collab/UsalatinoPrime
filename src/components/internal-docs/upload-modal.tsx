@@ -88,19 +88,39 @@ export function UploadModal({
       fd.append('file', file)
       if (parentDocumentId) fd.append('parent_document_id', parentDocumentId)
 
+      // credentials: cookie de Supabase auth necesaria server-side.
+      // cache: 'no-store' evita que un Service Worker stale del PWA intercepte
+      //   este POST y devuelva una respuesta cacheada incorrecta (visto en
+      //   Chrome con SW antiguo de versiones previas que no conocía estos
+      //   endpoints).
       const res = await fetch('/api/internal-documents/upload', {
         method: 'POST',
         body: fd,
+        credentials: 'same-origin',
+        cache: 'no-store',
       })
-      const json = await res.json()
+
+      let json: { error?: string } = {}
+      try {
+        json = await res.json()
+      } catch {
+        // El body puede no ser JSON si un proxy/SW intercepto la respuesta
+      }
+
       if (!res.ok) {
-        toast.error(json.error || 'Error al subir')
+        toast.error(json.error || `Error al subir (HTTP ${res.status})`)
         return
       }
       toast.success('Documento subido. Esperando revisión de Henry.')
       onUploaded()
-    } catch {
-      toast.error('Error de conexión')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error de conexión'
+      console.error('[internal-docs upload] failed', err)
+      toast.error(
+        msg.includes('Failed to fetch') || msg.includes('NetworkError')
+          ? 'No se pudo conectar al servidor. Si el problema persiste, cierra todas las pestañas de UsaLatino Prime y vuelve a abrir.'
+          : `Error: ${msg}`,
+      )
     } finally {
       setSubmitting(false)
     }
