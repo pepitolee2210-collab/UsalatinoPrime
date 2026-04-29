@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -527,6 +527,19 @@ function AdminBookForm({ activeCases, onSuccess }: { activeCases: ActiveCase[]; 
   const [booking, setBooking] = useState(false)
   const [clientSearch, setClientSearch] = useState('')
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Cerrar el dropdown cuando clickeo fuera de él (más robusto que onBlur con timeout)
+  useEffect(() => {
+    if (!dropdownOpen) return
+    function onClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [dropdownOpen])
 
   const selectedCase = activeCases.find(c => c.id === selectedCaseId)
 
@@ -588,59 +601,79 @@ function AdminBookForm({ activeCases, onSuccess }: { activeCases: ActiveCase[]; 
 
   return (
     <div className="space-y-4">
-      {/* Selector de cliente/caso con buscador */}
+      {/* Selector de cliente/caso con buscador (click-toggle, no depende de focus) */}
       <div className="space-y-1.5">
         <Label className="text-sm font-medium">Cliente / Caso</Label>
-        <div className="relative">
-          <input
-            type="text"
-            value={selectedCaseId
-              ? (() => {
-                  const c = activeCases.find(ac => ac.id === selectedCaseId)
-                  const client = c ? resolveJoin<{ first_name: string; last_name: string }>(c.client) : null
-                  return c ? `${client?.first_name || ''} ${client?.last_name || ''} — #${c.case_number}` : ''
-                })()
-              : clientSearch}
-            onChange={e => {
-              if (selectedCaseId) setSelectedCaseId('')
-              setClientSearch(e.target.value)
-              setDropdownOpen(true)
-            }}
-            onFocus={() => setDropdownOpen(true)}
-            onBlur={() => setTimeout(() => setDropdownOpen(false), 200)}
-            placeholder="Buscar cliente por nombre..."
-            className="w-full h-10 px-3 rounded-md border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40 focus:border-[#F2A900]"
-          />
-          {selectedCaseId && (
-            <button type="button" onClick={() => { setSelectedCaseId(''); setClientSearch('') }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs">✕</button>
-          )}
-          {dropdownOpen && !selectedCaseId && (
-            <div className="absolute z-50 mt-1 w-full max-h-60 overflow-y-auto bg-white border border-gray-200 rounded-md shadow-lg">
+        <div ref={dropdownRef} className="relative">
+          {/* Trigger: si no hay seleccionado, muestra placeholder + caret. Si hay, muestra el cliente */}
+          {!selectedCaseId ? (
+            <button
+              type="button"
+              onClick={() => setDropdownOpen(v => !v)}
+              className="w-full h-10 px-3 rounded-md border border-gray-200 text-sm flex items-center justify-between bg-white hover:border-[#F2A900] focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40 focus:border-[#F2A900]"
+            >
+              <span className="text-gray-400">Seleccionar cliente...</span>
+              <svg className="w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => { setSelectedCaseId(''); setClientSearch(''); setDropdownOpen(true) }}
+              className="w-full h-10 px-3 rounded-md border border-[#F2A900] bg-amber-50 text-sm flex items-center justify-between"
+            >
               {(() => {
-                const filtered = activeCases.filter(c => {
-                  if (!clientSearch.trim()) return true
-                  const client = resolveJoin<{ first_name: string; last_name: string }>(c.client)
-                  const service = resolveJoin<{ name: string }>(c.service)
-                  const q = clientSearch.toLowerCase()
-                  return `${client?.first_name || ''} ${client?.last_name || ''}`.toLowerCase().includes(q) ||
-                    c.case_number.toLowerCase().includes(q) ||
-                    (service?.name || '').toLowerCase().includes(q)
-                })
-                if (filtered.length === 0) return <div className="p-3 text-xs text-gray-400 text-center">Sin resultados</div>
-                return filtered.map(c => {
-                  const client = resolveJoin<{ first_name: string; last_name: string }>(c.client)
-                  const service = resolveJoin<{ name: string }>(c.service)
-                  return (
-                    <button key={c.id} type="button"
-                      onMouseDown={e => { e.preventDefault(); setSelectedCaseId(c.id); setClientSearch(''); setDropdownOpen(false) }}
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-amber-50 transition-colors border-b border-gray-100 last:border-b-0">
-                      <p className="font-medium text-gray-900">{client?.first_name} {client?.last_name}</p>
-                      <p className="text-xs text-gray-500">#{c.case_number} — {service?.name || 'Sin servicio'}</p>
-                    </button>
-                  )
-                })
+                const c = activeCases.find(ac => ac.id === selectedCaseId)
+                const client = c ? resolveJoin<{ first_name: string; last_name: string }>(c.client) : null
+                return (
+                  <span className="text-gray-900 font-medium truncate">
+                    {client?.first_name} {client?.last_name} — #{c?.case_number}
+                  </span>
+                )
               })()}
+              <span className="text-gray-400 hover:text-gray-600 text-xs ml-2">✕</span>
+            </button>
+          )}
+
+          {dropdownOpen && !selectedCaseId && (
+            <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg">
+              <div className="p-2 border-b border-gray-100">
+                <input
+                  type="text"
+                  value={clientSearch}
+                  onChange={e => setClientSearch(e.target.value)}
+                  placeholder="Buscar por nombre, # caso o servicio..."
+                  autoFocus
+                  className="w-full h-8 px-2 rounded border border-gray-200 text-sm focus:outline-none focus:ring-1 focus:ring-[#F2A900]/40"
+                />
+              </div>
+              <div className="max-h-60 overflow-y-auto">
+                {(() => {
+                  const filtered = activeCases.filter(c => {
+                    if (!clientSearch.trim()) return true
+                    const client = resolveJoin<{ first_name: string; last_name: string }>(c.client)
+                    const service = resolveJoin<{ name: string }>(c.service)
+                    const q = clientSearch.toLowerCase()
+                    return `${client?.first_name || ''} ${client?.last_name || ''}`.toLowerCase().includes(q) ||
+                      c.case_number.toLowerCase().includes(q) ||
+                      (service?.name || '').toLowerCase().includes(q)
+                  })
+                  if (filtered.length === 0) return <div className="p-3 text-xs text-gray-400 text-center">Sin resultados</div>
+                  return filtered.map(c => {
+                    const client = resolveJoin<{ first_name: string; last_name: string }>(c.client)
+                    const service = resolveJoin<{ name: string }>(c.service)
+                    return (
+                      <button key={c.id} type="button"
+                        onClick={() => { setSelectedCaseId(c.id); setClientSearch(''); setDropdownOpen(false) }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-amber-50 transition-colors border-b border-gray-100 last:border-b-0">
+                        <p className="font-medium text-gray-900">{client?.first_name} {client?.last_name}</p>
+                        <p className="text-xs text-gray-500">#{c.case_number} — {service?.name || 'Sin servicio'}</p>
+                      </button>
+                    )
+                  })
+                })()}
+              </div>
             </div>
           )}
         </div>
