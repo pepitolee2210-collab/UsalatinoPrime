@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { toast } from 'sonner'
 import type { FormDetail, ClientField } from './types'
 import { SOURCE_LABEL } from './types'
@@ -237,21 +238,30 @@ function FullscreenDrawer({
   onClose: () => void
   children: React.ReactNode
 }) {
-  // En mobile el drawer ocupa el viewport completo (100dvh — dynamic viewport
-  // que excluye toolbars del browser). En desktop centrado con max-h:88vh.
-  // overflow-hidden + flex-col garantiza que header/contenido/footer se
-  // calculen via flex y el footer NO necesite scroll para verse.
-  return (
+  // Bloquear scroll body mientras el drawer está abierto
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
+
+  if (typeof document === 'undefined') return null
+
+  // Renderiza en document.body via portal — escapa cualquier transform/overflow
+  // ancestral del AppShell que rompía el position:fixed.
+  // Mobile: position:fixed inset-0 ocupa exactamente el viewport (100% × 100%).
+  // Desktop (sm+): centrado con max-w-2xl y max-h calculada.
+  // Header / contenido (scroll) / footer son flex children del modal.
+  return createPortal(
     <div
-      className="fixed inset-0 z-[100] bg-black/40 flex flex-col sm:items-center sm:justify-center"
+      className="fixed inset-0 z-[100] bg-black/60"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-2xl shadow-2xl flex flex-col overflow-hidden"
-        style={{
-          height: '100dvh',
-          maxHeight: '100dvh',
-        }}
+        className="absolute bg-white shadow-2xl flex flex-col overflow-hidden
+                   inset-0
+                   sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2
+                   sm:w-full sm:max-w-2xl sm:max-h-[90vh] sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         <header
@@ -278,7 +288,8 @@ function FullscreenDrawer({
         </header>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
