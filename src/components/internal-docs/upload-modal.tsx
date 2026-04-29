@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { X, Upload, Loader2 } from 'lucide-react'
+import { X, Upload, Loader2, FileText, Trash2, FileUp } from 'lucide-react'
 
 const CATEGORIES: Array<{ value: string; label: string }> = [
   { value: 'declaracion_tutor', label: 'Declaración del Tutor' },
@@ -48,6 +48,22 @@ export function UploadModal({
   const [notes, setNotes] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  function handleFile(picked: File | null | undefined) {
+    if (!picked) return
+    if (picked.size > 40 * 1024 * 1024) {
+      toast.error('El archivo supera el límite de 40 MB')
+      return
+    }
+    const ok = picked.type.startsWith('application/pdf') || picked.type.startsWith('image/')
+    if (!ok) {
+      toast.error('Solo se permiten PDF o imágenes')
+      return
+    }
+    setFile(picked)
+  }
 
   const filtered = clients.filter(c => {
     if (!search.trim()) return true
@@ -175,17 +191,65 @@ export function UploadModal({
 
           {/* Archivo */}
           <div>
-            <label className="text-xs font-medium text-gray-700 block mb-1">Archivo (PDF, máx. 40 MB)</label>
+            <label className="text-xs font-medium text-gray-700 block mb-1">Archivo (PDF o imagen, máx. 40 MB)</label>
+
+            {/* Input file oculto, lo dispara el área clickeable */}
             <input
+              ref={fileInputRef}
               type="file"
               accept="application/pdf,image/*"
-              onChange={e => setFile(e.target.files?.[0] || null)}
-              className="w-full text-sm"
+              onChange={e => handleFile(e.target.files?.[0])}
+              className="sr-only"
+              aria-hidden="true"
             />
-            {file && (
-              <p className="text-[11px] text-gray-500 mt-1">
-                {file.name} · {(file.size / 1024).toFixed(0)} KB
-              </p>
+
+            {!file ? (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  setDragOver(false)
+                  const dropped = e.dataTransfer.files?.[0]
+                  if (dropped) handleFile(dropped)
+                }}
+                className={`w-full flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed py-8 px-4 transition-colors text-center ${
+                  dragOver
+                    ? 'border-[#F2A900] bg-[#F2A900]/10'
+                    : 'border-gray-300 bg-gray-50 hover:border-[#F2A900] hover:bg-amber-50/30'
+                }`}
+              >
+                <FileUp className="w-8 h-8 text-[#F2A900]" />
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">Haz click para seleccionar el archivo</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">o arrastra y suelta aquí · PDF o imagen · máx. 40 MB</p>
+                </div>
+              </button>
+            ) : (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-white border border-emerald-200 flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-5 h-5 text-emerald-700" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{file.name}</p>
+                  <p className="text-[11px] text-gray-500">
+                    {(file.size / 1024).toFixed(0)} KB · {file.type || 'archivo'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFile(null)
+                    if (fileInputRef.current) fileInputRef.current.value = ''
+                  }}
+                  className="w-8 h-8 rounded-lg hover:bg-red-50 flex items-center justify-center text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
+                  title="Quitar archivo"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             )}
           </div>
         </div>
