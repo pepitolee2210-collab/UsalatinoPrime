@@ -132,58 +132,64 @@ export function FormRunner({ token, slug, onClose, onSubmitted }: FormRunnerProp
 
   return (
     <FullscreenDrawer onClose={onClose} title={data.form_name}>
-      <div className="flex flex-col h-full">
-        {/* Status de guardado */}
-        <div
-          className="px-4 py-2 flex items-center justify-between text-[11px] border-b"
+      {/* Status de guardado (sticky top dentro del drawer) */}
+      <div
+        className="flex-shrink-0 px-4 py-2 flex items-center justify-between text-[11px] border-b"
+        style={{
+          background: 'var(--color-ulp-surface-container-low)',
+          borderColor: 'var(--color-ulp-outline-variant)',
+        }}
+      >
+        <span style={{ color: 'var(--color-ulp-on-surface-variant)' }}>
+          {data.state ? `Estado: ${data.state} · ` : ''}
+          {data.locked_for_client ? '🔒 Bloqueado por tu equipo legal' : 'Tus respuestas se guardan automáticamente'}
+        </span>
+        <SaveBadge state={savingState} />
+      </div>
+
+      {/* Contenido scrollable — flex-1 + min-h-0 garantiza que NO empuja al
+          footer fuera del viewport. Padding-bottom extra para que la última
+          sección no quede oculta detrás del footer al final del scroll. */}
+      <div className="flex-1 min-h-0 overflow-y-auto" style={{ paddingBottom: '8px' }}>
+        {data.confirmed_values.length > 0 && activeSection === 0 && (
+          <ConfirmedValuesPanel values={data.confirmed_values} />
+        )}
+
+        {isAllAutoResolved ? (
+          <div className="p-6 text-center space-y-3">
+            <span
+              className="material-symbols-outlined block mx-auto"
+              data-fill="1"
+              style={{ fontSize: 56, color: 'var(--color-ulp-status-approved)' }}
+            >
+              check_circle
+            </span>
+            <p className="ulp-body-md font-semibold">¡Todo listo!</p>
+            <p className="ulp-body-sm" style={{ color: 'var(--color-ulp-on-surface-variant)' }}>
+              Este formulario se llena automáticamente con datos que tu equipo ya tiene. No
+              necesitas hacer nada — Diana lo revisará e imprimirá cuando esté lista.
+            </p>
+          </div>
+        ) : (
+          <SectionRenderer
+            section={data.sections[activeSection]}
+            values={values}
+            setField={setField}
+            disabled={data.locked_for_client || submitting}
+          />
+        )}
+      </div>
+
+      {/* Footer SIEMPRE visible — flex-shrink-0 + sticky bottom dentro del flex */}
+      {!isAllAutoResolved && (
+        <footer
+          className="flex-shrink-0 px-4 py-3 flex items-center justify-between gap-3 border-t"
           style={{
-            background: 'var(--color-ulp-surface-container-low)',
             borderColor: 'var(--color-ulp-outline-variant)',
+            background: 'var(--color-ulp-surface-container-lowest)',
+            paddingBottom: 'calc(0.75rem + env(safe-area-inset-bottom))',
           }}
         >
-          <span style={{ color: 'var(--color-ulp-on-surface-variant)' }}>
-            {data.state ? `Estado: ${data.state} · ` : ''}
-            {data.locked_for_client ? '🔒 Bloqueado por tu equipo legal' : 'Tus respuestas se guardan automáticamente'}
-          </span>
-          <SaveBadge state={savingState} />
-        </div>
-
-        <div className="flex-1 overflow-y-auto">
-          {data.confirmed_values.length > 0 && activeSection === 0 && (
-            <ConfirmedValuesPanel values={data.confirmed_values} />
-          )}
-
-          {isAllAutoResolved ? (
-            <div className="p-6 text-center space-y-3">
-              <span
-                className="material-symbols-outlined block mx-auto"
-                data-fill="1"
-                style={{ fontSize: 56, color: 'var(--color-ulp-status-approved)' }}
-              >
-                check_circle
-              </span>
-              <p className="ulp-body-md font-semibold">¡Todo listo!</p>
-              <p className="ulp-body-sm" style={{ color: 'var(--color-ulp-on-surface-variant)' }}>
-                Este formulario se llena automáticamente con datos que tu equipo ya tiene. No
-                necesitas hacer nada — Diana lo revisará e imprimirá cuando esté lista.
-              </p>
-            </div>
-          ) : (
-            <SectionRenderer
-              section={data.sections[activeSection]}
-              values={values}
-              setField={setField}
-              disabled={data.locked_for_client || submitting}
-            />
-          )}
-        </div>
-
-        {/* Footer navegación */}
-        {!isAllAutoResolved && (
-          <footer
-            className="px-4 py-3 flex items-center justify-between gap-3 border-t"
-            style={{ borderColor: 'var(--color-ulp-outline-variant)', background: 'var(--color-ulp-surface-container-lowest)' }}
-          >
             <button
               type="button"
               disabled={activeSection === 0}
@@ -218,7 +224,6 @@ export function FormRunner({ token, slug, onClose, onSubmitted }: FormRunnerProp
             )}
           </footer>
         )}
-      </div>
     </FullscreenDrawer>
   )
 }
@@ -232,15 +237,29 @@ function FullscreenDrawer({
   onClose: () => void
   children: React.ReactNode
 }) {
+  // En mobile el drawer ocupa el viewport completo (100dvh — dynamic viewport
+  // que excluye toolbars del browser). En desktop centrado con max-h:88vh.
+  // overflow-hidden + flex-col garantiza que header/contenido/footer se
+  // calculen via flex y el footer NO necesite scroll para verse.
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/40" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[100] bg-black/40 flex flex-col sm:items-center sm:justify-center"
+      onClick={onClose}
+    >
       <div
-        className="mt-auto sm:mt-12 sm:mx-auto bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-2xl flex-1 sm:max-h-[88vh] flex flex-col overflow-hidden shadow-2xl"
+        className="bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-2xl shadow-2xl flex flex-col overflow-hidden"
+        style={{
+          height: '100dvh',
+          maxHeight: '100dvh',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <header
-          className="px-4 py-3 flex items-center gap-3 border-b"
-          style={{ borderColor: 'var(--color-ulp-outline-variant)' }}
+          className="flex-shrink-0 px-4 py-3 flex items-center gap-3 border-b"
+          style={{
+            borderColor: 'var(--color-ulp-outline-variant)',
+            paddingTop: 'calc(0.75rem + env(safe-area-inset-top))',
+          }}
         >
           <button
             type="button"

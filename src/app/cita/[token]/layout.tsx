@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Cormorant_Garamond, Manrope } from 'next/font/google'
+import 'material-symbols/outlined.css'
 import './_components/tokens.css'
 
 const cormorant = Cormorant_Garamond({
@@ -18,17 +19,13 @@ const manrope = Manrope({
 })
 
 export default function CitaTokenLayout({ children }: { children: ReactNode }) {
+  // Material Symbols Outlined se importa como CSS module desde el paquete npm
+  // material-symbols. Esto auto-hospeda el WOFF2 desde nuestro propio dominio,
+  // evitando depender de fonts.googleapis.com (que era bloqueado por SW PWA en
+  // primera carga sin internet) y eliminando el ERR_FAILED en producción.
   return (
-    <>
-      {/* Material Symbols Outlined — variable font de Google. next/font no
-          la soporta directamente, así que se carga vía <link>. */}
-      <link
-        rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0..1&display=swap"
-      />
-      <div className={`${cormorant.variable} ${manrope.variable}`}>
-        {children}
-      </div>
-    </>
+    <div className={`${cormorant.variable} ${manrope.variable}`}>
+      {children}
+    </div>
   )
 }
