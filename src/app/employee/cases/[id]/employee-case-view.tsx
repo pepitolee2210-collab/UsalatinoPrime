@@ -64,13 +64,15 @@ type TabId = 'docs' | 'client-docs' | 'notas' | 'historia' | 'radicacion' | 'his
 
 export function EmployeeCaseView({ caseData, assignment, documents, henryDocuments, formSubmissions = [], submissions, henryNotes }: {
   caseData: CaseData
-  assignment: Assignment
+  /** Null cuando el paralegal accede a un caso sin asignación explícita. */
+  assignment: Assignment | null
   documents: Doc[]
   henryDocuments: Doc[]
   formSubmissions?: FormSubmission[]
   submissions: Submission[]
   henryNotes: string
 }) {
+  const hasAssignment = Boolean(assignment)
   const [tab, setTab] = useState<TabId>('docs')
   const [previewDoc, setPreviewDoc] = useState<Doc | null>(null)
 
@@ -103,7 +105,9 @@ export function EmployeeCaseView({ caseData, assignment, documents, henryDocumen
       { id: 'declaraciones' as TabId, label: 'Declaraciones' },
       { id: 'i360' as TabId, label: 'I-360' },
     ] : []),
-    { id: 'mi-trabajo', label: 'Mi Trabajo', count: submissions.length },
+    // El tab "Mi Trabajo" solo aplica cuando hay asignación específica;
+    // de lo contrario el paralegal está consultando el caso de forma abierta.
+    ...(hasAssignment ? [{ id: 'mi-trabajo' as TabId, label: 'Mi Trabajo', count: submissions.length }] : []),
   ]
 
   return (
@@ -196,11 +200,14 @@ export function EmployeeCaseView({ caseData, assignment, documents, henryDocumen
           ) : (
             <p className="text-center text-gray-400 py-8 text-sm">No hay notas.</p>
           )}
-          {assignment.task_description && (
+          {assignment?.task_description && (
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
               <p className="text-xs font-bold text-blue-700 mb-2">Instrucciones de la tarea</p>
               <p className="text-sm text-gray-800 whitespace-pre-wrap">{assignment.task_description}</p>
             </div>
+          )}
+          {!assignment && !henryNotes && (
+            <p className="text-center text-gray-400 py-8 text-sm">No hay notas — estás consultando este caso sin asignación específica.</p>
           )}
         </div>
       )}

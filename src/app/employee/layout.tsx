@@ -27,6 +27,9 @@ const navConfig: Array<{
   badgeKey?: BadgeKey
 }> = [
   { href: '/employee/dashboard', label: 'Mis Tareas', icon: Briefcase, show: () => true },
+  // Casos (acceso directo a Radicación · PDFs y demás secciones) — exclusivo paralegal,
+  // así no depende de que Henry asigne caso por caso para poder avanzar.
+  { href: '/employee/casos', label: 'Casos', icon: Briefcase, show: (t) => t === 'paralegal' },
   // Prospectos IA — exclusivo consultora senior
   { href: '/employee/prospectos', label: 'Prospectos IA', icon: PhoneCall, show: (t) => t === 'senior_consultant' },
   // WhatsApp SIJS — exclusivo consultora senior
