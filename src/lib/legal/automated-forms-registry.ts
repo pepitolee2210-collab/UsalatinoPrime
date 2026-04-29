@@ -127,6 +127,22 @@ import {
 } from './order-sij-findings-form-schema'
 import { buildOrderSijPrefilledValues } from './order-sij-findings-prefill'
 
+import {
+  PDF_PUBLIC_PATH as SAPCR205_PDF_PUBLIC,
+  PDF_DISK_PATH as SAPCR205_PDF_DISK,
+  PDF_SHA256 as SAPCR205_SHA,
+  SCHEMA_VERSION as SAPCR205_VERSION,
+  FORM_SLUG as SAPCR205_SLUG,
+  FORM_NAME as SAPCR205_NAME,
+  FORM_DESCRIPTION_ES as SAPCR205_DESC,
+  FORM_SECTIONS as SAPCR205_SECTIONS,
+  HARDCODED_VALUES as SAPCR205_HARDCODED,
+  REQUIRED_FOR_PRINT as SAPCR205_REQUIRED,
+  FIELD_BY_KEY as SAPCR205_FIELD_BY_KEY,
+  fmSapcr205FormSchema as SAPCR205_ZOD_SCHEMA,
+} from './fm-sapcr-205-form-schema'
+import { buildFmSapcr205PrefilledValues } from './fm-sapcr-205-prefill'
+
 // ──────────────────────────────────────────────────────────────────
 // Tipos públicos del registry
 // ──────────────────────────────────────────────────────────────────
@@ -427,6 +443,41 @@ const ORDER_SIJ_DEFINITION: AutomatedFormDefinition = {
   },
 }
 
+const SAPCR205_DEFINITION: AutomatedFormDefinition = {
+  slug: SAPCR205_SLUG,
+  formName: SAPCR205_NAME,
+  formDescriptionEs: SAPCR205_DESC,
+  states: ['TX'],
+  packetType: 'merits',
+  pdfPublicPath: SAPCR205_PDF_PUBLIC,
+  pdfDiskPath: SAPCR205_PDF_DISK,
+  pdfSha256: SAPCR205_SHA,
+  schemaVersion: SAPCR205_VERSION,
+  sections: SAPCR205_SECTIONS as AutomatedFormDefinition['sections'],
+  hardcodedValues: SAPCR205_HARDCODED,
+  requiredForPrint: SAPCR205_REQUIRED,
+  fieldByKey: SAPCR205_FIELD_BY_KEY as AutomatedFormDefinition['fieldByKey'],
+  zodSchema: SAPCR205_ZOD_SCHEMA,
+  buildPrefilledValues: async (caseId, service) => {
+    const raw = await buildFmSapcr205PrefilledValues(caseId, service)
+    const out: Record<string, string | boolean | null | undefined> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      if (v === null || v === undefined || typeof v === 'string' || typeof v === 'boolean') {
+        out[k] = v
+      }
+    }
+    return out
+  },
+  detectByName: (name) => {
+    const n = name.toLowerCase()
+    return (
+      n.includes('fm-sapcr-205') ||
+      (n.includes('sapcr') && n.includes('nonparent') && n.includes('order')) ||
+      (n.includes('order') && n.includes('parent-child') && n.includes('nonparent'))
+    )
+  },
+}
+
 export const AUTOMATED_FORMS: Record<string, AutomatedFormDefinition> = {
   [SAPCR100_SLUG]: SAPCR100_DEFINITION,
   [SAPCR_AFF_100_SLUG]: SAPCR_AFF_100_DEFINITION,
@@ -434,6 +485,7 @@ export const AUTOMATED_FORMS: Record<string, AutomatedFormDefinition> = {
   [MOTION_SIJ_SLUG]: MOTION_SIJ_DEFINITION,
   [AFFIDAVIT_SIJ_SLUG]: AFFIDAVIT_SIJ_DEFINITION,
   [ORDER_SIJ_SLUG]: ORDER_SIJ_DEFINITION,
+  [SAPCR205_SLUG]: SAPCR205_DEFINITION,
 }
 
 /** Slugs registrados (para validación en rutas dinámicas). */
