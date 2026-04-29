@@ -107,9 +107,14 @@ export interface CeoDashboardData {
   generated_at: string
 }
 
-export async function GET(_req: NextRequest) {
+/**
+ * Lógica del dashboard ejecutivo extraída para que el RSC de /ceo pueda
+ * consumirla DIRECTO (sin pasar por fetch HTTP). Esto evita problemas con
+ * el Service Worker del PWA y con dominios personalizados.
+ */
+export async function getCeoDashboardData(): Promise<CeoDashboardData | null> {
   const service = await ensureAdmin()
-  if (!service) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  if (!service) return null
 
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -368,5 +373,11 @@ export async function GET(_req: NextRequest) {
     generated_at: new Date().toISOString(),
   }
 
+  return data
+}
+
+export async function GET(_req: NextRequest) {
+  const data = await getCeoDashboardData()
+  if (!data) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   return NextResponse.json(data)
 }
