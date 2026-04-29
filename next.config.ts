@@ -10,9 +10,9 @@ import withPWA from "@ducanh2912/next-pwa";
 const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
-  "style-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: blob: https://*.supabase.co https://*.googleusercontent.com",
-  "font-src 'self' data:",
+  "font-src 'self' data: https://fonts.gstatic.com",
   "media-src 'self' blob:",
   "worker-src 'self' blob:",
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",

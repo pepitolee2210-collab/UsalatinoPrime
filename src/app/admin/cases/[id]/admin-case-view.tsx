@@ -30,6 +30,8 @@ import { ParentalConsentGenerator } from './parental-consent-generator'
 import { LegalReviewer } from './legal-reviewer'
 import { SupplementaryDataForm } from './supplementary-data-form'
 import { JurisdictionPanel } from './jurisdiction-panel'
+import { PhaseStatusPanel } from './phase-status-panel'
+import { PhaseHistoryTab } from './phase-history-tab'
 import { CasePipeline } from '@/components/case-pipeline'
 import { uploadDirect } from '@/lib/upload-direct'
 import {
@@ -409,6 +411,22 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
         </div>
       </div>
 
+      {/* SIJS Phase Panel */}
+      <PhaseStatusPanel
+        caseId={caseData.id}
+        caseNumber={caseData.case_number}
+        currentPhase={caseData.current_phase ?? null}
+        processStart={caseData.process_start ?? null}
+        stateUs={caseData.state_us ?? null}
+        flags={{
+          parent_deceased: !!caseData.parent_deceased,
+          in_orr_custody: !!caseData.in_orr_custody,
+          has_criminal_history: !!caseData.has_criminal_history,
+          minor_close_to_21: !!caseData.minor_close_to_21,
+        }}
+        isVisaJuvenil={isVisaJuvenil}
+      />
+
       {/* Pipeline Tracker */}
       {isVisaJuvenil && (
         <CasePipeline
@@ -436,6 +454,12 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
             Para el Cliente
           </TabsTrigger>
           <TabsTrigger value="notes">Notas</TabsTrigger>
+          {isVisaJuvenil && (
+            <TabsTrigger value="phase-history" className="flex items-center gap-1.5">
+              <Scale className="w-3.5 h-3.5 text-purple-600" />
+              Histórico
+            </TabsTrigger>
+          )}
           {isVisaJuvenil && (
             <TabsTrigger value="client-story" className="flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-[#F2A900]" />
@@ -961,6 +985,12 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
             </CardContent>
           </Card>
         </TabsContent>
+
+        {isVisaJuvenil && (
+          <TabsContent value="phase-history" className="mt-4">
+            <PhaseHistoryTab caseId={caseData.id} />
+          </TabsContent>
+        )}
 
         {isVisaJuvenil && (
           <TabsContent value="client-story" className="mt-4">

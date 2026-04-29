@@ -64,6 +64,15 @@ export interface FieldSpec {
   options?: FieldOption[]
   /** maxLength para inputs text/textarea (informativo en UI, no validacion estricta). */
   maxLength?: number
+  /**
+   * Si false, este campo solo es editable por Diana en el admin (datos jurídicos
+   * como cause_number, court_number, hardcoded). Si undefined o true, el cliente
+   * puede llenarlo desde la pestaña Fases. Default: true vía heurística.
+   *
+   * Nota: la heurística en isFieldEditableByClient() de field-policy.ts determina
+   * el valor cuando esta prop está undefined.
+   */
+  editableByClient?: boolean
 }
 
 export interface SapcrSection {

@@ -1,0 +1,224 @@
+/* ════════════════════════════════════════════════════════════════
+   UsaLatinoPrime — Tokens visuales del Portal del Cliente
+   ════════════════════════════════════════════════════════════════
+   Material 3 design system adaptado a Tailwind v4. Prefijo `--ulp-`
+   y utilities `ulp-*` para no chocar con globals.css (shadcn).
+   Solo se carga en /cita/[token]/* via layout.tsx.
+
+   Fuentes:
+   - Cormorant Garamond (italic 48px) — H1 elegantes
+   - Manrope — body, labels
+   - Material Symbols Outlined — iconografía (cargado vía <link>)
+   ════════════════════════════════════════════════════════════════ */
+
+/* Variables CSS expuestas globalmente en :root para que `var(--color-ulp-*)`
+   funcione en inline styles de los componentes. Tailwind v4 solo expone
+   vars de `@theme {}` que detecta en utilities — usar :root directo
+   garantiza disponibilidad universal. */
+:root {
+  /* ─── Colores Material 3 ─── */
+  --color-ulp-primary:                 #903f00;
+  --color-ulp-primary-container:       #b45309;
+  --color-ulp-on-primary:              #ffffff;
+  --color-ulp-on-primary-container:    #fff1eb;
+  --color-ulp-primary-fixed:           #ffdbca;
+  --color-ulp-primary-fixed-dim:       #ffb68e;
+
+  --color-ulp-background:              #f9f9f9;
+  --color-ulp-surface:                 #f9f9f9;
+  --color-ulp-surface-container-lowest:#ffffff;
+  --color-ulp-surface-container:       #eeeeee;
+  --color-ulp-surface-container-low:   #f3f3f4;
+  --color-ulp-surface-container-high:  #e8e8e8;
+  --color-ulp-surface-variant:         #e2e2e2;
+  --color-ulp-surface-dim:             #dadada;
+
+  --color-ulp-on-surface:              #1a1c1c;
+  --color-ulp-on-surface-variant:      #564338;
+  --color-ulp-on-secondary-fixed:      #121b2f;
+
+  --color-ulp-secondary:               #555e76;
+  --color-ulp-secondary-container:     #d6dffb;
+  --color-ulp-secondary-fixed-dim:     #bdc6e1;
+
+  --color-ulp-tertiary:                #565755;
+  --color-ulp-tertiary-container:      #6e706e;
+
+  --color-ulp-error:                   #ba1a1a;
+  --color-ulp-on-error:                #ffffff;
+  --color-ulp-error-container:         #ffdad6;
+
+  --color-ulp-outline:                 #897267;
+  --color-ulp-outline-variant:         #ddc1b3;
+
+  /* Fase activa (timeline) */
+  --color-ulp-phase-active:            #8B5CF6;
+  --color-ulp-phase-inactive:          #E0E7FF;
+
+  /* Estados semánticos (cards de documento) */
+  --color-ulp-status-approved:         #10b981; /* emerald-500 */
+  --color-ulp-status-translation:      #3b82f6; /* blue-500 */
+  --color-ulp-status-pending:          #94a3b8; /* slate-400 */
+  --color-ulp-status-rejected:         #ef4444; /* red-500 */
+
+  --color-ulp-online-indicator:        #22c55e; /* green-500 */
+
+  /* ─── Tipografía ─── */
+  --font-ulp-display: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+  --font-ulp-body:    'Manrope', 'DM Sans', system-ui, sans-serif;
+
+  --text-ulp-h1:     48px;
+  --text-ulp-h2:     36px;
+  --text-ulp-h3:     28px;
+  --text-ulp-body-lg:18px;
+  --text-ulp-body-md:16px;
+  --text-ulp-body-sm:14px;
+  --text-ulp-label:  12px;
+
+  --leading-ulp-h1:     1.1;
+  --leading-ulp-h2:     1.2;
+  --leading-ulp-h3:     1.2;
+  --leading-ulp-body-lg:1.6;
+  --leading-ulp-body-md:1.5;
+  --leading-ulp-body-sm:1.5;
+  --leading-ulp-label:  1.2;
+
+  /* ─── Espaciado tokens ─── */
+  --spacing-ulp-base:   4px;
+  --spacing-ulp-xs:     8px;
+  --spacing-ulp-sm:     16px;
+  --spacing-ulp-md:     24px;
+  --spacing-ulp-lg:     40px;
+  --spacing-ulp-xl:     64px;
+  --spacing-ulp-gutter: 24px;
+
+  /* ─── Radios ─── */
+  --radius-ulp-sm:   8px;
+  --radius-ulp-md:   12px;
+  --radius-ulp-lg:   16px;
+  --radius-ulp-xl:   20px;
+  --radius-ulp-2xl:  24px;
+  --radius-ulp-full: 9999px;
+
+  /* ─── Alturas fijas (top bar / bottom nav) ─── */
+  --height-ulp-topbar:    64px;
+  --height-ulp-bottomnav: 88px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Scope: solo dentro de .ulp-portal-root
+   Evita afectar el resto del proyecto.
+   ════════════════════════════════════════════════════════════════ */
+
+.ulp-portal-root {
+  font-family: var(--font-ulp-body);
+  color: var(--color-ulp-on-surface);
+  background: var(--color-ulp-background);
+  /* Reservar espacio para top bar (64) + bottom nav (88) + safe-area */
+  --ulp-content-pt: calc(var(--height-ulp-topbar) + 16px);
+  --ulp-content-pb: calc(var(--height-ulp-bottomnav) + 16px + env(safe-area-inset-bottom));
+}
+
+/* Material Symbols base (cargada vía <link> en layout.tsx) */
+.ulp-portal-root .material-symbols-outlined {
+  font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+  user-select: none;
+  -webkit-user-select: none;
+  vertical-align: middle;
+}
+.ulp-portal-root .material-symbols-outlined[data-fill="1"],
+.ulp-portal-root .material-symbols-outlined[data-weight="fill"] {
+  font-variation-settings: 'FILL' 1;
+}
+
+/* Tipografía utility scoped */
+.ulp-portal-root .ulp-h1 {
+  font-family: var(--font-ulp-display);
+  font-size: var(--text-ulp-h1);
+  line-height: var(--leading-ulp-h1);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+.ulp-portal-root .ulp-h2 {
+  font-family: var(--font-ulp-display);
+  font-size: var(--text-ulp-h2);
+  line-height: var(--leading-ulp-h2);
+  font-weight: 400;
+}
+.ulp-portal-root .ulp-h3 {
+  font-family: var(--font-ulp-display);
+  font-size: var(--text-ulp-h3);
+  line-height: var(--leading-ulp-h3);
+  font-weight: 400;
+}
+.ulp-portal-root .ulp-body-lg {
+  font-size: var(--text-ulp-body-lg);
+  line-height: var(--leading-ulp-body-lg);
+}
+.ulp-portal-root .ulp-body-md {
+  font-size: var(--text-ulp-body-md);
+  line-height: var(--leading-ulp-body-md);
+}
+.ulp-portal-root .ulp-body-sm {
+  font-size: var(--text-ulp-body-sm);
+  line-height: var(--leading-ulp-body-sm);
+}
+.ulp-portal-root .ulp-label {
+  font-size: var(--text-ulp-label);
+  line-height: var(--leading-ulp-label);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* AppShell containers */
+.ulp-portal-root .ulp-topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--height-ulp-topbar);
+  padding-top: env(safe-area-inset-top);
+  background: rgba(249, 249, 249, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--color-ulp-surface-container);
+  z-index: 40;
+}
+.ulp-portal-root .ulp-main {
+  padding-top: var(--ulp-content-pt);
+  padding-bottom: var(--ulp-content-pb);
+  min-height: 100dvh;
+}
+.ulp-portal-root .ulp-bottomnav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #FAFAF7;
+  border-top: 1px solid #e7e5e4; /* stone-200 */
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 20px 0 rgba(10, 20, 40, 0.05);
+  z-index: 40;
+}
+
+/* Animaciones específicas del portal */
+@keyframes ulp-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.ulp-portal-root .ulp-screen {
+  animation: ulp-fade-in 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes ulp-progress-grow {
+  from { width: 0%; }
+}
+.ulp-portal-root .ulp-progress-bar {
+  animation: ulp-progress-grow 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}

@@ -143,6 +143,22 @@ import {
 } from './fm-sapcr-205-form-schema'
 import { buildFmSapcr205PrefilledValues } from './fm-sapcr-205-prefill'
 
+import {
+  PDF_PUBLIC_PATH as FL_GUARDIAN_PDF_PUBLIC,
+  PDF_DISK_PATH as FL_GUARDIAN_PDF_DISK,
+  PDF_SHA256 as FL_GUARDIAN_SHA,
+  SCHEMA_VERSION as FL_GUARDIAN_VERSION,
+  FORM_SLUG as FL_GUARDIAN_SLUG,
+  FORM_NAME as FL_GUARDIAN_NAME,
+  FORM_DESCRIPTION_ES as FL_GUARDIAN_DESC,
+  FORM_SECTIONS as FL_GUARDIAN_SECTIONS,
+  HARDCODED_VALUES as FL_GUARDIAN_HARDCODED,
+  REQUIRED_FOR_PRINT as FL_GUARDIAN_REQUIRED,
+  FIELD_BY_KEY as FL_GUARDIAN_FIELD_BY_KEY,
+  flGuardianshipFormSchema as FL_GUARDIAN_ZOD_SCHEMA,
+} from './fl-permanent-guardianship-form-schema'
+import { buildFlGuardianshipPrefilledValues } from './fl-permanent-guardianship-prefill'
+
 // ──────────────────────────────────────────────────────────────────
 // Tipos públicos del registry
 // ──────────────────────────────────────────────────────────────────
@@ -478,6 +494,41 @@ const SAPCR205_DEFINITION: AutomatedFormDefinition = {
   },
 }
 
+const FL_GUARDIAN_DEFINITION: AutomatedFormDefinition = {
+  slug: FL_GUARDIAN_SLUG,
+  formName: FL_GUARDIAN_NAME,
+  formDescriptionEs: FL_GUARDIAN_DESC,
+  states: ['FL'],
+  packetType: 'merits',
+  templateType: 'docx-template',
+  pdfPublicPath: FL_GUARDIAN_PDF_PUBLIC,
+  pdfDiskPath: FL_GUARDIAN_PDF_DISK,
+  pdfSha256: FL_GUARDIAN_SHA,
+  schemaVersion: FL_GUARDIAN_VERSION,
+  sections: FL_GUARDIAN_SECTIONS as AutomatedFormDefinition['sections'],
+  hardcodedValues: FL_GUARDIAN_HARDCODED,
+  requiredForPrint: FL_GUARDIAN_REQUIRED,
+  fieldByKey: FL_GUARDIAN_FIELD_BY_KEY as AutomatedFormDefinition['fieldByKey'],
+  zodSchema: FL_GUARDIAN_ZOD_SCHEMA,
+  buildPrefilledValues: async (caseId, service) => {
+    const raw = await buildFlGuardianshipPrefilledValues(caseId, service)
+    const out: Record<string, string | boolean | null | undefined> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      if (v === null || v === undefined || typeof v === 'string' || typeof v === 'boolean') {
+        out[k] = v
+      }
+    }
+    return out
+  },
+  detectByName: (name) => {
+    const n = name.toLowerCase()
+    return (
+      n.includes('permanent guardianship') ||
+      (n.includes('petition') && n.includes('guardianship') && n.includes('minor'))
+    )
+  },
+}
+
 export const AUTOMATED_FORMS: Record<string, AutomatedFormDefinition> = {
   [SAPCR100_SLUG]: SAPCR100_DEFINITION,
   [SAPCR_AFF_100_SLUG]: SAPCR_AFF_100_DEFINITION,
@@ -486,6 +537,7 @@ export const AUTOMATED_FORMS: Record<string, AutomatedFormDefinition> = {
   [AFFIDAVIT_SIJ_SLUG]: AFFIDAVIT_SIJ_DEFINITION,
   [ORDER_SIJ_SLUG]: ORDER_SIJ_DEFINITION,
   [SAPCR205_SLUG]: SAPCR205_DEFINITION,
+  [FL_GUARDIAN_SLUG]: FL_GUARDIAN_DEFINITION,
 }
 
 /** Slugs registrados (para validación en rutas dinámicas). */

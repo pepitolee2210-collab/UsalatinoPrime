@@ -10,6 +10,7 @@ import {
   Pencil, Printer,
 } from 'lucide-react'
 import { AutomatedFormModal } from './automated-form-modal'
+import { FormClientStatus } from './form-client-status'
 import { resolveAutomatedFormSlug } from '@/lib/legal/automated-forms-registry'
 
 type FilingChannel = 'in_person' | 'email' | 'portal' | 'mail' | 'hybrid'
@@ -676,6 +677,9 @@ function FormsBlock({ forms, caseId }: { forms: RequiredForm[]; caseId: string }
                   </>
                 )}
               </div>
+              {interactiveSlug && (
+                <FormClientStatus caseId={caseId} slug={interactiveSlug} />
+              )}
             </div>
           )
         })}

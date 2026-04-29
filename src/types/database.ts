@@ -250,3 +250,77 @@ export interface BlockedDate {
   reason?: string
   created_at: string
 }
+
+// ──────────────────────────────────────────────────────────────────
+// SIJS phases + dynamic document catalog (migration 20260429)
+// ──────────────────────────────────────────────────────────────────
+
+export type CasePhase = 'custodia' | 'i360' | 'i485' | 'completado'
+
+export type DocumentSlotKind = 'single' | 'dual_es_en' | 'multiple_named'
+
+export interface DocumentType {
+  id: number
+  code: string
+  name_es: string
+  name_en: string
+  description_es?: string | null
+  category_code: string
+  category_name_es: string
+  category_icon?: string | null
+  requires_translation: boolean
+  requires_certified_copy: boolean
+  shown_in_custodia: boolean
+  shown_in_i360: boolean
+  shown_in_i485: boolean
+  conditional_logic?: ConditionalLogic | null
+  legal_reference?: string | null
+  slot_kind: DocumentSlotKind
+  max_slots?: number | null
+  sort_order: number
+  is_active: boolean
+}
+
+export type ConditionalLogic = {
+  type: 'flag_eq'
+  flag:
+    | 'parent_deceased'
+    | 'in_orr_custody'
+    | 'has_criminal_history'
+    | 'minor_close_to_21'
+    | 'living_parent_consents'
+    | 'requires_foreign_service'
+  value: boolean
+}
+
+export interface CasePhaseHistory {
+  id: string
+  case_id: string
+  from_phase: CasePhase | null
+  to_phase: CasePhase
+  changed_by?: string | null
+  changed_at: string
+  reason?: string | null
+}
+
+export interface ServicePhaseAsset {
+  id: number
+  service_id: string
+  phase: CasePhase
+  welcome_video_url?: string | null
+  welcome_video_poster?: string | null
+  description_es?: string | null
+}
+
+export interface QuickContactRow {
+  id: number
+  name: string
+  role: string
+  phone_e164?: string | null
+  whatsapp_e164?: string | null
+  avatar_url?: string | null
+  show_in_inicio: boolean
+  show_in_ayuda: boolean
+  sort_order: number
+  is_active: boolean
+}
