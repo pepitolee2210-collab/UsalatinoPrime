@@ -23,6 +23,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Token inválido o inactivo' }, { status: 403 })
   }
 
+  // Mínimo 24h de antelación — no se puede agendar mismo día. Vanessa
+  // pidió esto explícitamente: cuando el sistema mostraba slots del
+  // mismo día ella se ponía a llamar leads asumiendo que estaba libre.
+  const slotTime = new Date(scheduled_at).getTime()
+  const minTime = Date.now() + 24 * 60 * 60 * 1000
+  if (slotTime < minTime) {
+    return NextResponse.json({
+      error: 'Las citas se deben agendar con al menos 24 horas de anticipación.',
+    }, { status: 400 })
+  }
+
+  // Resolver la asesora a quien se le asigna la cita
+  const { data: anyAvailability } = await supabase
+    .from('consultant_availability')
+    .select('consultant_id')
+    .limit(1)
+    .maybeSingle()
+  const consultantId = anyAvailability?.consultant_id ?? null
+
   // Verificar penalty
   const { data: clientAppointments } = await supabase
     .from('appointments')
@@ -78,16 +97,34 @@ export async function POST(request: NextRequest) {
     }, { status: 400 })
   }
 
-  // Verificar que el slot no esté tomado (el unique index en DB también lo previene)
+  // Verificar que el slot no esté tomado por otra cita CON LA MISMA ASESORA
+  // (antes la query no filtraba por consultant_id y permitía doble booking
+  // cuando había citas externas o de otra fuente).
   const { data: slotTaken } = await supabase
     .from('appointments')
-    .select('id')
+    .select('id, consultant_id')
     .eq('scheduled_at', scheduled_at)
     .eq('status', 'scheduled')
-    .limit(1)
 
-  if (slotTaken && slotTaken.length > 0) {
+  const slotTakenWithConsultant = (slotTaken || []).some(
+    a => !consultantId || a.consultant_id === consultantId,
+  )
+  if (slotTakenWithConsultant) {
     return NextResponse.json({ error: 'Este horario ya fue tomado. Seleccione otro.' }, { status: 409 })
+  }
+
+  // Verificar que el slot no choque con un bloqueo puntual de la asesora
+  if (consultantId) {
+    const { data: conflictingBlock } = await supabase
+      .from('consultant_blocks')
+      .select('id')
+      .eq('consultant_id', consultantId)
+      .lte('blocked_at_start', scheduled_at)
+      .gte('blocked_at_end', scheduled_at)
+      .maybeSingle()
+    if (conflictingBlock) {
+      return NextResponse.json({ error: 'Este horario está bloqueado por la asesora.' }, { status: 409 })
+    }
   }
 
   // Crear la cita
@@ -96,6 +133,7 @@ export async function POST(request: NextRequest) {
     .insert({
       case_id: tokenData.case_id,
       client_id: tokenData.client_id,
+      consultant_id: consultantId,
       scheduled_at,
       reminder_1h_requested: reminder_1h || false,
       reminder_24h_requested: reminder_24h || false,

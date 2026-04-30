@@ -24,7 +24,7 @@ export function getNextAvailableSlot(
     const dateStr = day.toISOString().slice(0, 10)
     if (blockedDates.includes(dateStr)) continue
 
-    const slots = getAvailableSlots(dateStr, config, existingAppointments, slotDurationMinutes)
+    const slots = getAvailableSlots(dateStr, config, existingAppointments, slotDurationMinutes, [], advanceNoticeHours)
     for (const iso of slots) {
       if (new Date(iso).getTime() >= minStart.getTime()) {
         return { iso, date: dateStr }
@@ -34,15 +34,26 @@ export function getNextAvailableSlot(
   return null
 }
 
+export interface PunctualBlock {
+  blocked_at_start: string // ISO
+  blocked_at_end: string   // ISO
+}
+
 /**
  * Genera los slots disponibles para una fecha dada en Mountain Time.
- * Filtra slots ocupados y slots ya pasados.
+ * Filtra slots ocupados, slots dentro de bloqueos puntuales y slots
+ * que están demasiado próximos según advanceNoticeHours (por defecto 24h
+ * para evitar agendamiento mismo día).
  */
 export function getAvailableSlots(
   date: string, // YYYY-MM-DD
   config: SchedulingConfig[],
   existingAppointments: Appointment[],
-  slotDurationMinutes: number = 60
+  slotDurationMinutes: number = 60,
+  punctualBlocks: PunctualBlock[] = [],
+  // Default 0: el caller decide si quiere forzar antelación mínima.
+  // El endpoint público /api/appointments/available pasa 24h explícito.
+  advanceNoticeHours: number = 0,
 ): string[] {
   // Obtener el día de la semana en MT
   const dateInMT = new Date(`${date}T12:00:00`)
@@ -59,6 +70,7 @@ export function getAvailableSlots(
 
   const slots: string[] = []
   const now = new Date()
+  const minStart = new Date(now.getTime() + advanceNoticeHours * 60 * 60 * 1000)
 
   for (const block of blocks) {
     for (let hour = block.start_hour; hour < block.end_hour; hour++) {
@@ -67,7 +79,17 @@ export function getAvailableSlots(
       const slotInUTC = mtToUTC(slotDateStr)
       if (!slotInUTC) continue
 
-      if (slotInUTC <= now) continue
+      // Pasado o dentro del periodo de antelación mínima
+      if (slotInUTC.getTime() < minStart.getTime()) continue
+
+      // Bloqueo puntual (vacaciones, día libre, citas externas, etc.)
+      const slotEnd = new Date(slotInUTC.getTime() + slotDurationMinutes * 60 * 1000)
+      const insidePunctualBlock = punctualBlocks.some(b => {
+        const bStart = new Date(b.blocked_at_start).getTime()
+        const bEnd = new Date(b.blocked_at_end).getTime()
+        return slotInUTC.getTime() < bEnd && slotEnd.getTime() > bStart
+      })
+      if (insidePunctualBlock) continue
 
       const isOccupied = existingAppointments.some(apt => {
         const aptTime = new Date(apt.scheduled_at)
