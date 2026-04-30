@@ -42,7 +42,7 @@ export default async function EmployeeCasePage({ params }: { params: Promise<{ i
   const [caseRes, docsRes, henryDocsRes, formSubsRes, subsRes] = await Promise.all([
     service
       .from('cases')
-      .select('id, case_number, henry_notes, current_phase, process_start, state_us, parent_deceased, in_orr_custody, has_criminal_history, minor_close_to_21, client:profiles(first_name, last_name, email, phone), service:service_catalog(name, slug)')
+      .select('id, case_number, client_id, henry_notes, current_phase, process_start, state_us, parent_deceased, in_orr_custody, has_criminal_history, minor_close_to_21, client:profiles(first_name, last_name, email, phone), service:service_catalog(name, slug)')
       .eq('id', id)
       .single(),
     service
@@ -77,6 +77,7 @@ export default async function EmployeeCasePage({ params }: { params: Promise<{ i
   type RawCase = {
     id: string
     case_number: string
+    client_id: string
     henry_notes: string | null
     current_phase: 'custodia' | 'i360' | 'i485' | 'completado' | null
     process_start: 'custodia' | 'i360' | 'i485' | 'completado' | null
@@ -93,6 +94,7 @@ export default async function EmployeeCasePage({ params }: { params: Promise<{ i
   const caseData = {
     id: raw.id,
     case_number: raw.case_number,
+    client_id: raw.client_id,
     current_phase: raw.current_phase ?? null,
     process_start: raw.process_start ?? null,
     state_us: raw.state_us ?? null,

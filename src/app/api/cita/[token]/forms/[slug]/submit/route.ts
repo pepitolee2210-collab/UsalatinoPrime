@@ -43,11 +43,20 @@ export async function POST(
     return NextResponse.json({ error: 'Formulario bloqueado' }, { status: 423 })
   }
 
+  // Snapshot la fase actual del caso para que el panel del paralegal
+  // pueda agrupar formularios por la fase en que el cliente los envió.
+  const { data: caseRow } = await supabase
+    .from('cases')
+    .select('current_phase')
+    .eq('id', tokenData.case_id)
+    .single()
+
   await supabase
     .from('case_form_instances')
     .update({
       status: 'complete',
       client_submitted_at: new Date().toISOString(),
+      phase_when_submitted: caseRow?.current_phase ?? null,
     })
     .eq('id', instance.id)
 
