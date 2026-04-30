@@ -9,7 +9,6 @@ import { toast } from 'sonner'
 import type { TranslatedDoc } from '@/lib/translation/schema'
 
 interface Props {
-  /** Nombre del traductor por defecto (se puede editar en la UI). */
   defaultTranslatorName?: string
 }
 
@@ -25,6 +24,8 @@ export function TranslationTool({ defaultTranslatorName = '' }: Props) {
   const [translatorDate, setTranslatorDate] = useState<string>(() =>
     new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
   )
+  const [translatorAddress, setTranslatorAddress] = useState('')
+  const [translatorContact, setTranslatorContact] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   function handleFile(picked: File | null | undefined) {
@@ -39,7 +40,7 @@ export function TranslationTool({ defaultTranslatorName = '' }: Props) {
       return
     }
     setFile(picked)
-    setDoc(null) // si había una traducción previa, la limpiamos al cambiar archivo
+    setDoc(null)
   }
 
   async function handleTranslate() {
@@ -73,18 +74,21 @@ export function TranslationTool({ defaultTranslatorName = '' }: Props) {
     if (!doc) return
     setGeneratingPdf(true)
     try {
-      // Lazy-load para no bundlear jsPDF en el primer paint
       const { buildTranslationPDF } = await import('@/lib/translation/build-pdf')
       const blob = buildTranslationPDF({
         doc,
         translatorName: translatorName.trim(),
         translatorDate: translatorDate.trim(),
+        translatorAddress: translatorAddress.trim(),
+        translatorContact: translatorContact.trim(),
       })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      const fileName = `${doc.title.replace(/[^a-zA-Z0-9]+/g, '_')}_TRANSLATION.pdf`
-      a.download = fileName
+      const namePart = (doc.registered_person_name || doc.document_type || 'TRANSLATION')
+        .replace(/[^a-zA-Z0-9]+/g, '_')
+        .toUpperCase()
+      a.download = `${namePart}_TRANSLATION.pdf`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -99,7 +103,6 @@ export function TranslationTool({ defaultTranslatorName = '' }: Props) {
 
   return (
     <div className="space-y-5 max-w-3xl">
-      {/* Header explicativo */}
       <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-5">
         <div className="flex items-start gap-3">
           <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
@@ -108,8 +111,9 @@ export function TranslationTool({ defaultTranslatorName = '' }: Props) {
           <div>
             <h2 className="text-lg font-bold text-gray-900">Traductor de documentos civiles</h2>
             <p className="text-sm text-gray-600 mt-0.5">
-              Sube un acta de nacimiento, matrimonio, cédula o cualquier documento oficial en español.
-              Gemini lo traduce al inglés con formato certificado y descargas el PDF listo para firma.
+              Sube un acta de nacimiento, matrimonio, cédula u otro documento oficial en español.
+              Gemini lo traduce al inglés con el formato certificado de UsaLatino Prime y descargas el PDF
+              listo para que el traductor lo firme.
             </p>
           </div>
         </div>
@@ -180,28 +184,46 @@ export function TranslationTool({ defaultTranslatorName = '' }: Props) {
         )}
       </div>
 
-      {/* Datos del traductor (van en la página de Translation Certification) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <Label className="text-xs font-medium text-gray-700 block mb-1">
-            Nombre del traductor
-          </Label>
-          <Input
-            value={translatorName}
-            onChange={e => setTranslatorName(e.target.value)}
-            placeholder="Ej. Andrew Sonny Navarro"
-          />
+      {/* Datos del traductor */}
+      <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Datos del traductor (página de certificación)</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs font-medium text-gray-700 block mb-1">Translator's Name</Label>
+            <Input
+              value={translatorName}
+              onChange={e => setTranslatorName(e.target.value)}
+              placeholder="Andrew Sonny Navarro"
+            />
+          </div>
+          <div>
+            <Label className="text-xs font-medium text-gray-700 block mb-1">Date</Label>
+            <Input
+              value={translatorDate}
+              onChange={e => setTranslatorDate(e.target.value)}
+              placeholder="April 30, 2026"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Label className="text-xs font-medium text-gray-700 block mb-1">Address (opcional)</Label>
+            <Input
+              value={translatorAddress}
+              onChange={e => setTranslatorAddress(e.target.value)}
+              placeholder="385 Address Lane, Salt Lake City, UT 84101"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Label className="text-xs font-medium text-gray-700 block mb-1">Phone / Email (opcional)</Label>
+            <Input
+              value={translatorContact}
+              onChange={e => setTranslatorContact(e.target.value)}
+              placeholder="(801) 941-3479 · translator@usalatino.com"
+            />
+          </div>
         </div>
-        <div>
-          <Label className="text-xs font-medium text-gray-700 block mb-1">
-            Fecha (texto libre)
-          </Label>
-          <Input
-            value={translatorDate}
-            onChange={e => setTranslatorDate(e.target.value)}
-            placeholder="Ej. April 30, 2026"
-          />
-        </div>
+        <p className="text-[11px] text-gray-500 italic">
+          Si dejas Address o Phone/Email vacíos, el PDF deja una línea para escribirlos a mano.
+        </p>
       </div>
 
       {/* Acciones */}
@@ -235,7 +257,6 @@ export function TranslationTool({ defaultTranslatorName = '' }: Props) {
         )}
       </div>
 
-      {/* Preview de la traducción */}
       {doc && <TranslationPreview doc={doc} />}
     </div>
   )
@@ -243,67 +264,102 @@ export function TranslationTool({ defaultTranslatorName = '' }: Props) {
 
 function TranslationPreview({ doc }: { doc: TranslatedDoc }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-4 shadow-sm">
+    <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-3 shadow-sm font-serif">
       <div className="flex items-start justify-between gap-3 pb-3 border-b">
-        <div>
-          <p className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">Vista previa</p>
-          <h3 className="text-2xl font-bold text-blue-600 leading-tight mt-0.5">{doc.title}</h3>
-        </div>
+        <p className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">Vista previa de la traducción</p>
         <div className="text-[11px] text-gray-400 italic flex items-center gap-1.5">
           <AlertTriangle className="w-3.5 h-3.5" />
           Revisa antes de descargar
         </div>
       </div>
 
-      {/* Header */}
-      {doc.header?.length > 0 && (
-        <div className="space-y-0.5">
-          {doc.header.map((line, i) => (
-            <p key={i} className="text-sm font-semibold text-gray-900">{line}</p>
+      <p className="text-center text-sm font-bold text-gray-900">CERTIFIED TRANSLATION FROM SPANISH INTO ENGLISH</p>
+
+      {doc.jurisdiction_header?.length > 0 && (
+        <div className="space-y-0.5 pt-1">
+          {doc.jurisdiction_header.map((line, i) => (
+            <p key={i} className="text-sm font-bold text-gray-900">{line}</p>
           ))}
         </div>
       )}
 
-      {/* Bloques */}
-      <div className="space-y-3 text-sm text-gray-800">
-        {doc.blocks.map((block, i) => {
-          if (block.type === 'paragraph') {
-            return <p key={i} className="leading-relaxed">{block.text}</p>
-          }
-          if (block.type === 'fields') {
-            return (
-              <div key={i} className="space-y-0.5">
-                {block.items.map((it, j) => (
-                  <p key={j}><span className="font-semibold">{it.label}:</span> {it.value}</p>
-                ))}
-              </div>
-            )
-          }
-          if (block.type === 'section') {
-            return (
-              <div key={i}>
-                <p className="font-bold text-gray-900 mb-1.5">
-                  {block.number != null ? `${block.number}. ${block.heading}` : block.heading}
-                </p>
-                {block.items?.map((it, j) => (
-                  <p key={j}><span className="font-semibold">{it.label}:</span> {it.value}</p>
-                ))}
-                {block.paragraph && <p className="leading-relaxed">{block.paragraph}</p>}
-              </div>
-            )
-          }
-          if (block.type === 'note') {
-            return <p key={i} className="italic text-gray-600 text-xs">{block.text}</p>
-          }
-          return null
-        })}
+      {doc.document_type && <p className="text-sm font-bold text-gray-900 pt-1">{doc.document_type}</p>}
+
+      {doc.registration_number && (
+        <p className="text-sm text-gray-800"><span className="font-bold">Registration Number:</span> {doc.registration_number}</p>
+      )}
+
+      {doc.issuing_authority && (
+        <p className="text-sm text-gray-800 leading-relaxed pt-1">{doc.issuing_authority}</p>
+      )}
+
+      {doc.certification_verb && <p className="text-sm font-bold text-gray-900 pt-1">{doc.certification_verb}</p>}
+
+      {doc.certification_paragraph && (
+        <p className="text-sm text-gray-800 leading-relaxed">{doc.certification_paragraph}</p>
+      )}
+
+      {doc.registered_person_name && (
+        <p className="text-base font-bold text-gray-900 pt-2">{doc.registered_person_name}</p>
+      )}
+
+      <div className="space-y-0.5 text-sm text-gray-800">
+        {doc.primary_fields?.map((f, i) => (
+          <p key={i}><span className="font-bold">{f.label}:</span> {f.value}</p>
+        ))}
       </div>
 
-      {doc.footer_paragraph && (
-        <p className="text-sm text-gray-800 leading-relaxed pt-3 border-t">{doc.footer_paragraph}</p>
+      {doc.parents?.length > 0 && (
+        <div className="space-y-0.5 text-sm text-gray-800 pt-1">
+          {doc.parents.map((p, i) => (
+            <p key={i}><span className="font-bold">{p.label}:</span> {p.line}</p>
+          ))}
+        </div>
       )}
-      {doc.signature_label && (
-        <p className="text-sm font-bold text-gray-900">{doc.signature_label}</p>
+
+      {doc.registration_fields?.length > 0 && (
+        <div className="space-y-0.5 text-sm text-gray-800 pt-1">
+          {doc.registration_fields.map((f, i) => (
+            <p key={i}><span className="font-bold">{f.label}:</span> {f.value}</p>
+          ))}
+        </div>
+      )}
+
+      {doc.validation_paragraph && (
+        <p className="text-xs text-gray-700 leading-relaxed pt-2">{doc.validation_paragraph}</p>
+      )}
+
+      {doc.reference_codes?.length > 0 && (
+        <div className="space-y-0.5 text-sm text-gray-800 pt-1">
+          {doc.reference_codes.map((c, i) => (
+            <p key={i}><span className="font-bold">{c.label}:</span> {c.value}</p>
+          ))}
+        </div>
+      )}
+
+      {(doc.signatory_name || doc.signatory_title) && (
+        <div className="pt-3">
+          {doc.signatory_name && <p className="text-sm font-bold text-gray-900">{doc.signatory_name}</p>}
+          {doc.signatory_title && <p className="text-sm text-gray-800">{doc.signatory_title}</p>}
+        </div>
+      )}
+
+      {doc.closing_fields?.length > 0 && (
+        <div className="space-y-0.5 text-sm text-gray-800 pt-1">
+          {doc.closing_fields.map((f, i) => (
+            <p key={i}><span className="font-bold">{f.label}:</span> {f.value}</p>
+          ))}
+        </div>
+      )}
+
+      {doc.closing_note && (
+        <p className="text-xs text-gray-700 leading-relaxed pt-1 italic">{doc.closing_note}</p>
+      )}
+
+      {doc.original_document_title && (
+        <p className="text-[11px] text-gray-400 italic pt-3 border-t">
+          Documento original: <span className="font-medium">{doc.original_document_title}</span>
+        </p>
       )}
     </div>
   )

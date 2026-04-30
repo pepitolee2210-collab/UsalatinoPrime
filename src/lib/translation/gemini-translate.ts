@@ -4,48 +4,71 @@ import type { TranslatedDoc } from './schema'
 const GEMINI_KEY = process.env.GEMINI_API_KEY
 
 /**
- * Prompt del sistema para Gemini. Adaptado del que Henry ya usaba con
- * ChatGPT — preserva nombres, números, fechas, sellos, firmas, y exige
- * marcar "[illegible]" cuando algo no se ve. Pide JSON estructurado para
- * que el render a PDF sea determinístico.
+ * Prompt de Gemini. Pide JSON estructurado siguiendo el formato exacto
+ * del template que Henry usa para inmigración (acta de nacimiento, etc.).
+ *
+ * IMPORTANTE: NO debe incluir descripciones tipo "[QR code]", "[Seal of...]",
+ * "[Barcode]". Solo el texto sustantivo del documento. Los códigos visuales
+ * (validation code, barcode number) se extraen como TEXTO en reference_codes.
  */
 const SYSTEM_PROMPT = `You are a professional document translation assistant specialized in civil registry, immigration, and legal-administrative documents.
 
-Your task is to read the attached image or PDF of an official document, extract the visible Spanish text accurately, and produce a certified-style English translation.
+Read the attached image or PDF of an official Spanish-language document and produce a certified-style English translation as STRICT JSON (no markdown fences, no commentary).
 
-Rules:
-1. Translate from Spanish into English.
-2. Preserve all personal names exactly as written. Do not translate names.
-3. Preserve all numbers, registration codes, ID numbers, folio numbers, dates, validation codes, barcodes, seals, and institutional references.
-4. Translate dates into natural English format (e.g. "4 de enero de 2012" -> "January 4, 2012").
-5. Use formal legal/administrative English.
-6. If a field is unclear, partially covered, blurry, or illegible, write "[illegible]" or "[partially illegible]" instead of guessing.
-7. If a signature, QR code, barcode, seal or watermark appears, mention it descriptively (e.g. "[Seal of the Civil Registry]", "[Signature]", "[QR code]", "[Barcode]").
-8. Do not invent information that is not visible in the document.
-9. Keep the format clean and usable for immigration/legal paperwork.
+GENERAL RULES
+- Translate from Spanish into English, formal legal/administrative register.
+- Preserve personal names exactly as written. Do not translate them.
+- Preserve all numbers, ID numbers, registration numbers, folio numbers, dates, validation codes.
+- Translate dates into natural English format ("4 de enero de 2012" -> "January 4, 2012").
+- DO NOT add descriptive placeholders like "[Seal of the Civil Registry]", "[Signature]", "[QR code]", "[Barcode]". Skip them silently.
+- DO extract the textual values that accompany those visuals: Validation Code, Barcode Number, QR-encoded reference, watermarks with text, etc., into reference_codes as label/value pairs.
+- If a field is illegible or partially covered, write "[illegible]" as its value.
+- Never invent information that is not visible.
 
-OUTPUT FORMAT (STRICT JSON, NOTHING ELSE — NO markdown fences):
+OUTPUT — STRICT JSON, NOTHING ELSE:
 
 {
-  "title": "TITLE OF THE DOCUMENT IN UPPERCASE",
-  "header": ["Republic of ...", "Institution name", "Office name", "No. <number>"],
-  "blocks": [
-    { "type": "paragraph", "text": "Intro paragraph...", "bold_terms": ["Director", "certifies"] },
-    { "type": "fields", "items": [ { "label": "First Surname", "value": "..." } ] },
-    { "type": "section", "number": 1, "heading": "Place, date, and order of birth", "items": [ { "label": "Municipality", "value": "..." } ] },
-    { "type": "section", "number": 4, "heading": "Authorized marginal notes", "paragraph": "None." },
-    { "type": "note", "text": "[Seal of ...]" }
+  "jurisdiction_header": ["REPUBLIC OF PANAMA", "ELECTORAL TRIBUNAL"],
+  "document_type": "CERTIFICATE",
+  "registration_number": "8-1120-1165",
+  "issuing_authority": "The National Directorate of the Civil Registry",
+  "certification_verb": "CERTIFIES",
+  "certification_paragraph": "That in Volume 1120, Entry 1165 of the Birth Records of the Province of PANAMA, the following birth is registered:",
+  "registered_person_name": "Chelenny Nicole John Santana",
+  "primary_fields": [
+    { "label": "SEX", "value": "Female" },
+    { "label": "DATE OF BIRTH", "value": "January 4, 2012" },
+    { "label": "PLACE OF BIRTH", "value": "Santo Tomas Hospital, Township of Calidonia, District of Panama, Province of Panama, Country of Panama" },
+    { "label": "NATIONAL OF", "value": "Panama" }
   ],
-  "footer_paragraph": "Issued in ...",
-  "signature_label": "Signature and seal of the Director"
+  "parents": [
+    { "label": "FATHER", "line": "Antonio John Morales, holder of identity card No. 8-789-2431, national of Panama" },
+    { "label": "MOTHER", "line": "Bailenny Santana Lappost, holder of identity card No. E-8-100918, national of the Dominican Republic" }
+  ],
+  "registration_fields": [
+    { "label": "PLACE OF REGISTRATION", "value": "Panama" },
+    { "label": "DATE OF REGISTRATION", "value": "January 18, 2012" }
+  ],
+  "validation_paragraph": "The entity or person before whom this certificate is presented must validate and verify its contents at www.tribunal-electoral.gob.pa/verificacion, in accordance with Article 10 of Decree No. 24 of June 2, 2020, of the Electoral Tribunal.",
+  "reference_codes": [
+    { "label": "Validation Code", "value": "034PMQ1RKS" },
+    { "label": "Barcode Number", "value": "3853778" }
+  ],
+  "signatory_name": "Sharon Sinclaire de Dumanoir",
+  "signatory_title": "National Director of the Civil Registry",
+  "closing_fields": [
+    { "label": "Date of Issue", "value": "December 1, 2022" },
+    { "label": "Expiration Date", "value": "January 30, 2023" }
+  ],
+  "closing_note": "Certificate valid for use within the national territory and for legalization/apostille.",
+  "original_document_title": "Certificado de Nacimiento"
 }
 
-- "blocks" is an ordered array. Use whatever combination of types fits the document.
-- Use "section" for numbered sections (1., 2., 3., 4.). The "items" array is for label/value rows; use "paragraph" inside the section for free text like "None.".
-- Use "fields" outside sections for top-level label/value rows (e.g. surnames, given name, sex right under the intro).
-- Use "note" to describe seals, signatures, QR codes, barcodes that appear in the document.
-- bold_terms is OPTIONAL — only fill it for paragraphs that have specific terms that should render bold (key institution names, "certifies", etc.).
-- NEVER include text outside the JSON. NEVER wrap in \`\`\` fences. NEVER add commentary.
+NOTES
+- All keys must be present even if empty (use "" for strings, [] for arrays).
+- Adapt to the actual document type: it might be a marriage certificate, an ID card, a court ruling, a school transcript, etc. Use the same shape, fill what applies.
+- For non-civil-registry documents that don't have parents/registration fields, leave those arrays empty.
+- "original_document_title" is the SPANISH name of the document as it appears in the original (e.g. "Certificado de Nacimiento", "Acta de Matrimonio", "Cédula de Identidad"). Used to cite it in the translator's certification.
 `
 
 export async function translateWithGemini(
@@ -86,15 +109,31 @@ export async function translateWithGemini(
   const text = extractGeminiText(result.data)
   if (!text) return { doc: null, error: 'Respuesta vacía de Gemini' }
 
-  // Tolerar fences accidentales aunque pedimos JSON puro
   const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim()
 
   try {
-    const parsed = JSON.parse(cleaned) as TranslatedDoc
-    if (!parsed.title || !Array.isArray(parsed.blocks)) {
-      return { doc: null, error: 'JSON no tiene la estructura esperada', raw: text }
+    const parsed = JSON.parse(cleaned) as Partial<TranslatedDoc>
+    // Coercer defaults para mantener el shape estable
+    const doc: TranslatedDoc = {
+      jurisdiction_header: parsed.jurisdiction_header ?? [],
+      document_type: parsed.document_type ?? '',
+      registration_number: parsed.registration_number ?? '',
+      issuing_authority: parsed.issuing_authority ?? '',
+      certification_verb: parsed.certification_verb ?? '',
+      certification_paragraph: parsed.certification_paragraph ?? '',
+      registered_person_name: parsed.registered_person_name ?? '',
+      primary_fields: parsed.primary_fields ?? [],
+      parents: parsed.parents ?? [],
+      registration_fields: parsed.registration_fields ?? [],
+      validation_paragraph: parsed.validation_paragraph ?? '',
+      reference_codes: parsed.reference_codes ?? [],
+      signatory_name: parsed.signatory_name ?? '',
+      signatory_title: parsed.signatory_title ?? '',
+      closing_fields: parsed.closing_fields ?? [],
+      closing_note: parsed.closing_note ?? '',
+      original_document_title: parsed.original_document_title ?? '',
     }
-    return { doc: parsed }
+    return { doc }
   } catch (e) {
     return { doc: null, error: `JSON inválido: ${e instanceof Error ? e.message : 'parse error'}`, raw: text }
   }

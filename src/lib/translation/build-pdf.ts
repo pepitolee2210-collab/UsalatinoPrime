@@ -1,234 +1,276 @@
 'use client'
 
 import jsPDF from 'jspdf'
-import type { TranslatedDoc, TranslationBlock } from './schema'
+import type { TranslatedDoc } from './schema'
 
 interface BuildOptions {
   doc: TranslatedDoc
   translatorName: string
-  translatorDate: string // texto libre, ej "April 30, 2026" o "30 Abril 2026"
+  translatorSignature?: string
+  translatorDate: string
+  translatorAddress?: string
+  translatorContact?: string // phone / email
 }
 
-const TITLE_BLUE: [number, number, number] = [74, 144, 226] // #4A90E2 — el azul del PDF de Henry
-const TEXT_GRAY: [number, number, number] = [33, 37, 41]
-const PAGE_W = 216 // letter en mm
+const TEXT: [number, number, number] = [20, 20, 20]
+const PAGE_W = 216
 const PAGE_H = 279
-const ML = 22 // margen izq
-const MR = 22 // margen der
-const MT = 22 // margen sup
-const MB = 25 // margen inf
+const ML = 25
+const MR = 25
+const MT = 25
+const MB = 25
 const CONTENT_W = PAGE_W - ML - MR
 const FONT = 'helvetica'
 
 /**
- * Devuelve el PDF traducido como Blob (2 páginas: traducción + Translation
- * Certification con firma del traductor).
+ * Replica el template oficial que Henry usa para inmigración. Sin colores
+ * ni decoraciones — texto plano negro, dos páginas:
+ *  P1 — traducción del documento.
+ *  P2 — Certification of Translation Accuracy con campos del traductor.
  */
-export function buildTranslationPDF({ doc, translatorName, translatorDate }: BuildOptions): Blob {
+export function buildTranslationPDF({
+  doc, translatorName, translatorSignature, translatorDate, translatorAddress, translatorContact,
+}: BuildOptions): Blob {
   const pdf = new jsPDF('p', 'mm', 'letter')
+  pdf.setTextColor(...TEXT)
 
   let y = MT
 
-  // ── PÁGINA 1: traducción ─────────────────────────────────────────
-  // Título grande azul centrado
+  // ── PÁGINA 1 ─────────────────────────────────────────────────────
+  // Header: "CERTIFIED TRANSLATION FROM SPANISH INTO ENGLISH"
   pdf.setFont(FONT, 'bold')
-  pdf.setTextColor(...TITLE_BLUE)
-  pdf.setFontSize(22)
-  const titleLines = pdf.splitTextToSize(doc.title.toUpperCase(), CONTENT_W)
-  for (const line of titleLines) {
-    pdf.text(line, PAGE_W / 2, y, { align: 'center' })
-    y += 9
-  }
-  y += 4
+  pdf.setFontSize(12)
+  pdf.text('CERTIFIED TRANSLATION FROM SPANISH INTO ENGLISH', PAGE_W / 2, y, { align: 'center' })
+  y += 10
 
-  // Header institucional (líneas en bold)
-  pdf.setTextColor(...TEXT_GRAY)
+  // Jurisdiction header (REPUBLIC OF X / ELECTORAL TRIBUNAL ...)
   pdf.setFontSize(11)
-  for (const headerLine of doc.header || []) {
+  for (const line of doc.jurisdiction_header || []) {
+    if (!line.trim()) continue
     y = ensureSpace(pdf, y, 6)
     pdf.setFont(FONT, 'bold')
-    pdf.text(headerLine, ML, y)
-    y += 5.5
-  }
-  y += 3
-
-  // Bloques en orden
-  for (const block of doc.blocks || []) {
-    y = renderBlock(pdf, block, y)
-    y += 3
-  }
-
-  // Footer paragraph (Issued in...)
-  if (doc.footer_paragraph) {
-    y += 2
-    y = ensureSpace(pdf, y, 14)
-    pdf.setFont(FONT, 'normal')
-    pdf.setFontSize(11)
-    y = renderRichText(pdf, doc.footer_paragraph, y)
-  }
-
-  // Signature label
-  if (doc.signature_label) {
-    y += 6
-    y = ensureSpace(pdf, y, 8)
-    pdf.setFont(FONT, 'bold')
-    pdf.text(doc.signature_label, ML, y)
-  }
-
-  // ── PÁGINA 2: Translation Certification ──────────────────────────
-  pdf.addPage()
-  y = MT + 12
-
-  pdf.setFont(FONT, 'normal')
-  pdf.setTextColor(...TITLE_BLUE)
-  pdf.setFontSize(20)
-  pdf.text('Translation Certification', PAGE_W / 2, y, { align: 'center' })
-  y += 18
-
-  pdf.setTextColor(...TEXT_GRAY)
-  pdf.setFontSize(11)
-  const certBody = `I, ${translatorName || '______________________________'}, hereby certify that I translated the attached document from Spanish into English and that, to the best of my ability, it is a true and correct translation. I further certify that I am competent in both Spanish and English to render and certify such translation.`
-  const certLines = pdf.splitTextToSize(certBody, CONTENT_W)
-  for (const line of certLines) {
     pdf.text(line, ML, y)
     y += 6
   }
 
-  y += 14
-  pdf.setFont(FONT, 'normal')
-  pdf.text('Signature: ____________________________________________', ML, y)
+  // Document type (CERTIFICATE)
+  if (doc.document_type) {
+    y += 2
+    y = ensureSpace(pdf, y, 7)
+    pdf.setFont(FONT, 'bold')
+    pdf.setFontSize(11.5)
+    pdf.text(doc.document_type, ML, y)
+    y += 6
+  }
 
-  y += 22
-  pdf.text(`Date: ${translatorDate || '______________________________'}`, ML, y)
+  // Registration Number
+  if (doc.registration_number) {
+    pdf.setFont(FONT, 'normal')
+    pdf.setFontSize(11)
+    y = drawLabelValue(pdf, 'Registration Number', doc.registration_number, y)
+  }
+
+  // Issuing authority
+  if (doc.issuing_authority) {
+    y += 2
+    y = ensureSpace(pdf, y, 6)
+    pdf.setFont(FONT, 'normal')
+    pdf.setFontSize(11)
+    y = drawWrapped(pdf, doc.issuing_authority, y)
+  }
+
+  // Certification verb (CERTIFIES)
+  if (doc.certification_verb) {
+    y += 2
+    y = ensureSpace(pdf, y, 7)
+    pdf.setFont(FONT, 'bold')
+    pdf.setFontSize(11.5)
+    pdf.text(doc.certification_verb, ML, y)
+    y += 6
+  }
+
+  // Certification paragraph
+  if (doc.certification_paragraph) {
+    pdf.setFont(FONT, 'normal')
+    pdf.setFontSize(11)
+    y = drawWrapped(pdf, doc.certification_paragraph, y)
+  }
+
+  // Registered person name (destacado)
+  if (doc.registered_person_name) {
+    y += 4
+    y = ensureSpace(pdf, y, 8)
+    pdf.setFont(FONT, 'bold')
+    pdf.setFontSize(13)
+    pdf.text(doc.registered_person_name, ML, y)
+    y += 7
+  }
+
+  // Primary fields (SEX, DATE OF BIRTH, ...)
+  pdf.setFontSize(11)
+  for (const f of doc.primary_fields || []) {
+    y = drawLabelValue(pdf, f.label, f.value, y)
+  }
+
+  // Parents (FATHER / MOTHER)
+  if ((doc.parents || []).length) {
+    y += 2
+    for (const p of doc.parents) {
+      y = drawLabelLine(pdf, p.label, p.line, y)
+    }
+  }
+
+  // Registration fields
+  if ((doc.registration_fields || []).length) {
+    y += 2
+    for (const f of doc.registration_fields) {
+      y = drawLabelValue(pdf, f.label, f.value, y)
+    }
+  }
+
+  // Validation paragraph (texto legal)
+  if (doc.validation_paragraph) {
+    y += 4
+    pdf.setFont(FONT, 'normal')
+    pdf.setFontSize(10.5)
+    y = drawWrapped(pdf, doc.validation_paragraph, y, 5)
+  }
+
+  // Reference codes (Validation Code, Barcode Number, etc.)
+  if ((doc.reference_codes || []).length) {
+    y += 2
+    pdf.setFontSize(11)
+    for (const c of doc.reference_codes) {
+      y = drawLabelValue(pdf, c.label, c.value, y)
+    }
+  }
+
+  // Signatory
+  if (doc.signatory_name || doc.signatory_title) {
+    y += 6
+    if (doc.signatory_name) {
+      y = ensureSpace(pdf, y, 6)
+      pdf.setFont(FONT, 'bold')
+      pdf.setFontSize(11)
+      pdf.text(doc.signatory_name, ML, y)
+      y += 5.5
+    }
+    if (doc.signatory_title) {
+      y = ensureSpace(pdf, y, 6)
+      pdf.setFont(FONT, 'normal')
+      pdf.setFontSize(11)
+      pdf.text(doc.signatory_title, ML, y)
+      y += 5.5
+    }
+  }
+
+  // Closing fields (Date of Issue / Expiration Date)
+  if ((doc.closing_fields || []).length) {
+    y += 4
+    pdf.setFontSize(11)
+    for (const f of doc.closing_fields) {
+      y = drawLabelValue(pdf, f.label, f.value, y)
+    }
+  }
+
+  // Closing note
+  if (doc.closing_note) {
+    y += 2
+    pdf.setFont(FONT, 'normal')
+    pdf.setFontSize(10.5)
+    y = drawWrapped(pdf, doc.closing_note, y, 5)
+  }
+
+  // ── PÁGINA 2: Certification of Translation Accuracy ──────────────
+  pdf.addPage()
+  y = MT + 5
+
+  pdf.setFont(FONT, 'bold')
+  pdf.setFontSize(13)
+  pdf.text('CERTIFICATION OF TRANSLATION ACCURACY', PAGE_W / 2, y, { align: 'center' })
+  y += 14
+
+  pdf.setFont(FONT, 'normal')
+  pdf.setFontSize(11)
+  const certName = translatorName.trim() || '____________________________'
+  const certTitleQuoted = doc.original_document_title
+    ? `titled "${doc.original_document_title}"`
+    : ''
+  const body = `I, ${certName}, certify that I am competent to translate from Spanish into English and that the foregoing is a complete and accurate translation of the attached Spanish-language document ${certTitleQuoted}, to the best of my knowledge and ability.`.replace(/\s+/g, ' ').trim()
+  y = drawWrapped(pdf, body, y, 6)
+  y += 8
+
+  // Campos del traductor
+  pdf.setFont(FONT, 'normal')
+  pdf.setFontSize(11)
+  const fieldGap = 14
+  y = drawTranslatorField(pdf, "Translator's Name", translatorName, y); y += fieldGap
+  y = drawTranslatorField(pdf, 'Signature', translatorSignature || '', y); y += fieldGap
+  y = drawTranslatorField(pdf, 'Date', translatorDate, y); y += fieldGap
+  y = drawTranslatorField(pdf, 'Address', translatorAddress || '', y); y += fieldGap
+  y = drawTranslatorField(pdf, 'Phone / Email', translatorContact || '', y)
 
   return pdf.output('blob')
 }
 
 // ────────────────────────────────────────────────────────────────────
-// Render helpers
+// Helpers
 // ────────────────────────────────────────────────────────────────────
 
-function renderBlock(pdf: jsPDF, block: TranslationBlock, y: number): number {
-  switch (block.type) {
-    case 'paragraph':
-      pdf.setFont(FONT, 'normal')
-      pdf.setFontSize(11)
-      return renderRichText(pdf, block.text, y, block.bold_terms)
+function drawLabelValue(pdf: jsPDF, label: string, value: string, y: number): number {
+  if (!label && !value) return y
+  y = ensureSpace(pdf, y, 6)
+  const labelStr = label ? `${label}: ` : ''
+  pdf.setFont(FONT, 'bold')
+  pdf.text(labelStr, ML, y)
+  const labelW = pdf.getTextWidth(labelStr)
 
-    case 'fields':
-      return renderFields(pdf, block.items, y)
-
-    case 'section': {
-      y = ensureSpace(pdf, y, 10)
-      pdf.setFont(FONT, 'bold')
-      pdf.setFontSize(11.5)
-      const heading = block.number != null ? `${block.number}. ${block.heading}` : block.heading
-      const headingLines = pdf.splitTextToSize(heading, CONTENT_W)
-      for (const line of headingLines) {
-        pdf.text(line, ML, y)
-        y += 6
-      }
-      y += 1
-      if (block.items && block.items.length) {
-        y = renderFields(pdf, block.items, y)
-      }
-      if (block.paragraph) {
-        pdf.setFont(FONT, 'normal')
-        pdf.setFontSize(11)
-        y = renderRichText(pdf, block.paragraph, y)
-      }
-      return y
-    }
-
-    case 'note':
-      pdf.setFont(FONT, 'italic')
-      pdf.setFontSize(10.5)
-      y = renderRichText(pdf, block.text, y)
-      pdf.setFont(FONT, 'normal')
-      return y
-
-    default:
-      return y
-  }
-}
-
-function renderFields(pdf: jsPDF, items: Array<{ label: string; value: string }>, y: number): number {
-  pdf.setFontSize(11)
-  for (const it of items) {
+  pdf.setFont(FONT, 'normal')
+  const availW = CONTENT_W - labelW
+  const lines = pdf.splitTextToSize(value || '', availW)
+  if (lines.length === 0) return y + 5.5
+  pdf.text(lines[0], ML + labelW, y)
+  y += 5.5
+  for (let i = 1; i < lines.length; i++) {
     y = ensureSpace(pdf, y, 6)
-    const labelStr = `${it.label}: `
-    pdf.setFont(FONT, 'bold')
-    pdf.text(labelStr, ML, y)
-    const labelW = pdf.getTextWidth(labelStr)
-
-    pdf.setFont(FONT, 'normal')
-    const value = it.value || ''
-    const availableW = CONTENT_W - labelW
-    const valueLines = pdf.splitTextToSize(value, availableW)
-    if (valueLines.length === 0) {
-      y += 5.5
-      continue
-    }
-    pdf.text(valueLines[0], ML + labelW, y)
+    pdf.text(lines[i], ML + labelW, y)
     y += 5.5
-    for (let i = 1; i < valueLines.length; i++) {
-      y = ensureSpace(pdf, y, 6)
-      pdf.text(valueLines[i], ML + labelW, y)
-      y += 5.5
-    }
   }
   return y
 }
 
-/**
- * Renderiza texto con énfasis en bold_terms. Hace bold de cualquier
- * ocurrencia de cada término dentro del texto. Maneja line-wrapping.
- *
- * Implementación pragmática: divide el texto en wrapped lines, después
- * para cada línea va dibujando segmentos en el font correspondiente.
- */
-function renderRichText(pdf: jsPDF, text: string, y: number, boldTerms?: string[]): number {
-  const lineH = 5.5
-  pdf.setFont(FONT, 'normal')
-  const lines: string[] = pdf.splitTextToSize(text, CONTENT_W)
+function drawLabelLine(pdf: jsPDF, label: string, line: string, y: number): number {
+  // FATHER / MOTHER: label en bold, una línea de texto larga después.
+  return drawLabelValue(pdf, label, line, y)
+}
 
+function drawWrapped(pdf: jsPDF, text: string, y: number, lineH: number = 5.5): number {
+  if (!text) return y
+  pdf.setFont(FONT, 'normal')
+  const lines = pdf.splitTextToSize(text, CONTENT_W)
   for (const line of lines) {
     y = ensureSpace(pdf, y, lineH + 1)
-    if (!boldTerms || boldTerms.length === 0) {
-      pdf.text(line, ML, y)
-      y += lineH
-      continue
-    }
-    // Reemplazar términos por marcadores y luego dibujar segmentos
-    const segments = splitByBoldTerms(line, boldTerms)
-    let x = ML
-    for (const seg of segments) {
-      pdf.setFont(FONT, seg.bold ? 'bold' : 'normal')
-      pdf.text(seg.text, x, y)
-      x += pdf.getTextWidth(seg.text)
-    }
-    pdf.setFont(FONT, 'normal')
+    pdf.text(line, ML, y)
     y += lineH
   }
   return y
 }
 
-function splitByBoldTerms(line: string, terms: string[]): Array<{ text: string; bold: boolean }> {
-  if (!terms.length) return [{ text: line, bold: false }]
-  // Construir un regex con los términos (escapados)
-  const escaped = terms
-    .filter(t => t && t.length > 0)
-    .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-  if (!escaped.length) return [{ text: line, bold: false }]
-  const re = new RegExp(`(${escaped.join('|')})`, 'gi')
-  const parts = line.split(re)
-  const out: Array<{ text: string; bold: boolean }> = []
-  for (const p of parts) {
-    if (!p) continue
-    const isBold = escaped.some(t => p.toLowerCase() === t.toLowerCase().replace(/\\/g, ''))
-    out.push({ text: p, bold: isBold })
+function drawTranslatorField(pdf: jsPDF, label: string, value: string, y: number): number {
+  y = ensureSpace(pdf, y, 8)
+  const labelStr = `${label}: `
+  pdf.setFont(FONT, 'normal')
+  pdf.text(labelStr, ML, y)
+  const labelW = pdf.getTextWidth(labelStr)
+
+  if (value && value.trim()) {
+    pdf.text(value, ML + labelW, y)
   }
-  return out
+  // Línea inferior para escribir / firmar a mano si no hay valor
+  const lineY = y + 1.5
+  pdf.setLineWidth(0.2)
+  pdf.line(ML + labelW, lineY, PAGE_W - MR, lineY)
+  return y + 5
 }
 
 function ensureSpace(pdf: jsPDF, y: number, needed: number): number {
