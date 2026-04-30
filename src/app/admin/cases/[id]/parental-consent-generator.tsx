@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { FileText, Download, Loader2, Eye, Copy, X, Heart, Pencil, Save, Sparkles } from 'lucide-react'
@@ -17,10 +17,28 @@ interface Content {
   es: string | null
 }
 
+// Tipo persistido en case_form_submissions.form_data.declarations[]. Cada
+// modo de la carta de renuncia se guarda como una entrada distinta usando
+// los `type` del backend (mismos que envía /api/ai/generate-declaration).
+interface StoredDoc {
+  type: string
+  index: number
+  label: string
+  content: string
+  contentES?: string
+  witnessName?: string
+}
+
+const TYPE_BY_MODE: Record<Mode, string> = {
+  standard: 'parental_consent',
+  collaborative: 'parental_consent_collaborative',
+}
+
 export function ParentalConsentGenerator({ caseId, clientName }: Props) {
   const [generating, setGenerating] = useState<Mode | null>(null)
   const [standard, setStandard] = useState<Content>({ en: null, es: null })
   const [collab, setCollab] = useState<Content>({ en: null, es: null })
+  const [loaded, setLoaded] = useState(false)
   const [previewDoc, setPreviewDoc] = useState<{ content: string; lang: 'en' | 'es'; mode: Mode } | null>(null)
   // Edición inline + corrección dirigida con IA, paridad con DeclarationGenerator.
   const [editing, setEditing] = useState(false)
@@ -30,6 +48,23 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
   const [correctionFeedback, setCorrectionFeedback] = useState('')
   const [applyingCorrection, setApplyingCorrection] = useState(false)
 
+  // Carga las cartas guardadas desde el mismo endpoint que DeclarationGenerator
+  // (single source of truth). Filtra por los `type` de cartas de renuncia.
+  useEffect(() => {
+    if (loaded) return
+    setLoaded(true)
+    fetch(`/api/cases/saved-declarations?case_id=${caseId}`)
+      .then(r => r.json())
+      .then((data: { declarations?: StoredDoc[] }) => {
+        const all = data.declarations || []
+        const std = all.find(d => d.type === TYPE_BY_MODE.standard)
+        const col = all.find(d => d.type === TYPE_BY_MODE.collaborative)
+        if (std) setStandard({ en: std.content, es: std.contentES ?? null })
+        if (col) setCollab({ en: col.content, es: col.contentES ?? null })
+      })
+      .catch(() => {})
+  }, [caseId, loaded])
+
   function setContent(mode: Mode, c: Content) {
     if (mode === 'collaborative') setCollab(c)
     else setStandard(c)
@@ -38,9 +73,39 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
     return mode === 'collaborative' ? collab : standard
   }
 
+  // Lee el array completo de declaraciones, reemplaza la entry de `mode` por
+  // `next` (o la añade si no existe), y persiste todo de vuelta. Hace round
+  // trip al GET para no pisar declaraciones de otros tipos (witness, etc.)
+  // que viven en el mismo registro.
+  async function persist(mode: Mode, content: Content) {
+    if (!content.en) return
+    try {
+      const res = await fetch(`/api/cases/saved-declarations?case_id=${caseId}`)
+      const data = await res.json() as { declarations?: StoredDoc[] }
+      const all = data.declarations || []
+      const targetType = TYPE_BY_MODE[mode]
+      const filtered = all.filter(d => d.type !== targetType)
+      const next: StoredDoc = {
+        type: targetType,
+        index: 0,
+        label: mode === 'collaborative' ? 'Carta de Renuncia (Papá Colabora)' : 'Carta de Renuncia (Estándar)',
+        content: content.en,
+        ...(content.es ? { contentES: content.es } : {}),
+      }
+      const updated = [...filtered, next]
+      await fetch('/api/cases/saved-declarations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ case_id: caseId, declarations: updated }),
+      })
+    } catch {
+      toast.error('No se pudo guardar la carta en la base de datos')
+    }
+  }
+
   async function generate(mode: Mode) {
     setGenerating(mode)
-    const declarationType = mode === 'collaborative' ? 'parental_consent_collaborative' : 'parental_consent'
+    const declarationType = TYPE_BY_MODE[mode]
     try {
       const resEN = await fetch('/api/ai/generate-declaration', {
         method: 'POST',
@@ -65,7 +130,9 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
       if (!resES.ok) throw new Error()
       const dataES = await resES.json()
 
-      setContent(mode, { en: dataEN.declaration, es: dataES.declaration })
+      const next: Content = { en: dataEN.declaration, es: dataES.declaration }
+      setContent(mode, next)
+      await persist(mode, next)
       toast.success(`Carta generada en inglés y español (${mode === 'collaborative' ? 'modo colaborativo' : 'estándar'})`)
     } catch {
       toast.error('Error al generar. Intente de nuevo.')
@@ -80,7 +147,7 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
    * caller decide qué hacer.
    */
   async function retranslateToES(englishText: string, mode: Mode): Promise<string | null> {
-    const declarationType = mode === 'collaborative' ? 'parental_consent_collaborative' : 'parental_consent'
+    const declarationType = TYPE_BY_MODE[mode]
     try {
       const res = await fetch('/api/ai/generate-declaration', {
         method: 'POST',
@@ -110,20 +177,22 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
     setSavingEdit(true)
     try {
       const current = getContent(previewDoc.mode)
+      let next: Content
       if (previewDoc.lang === 'en') {
         const newES = await retranslateToES(editedContent, previewDoc.mode)
         if (newES === null) {
           toast.error('Error al re-traducir el español. Cambios EN no guardados.')
           return
         }
-        setContent(previewDoc.mode, { en: editedContent, es: newES })
-        setPreviewDoc({ ...previewDoc, content: editedContent })
+        next = { en: editedContent, es: newES }
         toast.success('Cambios guardados (ES re-traducido automáticamente)')
       } else {
-        setContent(previewDoc.mode, { en: current.en, es: editedContent })
-        setPreviewDoc({ ...previewDoc, content: editedContent })
+        next = { en: current.en, es: editedContent }
         toast.success('Cambios guardados en español')
       }
+      setContent(previewDoc.mode, next)
+      await persist(previewDoc.mode, next)
+      setPreviewDoc({ ...previewDoc, content: editedContent })
       setEditing(false)
       setEditedContent('')
     } catch {
@@ -159,17 +228,20 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
       const corrected: string = dataC.corrected
 
       const current = getContent(previewDoc.mode)
+      let next: Content
       if (previewDoc.lang === 'en') {
         const newES = await retranslateToES(corrected, previewDoc.mode)
         if (newES === null) {
           toast.error('Corrección aplicada en EN, pero ES no se pudo re-traducir.')
-          setContent(previewDoc.mode, { en: corrected, es: current.es })
+          next = { en: corrected, es: current.es }
         } else {
-          setContent(previewDoc.mode, { en: corrected, es: newES })
+          next = { en: corrected, es: newES }
         }
       } else {
-        setContent(previewDoc.mode, { en: current.en, es: corrected })
+        next = { en: current.en, es: corrected }
       }
+      setContent(previewDoc.mode, next)
+      await persist(previewDoc.mode, next)
       setPreviewDoc({ ...previewDoc, content: corrected })
       setCorrecting(false)
       setCorrectionFeedback('')
