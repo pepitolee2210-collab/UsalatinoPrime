@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import {
-  FileText, Loader2, Download, Copy, CheckCircle, Users, User, Eye, X, Sparkles, Pencil, Save,
+  FileText, Loader2, Download, Copy, CheckCircle, Users, User, Eye, X, Sparkles, Pencil, Save, RefreshCw,
 } from 'lucide-react'
 import { ReadinessPanel } from './readiness-panel'
 
@@ -598,6 +598,20 @@ function DocCard({ icon, title, subtitle, color, generating, generated, onGenera
             {onPreviewES && <Button size="sm" variant="outline" onClick={onPreviewES} title="Ver ES"><Eye className="w-3 h-3 mr-1" />ES</Button>}
             <Button size="sm" variant="ghost" onClick={onDownload} title="PDF EN"><Download className="w-3 h-3" /></Button>
             {onDownloadES && <Button size="sm" variant="ghost" onClick={onDownloadES} title="PDF ES"><Download className="w-3 h-3" /></Button>}
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-amber-700 border-amber-300 hover:bg-amber-50"
+              title="Regenerar la carta con la información más reciente del cliente — reemplaza la versión actual"
+              onClick={() => {
+                if (confirm('¿Regenerar esta carta? Se reemplazará el contenido actual con una nueva versión basada en la información más reciente del cliente.')) {
+                  onGenerate()
+                }
+              }}
+            >
+              <RefreshCw className="w-3 h-3 mr-1" />
+              Regenerar
+            </Button>
           </div>
         ) : (
           <Button size="sm" className="bg-[#F2A900] hover:bg-[#D4940A] text-[#001020] font-bold"
