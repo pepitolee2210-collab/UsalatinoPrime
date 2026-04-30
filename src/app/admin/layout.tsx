@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   FileText, Users, CreditCard, LogOut, Menu, Shield,
   MessageSquare, PenLine, CalendarClock, ClipboardList, PhoneCall, Briefcase, Bot, Scale,
-  MessageCircle, FileCheck, Crown,
+  MessageCircle, FileCheck, Crown, Languages,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ClientSearch } from '@/components/admin/ClientSearch'
@@ -27,6 +27,7 @@ const navItems = [
   { href: '/admin/formularios', label: 'Formularios', icon: ClipboardList, badgeKey: 'formsPending' as const },
   { href: '/admin/contratos', label: 'Contratos', icon: PenLine, badgeKey: null },
   { href: '/admin/revision-interna', label: 'Revisión Interna', icon: FileCheck, badgeKey: 'internalDocsPending' as const },
+  { href: '/admin/traducciones', label: 'Traducciones', icon: Languages, badgeKey: null },
   { href: '/admin/agenda', label: 'Agenda', icon: PhoneCall, badgeKey: 'agendaPending' as const },
   { href: '/admin/llamadas', label: 'Llamadas IA', icon: Bot, badgeKey: null },
   { href: '/admin/whatsapp', label: 'WhatsApp SIJS', icon: MessageCircle, badgeKey: 'whatsappActive' as const },
