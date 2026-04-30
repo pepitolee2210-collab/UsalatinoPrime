@@ -62,4 +62,5 @@ export interface CaseOverview {
     service_slug: string | null
   }
   phases: PhaseGroup[]
+  archived_documents: UploadFile[]
 }

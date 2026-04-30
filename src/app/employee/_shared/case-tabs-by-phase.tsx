@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Loader2, Upload, X, Download, FileText } from 'lucide-react'
+import { Loader2, Upload, X, Download, FileText, Archive } from 'lucide-react'
 import { toast } from 'sonner'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
 import { DeclarationGenerator } from '@/app/admin/cases/[id]/declaration-generator'
 import { ParentalConsentGenerator } from '@/app/admin/cases/[id]/parental-consent-generator'
@@ -20,7 +21,19 @@ import { I360Section } from './i360-section'
 import type { CaseOverview, PhaseGroup, UploadFile } from './phase-types'
 import type { CasePhase } from '@/types/database'
 
-export type TabId = 'docs' | 'client-docs' | 'forms' | 'notas' | 'historia' | 'radicacion' | 'historico' | 'generadores' | 'mi-trabajo'
+type UploadDirection = 'client_to_admin' | 'admin_to_client' | 'firm_internal'
+
+export type TabId =
+  | 'docs'
+  | 'client-docs'
+  | 'archivados'
+  | 'forms'
+  | 'notas'
+  | 'historia'
+  | 'radicacion'
+  | 'historico'
+  | 'generadores'
+  | 'mi-trabajo'
 
 interface FormSub {
   form_type: string
@@ -46,12 +59,9 @@ interface CaseTabsByPhaseProps {
   isVisaJuvenil: boolean
   overview: CaseOverview | null
   loading: boolean
-  /** Para los generadores, vienen del fetch original. */
   formSubmissions: FormSub[]
   henryNotes: string
-  /** Tab opcional "Mi Trabajo" (solo employee-case-view con asignación). */
   extraTabs?: ExtraTab[]
-  /** Llamado para refrescar tras un upload o cambio. */
   onRefresh: () => void
 }
 
@@ -71,7 +81,7 @@ export function CaseTabsByPhase({
   const router = useRouter()
   const [tab, setTab] = useState<TabId>('docs')
   const [previewDoc, setPreviewDoc] = useState<UploadFile | null>(null)
-  const [uploadingClient, setUploadingClient] = useState(false)
+  const [uploading, setUploading] = useState<UploadDirection | null>(null)
 
   const currentPhase = overview?.case.current_phase ?? null
 
@@ -79,6 +89,7 @@ export function CaseTabsByPhase({
     const baseTabs: { id: TabId; label: string; count?: number }[] = [
       { id: 'docs', label: 'Documentos', count: countTotalUploads(overview, 'client_uploads') },
       { id: 'client-docs', label: 'Para el Cliente', count: countTotalUploads(overview, 'firm_documents') },
+      { id: 'archivados', label: 'Documentos archivados', count: overview?.archived_documents.length ?? 0 },
     ]
     if (isVisaJuvenil) {
       baseTabs.push({ id: 'forms', label: 'Formularios', count: countTotalForms(overview) })
@@ -107,38 +118,77 @@ export function CaseTabsByPhase({
     }
   }
 
-  async function handleClientDocUpload(file: File) {
-    if (!caseId || !currentPhase) {
-      toast.error('No se puede subir: el caso no tiene fase activa.')
+  // Sube un archivo del caso al endpoint compartido /api/admin/client-documents.
+  // direction controla el rol del documento:
+  //  - client_to_admin: documento del cliente (Diana sube en su nombre).
+  //  - admin_to_client: entregable al cliente.
+  //  - firm_internal: archivo interno del expediente, invisible al cliente.
+  async function uploadCaseDoc(file: File, direction: UploadDirection) {
+    if (!caseId || !clientId) {
+      toast.error('No se puede subir: caso no encontrado.')
       return
     }
-    setUploadingClient(true)
+    setUploading(direction)
     try {
-      const { uploadDirect } = await import('@/lib/upload-direct')
-      await uploadDirect({ file, documentKey: 'general', mode: 'admin', caseId, clientId })
+      const signRes = await fetch('/api/admin/client-documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          case_id: caseId,
+          client_id: clientId,
+          file_name: file.name,
+          file_size: file.size,
+          direction,
+        }),
+      })
+      if (!signRes.ok) {
+        const err = await signRes.json().catch(() => ({}))
+        throw new Error(err.error || 'Error al preparar subida')
+      }
+      const { token: uploadToken, filePath } = await signRes.json()
+
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+      const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      const supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey)
+      const { error: upErr } = await supabase.storage
+        .from('case-documents')
+        .uploadToSignedUrl(filePath, uploadToken, file)
+      if (upErr) throw new Error('Error al subir archivo')
+
+      const confirmRes = await fetch('/api/admin/client-documents', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          case_id: caseId,
+          client_id: clientId,
+          file_path: filePath,
+          file_name: file.name,
+          file_size: file.size,
+          direction,
+        }),
+      })
+      if (!confirmRes.ok) {
+        const err = await confirmRes.json().catch(() => ({}))
+        throw new Error(err.error || 'Error al registrar documento')
+      }
       toast.success('Documento subido')
       onRefresh()
       router.refresh()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al subir')
     } finally {
-      setUploadingClient(false)
+      setUploading(null)
     }
   }
 
-  // Render
-
   return (
     <div className="space-y-4">
-      {/* Preview modal */}
       {previewDoc && <PreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />}
 
-      {/* Mini timeline */}
       {isVisaJuvenil && overview && currentPhase && (
         <PhaseTimelineStrip overview={overview} onPhaseClick={handleScrollToPhase} />
       )}
 
-      {/* Tabs */}
       <div className="flex gap-1 overflow-x-auto pb-1 border-b border-gray-100">
         {tabs.map(t => (
           <button
@@ -164,7 +214,7 @@ export function CaseTabsByPhase({
         </div>
       )}
 
-      {/* === DOCUMENTOS === */}
+      {/* === DOCUMENTOS (cliente sube; Diana también puede subir) === */}
       {tab === 'docs' && !loading && overview && (
         <div className="space-y-3">
           {isVisaJuvenil ? (
@@ -175,20 +225,26 @@ export function CaseTabsByPhase({
               caseNumber,
               kind: 'client_uploads',
               onPreview: setPreviewDoc,
-              uploading: uploadingClient,
-              onUpload: handleClientDocUpload,
+              uploading: uploading === 'client_to_admin',
+              onUpload: (f) => uploadCaseDoc(f, 'client_to_admin'),
+              uploadLabel: 'Subir Documento del Cliente',
             })
           ) : (
-            <PhaseEmptyState
-              icon="folder_open"
-              title="Sin sistema de fases"
-              description="Este servicio no usa fases. Sube documentos sin restricción de fase."
+            <FlatUploadList
+              files={collectFlat(overview, 'client_uploads')}
+              onPreview={setPreviewDoc}
+              uploading={uploading === 'client_to_admin'}
+              onUpload={(f) => uploadCaseDoc(f, 'client_to_admin')}
+              uploadLabel="Subir Documento del Cliente"
+              emptyTitle="Sin documentos del cliente"
+              emptyDescription="Aún no hay archivos subidos en este caso."
+              currentPhase={currentPhase}
             />
           )}
         </div>
       )}
 
-      {/* === PARA EL CLIENTE === */}
+      {/* === PARA EL CLIENTE (Diana entrega documentos al cliente) === */}
       {tab === 'client-docs' && !loading && overview && (
         <div className="space-y-3">
           {isVisaJuvenil ? (
@@ -199,14 +255,48 @@ export function CaseTabsByPhase({
               caseNumber,
               kind: 'firm_documents',
               onPreview: setPreviewDoc,
+              uploading: uploading === 'admin_to_client',
+              onUpload: (f) => uploadCaseDoc(f, 'admin_to_client'),
+              uploadLabel: 'Subir Documento para el Cliente',
             })
           ) : (
-            <PhaseEmptyState
-              icon="inventory_2"
-              title="Sin documentos para el cliente"
-              description="Diana sube aquí cartas y formularios cuando estén listos."
+            <FlatUploadList
+              files={collectFlat(overview, 'firm_documents')}
+              onPreview={setPreviewDoc}
+              uploading={uploading === 'admin_to_client'}
+              onUpload={(f) => uploadCaseDoc(f, 'admin_to_client')}
+              uploadLabel="Subir Documento para el Cliente"
+              emptyTitle="Sin documentos para el cliente"
+              emptyDescription="Diana sube aquí cartas y formularios cuando estén listos."
+              currentPhase={currentPhase}
             />
           )}
+        </div>
+      )}
+
+      {/* === DOCUMENTOS ARCHIVADOS (interno de la firma, invisible al cliente) === */}
+      {tab === 'archivados' && !loading && overview && (
+        <div className="space-y-3">
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+            <Archive className="w-4 h-4 text-amber-700 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-xs font-bold text-amber-800 uppercase">Solo para uso interno</p>
+              <p className="text-[11px] text-amber-700">
+                Documentos del expediente que la firma archiva. Visibles para Henry y paralegales — el cliente no los ve.
+              </p>
+            </div>
+          </div>
+
+          <FlatUploadList
+            files={overview.archived_documents}
+            onPreview={setPreviewDoc}
+            uploading={uploading === 'firm_internal'}
+            onUpload={(f) => uploadCaseDoc(f, 'firm_internal')}
+            uploadLabel="Archivar documento del caso"
+            emptyTitle="Sin documentos archivados"
+            emptyDescription="Aquí guardas notas internas, copias del expediente y todo lo que la firma quiera conservar fuera del alcance del cliente."
+            currentPhase={currentPhase}
+          />
         </div>
       )}
 
@@ -316,9 +406,85 @@ function countTotalUploads(overview: CaseOverview | null, kind: 'client_uploads'
   return overview.phases.reduce((acc, p) => acc + p.documents[kind].length, 0)
 }
 
+function collectFlat(overview: CaseOverview | null, kind: 'client_uploads' | 'firm_documents'): UploadFile[] {
+  if (!overview) return []
+  return overview.phases.flatMap(p => p.documents[kind])
+}
+
 function countTotalForms(overview: CaseOverview | null): number {
   if (!overview) return 0
   return overview.phases.reduce((acc, p) => acc + p.forms.length, 0)
+}
+
+interface FlatUploadListProps {
+  files: UploadFile[]
+  onPreview: (doc: UploadFile) => void
+  uploading: boolean
+  onUpload: (file: File) => Promise<void> | void
+  uploadLabel: string
+  emptyTitle: string
+  emptyDescription: string
+  currentPhase: CasePhase | null
+}
+
+function FlatUploadList({
+  files,
+  onPreview,
+  uploading,
+  onUpload,
+  uploadLabel,
+  emptyTitle,
+  emptyDescription,
+  currentPhase,
+}: FlatUploadListProps) {
+  return (
+    <div className="space-y-3">
+      <UploadBox uploading={uploading} onUpload={onUpload} label={uploadLabel} />
+      {files.length > 0 ? (
+        <PhaseDocumentList
+          phase={currentPhase ?? 'custodia'}
+          uploads={files}
+          onPreview={onPreview}
+        />
+      ) : (
+        <PhaseEmptyState icon="folder_open" title={emptyTitle} description={emptyDescription} />
+      )}
+    </div>
+  )
+}
+
+interface UploadBoxProps {
+  uploading: boolean
+  onUpload: (file: File) => Promise<void> | void
+  label: string
+}
+
+function UploadBox({ uploading, onUpload, label }: UploadBoxProps) {
+  return (
+    <label
+      className={`flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed rounded-xl cursor-pointer text-sm font-medium transition-colors ${
+        uploading
+          ? 'opacity-50 cursor-not-allowed border-gray-200 text-gray-400'
+          : 'border-gray-300 text-gray-500 hover:border-[#F2A900] hover:text-[#9a6500]'
+      }`}
+    >
+      <Upload className="w-4 h-4" />
+      {uploading ? 'Subiendo...' : label}
+      <input
+        type="file"
+        accept="application/pdf,.jpg,.jpeg,.png,.doc,.docx"
+        className="hidden"
+        disabled={uploading}
+        onChange={async (e) => {
+          const file = e.target.files?.[0]
+          if (file) {
+            await onUpload(file)
+            e.target.value = ''
+          }
+        }}
+      />
+    </label>
+  )
 }
 
 function renderPhaseAccordions({
@@ -330,6 +496,7 @@ function renderPhaseAccordions({
   onPreview,
   uploading,
   onUpload,
+  uploadLabel,
 }: {
   phases: PhaseGroup[]
   currentPhase: CasePhase | null
@@ -338,7 +505,8 @@ function renderPhaseAccordions({
   kind: 'client_uploads' | 'firm_documents'
   onPreview: (doc: UploadFile) => void
   uploading?: boolean
-  onUpload?: (file: File) => Promise<void>
+  onUpload?: (file: File) => Promise<void> | void
+  uploadLabel?: string
 }) {
   if (phases.length === 0) {
     return (
@@ -354,7 +522,7 @@ function renderPhaseAccordions({
     const uploads = group.documents[kind]
     const isActive = group.phase === currentPhase
     const isCompleted = group.status === 'completed'
-    const showUploadButton = isActive && kind === 'client_uploads' && onUpload
+    const showUploadButton = isActive && Boolean(onUpload)
 
     return (
       <PhaseAccordion
@@ -367,27 +535,12 @@ function renderPhaseAccordions({
         ) : undefined}
       >
         <div className="space-y-3">
-          {showUploadButton && (
-            <label
-              className={`flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed rounded-xl cursor-pointer text-sm font-medium transition-colors ${
-                uploading
-                  ? 'opacity-50 cursor-not-allowed border-gray-200 text-gray-400'
-                  : 'border-gray-300 text-gray-500 hover:border-[#F2A900] hover:text-[#9a6500]'
-              }`}
-            >
-              <Upload className="w-4 h-4" />
-              {uploading ? 'Subiendo...' : 'Subir Documento del Cliente'}
-              <input
-                type="file"
-                accept="application/pdf,.jpg,.jpeg,.png,.doc,.docx"
-                className="hidden"
-                disabled={uploading}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0]
-                  if (file && onUpload) await onUpload(file)
-                }}
-              />
-            </label>
+          {showUploadButton && onUpload && (
+            <UploadBox
+              uploading={Boolean(uploading)}
+              onUpload={onUpload}
+              label={uploadLabel ?? 'Subir Documento'}
+            />
           )}
           {uploads.length > 0 ? (
             <PhaseDocumentList phase={group.phase} uploads={uploads} onPreview={onPreview} />

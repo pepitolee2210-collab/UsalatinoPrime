@@ -93,6 +93,7 @@ interface ResponseShape {
     service_slug: string | null
   }
   phases: PhaseGroup[]
+  archived_documents: UploadFile[]
 }
 
 /**
@@ -285,6 +286,13 @@ export async function GET(
     })
   }
 
+  // Documentos archivados de la firma — lista plana del caso, no filtrada
+  // por fase. Invisibles para el cliente (los endpoints /api/cita/[token]/*
+  // ya filtran por direction explícito).
+  const archivedDocuments = (documents ?? [])
+    .filter(d => d.direction === 'firm_internal')
+    .map(mapUpload)
+
   const response: ResponseShape = {
     case: {
       id: caseRow.id,
@@ -295,6 +303,7 @@ export async function GET(
       service_slug: serviceRow?.slug ?? null,
     },
     phases,
+    archived_documents: archivedDocuments,
   }
 
   return NextResponse.json(response, {
