@@ -1,29 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
-
-/**
- * GET /api/admin/ceo-dashboard
- *
- * Devuelve todas las métricas del dashboard ejecutivo de Henry en un solo
- * payload (~12 queries en paralelo). El admin/dashboard/page.tsx lo
- * consume server-side para evitar waterfalls en el RSC.
- */
-async function ensureAdmin() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-  if (profile?.role !== 'admin') return null
-  return createServiceClient()
-}
 
 interface FunnelStage {
   key: string
@@ -108,14 +89,13 @@ export interface CeoDashboardData {
 }
 
 /**
- * Lógica del dashboard ejecutivo extraída para que el RSC de /ceo pueda
- * consumirla DIRECTO (sin pasar por fetch HTTP). Esto evita problemas con
- * el Service Worker del PWA y con dominios personalizados.
+ * Lógica del dashboard ejecutivo. Recibe un SupabaseClient con permisos
+ * de service_role; el caller (route GET o RSC /ceo) es responsable de
+ * validar el rol antes de invocarla.
  */
-export async function getCeoDashboardData(): Promise<CeoDashboardData | null> {
-  const service = await ensureAdmin()
-  if (!service) return null
-
+export async function getCeoDashboardData(
+  service: SupabaseClient,
+): Promise<CeoDashboardData> {
   const now = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
@@ -377,7 +357,18 @@ export async function getCeoDashboardData(): Promise<CeoDashboardData | null> {
 }
 
 export async function GET(_req: NextRequest) {
-  const data = await getCeoDashboardData()
-  if (!data) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  if (profile?.role !== 'admin') {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+  }
+
+  const data = await getCeoDashboardData(createServiceClient())
   return NextResponse.json(data)
 }

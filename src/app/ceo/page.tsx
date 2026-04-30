@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import { CeoDashboard } from '@/app/admin/dashboard/ceo-dashboard'
 import { getCeoDashboardData } from '@/app/api/admin/ceo-dashboard/route'
@@ -18,15 +19,16 @@ export default async function CeoPortalPage() {
     .single()
   if (profile?.role !== 'admin') redirect('/login')
 
-  const data = await getCeoDashboardData()
-
-  if (!data) {
+  let data
+  try {
+    data = await getCeoDashboardData(createServiceClient())
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'Error desconocido'
     return (
       <div className="rounded-2xl bg-white text-gray-900 p-8 shadow-2xl">
         <h1 className="text-xl font-bold mb-2">Dashboard ejecutivo</h1>
-        <p className="text-sm text-red-700">
-          No se pudo cargar el dashboard. Recarga la página o contacta al equipo técnico.
-        </p>
+        <p className="text-sm text-red-700">No se pudo cargar el dashboard.</p>
+        <pre className="mt-3 text-[11px] text-gray-600 bg-gray-100 p-2 rounded overflow-x-auto">{msg}</pre>
       </div>
     )
   }
