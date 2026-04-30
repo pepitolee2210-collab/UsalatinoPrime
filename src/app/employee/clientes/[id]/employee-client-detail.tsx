@@ -14,14 +14,27 @@ import { ParentalConsentGenerator } from '@/app/admin/cases/[id]/parental-consen
 import { SupplementaryDataForm } from '@/app/admin/cases/[id]/supplementary-data-form'
 import { JurisdictionPanel } from '@/app/admin/cases/[id]/jurisdiction-panel'
 import { PhaseHistoryTab } from '@/app/admin/cases/[id]/phase-history-tab'
+import { PhaseStatusPanel } from '@/app/admin/cases/[id]/phase-status-panel'
 import { CasePipeline } from '@/components/case-pipeline'
+import type { CasePhase } from '@/types/database'
 
 interface Client {
   id: string; first_name: string; last_name: string; email: string; phone: string | null
 }
 
 interface Case {
-  id: string; case_number: string; henry_notes: string | null; pipeline_status: Record<string, boolean> | null; service: { name: string; slug: string } | null
+  id: string
+  case_number: string
+  henry_notes: string | null
+  pipeline_status: Record<string, boolean> | null
+  current_phase: CasePhase | null
+  process_start: CasePhase | null
+  state_us: string | null
+  parent_deceased: boolean | null
+  in_orr_custody: boolean | null
+  has_criminal_history: boolean | null
+  minor_close_to_21: boolean | null
+  service: { name: string; slug: string } | null
 }
 
 interface Doc {
@@ -137,6 +150,24 @@ export function EmployeeClientDetail({ client, cases, documents, henryDocuments,
       )}
       {cases.length === 1 && (
         <Badge variant="secondary" className="text-[10px]">#{activeCase?.case_number} — {activeCase?.service?.name}</Badge>
+      )}
+
+      {/* SIJS Phase Panel — Diana puede avanzar fases sin Henry */}
+      {activeCase && (
+        <PhaseStatusPanel
+          caseId={activeCase.id}
+          caseNumber={activeCase.case_number}
+          currentPhase={activeCase.current_phase ?? null}
+          processStart={activeCase.process_start ?? null}
+          stateUs={activeCase.state_us ?? null}
+          flags={{
+            parent_deceased: !!activeCase.parent_deceased,
+            in_orr_custody: !!activeCase.in_orr_custody,
+            has_criminal_history: !!activeCase.has_criminal_history,
+            minor_close_to_21: !!activeCase.minor_close_to_21,
+          }}
+          isVisaJuvenil={isVisaJuvenil}
+        />
       )}
 
       {/* Pipeline */}

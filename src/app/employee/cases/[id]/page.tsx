@@ -42,7 +42,7 @@ export default async function EmployeeCasePage({ params }: { params: Promise<{ i
   const [caseRes, docsRes, henryDocsRes, formSubsRes, subsRes] = await Promise.all([
     service
       .from('cases')
-      .select('id, case_number, henry_notes, client:profiles(first_name, last_name, email, phone), service:service_catalog(name, slug)')
+      .select('id, case_number, henry_notes, current_phase, process_start, state_us, parent_deceased, in_orr_custody, has_criminal_history, minor_close_to_21, client:profiles(first_name, last_name, email, phone), service:service_catalog(name, slug)')
       .eq('id', id)
       .single(),
     service
@@ -78,6 +78,13 @@ export default async function EmployeeCasePage({ params }: { params: Promise<{ i
     id: string
     case_number: string
     henry_notes: string | null
+    current_phase: 'custodia' | 'i360' | 'i485' | 'completado' | null
+    process_start: 'custodia' | 'i360' | 'i485' | 'completado' | null
+    state_us: string | null
+    parent_deceased: boolean | null
+    in_orr_custody: boolean | null
+    has_criminal_history: boolean | null
+    minor_close_to_21: boolean | null
     client: { first_name: string; last_name: string; email: string; phone: string }
       | { first_name: string; last_name: string; email: string; phone: string }[]
     service: { name: string; slug: string } | { name: string; slug: string }[]
@@ -86,6 +93,13 @@ export default async function EmployeeCasePage({ params }: { params: Promise<{ i
   const caseData = {
     id: raw.id,
     case_number: raw.case_number,
+    current_phase: raw.current_phase ?? null,
+    process_start: raw.process_start ?? null,
+    state_us: raw.state_us ?? null,
+    parent_deceased: !!raw.parent_deceased,
+    in_orr_custody: !!raw.in_orr_custody,
+    has_criminal_history: !!raw.has_criminal_history,
+    minor_close_to_21: !!raw.minor_close_to_21,
     client: Array.isArray(raw.client) ? raw.client[0] : raw.client,
     service: Array.isArray(raw.service) ? raw.service[0] : raw.service,
   }

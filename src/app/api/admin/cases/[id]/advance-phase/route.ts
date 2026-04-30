@@ -27,7 +27,7 @@ export async function POST(
 ) {
   const { id } = await params
 
-  // Auth
+  // Auth — admin o paralegal pueden avanzar fases (Diana no debe depender de Henry).
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
@@ -36,11 +36,13 @@ export async function POST(
   const service = createServiceClient()
   const { data: profile } = await service
     .from('profiles')
-    .select('role')
+    .select('role, employee_type')
     .eq('id', user.id)
     .single()
-  if (profile?.role !== 'admin') {
-    return NextResponse.json({ error: 'Solo administradores' }, { status: 403 })
+  const isAdmin = profile?.role === 'admin'
+  const isParalegal = profile?.role === 'employee' && profile?.employee_type === 'paralegal'
+  if (!isAdmin && !isParalegal) {
+    return NextResponse.json({ error: 'Solo administradores y paralegals' }, { status: 403 })
   }
 
   // Body

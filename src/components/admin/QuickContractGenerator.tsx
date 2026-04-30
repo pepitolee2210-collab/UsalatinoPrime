@@ -535,6 +535,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
             client_passport: contractForm.clientPassport.trim(),
             client_phone: contractForm.clientPhone.trim(),
             service_slug: selectedSlug,
+            subservice_slug: selectedSubserviceSlug || null,
             total_price: finalPrice,
           }),
         })

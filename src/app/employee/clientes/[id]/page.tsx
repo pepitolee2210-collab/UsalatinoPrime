@@ -27,10 +27,10 @@ export default async function EmployeeClientDetailPage({ params }: { params: Pro
 
   const service = createServiceClient()
 
-  // Get cases with slug
+  // Get cases with slug y campos de fase para que Diana pueda gestionar.
   const { data: cases } = await service
     .from('cases')
-    .select('id, case_number, henry_notes, pipeline_status, service:service_catalog(name, slug)')
+    .select('id, case_number, henry_notes, pipeline_status, current_phase, process_start, state_us, parent_deceased, in_orr_custody, has_criminal_history, minor_close_to_21, service:service_catalog(name, slug)')
     .eq('client_id', id)
     .order('created_at', { ascending: false })
 

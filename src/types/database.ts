@@ -279,6 +279,7 @@ export interface DocumentType {
   max_slots?: number | null
   sort_order: number
   is_active: boolean
+  is_required: boolean
 }
 
 export type ConditionalLogic = {

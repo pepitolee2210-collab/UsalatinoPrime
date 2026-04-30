@@ -2,11 +2,34 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { triggerJurisdictionResearchAsync } from '@/lib/legal/trigger-research-async'
+import type { CasePhase } from '@/types/database'
 
 function normalizePhone(raw: string): string {
   const digits = raw.replace(/\D/g, '')
   if (digits.length === 11 && digits.startsWith('1')) return digits.slice(1)
   return digits
+}
+
+/**
+ * Mapea servicio + subservicio elegidos en el contrato a la fase inicial del
+ * caso. Solo Visa Juvenil (SIJS) usa el sistema de fases. Para el resto se
+ * devuelve null en ambos campos.
+ */
+function resolveStartingPhase(
+  serviceSlug: string,
+  subserviceSlug: string | null,
+): CasePhase | null {
+  if (serviceSlug !== 'visa-juvenil') return null
+  switch (subserviceSlug) {
+    case 'i485':
+      return 'i485'
+    case 'i360':
+    case 'i360-i485':
+      return 'i360'
+    // 'completa' o null → todo el proceso, arranca en custodia
+    default:
+      return 'custodia'
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -37,8 +60,11 @@ export async function POST(request: NextRequest) {
       client_passport,
       client_phone,
       service_slug,
+      subservice_slug,
       total_price,
     } = body
+
+    const startingPhase = resolveStartingPhase(service_slug, subservice_slug ?? null)
 
     if (!client_full_name || !client_passport || !client_phone || !service_slug) {
       return NextResponse.json(
@@ -157,27 +183,48 @@ export async function POST(request: NextRequest) {
     let caseNumber: string
 
     if (existingCase) {
-      // Reuse existing case, just update total_cost if changed
+      // Reuse existing case, just update total_cost if changed.
+      // Si todavía no tenía fase asignada y el contrato indica una, la fijamos.
       caseId = existingCase.id
       caseNumber = existingCase.case_number
-      if (total_price) {
+      const updatePayload: Record<string, unknown> = {}
+      if (total_price) updatePayload.total_cost = total_price
+      if (startingPhase) {
+        const { data: existingPhases } = await service
+          .from('cases')
+          .select('current_phase, process_start')
+          .eq('id', existingCase.id)
+          .single()
+        if (existingPhases && !existingPhases.process_start) {
+          updatePayload.process_start = startingPhase
+        }
+        if (existingPhases && !existingPhases.current_phase) {
+          updatePayload.current_phase = startingPhase
+        }
+      }
+      if (Object.keys(updatePayload).length > 0) {
         await service
           .from('cases')
-          .update({ total_cost: total_price })
+          .update(updatePayload)
           .eq('id', existingCase.id)
       }
     } else {
       // Create new case
+      const insertPayload: Record<string, unknown> = {
+        client_id: clientId,
+        service_id: serviceCatalog.id,
+        total_cost: total_price || 0,
+        intake_status: 'in_progress',
+        form_data: {},
+        current_step: 0,
+      }
+      if (startingPhase) {
+        insertPayload.process_start = startingPhase
+        insertPayload.current_phase = startingPhase
+      }
       const { data: newCase, error: caseError } = await service
         .from('cases')
-        .insert({
-          client_id: clientId,
-          service_id: serviceCatalog.id,
-          total_cost: total_price || 0,
-          intake_status: 'in_progress',
-          form_data: {},
-          current_step: 0,
-        })
+        .insert(insertPayload)
         .select('id, case_number')
         .single()
 

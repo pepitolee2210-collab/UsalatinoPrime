@@ -16,10 +16,19 @@ import { ParentalConsentGenerator } from '@/app/admin/cases/[id]/parental-consen
 import { SupplementaryDataForm } from '@/app/admin/cases/[id]/supplementary-data-form'
 import { JurisdictionPanel } from '@/app/admin/cases/[id]/jurisdiction-panel'
 import { PhaseHistoryTab } from '@/app/admin/cases/[id]/phase-history-tab'
+import { PhaseStatusPanel } from '@/app/admin/cases/[id]/phase-status-panel'
+import type { CasePhase } from '@/types/database'
 
 interface CaseData {
   id: string
   case_number: string
+  current_phase: CasePhase | null
+  process_start: CasePhase | null
+  state_us: string | null
+  parent_deceased: boolean
+  in_orr_custody: boolean
+  has_criminal_history: boolean
+  minor_close_to_21: boolean
   client: { first_name: string; last_name: string; email: string; phone: string }
   service: { name: string; slug: string }
 }
@@ -157,6 +166,22 @@ export function EmployeeCaseView({ caseData, assignment, documents, henryDocumen
           </div>
         </div>
       </div>
+
+      {/* SIJS Phase Panel — visible para paralegals (Diana avanza fases sin Henry) */}
+      <PhaseStatusPanel
+        caseId={caseData.id}
+        caseNumber={caseData.case_number}
+        currentPhase={caseData.current_phase}
+        processStart={caseData.process_start}
+        stateUs={caseData.state_us}
+        flags={{
+          parent_deceased: caseData.parent_deceased,
+          in_orr_custody: caseData.in_orr_custody,
+          has_criminal_history: caseData.has_criminal_history,
+          minor_close_to_21: caseData.minor_close_to_21,
+        }}
+        isVisaJuvenil={isVisaJuvenil}
+      />
 
       {/* Tabs */}
       <div className="flex gap-1 overflow-x-auto pb-1" style={{ borderBottom: '1px solid #f0f1f3' }}>
