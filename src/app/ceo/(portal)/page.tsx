@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import { CeoDashboard } from '@/app/admin/dashboard/ceo-dashboard'
-import { getCeoDashboardData } from '@/app/api/admin/ceo-dashboard/route'
+import { getCeoDashboardData } from '@/lib/ceo-dashboard-data'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -10,14 +10,14 @@ export const revalidate = 0
 export default async function CeoPortalPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  if (!user) redirect('/ceo/login')
 
   const { data: profile } = await supabase
     .from('profiles')
     .select('role, first_name')
     .eq('id', user.id)
     .single()
-  if (profile?.role !== 'admin') redirect('/login')
+  if (profile?.role !== 'admin') redirect('/ceo/login')
 
   let data
   try {
@@ -26,9 +26,9 @@ export default async function CeoPortalPage() {
     const msg = err instanceof Error ? err.message : 'Error desconocido'
     return (
       <div className="rounded-2xl bg-white text-gray-900 p-8 shadow-2xl">
-        <h1 className="text-xl font-bold mb-2">Dashboard ejecutivo</h1>
+        <h1 className="text-xl font-bold mb-2">Vista CEO</h1>
         <p className="text-sm text-red-700">No se pudo cargar el dashboard.</p>
-        <pre className="mt-3 text-[11px] text-gray-600 bg-gray-100 p-2 rounded overflow-x-auto">{msg}</pre>
+        <pre className="mt-3 text-[11px] text-gray-600 bg-gray-100 p-3 rounded overflow-x-auto">{msg}</pre>
       </div>
     )
   }
@@ -40,7 +40,7 @@ export default async function CeoPortalPage() {
       <div className="flex items-end justify-between flex-wrap gap-3">
         <div>
           <p className="text-[11px] uppercase tracking-[0.2em] text-amber-300/80 font-semibold">
-            Centro de mando
+            Centro de mando · Vista CEO
           </p>
           <h1 className="text-3xl lg:text-4xl font-bold text-white mt-1">{greeting}</h1>
           <p className="text-sm text-white/70 mt-1">
