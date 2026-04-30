@@ -8,11 +8,13 @@ import {
   FileText, Loader2, Download, Copy, CheckCircle, Users, User, Eye, X, Sparkles, Pencil, Save, RefreshCw,
 } from 'lucide-react'
 import { ReadinessPanel } from './readiness-panel'
+import { mergeWitnesses, normalizeWitnessName } from '@/lib/witnesses'
 
 interface DeclarationGeneratorProps {
   caseId: string
   clientName: string
   tutorData: Record<string, unknown> | null
+  clientWitnessesData?: Record<string, unknown> | null
   minorStories: { minorIndex: number; formData: Record<string, unknown> }[]
   absentParents?: { formData: Record<string, unknown> }[]
   supplementaryData?: Record<string, unknown> | null
@@ -24,9 +26,13 @@ interface GeneratedDoc {
   label: string
   content: string
   contentES?: string
+  // Solo presente para type === 'witness'. Llave estable para asociar el doc
+  // al testigo correcto aunque el orden o el contenido del array de testigos
+  // cambie entre regeneraciones (ver lib/witnesses.ts).
+  witnessName?: string
 }
 
-export function DeclarationGenerator({ caseId, clientName, tutorData, minorStories, absentParents, supplementaryData }: DeclarationGeneratorProps) {
+export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitnessesData, minorStories, absentParents, supplementaryData }: DeclarationGeneratorProps) {
   const [generating, setGenerating] = useState<string | null>(null)
   const [docs, setDocs] = useState<GeneratedDoc[]>([])
   const [previewDoc, setPreviewDoc] = useState<GeneratedDoc | null>(null)
@@ -51,17 +57,32 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
   }
 
   const tutorName = (tutorData?.full_name as string) || clientName
-  const witnesses = ((tutorData?.witnesses as Array<Record<string, string>>) || []).filter(w => w.name?.trim())
+  // Usa la misma fuente que el backend (tutor_guardian + client_witnesses con
+  // dedupe por nombre). Si UI y backend difieren, el `index` numérico deja de
+  // ser estable y las cartas regeneradas terminan asociadas al testigo
+  // equivocado — bug observado en el caso de Gabriela (clientes/4d8ecd38…).
+  const witnesses = mergeWitnesses(
+    tutorData?.witnesses,
+    (clientWitnessesData as { witnesses?: unknown } | null | undefined)?.witnesses,
+  )
 
   async function generate(type: 'tutor' | 'minor' | 'witness' | 'petition_guardianship', index: number, label: string) {
     const key = `${type}-${index}`
     setGenerating(key)
     try {
+      // Para witnesses, el `label` ES el nombre del testigo y se usa también
+      // como llave estable (witness_name) que viaja al backend para resolver
+      // el testigo correcto independiente del índice posicional.
+      const witnessName = type === 'witness' ? label : undefined
+
       // Generate English (from case data)
       const resEN = await fetch('/api/ai/generate-declaration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ case_id: caseId, type, index, lang: 'en' }),
+        body: JSON.stringify({
+          case_id: caseId, type, index, lang: 'en',
+          ...(witnessName ? { witness_name: witnessName } : {}),
+        }),
       })
       const dataEN = await resEN.json()
       if (!resEN.ok) throw new Error(dataEN.error || 'Error EN')
@@ -78,14 +99,21 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
           index,
           lang: 'es',
           english_source: dataEN.declaration,
+          ...(witnessName ? { witness_name: witnessName } : {}),
         }),
       })
       const dataES = await resES.json()
       if (!resES.ok) throw new Error(dataES.error || 'Error ES')
 
-      const newDoc = { type, index, label, content: dataEN.declaration, contentES: dataES.declaration }
+      const newDoc: GeneratedDoc = {
+        type, index, label,
+        content: dataEN.declaration, contentES: dataES.declaration,
+        ...(witnessName ? { witnessName } : {}),
+      }
       setDocs(prev => {
-        const filtered = prev.filter(d => !(d.type === type && d.index === index))
+        // Match preferente por nombre. Además limpia docs viejos sin
+        // witnessName que ocupaban este mismo índice (migración suave).
+        const filtered = dropMatchingDoc(prev, newDoc)
         const updated = [...filtered, newDoc]
         // Save to DB
         fetch('/api/cases/saved-declarations', {
@@ -154,7 +182,14 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
     }
   }
 
-  const getDoc = (type: string, index: number) => docs.find(d => d.type === type && d.index === index)
+  const getDoc = (type: string, index: number, name?: string) => {
+    if (type === 'witness' && name) {
+      const target = normalizeWitnessName(name)
+      const byName = docs.find(d => d.type === 'witness' && d.witnessName && normalizeWitnessName(d.witnessName) === target)
+      if (byName) return byName
+    }
+    return docs.find(d => d.type === type && d.index === index)
+  }
 
   function previewES(doc: GeneratedDoc) {
     if (doc.contentES) setPreviewDoc({ ...doc, content: doc.contentES, label: doc.label + ' (Español)' })
@@ -175,9 +210,32 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
    */
   function findBaseDoc(preview: GeneratedDoc): { base: GeneratedDoc; isES: boolean } | null {
     const isES = preview.label.endsWith('(Español)')
-    const base = docs.find(d => d.type === preview.type && d.index === preview.index)
+    let base: GeneratedDoc | undefined
+    if (preview.type === 'witness' && preview.witnessName) {
+      const target = normalizeWitnessName(preview.witnessName)
+      base = docs.find(d => d.type === 'witness' && d.witnessName && normalizeWitnessName(d.witnessName) === target)
+    }
+    if (!base) base = docs.find(d => d.type === preview.type && d.index === preview.index)
     if (!base) return null
     return { base, isES }
+  }
+
+  /**
+   * Filtra `prev` removiendo el doc que coincide con `target`. Para witness
+   * con `witnessName` usa el nombre como llave estable; para el resto cae al
+   * (type, index) clásico. Compartido entre `generate`, `saveEdit` y
+   * `applyCorrection`.
+   */
+  function dropMatchingDoc(prev: GeneratedDoc[], target: GeneratedDoc): GeneratedDoc[] {
+    return prev.filter(d => {
+      if (d.type !== target.type) return true
+      if (target.type === 'witness' && target.witnessName) {
+        if (d.witnessName && normalizeWitnessName(d.witnessName) === normalizeWitnessName(target.witnessName)) return false
+        if (!d.witnessName && d.index === target.index) return false
+        return true
+      }
+      return d.index !== target.index
+    })
   }
 
   /**
@@ -213,8 +271,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
         newDoc = { ...found.base, content: editedContent, contentES: dataES.declaration }
       }
 
-      const updated = docs.filter(d => !(d.type === found.base.type && d.index === found.base.index))
-      updated.push(newDoc)
+      const updated = [...dropMatchingDoc(docs, found.base), newDoc]
       setDocs(updated)
 
       // Persist to DB
@@ -285,8 +342,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
         newDoc = { ...found.base, content: dataC.corrected, contentES: dataES.declaration }
       }
 
-      const updated = docs.filter(d => !(d.type === found.base.type && d.index === found.base.index))
-      updated.push(newDoc)
+      const updated = [...dropMatchingDoc(docs, found.base), newDoc]
       setDocs(updated)
 
       await fetch('/api/cases/saved-declarations', {
@@ -509,19 +565,19 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, minorStori
       {/* Witness Declarations */}
       {witnesses.map((w, i) => (
         <DocCard
-          key={`witness-${i}`}
+          key={`witness-${w.name || i}`}
           icon={<Users className="w-4 h-4 text-purple-600" />}
           title={`Declaración del Testigo ${i + 1}`}
           subtitle={w.name}
           color="purple"
           generating={generating === `witness-${i}`}
-          generated={!!getDoc('witness', i)}
+          generated={!!getDoc('witness', i, w.name)}
           onGenerate={() => generate('witness', i, w.name)}
-          onPreview={() => openPreview(getDoc('witness', i)!)}
-          onCopy={() => copyToClipboard(getDoc('witness', i)!.content)}
-          onDownload={() => downloadAsPDF(getDoc('witness', i)!)}
-          onPreviewES={() => previewES(getDoc('witness', i)!)}
-          onDownloadES={() => downloadES(getDoc('witness', i)!)}
+          onPreview={() => openPreview(getDoc('witness', i, w.name)!)}
+          onCopy={() => copyToClipboard(getDoc('witness', i, w.name)!.content)}
+          onDownload={() => downloadAsPDF(getDoc('witness', i, w.name)!)}
+          onPreviewES={() => previewES(getDoc('witness', i, w.name)!)}
+          onDownloadES={() => downloadES(getDoc('witness', i, w.name)!)}
         />
       ))}
 

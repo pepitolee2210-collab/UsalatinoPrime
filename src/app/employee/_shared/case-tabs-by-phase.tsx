@@ -700,6 +700,9 @@ function GeneratorsTab({
   currentPhase: CasePhase | null
 }) {
   const tutorData = formSubmissions.find(s => s.form_type === 'tutor_guardian')?.form_data ?? null
+  // El backend de generación mergea testigos de tutor + client_witnesses.
+  // El UI debe ver la misma lista para que los índices coincidan.
+  const clientWitnessesData = formSubmissions.find(s => s.form_type === 'client_witnesses')?.form_data ?? null
   const minorStories = formSubmissions
     .filter(s => s.form_type === 'client_story')
     .sort((a, b) => (a.minor_index || 0) - (b.minor_index || 0))
@@ -740,6 +743,7 @@ function GeneratorsTab({
         caseId={caseId}
         clientName={clientName}
         tutorData={tutorData}
+        clientWitnessesData={clientWitnessesData}
         minorStories={minorStories}
       />
 

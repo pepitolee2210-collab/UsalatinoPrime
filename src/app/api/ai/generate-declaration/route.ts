@@ -5,6 +5,7 @@ import { buildCaseContext } from '@/lib/ai/prompts/chat-system'
 import { generateText } from '@/lib/ai/anthropic-client'
 import { researchJurisdiction } from '@/lib/legal/research-jurisdiction'
 import { createLogger } from '@/lib/logger'
+import { mergeWitnesses, normalizeWitnessName } from '@/lib/witnesses'
 
 const log = createLogger('generate-declaration')
 
@@ -95,31 +96,6 @@ function buildEnrichedContextBlock(
 }
 
 /**
- * Une los testigos de las dos fuentes posibles (tutor_guardian.witnesses y
- * client_witnesses.witnesses) con deduplicación por nombre. Esto arregla el
- * bug histórico donde si el cliente cargaba testigos en el wizard pero no
- * en el formulario del tutor, los testigos se perdían por completo.
- */
-function mergeWitnesses(
-  fromTutor: unknown,
-  fromClientWitnesses: unknown
-): Array<Record<string, string>> {
-  const a = Array.isArray(fromTutor) ? (fromTutor as Array<Record<string, string>>) : []
-  const b = Array.isArray(fromClientWitnesses)
-    ? (fromClientWitnesses as Array<Record<string, string>>)
-    : []
-  const seen = new Set<string>()
-  const merged: Array<Record<string, string>> = []
-  for (const w of [...a, ...b]) {
-    const key = (w?.name || '').trim().toLowerCase()
-    if (!key || seen.has(key)) continue
-    seen.add(key)
-    merged.push(w)
-  }
-  return merged
-}
-
-/**
  * Construye el bloque JURISDICTION que se inyecta al prompt. Ajusta contenido
  * según el tipo de documento:
  *   - petition_guardianship / parental_consent / tutor / minor / witness:
@@ -190,7 +166,8 @@ function buildDeclarationPrompt(
   type: DeclarationType,
   ctx: Awaited<ReturnType<typeof buildCaseContext>>,
   index: number,
-  lang: 'en' | 'es' = 'en'
+  lang: 'en' | 'es' = 'en',
+  witnessName?: string,
 ): string {
   const clientName = `${ctx.client.firstName} ${ctx.client.lastName}`.toUpperCase()
   const tutor = ctx.tutorGuardian as Record<string, unknown> | null
@@ -744,9 +721,31 @@ ${suppBlock}${enrichedBlock}${jurisdictionBlock}`
   }
 
   // type === 'witness'
-  const witness = witnesses[index]
+  // Resolución por nombre primero (llave estable). El `index` es solo fallback
+  // para docs viejos generados antes de que el contrato incluyera witness_name.
+  // Si los dos divergen, se loguea para detectar UIs stale en producción.
+  let witness = witnesses[index]
+  if (witnessName) {
+    const target = normalizeWitnessName(witnessName)
+    const byName = witnesses.find(w => normalizeWitnessName(w?.name || '') === target)
+    if (byName) {
+      const indexedName = normalizeWitnessName((witnesses[index]?.name as string) || '')
+      if (indexedName && indexedName !== target) {
+        log.warn('witness index/name mismatch', {
+          caseId: ctx.caseId,
+          requestedIndex: index,
+          requestedName: witnessName,
+          resolvedName: byName.name,
+          indexedName: witnesses[index]?.name,
+          totalWitnesses: witnesses.length,
+        })
+      }
+      witness = byName
+    }
+  }
   if (!witness) {
-    return `${baseInstructions}\nERROR: No witness found at index ${index}. Available witnesses: ${witnesses.length}`
+    const available = witnesses.map(w => w?.name).filter(Boolean).join(', ') || '(none)'
+    return `${baseInstructions}\nERROR: No witness ${witnessName ? `"${witnessName}"` : `at index ${index}`}. Available: ${available}`
   }
 
   const absentParent = (ctx.clientAbsentParent || {}) as Record<string, string>
@@ -871,12 +870,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
-  const { case_id, type, index = 0, lang = 'en', english_source } = await request.json() as {
+  const { case_id, type, index = 0, lang = 'en', english_source, witness_name } = await request.json() as {
     case_id: string
     type: DeclarationType
     index?: number
     lang?: 'en' | 'es'
     english_source?: string
+    /**
+     * Para `type === 'witness'`: nombre del testigo tal como lo conoce el UI.
+     * Llave estable que sobrevive a cambios de orden en `tutor.witnesses` o
+     * `client_witnesses.witnesses`. Si está presente, gana sobre `index`.
+     */
+    witness_name?: string
   }
 
   if (!case_id || !type) {
@@ -966,7 +971,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Modo GENERACIÓN normal (EN, o ES sin english_source).
-  const typeSpecificPayload = buildDeclarationPrompt(type, ctx, index, lang)
+  const typeSpecificPayload = buildDeclarationPrompt(type, ctx, index, lang, witness_name)
   const langInstruction = lang === 'es'
     ? '\n\nGenera TODO el documento en ESPAÑOL formal. Traduce términos legales al español. Mantén nombres propios (personas, ciudades, países) en su forma original.'
     : '\n\nGenerate the ENTIRE document in formal ENGLISH. Translate narrative content to English; keep proper nouns (names, cities, countries) in their original form.'

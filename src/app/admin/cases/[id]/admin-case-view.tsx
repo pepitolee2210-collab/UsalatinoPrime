@@ -1058,6 +1058,7 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               caseId={caseData.id}
               clientName={`${caseData.client?.first_name || ''} ${caseData.client?.last_name || ''}`.trim()}
               tutorData={(aiSubmissions || []).find((s: any) => s.form_type === 'tutor_guardian')?.form_data || null}
+              clientWitnessesData={(aiSubmissions || []).find((s: any) => s.form_type === 'client_witnesses')?.form_data || null}
               minorStories={(aiSubmissions || [])
                 .filter((s: any) => s.form_type === 'client_story')
                 .sort((a: any, b: any) => (a.minor_index || 0) - (b.minor_index || 0))
