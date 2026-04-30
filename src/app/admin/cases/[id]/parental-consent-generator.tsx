@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { FileText, Download, Loader2, Eye, Copy, X, Heart } from 'lucide-react'
+import { FileText, Download, Loader2, Eye, Copy, X, Heart, Pencil, Save, Sparkles } from 'lucide-react'
 
 interface Props {
   caseId: string
@@ -21,7 +21,22 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
   const [generating, setGenerating] = useState<Mode | null>(null)
   const [standard, setStandard] = useState<Content>({ en: null, es: null })
   const [collab, setCollab] = useState<Content>({ en: null, es: null })
-  const [previewDoc, setPreviewDoc] = useState<{ content: string; lang: string; mode: Mode } | null>(null)
+  const [previewDoc, setPreviewDoc] = useState<{ content: string; lang: 'en' | 'es'; mode: Mode } | null>(null)
+  // Edición inline + corrección dirigida con IA, paridad con DeclarationGenerator.
+  const [editing, setEditing] = useState(false)
+  const [editedContent, setEditedContent] = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
+  const [correcting, setCorrecting] = useState(false)
+  const [correctionFeedback, setCorrectionFeedback] = useState('')
+  const [applyingCorrection, setApplyingCorrection] = useState(false)
+
+  function setContent(mode: Mode, c: Content) {
+    if (mode === 'collaborative') setCollab(c)
+    else setStandard(c)
+  }
+  function getContent(mode: Mode): Content {
+    return mode === 'collaborative' ? collab : standard
+  }
 
   async function generate(mode: Mode) {
     setGenerating(mode)
@@ -50,17 +65,128 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
       if (!resES.ok) throw new Error()
       const dataES = await resES.json()
 
-      if (mode === 'collaborative') {
-        setCollab({ en: dataEN.declaration, es: dataES.declaration })
-      } else {
-        setStandard({ en: dataEN.declaration, es: dataES.declaration })
-      }
+      setContent(mode, { en: dataEN.declaration, es: dataES.declaration })
       toast.success(`Carta generada en inglés y español (${mode === 'collaborative' ? 'modo colaborativo' : 'estándar'})`)
     } catch {
       toast.error('Error al generar. Intente de nuevo.')
     } finally {
       setGenerating(null)
     }
+  }
+
+  /**
+   * Re-traduce un texto inglés al español llamando al endpoint de traducción
+   * (mismo `english_source` que en la generación). Si falla, devuelve null y el
+   * caller decide qué hacer.
+   */
+  async function retranslateToES(englishText: string, mode: Mode): Promise<string | null> {
+    const declarationType = mode === 'collaborative' ? 'parental_consent_collaborative' : 'parental_consent'
+    try {
+      const res = await fetch('/api/ai/generate-declaration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          case_id: caseId,
+          type: declarationType,
+          index: 0,
+          lang: 'es',
+          english_source: englishText,
+        }),
+      })
+      if (!res.ok) return null
+      const data = await res.json()
+      return data.declaration as string
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * Guarda la edición manual del modal. Si se editó la versión EN, re-traduce
+   * la ES para mantener consistencia 1:1. Si se editó la ES, solo actualiza ES.
+   */
+  async function saveEdit() {
+    if (!previewDoc || !editedContent.trim()) return
+    setSavingEdit(true)
+    try {
+      const current = getContent(previewDoc.mode)
+      if (previewDoc.lang === 'en') {
+        const newES = await retranslateToES(editedContent, previewDoc.mode)
+        if (newES === null) {
+          toast.error('Error al re-traducir el español. Cambios EN no guardados.')
+          return
+        }
+        setContent(previewDoc.mode, { en: editedContent, es: newES })
+        setPreviewDoc({ ...previewDoc, content: editedContent })
+        toast.success('Cambios guardados (ES re-traducido automáticamente)')
+      } else {
+        setContent(previewDoc.mode, { en: current.en, es: editedContent })
+        setPreviewDoc({ ...previewDoc, content: editedContent })
+        toast.success('Cambios guardados en español')
+      }
+      setEditing(false)
+      setEditedContent('')
+    } catch {
+      toast.error('Error al guardar los cambios')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  /**
+   * Aplica una corrección dirigida vía /api/ai/correct-declaration: el modelo
+   * recibe el texto actual + el feedback de Diana y devuelve el doc con SOLO
+   * esa corrección. Si se corrigió EN, re-traduce ES para mantener paridad.
+   */
+  async function applyCorrection() {
+    if (!previewDoc || correctionFeedback.trim().length < 5) return
+    setApplyingCorrection(true)
+    try {
+      const resCorrect = await fetch('/api/ai/correct-declaration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          current_text: previewDoc.content,
+          feedback: correctionFeedback.trim(),
+          lang: previewDoc.lang,
+        }),
+      })
+      if (!resCorrect.ok) {
+        const dataC = await resCorrect.json().catch(() => ({}))
+        throw new Error(dataC.error || 'Error al aplicar la corrección')
+      }
+      const dataC = await resCorrect.json()
+      const corrected: string = dataC.corrected
+
+      const current = getContent(previewDoc.mode)
+      if (previewDoc.lang === 'en') {
+        const newES = await retranslateToES(corrected, previewDoc.mode)
+        if (newES === null) {
+          toast.error('Corrección aplicada en EN, pero ES no se pudo re-traducir.')
+          setContent(previewDoc.mode, { en: corrected, es: current.es })
+        } else {
+          setContent(previewDoc.mode, { en: corrected, es: newES })
+        }
+      } else {
+        setContent(previewDoc.mode, { en: current.en, es: corrected })
+      }
+      setPreviewDoc({ ...previewDoc, content: corrected })
+      setCorrecting(false)
+      setCorrectionFeedback('')
+      toast.success(previewDoc.lang === 'en' ? 'Corrección aplicada (ES re-sincronizado)' : 'Corrección aplicada en español')
+    } catch (e) {
+      toast.error(e instanceof Error && e.message ? e.message : 'Error al aplicar la corrección')
+    } finally {
+      setApplyingCorrection(false)
+    }
+  }
+
+  function closePreview() {
+    setPreviewDoc(null)
+    setEditing(false)
+    setCorrecting(false)
+    setEditedContent('')
+    setCorrectionFeedback('')
   }
 
   async function downloadPDF(content: string, langLabel: string, mode: Mode) {
@@ -104,7 +230,7 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
   }
 
   const renderCard = (mode: Mode, title: string, subtitle: string, icon: React.ReactNode, accent: 'blue' | 'rose') => {
-    const content = mode === 'collaborative' ? collab : standard
+    const content = getContent(mode)
     const isGenerating = generating === mode
     const hasContent = !!content.en
     const colors = accent === 'rose'
@@ -132,10 +258,12 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
           ) : hasContent ? (
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-xs text-green-600 font-bold">✓</span>
-              <Button size="sm" variant="outline" onClick={() => setPreviewDoc({ content: content.en!, lang: 'en', mode })}>
+              <Button size="sm" variant="outline" onClick={() => setPreviewDoc({ content: content.en!, lang: 'en', mode })}
+                title="Ver EN — desde aquí podés editar o corregir con IA">
                 <Eye className="w-3 h-3 mr-1" /> EN
               </Button>
-              <Button size="sm" variant="outline" onClick={() => content.es && setPreviewDoc({ content: content.es, lang: 'es', mode })}>
+              <Button size="sm" variant="outline" onClick={() => content.es && setPreviewDoc({ content: content.es, lang: 'es', mode })}
+                title="Ver ES">
                 <Eye className="w-3 h-3 mr-1" /> ES
               </Button>
               <Button size="sm" variant="ghost" onClick={() => downloadPDF(content.en!, 'EN', mode)} title="PDF EN">
@@ -170,28 +298,114 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
     <div className="space-y-3">
       {previewDoc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}
-          onClick={() => setPreviewDoc(null)}>
-          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[85vh] overflow-hidden shadow-2xl flex flex-col"
+          onClick={() => { if (!editing && !correcting) closePreview() }}>
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
             onClick={e => e.stopPropagation()}>
+            {/* Header */}
             <div className="flex items-center justify-between p-4 border-b">
               <div>
                 <p className="font-bold text-gray-900">{previewTitle}</p>
+                <p className="text-xs text-gray-500">
+                  {editing ? '✏️ Modo edición manual' : correcting ? '💬 Corrección dirigida con IA' : 'Vista previa'}
+                </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(previewDoc.content); toast.success('Copiado') }}>
-                  <Copy className="w-3 h-3 mr-1" /> Copiar
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => downloadPDF(previewDoc.content, previewDoc.lang.toUpperCase(), previewDoc.mode)}>
-                  <Download className="w-3 h-3 mr-1" /> PDF
-                </Button>
-                <button onClick={() => setPreviewDoc(null)} className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 hover:bg-gray-200">
+                {!editing && !correcting && (
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(previewDoc.content); toast.success('Copiado') }}>
+                      <Copy className="w-3 h-3 mr-1" /> Copiar
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => downloadPDF(previewDoc.content, previewDoc.lang.toUpperCase(), previewDoc.mode)}>
+                      <Download className="w-3 h-3 mr-1" /> Descargar
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setEditing(true); setEditedContent(previewDoc.content) }}
+                      className="border-blue-300 text-blue-700 hover:bg-blue-50">
+                      <Pencil className="w-3 h-3 mr-1" /> Editar
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setCorrecting(true)}
+                      className="border-purple-300 text-purple-700 hover:bg-purple-50">
+                      <Sparkles className="w-3 h-3 mr-1" /> Corregir con IA
+                    </Button>
+                  </>
+                )}
+                <button onClick={() => {
+                  if (editing || correcting) {
+                    setEditing(false); setCorrecting(false); setEditedContent(''); setCorrectionFeedback('')
+                  } else {
+                    closePreview()
+                  }
+                }}
+                  className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 hover:bg-gray-200">
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-6">
-              <pre className="text-sm text-gray-800 whitespace-pre-wrap font-serif leading-relaxed">{previewDoc.content}</pre>
-            </div>
+
+            {/* Body */}
+            {editing ? (
+              <>
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="mb-2 text-xs text-gray-500 flex items-center gap-2">
+                    <Pencil className="w-3 h-3" />
+                    Edita el texto directamente. Si modificas la versión EN, la ES se re-traduce al guardar.
+                  </div>
+                  <textarea
+                    value={editedContent}
+                    onChange={e => setEditedContent(e.target.value)}
+                    className="w-full h-[60vh] p-4 text-sm font-serif leading-relaxed border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-300/40 resize-none"
+                  />
+                </div>
+                <div className="flex items-center justify-end gap-2 p-4 border-t bg-gray-50">
+                  <Button size="sm" variant="outline" onClick={() => { setEditing(false); setEditedContent('') }} disabled={savingEdit}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" onClick={saveEdit} disabled={savingEdit || !editedContent.trim()}
+                    className="bg-blue-600 hover:bg-blue-700 text-white">
+                    {savingEdit ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Save className="w-3 h-3 mr-1" />}
+                    Guardar cambios
+                  </Button>
+                </div>
+              </>
+            ) : correcting ? (
+              <>
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">Documento actual</p>
+                      <div className="h-[55vh] overflow-y-auto p-3 text-xs border border-gray-200 rounded-lg bg-gray-50">
+                        <pre className="whitespace-pre-wrap font-serif leading-relaxed">{previewDoc.content}</pre>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wider">¿Qué hay que corregir?</p>
+                      <textarea
+                        value={correctionFeedback}
+                        onChange={e => setCorrectionFeedback(e.target.value)}
+                        placeholder='Ejemplo: "Cambia la fecha de la firma al 15 de mayo de 2026" o "El nombre del padre está mal escrito: es Carlos no Carlo".'
+                        className="w-full h-[55vh] p-3 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300/40 resize-none"
+                      />
+                      <p className="text-[11px] text-gray-500 mt-2 leading-relaxed">
+                        Claude aplicará <strong>solo esa corrección</strong>, sin tocar el resto del documento. La versión en español se re-traduce automáticamente.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-2 p-4 border-t bg-gray-50">
+                  <Button size="sm" variant="outline" onClick={() => { setCorrecting(false); setCorrectionFeedback('') }} disabled={applyingCorrection}>
+                    Cancelar
+                  </Button>
+                  <Button size="sm" onClick={applyCorrection} disabled={applyingCorrection || correctionFeedback.trim().length < 5}
+                    className="bg-purple-600 hover:bg-purple-700 text-white">
+                    {applyingCorrection ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Sparkles className="w-3 h-3 mr-1" />}
+                    Aplicar corrección
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 overflow-y-auto p-6">
+                <pre className="text-sm text-gray-800 whitespace-pre-wrap font-serif leading-relaxed">{previewDoc.content}</pre>
+              </div>
+            )}
           </div>
         </div>
       )}
