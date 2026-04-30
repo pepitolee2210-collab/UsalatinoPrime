@@ -558,7 +558,15 @@ function renderPhaseAccordions({
 // ───────────────────────── PreviewModal ─────────────────────────
 
 function PreviewModal({ doc, onClose }: { doc: UploadFile; onClose: () => void }) {
-  const isPDF = doc.name.toLowerCase().endsWith('.pdf')
+  // El preview embebido pide el binario con `raw=1` (proxy same-origin con
+  // headers permisivos). El download abre el endpoint sin raw, que redirect
+  // a la signed URL del CDN — el browser baja/abre el archivo directo.
+  const ext = doc.name.toLowerCase().split('.').pop() || ''
+  const isPDF = ext === 'pdf'
+  const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)
+  const previewUrl = `/api/employee/download-case-doc?id=${doc.id}&raw=1`
+  const downloadUrl = `/api/employee/download-case-doc?id=${doc.id}`
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -572,11 +580,7 @@ function PreviewModal({ doc, onClose }: { doc: UploadFile; onClose: () => void }
         <div className="flex items-center justify-between p-4 border-b">
           <p className="font-bold text-gray-900 truncate flex-1">{doc.name}</p>
           <div className="flex items-center gap-2 ml-3">
-            <a
-              href={`/api/employee/download-case-doc?id=${doc.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
               <Button size="sm" variant="outline">
                 <Download className="w-3 h-3 mr-1" /> Descargar
               </Button>
@@ -589,21 +593,32 @@ function PreviewModal({ doc, onClose }: { doc: UploadFile; onClose: () => void }
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-hidden bg-gray-100">
+        <div className="flex-1 overflow-auto bg-gray-100">
           {isPDF ? (
-            <iframe src={`/api/employee/download-case-doc?id=${doc.id}`} className="w-full h-[75vh]" title={doc.name} />
+            <iframe src={previewUrl} className="w-full h-[75vh]" title={doc.name} />
+          ) : isImage ? (
+            <div className="flex items-center justify-center p-4">
+              {/* next/image no aplica: el endpoint requiere auth y el path
+                  dinámico no encaja en remotePatterns sin sacrificar control. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewUrl}
+                alt={doc.name}
+                className="max-w-full max-h-[75vh] object-contain"
+              />
+            </div>
           ) : (
             <div className="flex items-center justify-center h-[50vh]">
               <div className="text-center">
                 <FileText className="w-16 h-16 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm text-gray-500">Vista previa no disponible</p>
+                <p className="text-sm text-gray-500">Vista previa no disponible para este formato</p>
                 <a
-                  href={`/api/employee/download-case-doc?id=${doc.id}`}
+                  href={downloadUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-[#F2A900] hover:underline mt-2 inline-block"
                 >
-                  Descargar
+                  Descargar para abrir
                 </a>
               </div>
             </div>
