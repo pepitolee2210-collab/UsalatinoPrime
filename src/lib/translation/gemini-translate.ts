@@ -24,6 +24,8 @@ GENERAL RULES
 - DO extract the textual values that accompany those visuals: Validation Code, Barcode Number, QR-encoded reference, watermarks with text, etc., into reference_codes as label/value pairs.
 - If a field is illegible or partially covered, write "[illegible]" as its value.
 - Never invent information that is not visible.
+- OMIT the operational/contact text that institutions print on civil documents: validity windows ("certificate is valid for X days / X queries"), contact emails for the issuing institution, WhatsApp/phone helpdesk lines, instructions on how to verify the document online, links to call centers. These are administrative metadata of the issuing office, NOT data about the registered person, and Henry does not want them in the translation.
+- Keep the legally substantive validation paragraph (the one that cites a Decree/Article and tells the receiving party they MUST verify the document — that one stays). Drop the support/contact text that follows.
 
 OUTPUT — STRICT JSON, NOTHING ELSE:
 
