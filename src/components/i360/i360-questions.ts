@@ -607,3 +607,23 @@ export const I360_ALL_FIELDS: I360Field[] = I360_STEPS.flatMap((s) =>
  * calcular el progreso del FormCard.
  */
 export const TOTAL_I360_FIELDS = I360_ALL_FIELDS.length
+
+/**
+ * Helper server-safe para contar campos llenos en un form_data.
+ * Definido aquí (módulo sin 'use client') para que el endpoint
+ * `/api/cita/[token]/required-forms` pueda importarlo sin problemas
+ * de bundling.
+ */
+export function countI360FilledFields(formData: Record<string, unknown> | null | undefined): number {
+  if (!formData) return 0
+  let n = 0
+  for (const f of I360_ALL_FIELDS) {
+    const v = formData[f.key]
+    if (v == null) continue
+    if (Array.isArray(v) && v.length > 0) n++
+    else if (typeof v === 'string' && v.trim() !== '') n++
+    else if (typeof v === 'boolean') n++
+    else if (typeof v === 'number') n++
+  }
+  return n
+}

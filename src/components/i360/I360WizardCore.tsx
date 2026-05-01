@@ -5,7 +5,6 @@ import { toast } from 'sonner'
 import { ChevronLeft, ChevronRight, CheckCircle, Loader2, Send } from 'lucide-react'
 import {
   I360_STEPS,
-  I360_ALL_FIELDS,
   type I360Field,
 } from './i360-questions'
 import {
@@ -617,20 +616,3 @@ function ConfirmStep({
   )
 }
 
-/**
- * Helper para contar campos llenos en un form_data — usado por el endpoint
- * required-forms para mostrar progreso del FormCard.
- */
-export function countI360FilledFields(formData: Record<string, unknown> | null | undefined): number {
-  if (!formData) return 0
-  let n = 0
-  for (const f of I360_ALL_FIELDS) {
-    const v = formData[f.key]
-    if (v == null) continue
-    if (Array.isArray(v) && v.length > 0) n++
-    else if (typeof v === 'string' && v.trim() !== '') n++
-    else if (typeof v === 'boolean') n++
-    else if (typeof v === 'number') n++
-  }
-  return n
-}

@@ -3,8 +3,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { AUTOMATED_FORMS } from '@/lib/legal/automated-forms-registry'
 import { isFieldEditableByClient, hasResolvedValue } from '@/lib/legal/field-policy'
 import { formApplies } from '@/lib/legal/phase-form-mapping'
-import { TOTAL_I360_FIELDS } from '@/components/i360/i360-questions'
-import { countI360FilledFields } from '@/components/i360/I360WizardCore'
+import { TOTAL_I360_FIELDS, countI360FilledFields } from '@/components/i360/i360-questions'
 import type { CasePhase } from '@/types/database'
 
 /**
