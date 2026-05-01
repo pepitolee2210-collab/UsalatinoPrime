@@ -131,7 +131,8 @@ export function SigningForm({ token, clientName, contractData }: SigningFormProp
 
         <div className="mt-6 p-4 bg-[#002855]/5 rounded-xl">
           <p className="text-sm font-semibold text-[#002855]">UsaLatinoPrime</p>
-          <p className="text-sm text-gray-500">Tel&eacute;fono / Zelle: 801-941-3479</p>
+          <p className="text-sm text-gray-500">Tel&eacute;fono: 801-941-3479</p>
+          <p className="text-sm text-gray-500">Zelle: Henryorellana@usalatinoprime.com</p>
         </div>
       </div>
     )

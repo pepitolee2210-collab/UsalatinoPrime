@@ -408,7 +408,7 @@ export default function AjusteFormPage() {
           <div className="bg-blue-50 rounded-lg p-4 text-sm text-[#002855] space-y-1">
             <p className="font-medium">Contactenos:</p>
             <p>Telefono: <span className="font-semibold">801-941-3479</span></p>
-            <p>Zelle: <span className="font-semibold">801-941-3479</span></p>
+            <p>Zelle: <span className="font-semibold">Henryorellana@usalatinoprime.com</span></p>
           </div>
         </div>
       </div>

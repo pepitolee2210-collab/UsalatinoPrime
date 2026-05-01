@@ -187,7 +187,7 @@ export function generateContractPDF(input: ContractPDFInput): jsPDF {
   fieldLine('Empresa:', 'USA LATINO PRIME')
   fieldLine('Representante:', 'Jimy Henry Orellana Dom\u00ednguez')
   fieldLine('Tel\u00e9fono:', '801-941-3479')
-  fieldLine('Zelle:', '801-941-3479')
+  fieldLine('Zelle:', 'Henryorellana@usalatinoprime.com')
   y += 4
 
   // Cliente
@@ -293,7 +293,7 @@ export function generateContractPDF(input: ContractPDFInput): jsPDF {
     )
   }
   bodyStyle()
-  doc.text('M\u00e9todo de pago: Zelle al 801-941-3479', margin + 2, y)
+  doc.text('M\u00e9todo de pago Zelle: Henryorellana@usalatinoprime.com', margin + 2, y)
   y += 8
 
   // === CRONOGRAMA DE PAGOS ===

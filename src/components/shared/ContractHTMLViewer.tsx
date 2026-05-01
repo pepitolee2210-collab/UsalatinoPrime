@@ -66,7 +66,7 @@ export function ContractHTMLViewer({ contract }: { contract: ContractData }) {
         <Field label="Empresa" value="USA LATINO PRIME" />
         <Field label="Representante" value="Jimy Henry Orellana Dom&iacute;nguez" />
         <Field label="Tel&eacute;fono" value="801-941-3479" />
-        <Field label="Zelle" value="801-941-3479" />
+        <Field label="Zelle" value="Henryorellana@usalatinoprime.com" />
 
         <p className="font-semibold text-[#002855] mt-4 mb-2">EL CLIENTE:</p>
         <Field label="Nombre completo" value={client_full_name} />
@@ -139,7 +139,7 @@ export function ContractHTMLViewer({ contract }: { contract: ContractData }) {
             pagaderos en un pago &uacute;nico al momento de la contrataci&oacute;n del servicio.
           </p>
         )}
-        <p className="mt-2">M&eacute;todo de pago: Zelle al 801-941-3479</p>
+        <p className="mt-2">M&eacute;todo de pago Zelle: Henryorellana@usalatinoprime.com</p>
       </Section>
 
       {/* Cronograma de pagos */}

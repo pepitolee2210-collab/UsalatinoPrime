@@ -15,11 +15,16 @@ export async function POST(request: Request) {
 
     const { data: profile } = await service
       .from('profiles')
-      .select('role')
+      .select('role, employee_type')
       .eq('id', user.id)
       .single()
 
-    if (profile?.role !== 'admin') {
+    // Admin siempre, y contracts_manager (Andrium) — su trabajo es justamente
+    // generar el link de firma cuando arma un contrato. Antes solo admin podía
+    // y le salía 'No autorizado' al intentarlo.
+    const isAdmin = profile?.role === 'admin'
+    const isContractsManager = profile?.role === 'employee' && profile?.employee_type === 'contracts_manager'
+    if (!isAdmin && !isContractsManager) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
