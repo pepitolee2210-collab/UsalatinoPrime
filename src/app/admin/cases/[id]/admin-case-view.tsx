@@ -37,6 +37,7 @@ import { uploadDirect } from '@/lib/upload-direct'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
+import { I360WizardCore, type I360FormData } from '@/components/i360/I360WizardCore'
 
 interface EmployeeAssignment {
   id: string
@@ -1077,7 +1078,13 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
         {/* I-360 Tab */}
         {isVisaJuvenil && (
           <TabsContent value="i360" className="mt-4">
-            <I360Review submissions={(aiSubmissions || []).filter((s: any) => s.form_type === 'i360_sijs')} onDownload={handleDownloadI360} downloading={i360Loading} />
+            <I360Review
+              submissions={(aiSubmissions || []).filter((s: any) => s.form_type === 'i360_sijs')}
+              onDownload={handleDownloadI360}
+              downloading={i360Loading}
+              caseId={caseData.id}
+              clientName={`${caseData.client?.first_name || ''} ${caseData.client?.last_name || ''}`.trim() || 'el cliente'}
+            />
           </TabsContent>
         )}
 
@@ -1092,14 +1099,100 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
 
 }
 
-function I360Review({ submissions, onDownload, downloading }: { submissions: any[]; onDownload: () => void; downloading: boolean }) {
+function I360Review({
+  submissions,
+  onDownload,
+  downloading,
+  caseId,
+  clientName,
+}: {
+  submissions: any[]
+  onDownload: () => void
+  downloading: boolean
+  caseId: string
+  clientName: string
+}) {
   const sub = submissions[0]
+  const [editorOpen, setEditorOpen] = useState(false)
+  const [editorData, setEditorData] = useState<{
+    form_data: I360FormData
+    status: string | null
+    prefill_sources: Record<string, Record<string, unknown>>
+  } | null>(null)
+  const [editorLoading, setEditorLoading] = useState(false)
+  const router = useRouter()
+
+  async function openEditor() {
+    setEditorLoading(true)
+    try {
+      // Carga form_data + prefill sources del caso
+      const [adminRes, supabaseClient] = await Promise.all([
+        fetch(`/api/admin/cases/${encodeURIComponent(caseId)}/i360-form`, { cache: 'no-store' }),
+        Promise.resolve(createClient()),
+      ])
+      if (!adminRes.ok) throw new Error('No se pudo cargar el formulario')
+      const json = await adminRes.json()
+
+      // Prefill sources: tutor_guardian, client_story, client_absent_parent
+      const { data: prefillRows } = await supabaseClient
+        .from('case_form_submissions')
+        .select('form_type, form_data')
+        .eq('case_id', caseId)
+        .in('form_type', ['tutor_guardian', 'client_story', 'client_absent_parent'])
+        .eq('minor_index', 0)
+
+      const prefillSources: Record<string, Record<string, unknown>> = {}
+      for (const row of prefillRows ?? []) {
+        prefillSources[row.form_type] = (row.form_data as Record<string, unknown>) ?? {}
+      }
+
+      setEditorData({
+        form_data: (json.form_data ?? {}) as I360FormData,
+        status: json.status ?? null,
+        prefill_sources: prefillSources,
+      })
+      setEditorOpen(true)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al abrir el editor')
+    } finally {
+      setEditorLoading(false)
+    }
+  }
 
   if (!sub) return (
     <div className="text-center py-12">
       <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
       <p className="text-sm text-gray-500">El cliente aún no ha llenado el formulario I-360.</p>
-      <p className="text-xs text-gray-400 mt-1">Aparecerá aquí cuando lo complete desde su portal.</p>
+      <p className="text-xs text-gray-400 mt-1">
+        Puedes empezar a llenarlo en nombre del cliente y guardar. El cliente verá tus respuestas en su portal.
+      </p>
+      <Button
+        onClick={openEditor}
+        disabled={editorLoading}
+        className="mt-4 bg-indigo-600 hover:bg-indigo-700"
+      >
+        {editorLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Pencil className="w-4 h-4 mr-2" />}
+        Empezar a llenar I-360
+      </Button>
+      <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="px-6 pt-5 pb-2 border-b">
+            <DialogTitle>Editar Form I-360 — {clientName}</DialogTitle>
+          </DialogHeader>
+          {editorData && (
+            <I360WizardCore
+              mode="admin"
+              caseId={caseId}
+              clientName={clientName}
+              initialData={editorData.form_data}
+              prefillSources={editorData.prefill_sources}
+              initialStatus={editorData.status}
+              onSaved={() => router.refresh()}
+              onClose={() => { setEditorOpen(false); router.refresh() }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 
@@ -1173,9 +1266,24 @@ function I360Review({ submissions, onDownload, downloading }: { submissions: any
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-bold text-gray-900">Formulario I-360 — SIJS</h3>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h3 className="font-bold text-gray-900">Formulario I-360 — SIJS</h3>
+          {sub.updated_at && (
+            <p className="text-[11px] text-gray-500 mt-0.5">
+              Última edición: {format(new Date(sub.updated_at), "d MMM yyyy 'a las' HH:mm", { locale: es })}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={openEditor}
+            disabled={editorLoading}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 transition-colors"
+          >
+            {editorLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Pencil className="w-3.5 h-3.5" />}
+            Editar I-360
+          </button>
           <button
             onClick={onDownload}
             disabled={downloading}
@@ -1193,6 +1301,26 @@ function I360Review({ submissions, onDownload, downloading }: { submissions: any
           </span>
         </div>
       </div>
+
+      <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="px-6 pt-5 pb-2 border-b">
+            <DialogTitle>Editar Form I-360 — {clientName}</DialogTitle>
+          </DialogHeader>
+          {editorData && (
+            <I360WizardCore
+              mode="admin"
+              caseId={caseId}
+              clientName={clientName}
+              initialData={editorData.form_data}
+              prefillSources={editorData.prefill_sources}
+              initialStatus={editorData.status}
+              onSaved={() => router.refresh()}
+              onClose={() => { setEditorOpen(false); router.refresh() }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       {sections.map(section => {
         const c = colorMap[section.color] || colorMap.gray

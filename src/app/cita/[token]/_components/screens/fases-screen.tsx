@@ -5,8 +5,15 @@ import { toast } from 'sonner'
 import { FormCard } from '../forms/form-card'
 import { FormRunner } from '../forms/form-runner'
 import { ClientStoryWizard } from '../../client-story-wizard'
+import { I360WizardCore, type I360FormData } from '@/components/i360/I360WizardCore'
 import type { CasePhase } from '@/types/database'
 import type { RequiredFormsResponse, FormSummary } from '../forms/types'
+
+interface I360DataResponse {
+  form_data: I360FormData
+  status: string | null
+  prefill_sources: Record<string, Record<string, unknown>>
+}
 
 interface FasesScreenProps {
   token: string
@@ -42,6 +49,9 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
   const [loading, setLoading] = useState(true)
   const [openSlug, setOpenSlug] = useState<string | null>(null)
   const [storyOpen, setStoryOpen] = useState(false)
+  const [i360Open, setI360Open] = useState(false)
+  const [i360Data, setI360Data] = useState<I360DataResponse | null>(null)
+  const [i360Loading, setI360Loading] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
@@ -101,9 +111,26 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
   const completedFields = data.forms.reduce((s, f) => s + f.completed_user_fields, 0)
   const pct = totalUserFields === 0 ? 100 : Math.round((completedFields / totalUserFields) * 100)
 
-  const handleOpen = (form: FormSummary) => {
+  const handleOpen = async (form: FormSummary) => {
     if (form.is_special_story) {
       setStoryOpen(true)
+      return
+    }
+    if (form.is_special_i360) {
+      setI360Loading(true)
+      try {
+        const res = await fetch(`/api/cita/${encodeURIComponent(token)}/i360-data`, {
+          cache: 'no-store',
+        })
+        if (!res.ok) throw new Error('No se pudo cargar el formulario')
+        const json: I360DataResponse = await res.json()
+        setI360Data(json)
+        setI360Open(true)
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Error al abrir el formulario')
+      } finally {
+        setI360Loading(false)
+      }
       return
     }
     setOpenSlug(form.slug)
@@ -165,15 +192,45 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
       )}
 
       {storyOpen && (
-        <StoryFullscreen onClose={() => { setStoryOpen(false); fetchData() }}>
+        <Fullscreen
+          title="Mi Historia — Declaración Jurada"
+          onClose={() => { setStoryOpen(false); fetchData() }}
+        >
           <ClientStoryWizard token={token} clientName={clientName} declarationDocs={[]} />
-        </StoryFullscreen>
+        </Fullscreen>
+      )}
+
+      {i360Open && i360Data && (
+        <Fullscreen
+          title="Form I-360 — Petición SIJS"
+          onClose={() => { setI360Open(false); fetchData() }}
+        >
+          <I360WizardCore
+            mode="client"
+            token={token}
+            clientName={clientName}
+            initialData={i360Data.form_data}
+            prefillSources={i360Data.prefill_sources}
+            initialStatus={i360Data.status}
+            onSaved={fetchData}
+            onClose={() => { setI360Open(false); fetchData() }}
+          />
+        </Fullscreen>
+      )}
+
+      {i360Loading && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+          <div className="rounded-2xl bg-white px-6 py-4 shadow-xl flex items-center gap-3">
+            <span className="material-symbols-outlined animate-spin" style={{ fontSize: 22 }}>progress_activity</span>
+            <span className="text-sm font-medium text-gray-700">Cargando tu formulario…</span>
+          </div>
+        </div>
       )}
     </div>
   )
 }
 
-function StoryFullscreen({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+function Fullscreen({ children, onClose, title }: { children: React.ReactNode; onClose: () => void; title: string }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex flex-col" onClick={onClose}>
       <div
@@ -191,7 +248,7 @@ function StoryFullscreen({ children, onClose }: { children: React.ReactNode; onC
             <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
           </button>
           <h2 className="ulp-body-md font-bold flex-1 truncate" style={{ color: 'var(--color-ulp-on-surface)' }}>
-            Mi Historia — Declaración Jurada
+            {title}
           </h2>
         </header>
         <div className="flex-1 overflow-y-auto">{children}</div>

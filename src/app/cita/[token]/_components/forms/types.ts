@@ -53,6 +53,7 @@ export interface FormSummary {
   instance_status: string | null
   locked_for_client: boolean
   is_special_story?: boolean
+  is_special_i360?: boolean
   client_last_edit_at: string | null
   client_submitted_at: string | null
 }

@@ -3,6 +3,8 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { AUTOMATED_FORMS } from '@/lib/legal/automated-forms-registry'
 import { isFieldEditableByClient, hasResolvedValue } from '@/lib/legal/field-policy'
 import { formApplies } from '@/lib/legal/phase-form-mapping'
+import { TOTAL_I360_FIELDS } from '@/components/i360/i360-questions'
+import { countI360FilledFields } from '@/components/i360/I360WizardCore'
 import type { CasePhase } from '@/types/database'
 
 /**
@@ -35,6 +37,7 @@ interface FormSummary {
   instance_status: string | null
   locked_for_client: boolean
   is_special_story?: boolean
+  is_special_i360?: boolean
   client_last_edit_at: string | null
   client_submitted_at: string | null
 }
@@ -95,8 +98,8 @@ export async function GET(
     formApplies(def, currentPhase, stateUs),
   )
 
-  // Cargar instancias existentes y submissions de Mi Historia en paralelo
-  const [instancesRes, storyRes] = await Promise.all([
+  // Cargar instancias existentes y submissions de Mi Historia + I-360 en paralelo
+  const [instancesRes, storyRes, i360Res] = await Promise.all([
     supabase
       .from('case_form_instances')
       .select('form_name, filled_values, status, locked_for_client, client_last_edit_at, client_submitted_at')
@@ -106,6 +109,13 @@ export async function GET(
       .select('form_data, status, updated_at, submitted_at')
       .eq('case_id', tokenData.case_id)
       .eq('form_type', 'client_story')
+      .maybeSingle(),
+    supabase
+      .from('case_form_submissions')
+      .select('form_data, status, updated_at, submitted_at')
+      .eq('case_id', tokenData.case_id)
+      .eq('form_type', 'i360_sijs')
+      .eq('minor_index', 0)
       .maybeSingle(),
   ])
   const instances = instancesRes.data ?? []
@@ -157,6 +167,35 @@ export async function GET(
   // Mi Historia (Declaración Jurada del padre/tutor) — siempre visible para
   // SIJS, independientemente del estado.
   const isSijs = serviceSlug === 'visa-juvenil'
+
+  // Form I-360 SIJS — visible para SIJS en fase i360. Se renderiza vía
+  // I360WizardCore con UI mejorada (selects, tooltips, voice input).
+  if (isSijs && currentPhase === 'i360') {
+    const i360Data = (i360Res.data?.form_data as Record<string, unknown> | undefined) ?? {}
+    const i360FieldsFilled = countI360FilledFields(i360Data)
+    const i360Status = (i360Res.data?.status as string | undefined) ?? null
+    summaries.unshift({
+      slug: '__i360_wizard__',
+      form_name: 'Form I-360 — Petición SIJS',
+      description_es:
+        'Llena tus datos paso a paso. Tu equipo legal revisará la información y la presentará a USCIS.',
+      state: null,
+      packet_type: 'merits',
+      template_type: 'special',
+      icon: 'description',
+      total_user_fields: TOTAL_I360_FIELDS,
+      completed_user_fields: Math.min(TOTAL_I360_FIELDS, i360FieldsFilled),
+      pct: i360FieldsFilled === 0
+        ? 0
+        : Math.min(100, Math.round((i360FieldsFilled / TOTAL_I360_FIELDS) * 100)),
+      instance_status: i360Status,
+      locked_for_client: false, // cliente puede seguir editando aún después de submit
+      is_special_i360: true,
+      client_last_edit_at: (i360Res.data?.updated_at as string | undefined) ?? null,
+      client_submitted_at: (i360Res.data?.submitted_at as string | undefined) ?? null,
+    })
+  }
+
   if (isSijs && currentPhase === 'custodia') {
     const storyData = (storyRes.data?.form_data as Record<string, unknown> | undefined) ?? {}
     // Heurística simple de progreso: contar campos no vacíos en form_data
