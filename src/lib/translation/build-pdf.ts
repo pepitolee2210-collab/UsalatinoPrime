@@ -181,14 +181,15 @@ export function buildTranslationPDF({ doc, certDate, signatureDataUrl }: BuildOp
   pdf.text('Signature:', ML, y)
   const signatureLabelWidth = pdf.getTextWidth('Signature: ')
   if (signatureDataUrl) {
-    // Tamaño físico de la firma en el PDF: ~70mm de ancho, alto proporcional.
-    const sigW = 70
-    const sigH = 25
-    // La pongo solapando un poco arriba de la línea base para que se vea
-    // que la firma "tacha" la línea, como en el docx original.
-    pdf.addImage(signatureDataUrl, 'PNG', ML + signatureLabelWidth, y - 12, sigW, sigH)
+    // Imagen real ~449x106 px (ratio 4.24:1). Mantener proporción para que
+    // no se vea estirada. 55mm de ancho ≈ 13mm de alto.
+    const sigW = 55
+    const sigH = 13
+    // Se solapa un poco arriba de la baseline para que dé la sensación
+    // de que la firma cruza la línea de "Signature:" igual que en el docx.
+    pdf.addImage(signatureDataUrl, 'PNG', ML + signatureLabelWidth, y - 9, sigW, sigH)
   }
-  y += 18
+  y += 14
 
   pdf.text(`Date: ${certDate}`, ML, y)
 
