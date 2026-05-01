@@ -3,29 +3,20 @@
 import { useRef, useState } from 'react'
 import { Languages, FileUp, FileText, Trash2, Loader2, Download, Sparkles, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import type { TranslatedDoc } from '@/lib/translation/schema'
 
-interface Props {
-  defaultTranslatorName?: string
-}
-
 const MAX_BYTES = 8 * 1024 * 1024
 
-export function TranslationTool({ defaultTranslatorName = '' }: Props) {
+// Path del PNG de la firma del traductor oficial. Se sirve como asset estático.
+const SIGNATURE_PATH = '/translation-cert/signature.png'
+
+export function TranslationTool() {
   const [file, setFile] = useState<File | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [translating, setTranslating] = useState(false)
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [doc, setDoc] = useState<TranslatedDoc | null>(null)
-  const [translatorName, setTranslatorName] = useState(defaultTranslatorName)
-  const [translatorDate, setTranslatorDate] = useState<string>(() =>
-    new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
-  )
-  const [translatorAddress, setTranslatorAddress] = useState('')
-  const [translatorContact, setTranslatorContact] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   function handleFile(picked: File | null | undefined) {
@@ -74,13 +65,18 @@ export function TranslationTool({ defaultTranslatorName = '' }: Props) {
     if (!doc) return
     setGeneratingPdf(true)
     try {
+      // Cargar la firma como dataURL para que jsPDF la incruste
+      const signatureDataUrl = await loadImageAsDataUrl(SIGNATURE_PATH)
       const { buildTranslationPDF } = await import('@/lib/translation/build-pdf')
+      const certDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      })
       const blob = buildTranslationPDF({
         doc,
-        translatorName: translatorName.trim(),
-        translatorDate: translatorDate.trim(),
-        translatorAddress: translatorAddress.trim(),
-        translatorContact: translatorContact.trim(),
+        certDate,
+        signatureDataUrl,
       })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
@@ -112,8 +108,9 @@ export function TranslationTool({ defaultTranslatorName = '' }: Props) {
             <h2 className="text-lg font-bold text-gray-900">Traductor de documentos civiles</h2>
             <p className="text-sm text-gray-600 mt-0.5">
               Sube un acta de nacimiento, matrimonio, cédula u otro documento oficial en español.
-              Gemini lo traduce al inglés con el formato certificado de UsaLatino Prime y descargas el PDF
-              listo para que el traductor lo firme.
+              Gemini lo traduce al inglés con el formato certificado de UsaLatino Prime, incluye
+              la página de Translation Certification firmada por Andrew Sonny Navarro y descargas
+              el PDF listo para entregar.
             </p>
           </div>
         </div>
@@ -121,9 +118,9 @@ export function TranslationTool({ defaultTranslatorName = '' }: Props) {
 
       {/* Upload */}
       <div>
-        <Label className="text-xs font-medium text-gray-700 block mb-2">
+        <label className="text-xs font-medium text-gray-700 block mb-2">
           Documento original (PDF o imagen, máx. 8 MB)
-        </Label>
+        </label>
 
         <input
           ref={inputRef}
@@ -184,46 +181,16 @@ export function TranslationTool({ defaultTranslatorName = '' }: Props) {
         )}
       </div>
 
-      {/* Datos del traductor */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Datos del traductor (página de certificación)</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <Label className="text-xs font-medium text-gray-700 block mb-1">Translator's Name</Label>
-            <Input
-              value={translatorName}
-              onChange={e => setTranslatorName(e.target.value)}
-              placeholder="Andrew Sonny Navarro"
-            />
-          </div>
-          <div>
-            <Label className="text-xs font-medium text-gray-700 block mb-1">Date</Label>
-            <Input
-              value={translatorDate}
-              onChange={e => setTranslatorDate(e.target.value)}
-              placeholder="April 30, 2026"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <Label className="text-xs font-medium text-gray-700 block mb-1">Address (opcional)</Label>
-            <Input
-              value={translatorAddress}
-              onChange={e => setTranslatorAddress(e.target.value)}
-              placeholder="385 Address Lane, Salt Lake City, UT 84101"
-            />
-          </div>
-          <div className="md:col-span-2">
-            <Label className="text-xs font-medium text-gray-700 block mb-1">Phone / Email (opcional)</Label>
-            <Input
-              value={translatorContact}
-              onChange={e => setTranslatorContact(e.target.value)}
-              placeholder="(801) 941-3479 · translator@usalatino.com"
-            />
-          </div>
+      {/* Info de la página de certificación (no es editable, es fija) */}
+      <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 flex items-start gap-3">
+        <Sparkles className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div className="text-sm text-gray-700 space-y-1">
+          <p className="font-semibold text-gray-900">Página de certificación incluida automáticamente</p>
+          <p>
+            Cada PDF se genera con la página firmada por <span className="font-semibold">Andrew Sonny Navarro</span>{' '}
+            y la fecha de hoy. No tienes que llenar nada — Henry pidió que sea siempre el mismo formato.
+          </p>
         </div>
-        <p className="text-[11px] text-gray-500 italic">
-          Si dejas Address o Phone/Email vacíos, el PDF deja una línea para escribirlos a mano.
-        </p>
       </div>
 
       {/* Acciones */}
@@ -260,6 +227,21 @@ export function TranslationTool({ defaultTranslatorName = '' }: Props) {
       {doc && <TranslationPreview doc={doc} />}
     </div>
   )
+}
+
+async function loadImageAsDataUrl(src: string): Promise<string | null> {
+  try {
+    const res = await fetch(src, { cache: 'force-cache' })
+    if (!res.ok) return null
+    const blob = await res.blob()
+    return await new Promise<string>(resolve => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return null
+  }
 }
 
 function TranslationPreview({ doc }: { doc: TranslatedDoc }) {
@@ -354,12 +336,6 @@ function TranslationPreview({ doc }: { doc: TranslatedDoc }) {
 
       {doc.closing_note && (
         <p className="text-xs text-gray-700 leading-relaxed pt-1 italic">{doc.closing_note}</p>
-      )}
-
-      {doc.original_document_title && (
-        <p className="text-[11px] text-gray-400 italic pt-3 border-t">
-          Documento original: <span className="font-medium">{doc.original_document_title}</span>
-        </p>
       )}
     </div>
   )

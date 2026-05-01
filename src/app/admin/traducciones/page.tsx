@@ -11,13 +11,11 @@ export default async function AdminTraduccionesPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role, first_name, last_name')
+    .select('role')
     .eq('id', user.id)
     .single()
 
   if (profile?.role !== 'admin') redirect('/login')
-
-  const fullName = `${profile?.first_name ?? ''} ${profile?.last_name ?? ''}`.trim()
 
   return (
     <div className="space-y-4">
@@ -25,7 +23,7 @@ export default async function AdminTraduccionesPage() {
         <h1 className="text-2xl font-bold text-gray-900">Traducciones</h1>
         <p className="text-sm text-gray-500">Sube documentos en español y descarga la traducción certificada en PDF.</p>
       </div>
-      <TranslationTool defaultTranslatorName={fullName} />
+      <TranslationTool />
     </div>
   )
 }
