@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import type { ConditionalLogic, DocumentType, CasePhase, DocumentSlotKind } from '@/types/database'
+import { getPhaseCategory } from '@/lib/document-types/phase-category-overrides'
 
 /**
  * GET /api/cita/[token]/required-documents
@@ -234,9 +235,22 @@ export async function GET(
   }
 
   // 6. Construir DocItems agrupados por categoría
-  const categoryMap = new Map<string, CategoryGroup>()
+  //
+  // Resolver categoría y sort_order específicos por fase. Algunos docs
+  // (acta, pasaporte, I-94, ORR consent, etc.) pertenecen a categorías
+  // distintas en Custodia / I-360 / I-485. El override en
+  // lib/document-types/phase-category-overrides.ts define el mapping;
+  // si no hay override, se usa lo del catálogo `document_types`.
+  const typesWithCategory = visibleTypes.map((dt) => ({
+    dt,
+    phaseCategory: getPhaseCategory(dt, currentPhase),
+  }))
+  typesWithCategory.sort((a, b) => a.phaseCategory.sort_order - b.phaseCategory.sort_order)
 
-  for (const dt of visibleTypes) {
+  const categoryMap = new Map<string, CategoryGroup>()
+  const categoryMinSort = new Map<string, number>()
+
+  for (const { dt, phaseCategory } of typesWithCategory) {
     const filesForType = uploadsByType.get(dt.id) ?? []
 
     // Docs opcionales: solo aparecen si tienen archivos. No molestamos al
@@ -332,32 +346,38 @@ export async function GET(
       from_previous_phase: fromPreviousPhase,
     }
 
-    let group = categoryMap.get(dt.category_code)
+    let group = categoryMap.get(phaseCategory.category_code)
     if (!group) {
       group = {
-        code: dt.category_code,
-        name_es: dt.category_name_es,
-        icon: dt.category_icon ?? null,
+        code: phaseCategory.category_code,
+        name_es: phaseCategory.category_name_es,
+        icon: phaseCategory.category_icon,
         total_required: 0,
         total_completed: 0,
         docs: [],
       }
-      categoryMap.set(dt.category_code, group)
+      categoryMap.set(phaseCategory.category_code, group)
+      categoryMinSort.set(phaseCategory.category_code, phaseCategory.sort_order)
     }
     group.docs.push(docItem)
   }
 
-  // 7. Computar progresos por categoría y global
+  // 7. Computar progresos por categoría y global. Las categorías se
+  // emiten ordenadas por el sort_order mínimo de sus docs (calculado
+  // arriba con override por fase), no por orden de inserción.
   let totalRequired = 0
   let totalCompleted = 0
-  const categories: CategoryGroup[] = []
-  for (const group of categoryMap.values()) {
+  const categories: CategoryGroup[] = Array.from(categoryMap.entries())
+    .sort(([a], [b]) =>
+      (categoryMinSort.get(a) ?? 0) - (categoryMinSort.get(b) ?? 0),
+    )
+    .map(([, g]) => g)
+  for (const group of categories) {
     const { req, done } = categoryProgressCount(group.docs)
     group.total_required = req
     group.total_completed = done
     totalRequired += req
     totalCompleted += done
-    categories.push(group)
   }
 
   const response: ResponseShape = {
