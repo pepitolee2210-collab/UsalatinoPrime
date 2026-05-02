@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { PhaseStatusPanel } from '@/app/admin/cases/[id]/phase-status-panel'
 import { CaseTabsByPhase } from '@/app/employee/_shared/case-tabs-by-phase'
 import { useCaseOverview } from '@/app/employee/_shared/use-case-overview'
+import { I485FormSection } from '@/components/legal/i485-form-section'
 import type { CasePhase } from '@/types/database'
 
 interface CaseData {
@@ -83,6 +84,16 @@ export function EmployeeCaseView({
   const isVisaJuvenil = caseData.service?.slug === 'visa-juvenil'
 
   const { overview, loading, refresh } = useCaseOverview(caseData.id)
+
+  // Tab "I-485" se inyecta como extraTab para SIJS — sección especializada
+  // donde Diana puede ver, editar e imprimir el formulario USCIS I-485.
+  const i485Tab = isVisaJuvenil
+    ? [{
+        id: 'i485' as const,
+        label: 'I-485',
+        content: <I485FormSection caseId={caseData.id} />,
+      }]
+    : []
 
   // Tab "Mi Trabajo" se inyecta como extraTab cuando hay asignación.
   const miTrabajoTab = hasAssignment
@@ -176,7 +187,7 @@ export function EmployeeCaseView({
         loading={loading}
         formSubmissions={formSubmissions}
         henryNotes={henryNotes}
-        extraTabs={miTrabajoTab}
+        extraTabs={[...i485Tab, ...miTrabajoTab]}
         onRefresh={() => {
           refresh()
           router.refresh()

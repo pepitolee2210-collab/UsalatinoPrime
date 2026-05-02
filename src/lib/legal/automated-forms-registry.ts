@@ -159,6 +159,22 @@ import {
 } from './fl-permanent-guardianship-form-schema'
 import { buildFlGuardianshipPrefilledValues } from './fl-permanent-guardianship-prefill'
 
+import {
+  PDF_PUBLIC_PATH as I485_PDF_PUBLIC,
+  PDF_DISK_PATH as I485_PDF_DISK,
+  PDF_SHA256 as I485_SHA,
+  SCHEMA_VERSION as I485_VERSION,
+  FORM_SLUG as I485_SLUG,
+  FORM_NAME as I485_NAME,
+  FORM_DESCRIPTION_ES as I485_DESC,
+  I485_SECTIONS,
+  HARDCODED_VALUES as I485_HARDCODED,
+  REQUIRED_FOR_PRINT as I485_REQUIRED,
+  FIELD_BY_KEY as I485_FIELD_BY_KEY,
+  i485FormSchema as I485_ZOD_SCHEMA,
+} from './i485-form-schema'
+import { buildI485PrefilledValues } from './i485-prefill'
+
 // ──────────────────────────────────────────────────────────────────
 // Tipos públicos del registry
 // ──────────────────────────────────────────────────────────────────
@@ -529,6 +545,42 @@ const FL_GUARDIAN_DEFINITION: AutomatedFormDefinition = {
   },
 }
 
+const I485_DEFINITION: AutomatedFormDefinition = {
+  slug: I485_SLUG,
+  formName: I485_NAME,
+  formDescriptionEs: I485_DESC,
+  states: [],                             // FEDERAL — multi-estado
+  packetType: 'merits',
+  pdfPublicPath: I485_PDF_PUBLIC,
+  pdfDiskPath: I485_PDF_DISK,
+  pdfSha256: I485_SHA,
+  schemaVersion: I485_VERSION,
+  sections: I485_SECTIONS as AutomatedFormDefinition['sections'],
+  hardcodedValues: I485_HARDCODED,
+  requiredForPrint: I485_REQUIRED,
+  fieldByKey: I485_FIELD_BY_KEY as AutomatedFormDefinition['fieldByKey'],
+  zodSchema: I485_ZOD_SCHEMA,
+  buildPrefilledValues: async (caseId, service) => {
+    const raw = await buildI485PrefilledValues(caseId, service)
+    const out: Record<string, string | boolean | null | undefined> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      if (v === null || v === undefined || typeof v === 'string' || typeof v === 'boolean') {
+        out[k] = v
+      }
+    }
+    return out
+  },
+  detectByName: (name) => {
+    const n = name.toLowerCase()
+    return (
+      /i[-\s]?485/.test(n) ||
+      n.includes('application to register permanent residence') ||
+      n.includes('adjust status') ||
+      n.includes('adjustment of status')
+    )
+  },
+}
+
 export const AUTOMATED_FORMS: Record<string, AutomatedFormDefinition> = {
   [SAPCR100_SLUG]: SAPCR100_DEFINITION,
   [SAPCR_AFF_100_SLUG]: SAPCR_AFF_100_DEFINITION,
@@ -538,6 +590,7 @@ export const AUTOMATED_FORMS: Record<string, AutomatedFormDefinition> = {
   [ORDER_SIJ_SLUG]: ORDER_SIJ_DEFINITION,
   [SAPCR205_SLUG]: SAPCR205_DEFINITION,
   [FL_GUARDIAN_SLUG]: FL_GUARDIAN_DEFINITION,
+  [I485_SLUG]: I485_DEFINITION,
 }
 
 /** Slugs registrados (para validación en rutas dinámicas). */

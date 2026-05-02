@@ -38,6 +38,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { I360WizardCore, type I360FormData } from '@/components/i360/I360WizardCore'
+import { I485FormSection } from '@/components/legal/i485-form-section'
 
 interface EmployeeAssignment {
   id: string
@@ -492,6 +493,12 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               {(aiSubmissions || []).some((s: { form_type: string; status: string }) => s.form_type === 'i360_sijs' && s.status === 'submitted') && (
                 <span className="w-2 h-2 rounded-full bg-indigo-500" />
               )}
+            </TabsTrigger>
+          )}
+          {isVisaJuvenil && (
+            <TabsTrigger value="i485" className="flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-emerald-600" />
+              I-485
             </TabsTrigger>
           )}
           <TabsTrigger value="legal-review" className="flex items-center gap-1.5">
@@ -1085,6 +1092,13 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               caseId={caseData.id}
               clientName={`${caseData.client?.first_name || ''} ${caseData.client?.last_name || ''}`.trim() || 'el cliente'}
             />
+          </TabsContent>
+        )}
+
+        {/* I-485 Tab — formulario USCIS Ajuste de Estatus (Fase 3) */}
+        {isVisaJuvenil && (
+          <TabsContent value="i485" className="mt-4">
+            <I485FormSection caseId={caseData.id} />
           </TabsContent>
         )}
 
