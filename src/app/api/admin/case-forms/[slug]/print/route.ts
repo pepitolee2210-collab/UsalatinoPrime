@@ -16,6 +16,10 @@ import crypto from 'node:crypto'
 
 const log = createLogger('case-forms-print')
 
+// PDFs grandes (ej: USCIS I-485 con 728 fields) requieren más tiempo
+// para rellenar y subir a Storage. Default Vercel es 10s — subimos a 60s.
+export const maxDuration = 60
+
 async function ensureAdminOrEmployee() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -153,7 +157,24 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       if (!spec || !spec.pdfFieldName) continue
       valuesByPdfName[spec.pdfFieldName] = value
     }
-    filledBytes = await fillAcroForm(new Uint8Array(pdfBytes), valuesByPdfName, { flatten: true })
+    try {
+      filledBytes = await fillAcroForm(new Uint8Array(pdfBytes), valuesByPdfName, {
+        flatten: def.flattenPdf !== false,
+      })
+    } catch (err) {
+      log.error('fillAcroForm falló', {
+        slug,
+        fieldCount: Object.keys(valuesByPdfName).length,
+        err: err instanceof Error ? err.message : String(err),
+      })
+      return NextResponse.json(
+        {
+          error: 'Error al rellenar PDF',
+          message: err instanceof Error ? err.message : 'Error desconocido al rellenar el PDF.',
+        },
+        { status: 500 }
+      )
+    }
   }
 
   const fileExt = isDocx ? 'docx' : 'pdf'

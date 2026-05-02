@@ -242,6 +242,12 @@ export interface AutomatedFormDefinition {
   processForPrint?: (
     values: Record<string, string | boolean | null | undefined>
   ) => Record<string, string | boolean | null | undefined>
+  /**
+   * Si false, no aplana (flatten) los campos del PDF antes de devolver.
+   * Útil para PDFs grandes donde flatten consume mucha memoria/CPU en serverless
+   * (ej: USCIS I-485 con 728 fields y 4.8 MB). Default true.
+   */
+  flattenPdf?: boolean
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -579,6 +585,9 @@ const I485_DEFINITION: AutomatedFormDefinition = {
       n.includes('adjustment of status')
     )
   },
+  // PDF gigante (4.8 MB, 728 fields) — flatten consume mucha RAM en Vercel.
+  // Diana puede igual editar el PDF post-descarga, lo cual es preferible.
+  flattenPdf: false,
 }
 
 export const AUTOMATED_FORMS: Record<string, AutomatedFormDefinition> = {
