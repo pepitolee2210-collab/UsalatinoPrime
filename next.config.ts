@@ -55,6 +55,14 @@ const embedHeaders = [
 const nextConfig: NextConfig = {
   reactCompiler: true,
   turbopack: {},
+  // Asegurar que los PDFs/DOCX de public/forms estén disponibles en el
+  // filesystem de las server functions (api/admin/case-forms/[slug]/print
+  // los lee con fs.readFile). Sin esto, Vercel solo los sirve como assets
+  // estáticos del CDN y fs.readFile devuelve ENOENT desde la lambda.
+  outputFileTracingIncludes: {
+    '/api/admin/case-forms/**/*': ['./public/forms/**/*'],
+    '/api/cita/**/*': ['./public/forms/**/*'],
+  },
   async headers() {
     return [
       // Preview de documentos del cliente (iframe dentro de /cita/[token])
