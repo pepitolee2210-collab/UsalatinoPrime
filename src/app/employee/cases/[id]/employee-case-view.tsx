@@ -9,6 +9,7 @@ import { PhaseStatusPanel } from '@/app/admin/cases/[id]/phase-status-panel'
 import { CaseTabsByPhase } from '@/app/employee/_shared/case-tabs-by-phase'
 import { useCaseOverview } from '@/app/employee/_shared/use-case-overview'
 import { I485FormSection } from '@/components/legal/i485-form-section'
+import { I360FormSection } from '@/components/legal/i360-form-section'
 import type { CasePhase } from '@/types/database'
 
 interface CaseData {
@@ -85,8 +86,25 @@ export function EmployeeCaseView({
 
   const { overview, loading, refresh } = useCaseOverview(caseData.id)
 
-  // Tab "I-485" se inyecta como extraTab para SIJS — sección especializada
-  // donde Diana puede ver, editar e imprimir el formulario USCIS I-485.
+  // Tab "I-360" — sección especializada para Fase 2 (petición SIJS).
+  // Diana puede ver, editar e imprimir el formulario USCIS I-360.
+  const i360Submission = formSubmissions.find(s => s.form_type === 'i360_sijs' && (s.minor_index ?? 0) === 0)
+  const i360Tab = isVisaJuvenil
+    ? [{
+        id: 'i360' as const,
+        label: 'I-360',
+        content: (
+          <I360FormSection
+            caseId={caseData.id}
+            caseNumber={caseData.case_number}
+            clientName={clientName}
+            submission={i360Submission}
+          />
+        ),
+      }]
+    : []
+
+  // Tab "I-485" — sección especializada para Fase 3 (ajuste de estatus).
   const i485Tab = isVisaJuvenil
     ? [{
         id: 'i485' as const,
@@ -187,7 +205,7 @@ export function EmployeeCaseView({
         loading={loading}
         formSubmissions={formSubmissions}
         henryNotes={henryNotes}
-        extraTabs={[...i485Tab, ...miTrabajoTab]}
+        extraTabs={[...i360Tab, ...i485Tab, ...miTrabajoTab]}
         onRefresh={() => {
           refresh()
           router.refresh()

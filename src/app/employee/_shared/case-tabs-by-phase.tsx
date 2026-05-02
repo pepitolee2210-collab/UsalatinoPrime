@@ -34,6 +34,7 @@ export type TabId =
   | 'historico'
   | 'generadores'
   | 'mi-trabajo'
+  | 'i360'
   | 'i485'
 
 interface FormSub {
