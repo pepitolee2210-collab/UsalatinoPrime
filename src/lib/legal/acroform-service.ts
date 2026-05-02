@@ -180,5 +180,9 @@ export async function fillAcroForm(
     }
   }
 
-  return await doc.save()
+  // Skipear updateFieldAppearances cuando no aplanamos: pdf-lib v1.17 falla al
+  // intentar leer rich text fields (ej: USCIS I-485 Part 14 P14_Line*_AdditionalInfo)
+  // durante la regeneración de appearances. Las appearances originales del PDF
+  // siguen siendo válidas para los fields que no editamos.
+  return await doc.save({ updateFieldAppearances: flatten })
 }
