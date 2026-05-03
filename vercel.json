@@ -1,0 +1,11 @@
+{
+  "buildCommand": "npm run build -w packages/shared && npm run build -w apps/web",
+  "installCommand": "npm install",
+  "outputDirectory": "apps/web/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

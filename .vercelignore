@@ -1,0 +1,9 @@
+logs
+database
+supabase
+apps/api
+apps/web/dist
+apps/web/.env.local
+node_modules
+**/node_modules
+*.tsbuildinfo
