@@ -13,7 +13,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'inicio',     label: 'Inicio',     icon: 'home',        fillWhenActive: true  },
   { id: 'citas',      label: 'Citas',      icon: 'event',       fillWhenActive: true  },
   { id: 'documentos', label: 'Documentos', icon: 'folder',      fillWhenActive: true  },
-  { id: 'fases',      label: 'Fases',      icon: 'assignment',  fillWhenActive: true  },
+  { id: 'fases',      label: 'Formularios', icon: 'assignment',  fillWhenActive: true  },
   { id: 'mas',        label: 'Más',        icon: 'menu',        fillWhenActive: false },
 ]
 

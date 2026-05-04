@@ -1,16 +1,27 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { FileText, Download, Loader2, Eye, Copy, X, Heart, Pencil, Save, Sparkles } from 'lucide-react'
 
+interface FormSub {
+  form_type: string
+  form_data: Record<string, unknown>
+  status: string
+  updated_at: string
+  minor_index: number
+}
+
 interface Props {
   caseId: string
   clientName: string
+  formSubmissions?: FormSub[]
 }
 
 type Mode = 'standard' | 'collaborative'
+type ParentRole = 'father' | 'mother' | 'any'  // 'any' = legacy / sin diferenciación
+type SlotKey = `${Mode}_${ParentRole}`
 
 interface Content {
   en: string | null
@@ -20,6 +31,8 @@ interface Content {
 // Tipo persistido en case_form_submissions.form_data.declarations[]. Cada
 // modo de la carta de renuncia se guarda como una entrada distinta usando
 // los `type` del backend (mismos que envía /api/ai/generate-declaration).
+// `parent_role` permite distinguir cartas separadas para padre y madre cuando
+// el menor reportó abandono por ambos.
 interface StoredDoc {
   type: string
   index: number
@@ -27,6 +40,7 @@ interface StoredDoc {
   content: string
   contentES?: string
   witnessName?: string
+  parent_role?: 'father' | 'mother'
 }
 
 const TYPE_BY_MODE: Record<Mode, string> = {
@@ -34,13 +48,93 @@ const TYPE_BY_MODE: Record<Mode, string> = {
   collaborative: 'parental_consent_collaborative',
 }
 
-export function ParentalConsentGenerator({ caseId, clientName }: Props) {
-  const [generating, setGenerating] = useState<Mode | null>(null)
-  const [standard, setStandard] = useState<Content>({ en: null, es: null })
-  const [collab, setCollab] = useState<Content>({ en: null, es: null })
+interface SlotDef {
+  key: SlotKey
+  mode: Mode
+  parentRole: ParentRole
+  title: string
+  subtitle: string
+  accent: 'blue' | 'rose'
+}
+
+function slotKey(mode: Mode, role: ParentRole): SlotKey {
+  return `${mode}_${role}`
+}
+
+/**
+ * Decide qué slots renderizar según la respuesta del cliente en `minorAbuse.abandoned_by`.
+ * - 'both': 4 slots (estándar + colaborativa, padre + madre).
+ * - 'father' / 'mother': 2 slots etiquetados con ese rol.
+ * - 'none' / '' / undefined: 2 slots genéricos (comportamiento legacy).
+ */
+function computeSlots(abandonedBy: string | undefined): SlotDef[] {
+  if (abandonedBy === 'both') {
+    return [
+      { key: slotKey('standard', 'father'),      mode: 'standard',      parentRole: 'father', title: '1. Renuncia del Padre — Estándar',         subtitle: 'Parental Consent — perspectiva del padre',          accent: 'blue' },
+      { key: slotKey('collaborative', 'father'), mode: 'collaborative', parentRole: 'father', title: '1.b Renuncia del Padre — Colaborativa',    subtitle: 'Voluntary Relinquishment — el padre asume culpa',   accent: 'rose' },
+      { key: slotKey('standard', 'mother'),      mode: 'standard',      parentRole: 'mother', title: '2. Renuncia de la Madre — Estándar',       subtitle: 'Parental Consent — perspectiva de la madre',        accent: 'blue' },
+      { key: slotKey('collaborative', 'mother'), mode: 'collaborative', parentRole: 'mother', title: '2.b Renuncia de la Madre — Colaborativa',  subtitle: 'Voluntary Relinquishment — la madre asume culpa',   accent: 'rose' },
+    ]
+  }
+  if (abandonedBy === 'father') {
+    return [
+      { key: slotKey('standard', 'father'),      mode: 'standard',      parentRole: 'father', title: '1. Renuncia del Padre — Estándar',         subtitle: 'Parental Consent to Temporary Guardianship',         accent: 'blue' },
+      { key: slotKey('collaborative', 'father'), mode: 'collaborative', parentRole: 'father', title: '1.b Renuncia del Padre — Colaborativa',    subtitle: 'Voluntary Relinquishment — el padre asume culpa',   accent: 'rose' },
+    ]
+  }
+  if (abandonedBy === 'mother') {
+    return [
+      { key: slotKey('standard', 'mother'),      mode: 'standard',      parentRole: 'mother', title: '1. Renuncia de la Madre — Estándar',       subtitle: 'Parental Consent to Temporary Guardianship',         accent: 'blue' },
+      { key: slotKey('collaborative', 'mother'), mode: 'collaborative', parentRole: 'mother', title: '1.b Renuncia de la Madre — Colaborativa',  subtitle: 'Voluntary Relinquishment — la madre asume culpa',   accent: 'rose' },
+    ]
+  }
+  // 'none', vacío o undefined: legacy (genérico)
+  return [
+    { key: slotKey('standard', 'any'),      mode: 'standard',      parentRole: 'any', title: '1. Carta de Renuncia de los Padres',          subtitle: 'Parental Consent to Temporary Guardianship (estándar)', accent: 'blue' },
+    { key: slotKey('collaborative', 'any'), mode: 'collaborative', parentRole: 'any', title: '1.b Carta de Renuncia — Padre Colabora',      subtitle: 'Voluntary Relinquishment — el padre asume culpa y negligencia', accent: 'rose' },
+  ]
+}
+
+/**
+ * Lookup de un slot dentro del array persistido. Empareja por `type` y `parent_role`.
+ * Para slots `'any'` (legacy), acepta entradas sin `parent_role` en form_data.
+ */
+function findStoredFor(all: StoredDoc[], slot: SlotDef): StoredDoc | undefined {
+  const targetType = TYPE_BY_MODE[slot.mode]
+  if (slot.parentRole === 'any') {
+    return all.find(d => d.type === targetType && !d.parent_role)
+  }
+  return all.find(d => d.type === targetType && d.parent_role === slot.parentRole)
+}
+
+function detectAbandonedBy(formSubmissions: FormSub[] | undefined): string | undefined {
+  if (!formSubmissions || formSubmissions.length === 0) return undefined
+  const stories = formSubmissions.filter(s => s.form_type === 'client_story')
+  if (stories.length === 0) return undefined
+  // Si CUALQUIER menor reportó "ambos", priorizamos el flujo dual (es el caso
+  // más amplio y permite generar todas las cartas posibles).
+  if (stories.some(s => readAbandonedBy(s) === 'both')) return 'both'
+  if (stories.some(s => readAbandonedBy(s) === 'father') && stories.some(s => readAbandonedBy(s) === 'mother')) return 'both'
+  if (stories.some(s => readAbandonedBy(s) === 'father')) return 'father'
+  if (stories.some(s => readAbandonedBy(s) === 'mother')) return 'mother'
+  if (stories.some(s => readAbandonedBy(s) === 'none')) return 'none'
+  return undefined
+}
+
+function readAbandonedBy(sub: FormSub): string | undefined {
+  const minorAbuse = (sub.form_data?.minorAbuse ?? null) as Record<string, unknown> | null
+  const v = minorAbuse?.abandoned_by
+  return typeof v === 'string' && v.length > 0 ? v : undefined
+}
+
+export function ParentalConsentGenerator({ caseId, clientName, formSubmissions }: Props) {
+  const abandonedBy = useMemo(() => detectAbandonedBy(formSubmissions), [formSubmissions])
+  const slots = useMemo(() => computeSlots(abandonedBy), [abandonedBy])
+
+  const [generating, setGenerating] = useState<SlotKey | null>(null)
+  const [contents, setContents] = useState<Record<SlotKey, Content>>({} as Record<SlotKey, Content>)
   const [loaded, setLoaded] = useState(false)
-  const [previewDoc, setPreviewDoc] = useState<{ content: string; lang: 'en' | 'es'; mode: Mode } | null>(null)
-  // Edición inline + corrección dirigida con IA, paridad con DeclarationGenerator.
+  const [previewDoc, setPreviewDoc] = useState<{ content: string; lang: 'en' | 'es'; slot: SlotDef } | null>(null)
   const [editing, setEditing] = useState(false)
   const [editedContent, setEditedContent] = useState('')
   const [savingEdit, setSavingEdit] = useState(false)
@@ -48,8 +142,8 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
   const [correctionFeedback, setCorrectionFeedback] = useState('')
   const [applyingCorrection, setApplyingCorrection] = useState(false)
 
-  // Carga las cartas guardadas desde el mismo endpoint que DeclarationGenerator
-  // (single source of truth). Filtra por los `type` de cartas de renuncia.
+  // Carga las cartas guardadas. Filtra por (type, parent_role) según los slots
+  // computados a partir de la respuesta del cliente.
   useEffect(() => {
     if (loaded) return
     setLoaded(true)
@@ -57,40 +151,45 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
       .then(r => r.json())
       .then((data: { declarations?: StoredDoc[] }) => {
         const all = data.declarations || []
-        const std = all.find(d => d.type === TYPE_BY_MODE.standard)
-        const col = all.find(d => d.type === TYPE_BY_MODE.collaborative)
-        if (std) setStandard({ en: std.content, es: std.contentES ?? null })
-        if (col) setCollab({ en: col.content, es: col.contentES ?? null })
+        const next: Record<SlotKey, Content> = {} as Record<SlotKey, Content>
+        for (const slot of slots) {
+          const stored = findStoredFor(all, slot)
+          if (stored) next[slot.key] = { en: stored.content, es: stored.contentES ?? null }
+        }
+        setContents(next)
       })
       .catch(() => {})
-  }, [caseId, loaded])
+  }, [caseId, loaded, slots])
 
-  function setContent(mode: Mode, c: Content) {
-    if (mode === 'collaborative') setCollab(c)
-    else setStandard(c)
+  function setContent(key: SlotKey, c: Content) {
+    setContents(prev => ({ ...prev, [key]: c }))
   }
-  function getContent(mode: Mode): Content {
-    return mode === 'collaborative' ? collab : standard
+  function getContent(key: SlotKey): Content {
+    return contents[key] ?? { en: null, es: null }
   }
 
-  // Lee el array completo de declaraciones, reemplaza la entry de `mode` por
-  // `next` (o la añade si no existe), y persiste todo de vuelta. Hace round
-  // trip al GET para no pisar declaraciones de otros tipos (witness, etc.)
-  // que viven en el mismo registro.
-  async function persist(mode: Mode, content: Content) {
+  // Lee el array completo, reemplaza la entry del slot por `next` y persiste
+  // todo de vuelta. Hace round trip al GET para no pisar declaraciones de
+  // otros tipos (witness, tutor, etc.) que viven en el mismo registro.
+  async function persist(slot: SlotDef, content: Content) {
     if (!content.en) return
     try {
       const res = await fetch(`/api/cases/saved-declarations?case_id=${caseId}`)
       const data = await res.json() as { declarations?: StoredDoc[] }
       const all = data.declarations || []
-      const targetType = TYPE_BY_MODE[mode]
-      const filtered = all.filter(d => d.type !== targetType)
+      const targetType = TYPE_BY_MODE[slot.mode]
+      const filtered = all.filter(d => {
+        if (d.type !== targetType) return true
+        if (slot.parentRole === 'any') return !!d.parent_role
+        return d.parent_role !== slot.parentRole
+      })
       const next: StoredDoc = {
         type: targetType,
         index: 0,
-        label: mode === 'collaborative' ? 'Carta de Renuncia (Papá Colabora)' : 'Carta de Renuncia (Estándar)',
+        label: slot.title,
         content: content.en,
         ...(content.es ? { contentES: content.es } : {}),
+        ...(slot.parentRole !== 'any' ? { parent_role: slot.parentRole } : {}),
       }
       const updated = [...filtered, next]
       await fetch('/api/cases/saved-declarations', {
@@ -103,14 +202,21 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
     }
   }
 
-  async function generate(mode: Mode) {
-    setGenerating(mode)
-    const declarationType = TYPE_BY_MODE[mode]
+  async function generate(slot: SlotDef) {
+    setGenerating(slot.key)
+    const declarationType = TYPE_BY_MODE[slot.mode]
+    const parentRoleParam = slot.parentRole === 'any' ? undefined : slot.parentRole
     try {
       const resEN = await fetch('/api/ai/generate-declaration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ case_id: caseId, type: declarationType, index: 0, lang: 'en' }),
+        body: JSON.stringify({
+          case_id: caseId,
+          type: declarationType,
+          index: 0,
+          lang: 'en',
+          ...(parentRoleParam ? { parent_role: parentRoleParam } : {}),
+        }),
       })
       if (!resEN.ok) throw new Error()
       const dataEN = await resEN.json()
@@ -125,15 +231,16 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
           index: 0,
           lang: 'es',
           english_source: dataEN.declaration,
+          ...(parentRoleParam ? { parent_role: parentRoleParam } : {}),
         }),
       })
       if (!resES.ok) throw new Error()
       const dataES = await resES.json()
 
       const next: Content = { en: dataEN.declaration, es: dataES.declaration }
-      setContent(mode, next)
-      await persist(mode, next)
-      toast.success(`Carta generada en inglés y español (${mode === 'collaborative' ? 'modo colaborativo' : 'estándar'})`)
+      setContent(slot.key, next)
+      await persist(slot, next)
+      toast.success(`Carta generada en inglés y español (${slot.title})`)
     } catch {
       toast.error('Error al generar. Intente de nuevo.')
     } finally {
@@ -141,13 +248,9 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
     }
   }
 
-  /**
-   * Re-traduce un texto inglés al español llamando al endpoint de traducción
-   * (mismo `english_source` que en la generación). Si falla, devuelve null y el
-   * caller decide qué hacer.
-   */
-  async function retranslateToES(englishText: string, mode: Mode): Promise<string | null> {
-    const declarationType = TYPE_BY_MODE[mode]
+  async function retranslateToES(englishText: string, slot: SlotDef): Promise<string | null> {
+    const declarationType = TYPE_BY_MODE[slot.mode]
+    const parentRoleParam = slot.parentRole === 'any' ? undefined : slot.parentRole
     try {
       const res = await fetch('/api/ai/generate-declaration', {
         method: 'POST',
@@ -158,6 +261,7 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
           index: 0,
           lang: 'es',
           english_source: englishText,
+          ...(parentRoleParam ? { parent_role: parentRoleParam } : {}),
         }),
       })
       if (!res.ok) return null
@@ -168,18 +272,14 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
     }
   }
 
-  /**
-   * Guarda la edición manual del modal. Si se editó la versión EN, re-traduce
-   * la ES para mantener consistencia 1:1. Si se editó la ES, solo actualiza ES.
-   */
   async function saveEdit() {
     if (!previewDoc || !editedContent.trim()) return
     setSavingEdit(true)
     try {
-      const current = getContent(previewDoc.mode)
+      const current = getContent(previewDoc.slot.key)
       let next: Content
       if (previewDoc.lang === 'en') {
-        const newES = await retranslateToES(editedContent, previewDoc.mode)
+        const newES = await retranslateToES(editedContent, previewDoc.slot)
         if (newES === null) {
           toast.error('Error al re-traducir el español. Cambios EN no guardados.')
           return
@@ -190,8 +290,8 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
         next = { en: current.en, es: editedContent }
         toast.success('Cambios guardados en español')
       }
-      setContent(previewDoc.mode, next)
-      await persist(previewDoc.mode, next)
+      setContent(previewDoc.slot.key, next)
+      await persist(previewDoc.slot, next)
       setPreviewDoc({ ...previewDoc, content: editedContent })
       setEditing(false)
       setEditedContent('')
@@ -202,11 +302,6 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
     }
   }
 
-  /**
-   * Aplica una corrección dirigida vía /api/ai/correct-declaration: el modelo
-   * recibe el texto actual + el feedback de Diana y devuelve el doc con SOLO
-   * esa corrección. Si se corrigió EN, re-traduce ES para mantener paridad.
-   */
   async function applyCorrection() {
     if (!previewDoc || correctionFeedback.trim().length < 5) return
     setApplyingCorrection(true)
@@ -227,10 +322,10 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
       const dataC = await resCorrect.json()
       const corrected: string = dataC.corrected
 
-      const current = getContent(previewDoc.mode)
+      const current = getContent(previewDoc.slot.key)
       let next: Content
       if (previewDoc.lang === 'en') {
-        const newES = await retranslateToES(corrected, previewDoc.mode)
+        const newES = await retranslateToES(corrected, previewDoc.slot)
         if (newES === null) {
           toast.error('Corrección aplicada en EN, pero ES no se pudo re-traducir.')
           next = { en: corrected, es: current.es }
@@ -240,8 +335,8 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
       } else {
         next = { en: current.en, es: corrected }
       }
-      setContent(previewDoc.mode, next)
-      await persist(previewDoc.mode, next)
+      setContent(previewDoc.slot.key, next)
+      await persist(previewDoc.slot, next)
       setPreviewDoc({ ...previewDoc, content: corrected })
       setCorrecting(false)
       setCorrectionFeedback('')
@@ -261,7 +356,7 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
     setCorrectionFeedback('')
   }
 
-  async function downloadPDF(content: string, langLabel: string, mode: Mode) {
+  async function downloadPDF(content: string, langLabel: string, slot: SlotDef) {
     if (!content) return
     try {
       const { default: jsPDF } = await import('jspdf')
@@ -271,8 +366,8 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
       const contentWidth = pw - ml - 25
       let y = 25
 
-      const titleEN = mode === 'collaborative' ? 'VOLUNTARY RELINQUISHMENT OF PARENTAL CUSTODY' : 'PARENTAL CONSENT TO TEMPORARY GUARDIANSHIP'
-      const titleES = mode === 'collaborative' ? 'RENUNCIA VOLUNTARIA DE PATRIA POTESTAD Y CUSTODIA' : 'CONSENTIMIENTO PARENTAL PARA TUTELA TEMPORAL'
+      const titleEN = slot.mode === 'collaborative' ? 'VOLUNTARY RELINQUISHMENT OF PARENTAL CUSTODY' : 'PARENTAL CONSENT TO TEMPORARY GUARDIANSHIP'
+      const titleES = slot.mode === 'collaborative' ? 'RENUNCIA VOLUNTARIA DE PATRIA POTESTAD Y CUSTODIA' : 'CONSENTIMIENTO PARENTAL PARA TUTELA TEMPORAL'
       const title = langLabel === 'EN' ? titleEN : titleES
 
       doc.setFont('helvetica', 'bold')
@@ -293,32 +388,35 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
         y += 4.5
       }
 
-      const suffix = mode === 'collaborative' ? 'Colaborativa' : 'Estandar'
-      doc.save(`Renuncia_${suffix}_${langLabel}_${clientName.replace(/\s+/g, '_')}.pdf`)
+      const modeSuffix = slot.mode === 'collaborative' ? 'Colaborativa' : 'Estandar'
+      const roleSuffix = slot.parentRole === 'father' ? 'Padre' : slot.parentRole === 'mother' ? 'Madre' : ''
+      const suffixParts = [modeSuffix, roleSuffix].filter(Boolean).join('_')
+      doc.save(`Renuncia_${suffixParts}_${langLabel}_${clientName.replace(/\s+/g, '_')}.pdf`)
       toast.success('PDF descargado')
     } catch {
       toast.error('Error al generar PDF')
     }
   }
 
-  const renderCard = (mode: Mode, title: string, subtitle: string, icon: React.ReactNode, accent: 'blue' | 'rose') => {
-    const content = getContent(mode)
-    const isGenerating = generating === mode
+  const renderCard = (slot: SlotDef) => {
+    const content = getContent(slot.key)
+    const isGenerating = generating === slot.key
     const hasContent = !!content.en
-    const colors = accent === 'rose'
+    const colors = slot.accent === 'rose'
       ? { border: 'border-rose-200', bg: 'bg-rose-50', iconBg: 'bg-rose-100', iconText: 'text-rose-600' }
       : { border: 'border-blue-200', bg: 'bg-blue-50', iconBg: 'bg-blue-100', iconText: 'text-blue-600' }
+    const icon = slot.accent === 'rose' ? <Heart className="w-5 h-5" /> : <FileText className="w-5 h-5" />
 
     return (
-      <div className={`rounded-xl border ${colors.border} ${colors.bg} p-4`}>
+      <div key={slot.key} className={`rounded-xl border ${colors.border} ${colors.bg} p-4`}>
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl ${colors.iconBg} flex items-center justify-center flex-shrink-0`}>
               {hasContent ? <FileText className="w-5 h-5 text-green-500" /> : <div className={colors.iconText}>{icon}</div>}
             </div>
             <div>
-              <p className="text-sm font-bold text-gray-900">{title}</p>
-              <p className="text-xs text-gray-500">{subtitle}</p>
+              <p className="text-sm font-bold text-gray-900">{slot.title}</p>
+              <p className="text-xs text-gray-500">{slot.subtitle}</p>
             </div>
           </div>
 
@@ -330,28 +428,28 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
           ) : hasContent ? (
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-xs text-green-600 font-bold">✓</span>
-              <Button size="sm" variant="outline" onClick={() => setPreviewDoc({ content: content.en!, lang: 'en', mode })}
+              <Button size="sm" variant="outline" onClick={() => setPreviewDoc({ content: content.en!, lang: 'en', slot })}
                 title="Ver EN — desde aquí podés editar o corregir con IA">
                 <Eye className="w-3 h-3 mr-1" /> EN
               </Button>
-              <Button size="sm" variant="outline" onClick={() => content.es && setPreviewDoc({ content: content.es, lang: 'es', mode })}
+              <Button size="sm" variant="outline" onClick={() => content.es && setPreviewDoc({ content: content.es, lang: 'es', slot })}
                 title="Ver ES">
                 <Eye className="w-3 h-3 mr-1" /> ES
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => downloadPDF(content.en!, 'EN', mode)} title="PDF EN">
+              <Button size="sm" variant="ghost" onClick={() => downloadPDF(content.en!, 'EN', slot)} title="PDF EN">
                 <Download className="w-3 h-3" />
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => content.es && downloadPDF(content.es, 'ES', mode)} title="PDF ES">
+              <Button size="sm" variant="ghost" onClick={() => content.es && downloadPDF(content.es, 'ES', slot)} title="PDF ES">
                 <Download className="w-3 h-3" />
               </Button>
-              <Button size="sm" variant="outline" onClick={() => generate(mode)}>Regenerar</Button>
+              <Button size="sm" variant="outline" onClick={() => generate(slot)}>Regenerar</Button>
             </div>
           ) : (
             <Button
-              className={accent === 'rose'
+              className={slot.accent === 'rose'
                 ? 'bg-rose-600 hover:bg-rose-700 text-white font-bold'
                 : 'bg-[#F2A900] hover:bg-[#D4940A] text-[#001020] font-bold'}
-              onClick={() => generate(mode)}
+              onClick={() => generate(slot)}
               disabled={!!generating}
             >
               Generar
@@ -362,12 +460,27 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
     )
   }
 
-  const previewTitle = previewDoc
-    ? `Carta de Renuncia ${previewDoc.mode === 'collaborative' ? '(Papá Colabora) ' : ''}— ${previewDoc.lang === 'en' ? 'English' : 'Español'}`
-    : ''
+  const previewTitle = previewDoc ? `${previewDoc.slot.title} — ${previewDoc.lang === 'en' ? 'English' : 'Español'}` : ''
 
   return (
     <div className="space-y-3">
+      {abandonedBy === 'none' && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-xs text-amber-800">
+            El cliente indicó que <strong>ningún padre</strong> lo abandonó. Las cartas siguen disponibles por si necesitas
+            generarlas igualmente, pero quizás no apliquen para este caso.
+          </p>
+        </div>
+      )}
+      {abandonedBy === undefined && (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+          <p className="text-xs text-gray-600">
+            El cliente aún no ha indicado quién lo abandonó. Las cartas se generan en formato genérico
+            con los datos del padre/madre ausente registrado.
+          </p>
+        </div>
+      )}
+
       {previewDoc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}
           onClick={() => { if (!editing && !correcting) closePreview() }}>
@@ -387,7 +500,7 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
                     <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(previewDoc.content); toast.success('Copiado') }}>
                       <Copy className="w-3 h-3 mr-1" /> Copiar
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => downloadPDF(previewDoc.content, previewDoc.lang.toUpperCase(), previewDoc.mode)}>
+                    <Button size="sm" variant="outline" onClick={() => downloadPDF(previewDoc.content, previewDoc.lang.toUpperCase(), previewDoc.slot)}>
                       <Download className="w-3 h-3 mr-1" /> Descargar
                     </Button>
                     <Button size="sm" variant="outline" onClick={() => { setEditing(true); setEditedContent(previewDoc.content) }}
@@ -482,21 +595,7 @@ export function ParentalConsentGenerator({ caseId, clientName }: Props) {
         </div>
       )}
 
-      {renderCard(
-        'standard',
-        '1. Carta de Renuncia de los Padres',
-        'Parental Consent to Temporary Guardianship (estándar)',
-        <FileText className="w-5 h-5" />,
-        'blue',
-      )}
-
-      {renderCard(
-        'collaborative',
-        '1.b Carta de Renuncia — Papá Colabora',
-        'Voluntary Relinquishment — el padre asume culpa y negligencia',
-        <Heart className="w-5 h-5" />,
-        'rose',
-      )}
+      {slots.map(renderCard)}
     </div>
   )
 }

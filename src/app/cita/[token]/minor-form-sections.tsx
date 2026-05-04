@@ -96,11 +96,22 @@ export interface MinorBasicData {
   nonimmigrant_status: string; court_order_date: string
 }
 
+export type AbandonedBy = '' | 'father' | 'mother' | 'both' | 'none'
+
+export const ABANDONED_BY_OPTIONS: { value: Exclude<AbandonedBy, ''>; label: string }[] = [
+  { value: 'father', label: 'Solo el padre' },
+  { value: 'mother', label: 'Solo la madre' },
+  { value: 'both',   label: 'Ambos padres' },
+  { value: 'none',   label: 'Ninguno' },
+]
+
 export interface MinorAbuseData {
   life_in_country: string
   abuse_by_father: string; abuse_by_mother: string
   physical_abuse: string; emotional_abuse: string
-  negligence: string; abandonment: string; abandonment_details: string
+  negligence: string
+  abandoned_by: AbandonedBy
+  abandonment: string; abandonment_details: string
   parent_substance_abuse: string
 }
 
@@ -218,12 +229,25 @@ export function MinorAbuseSection({ data, onChange }: { data: MinorAbuseData; on
           placeholder="Describa las carencias que sufrió..." rows={3} />
       </div>
       <div>
-        <FieldLabel>15. ¿Alguno de sus padres lo/la abandonó? ¿Cuándo y por cuánto tiempo?</FieldLabel>
-        <TAreaAI question="¿Alguno de sus padres lo/la abandonó? ¿Cuándo y por cuánto tiempo?" value={data.abandonment} onChange={v => upd('abandonment', v)}
-          placeholder="Cuente cuándo lo/la dejaron y qué pasó después..." rows={3} />
+        <FieldLabel required>15. ¿Quién lo/la abandonó?</FieldLabel>
+        <div className="flex flex-wrap gap-2">
+          {ABANDONED_BY_OPTIONS.map(opt => (
+            <button key={opt.value} type="button" onClick={() => upd('abandoned_by', opt.value)}
+              className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                data.abandoned_by === opt.value ? 'border-[#F2A900] bg-[#F2A900]/10 text-[#9a6500]' : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+              }`}>{opt.label}</button>
+          ))}
+        </div>
       </div>
+      {data.abandoned_by && data.abandoned_by !== 'none' && (
+        <div>
+          <FieldLabel>16. ¿Cuándo y por cuánto tiempo? Cuente qué pasó después</FieldLabel>
+          <TAreaAI question="¿Cuándo y por cuánto tiempo lo/la abandonó? ¿Qué pasó después?" value={data.abandonment} onChange={v => upd('abandonment', v)}
+            placeholder="Edad, fechas, duración, contacto desde entonces..." rows={3} />
+        </div>
+      )}
       <div>
-        <FieldLabel>16. ¿Su padre o madre tiene problemas de alcoholismo, drogas o actividades ilegales?</FieldLabel>
+        <FieldLabel>17. ¿Su padre o madre tiene problemas de alcoholismo, drogas o actividades ilegales?</FieldLabel>
         <TArea value={data.parent_substance_abuse} onChange={v => upd('parent_substance_abuse', v)}
           placeholder="Si aplica, describa la situación..." rows={3} />
       </div>

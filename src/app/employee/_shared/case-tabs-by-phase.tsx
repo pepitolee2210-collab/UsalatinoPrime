@@ -754,7 +754,7 @@ function GeneratorsTab({
         absentParents={absentParents}
       />
 
-      <ParentalConsentGenerator caseId={caseId} clientName={clientName} />
+      <ParentalConsentGenerator caseId={caseId} clientName={clientName} formSubmissions={formSubmissions} />
 
       <DeclarationGenerator
         caseId={caseId}

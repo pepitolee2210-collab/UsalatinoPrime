@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { toast } from 'sonner'
 import { TutorFormSections } from './tutor-form-sections'
-import { MinorBasicSection, MinorAbuseSection, MinorBestInterestSection } from './minor-form-sections'
+import { MinorBasicSection, MinorAbuseSection, MinorBestInterestSection, type MinorAbuseData, type AbandonedBy } from './minor-form-sections'
 import {
   ChevronLeft, ChevronRight, CheckCircle, Send, Loader2,
   BookOpen, Lock, ArrowRight, Upload, X, FileText,
@@ -33,14 +33,6 @@ interface MinorBasicData {
   detained_by_immigration: string; released_by_orr: string; orr_sponsor: string
   a_number: string; ssn: string; i94_number: string
   nonimmigrant_status: string; court_order_date: string
-}
-
-interface MinorAbuseData {
-  life_in_country: string
-  abuse_by_father: string; abuse_by_mother: string
-  physical_abuse: string; emotional_abuse: string
-  negligence: string; abandonment: string; abandonment_details: string
-  parent_substance_abuse: string
 }
 
 interface MinorBestInterestData {
@@ -130,7 +122,8 @@ interface DJState {
   minorBestInterest: MinorBestInterestData
   // Legacy (kept for backward compat loading)
   story: StoryData
-  parent: ParentData
+  parent: ParentData         // primer padre (siempre poblado mientras haya respuesta)
+  parent2?: ParentData       // segundo padre, sólo cuando abandoned_by === 'both'
   witnesses: Witness[]
   hasAnotherFather: boolean | null
   adminNotes?: string
@@ -189,6 +182,7 @@ const EMPTY_MINOR_BASIC: MinorBasicData = {
 const EMPTY_MINOR_ABUSE: MinorAbuseData = {
   life_in_country: '', abuse_by_father: '', abuse_by_mother: '',
   physical_abuse: '', emotional_abuse: '', negligence: '',
+  abandoned_by: '' as AbandonedBy,
   abandonment: '', abandonment_details: '', parent_substance_abuse: '',
 }
 
@@ -222,6 +216,70 @@ const GUARDIAN_RELATIONS: { value: GuardianRelation; label: string }[] = [
 const DJ_STEP_LABELS = ['Información Básica', 'Hechos de Maltrato', 'Mejor Interés', 'Padre/Madre Ausente', 'Confirmar y Enviar']
 const DJ_TOTAL_STEPS = 5
 
+/**
+ * Hidrata `parent` y `parent2` desde `form_data` de `client_absent_parent`.
+ *
+ * Formato nuevo: `{ father?: ParentData, mother?: ParentData, ...campos planos }`.
+ * Formato legacy: solo campos planos (un único padre).
+ *
+ * Si están ambos `father` y `mother`, primary=father, secondary=mother.
+ * Si solo uno, ese va en primary y secondary queda undefined.
+ */
+function parseAbsentParents(rawInput: unknown): { primary: ParentData; secondary: ParentData | undefined } {
+  const raw = (rawInput || {}) as Record<string, unknown>
+  const father = raw.father && typeof raw.father === 'object' ? raw.father as Partial<ParentData> : null
+  const mother = raw.mother && typeof raw.mother === 'object' ? raw.mother as Partial<ParentData> : null
+
+  if (father && mother) {
+    return {
+      primary: { ...EMPTY_PARENT, ...father, parent_relationship: 'padre' },
+      secondary: { ...EMPTY_PARENT, ...mother, parent_relationship: 'madre' },
+    }
+  }
+  if (father) {
+    return {
+      primary: { ...EMPTY_PARENT, ...father, parent_relationship: 'padre' },
+      secondary: undefined,
+    }
+  }
+  if (mother) {
+    return {
+      primary: { ...EMPTY_PARENT, ...mother, parent_relationship: 'madre' },
+      secondary: undefined,
+    }
+  }
+  // Legacy: campos planos del padre principal
+  return {
+    primary: { ...EMPTY_PARENT, ...(raw as Partial<ParentData>) },
+    secondary: undefined,
+  }
+}
+
+/**
+ * Construye el `form_data` para persistir en `client_absent_parent`.
+ * Estructura:
+ *   - Mantiene campos planos del padre principal (compat con código que lee
+ *     `form_data.parent_name`, `form_data.parent_relationship`, etc.).
+ *   - Añade `father`/`mother` con el `ParentData` completo de cada uno cuando aplica.
+ */
+function buildAbsentParentPayload(parent: ParentData, parent2: ParentData | undefined, abandonedBy: AbandonedBy): Record<string, unknown> {
+  if (abandonedBy === 'both' && parent2) {
+    const father = { ...parent, parent_relationship: 'padre' }
+    const mother = { ...parent2, parent_relationship: 'madre' }
+    return { ...father, father, mother }
+  }
+  if (abandonedBy === 'mother') {
+    const mother = { ...parent, parent_relationship: 'madre' }
+    return { ...mother, mother }
+  }
+  if (abandonedBy === 'father') {
+    const father = { ...parent, parent_relationship: 'padre' }
+    return { ...father, father }
+  }
+  // 'none' o '' (legacy): solo campos planos
+  return { ...parent }
+}
+
 function createEmptyDJ(docs: DJDoc[] = []): DJState {
   return {
     status: 'empty',
@@ -231,6 +289,7 @@ function createEmptyDJ(docs: DJDoc[] = []): DJState {
     minorBestInterest: { ...EMPTY_MINOR_BEST_INTEREST },
     story: { ...EMPTY_STORY },
     parent: { ...EMPTY_PARENT },
+    parent2: undefined,
     witnesses: [{ name: '', relationship: '', phone: '', can_testify: '' }],
     hasAnotherFather: null,
     docs,
@@ -295,6 +354,7 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
               }
 
               const statusKey = idx === 0 ? 'client_story' : `client_story_${idx}`
+              const { primary: primaryParent, secondary: secondaryParent } = parseAbsentParents(decl.parent)
               next[djNum] = {
                 ...prev[djNum],
                 status: (data[statusKey]?.status as DJState['status']) || 'draft',
@@ -303,7 +363,8 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
                 minorAbuse: { ...EMPTY_MINOR_ABUSE, ...(minorAbuse as Partial<MinorAbuseData> || {}) },
                 minorBestInterest: { ...EMPTY_MINOR_BEST_INTEREST, ...(minorBestInterest as Partial<MinorBestInterestData> || {}) },
                 story: { ...EMPTY_STORY, ...(restStory as Partial<StoryData>) },
-                parent: { ...EMPTY_PARENT, ...(decl.parent as Partial<ParentData> || {}) },
+                parent: primaryParent,
+                parent2: secondaryParent,
                 witnesses: ((decl.witnesses as { witnesses?: Witness[] })?.witnesses || []) as Witness[],
                 hasAnotherFather: has_another_father === true ? true : has_another_father === false ? false : null,
                 adminNotes: data[statusKey]?.admin_notes,
@@ -329,8 +390,8 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
               loadedChildren = [minor_info as ChildInfo]
             }
 
-            const parentData = (data.client_absent_parent?.data || {}) as Partial<ParentData>
             const witnessesData = (data.client_witnesses?.data || {}) as { witnesses?: Witness[] }
+            const { primary: primaryParent, secondary: secondaryParent } = parseAbsentParents(data.client_absent_parent?.data)
 
             return {
               ...prev,
@@ -342,7 +403,8 @@ export function ClientStoryWizard({ token, declarationDocs = [] }: ClientStoryWi
                 minorAbuse: { ...EMPTY_MINOR_ABUSE, ...(minorAbuse as Partial<MinorAbuseData> || {}) },
                 minorBestInterest: { ...EMPTY_MINOR_BEST_INTEREST, ...(minorBestInterest as Partial<MinorBestInterestData> || {}) },
                 story: { ...EMPTY_STORY, ...(restStory as Partial<StoryData>) },
-                parent: { ...EMPTY_PARENT, ...parentData },
+                parent: primaryParent,
+                parent2: secondaryParent,
                 witnesses: witnessesData?.witnesses?.length ? witnessesData.witnesses : [{ name: '', relationship: '', phone: '', can_testify: '' }],
                 hasAnotherFather: has_another_father === true ? true : has_another_father === false ? false : null,
                 adminNotes: data.client_story?.admin_notes,
@@ -797,8 +859,12 @@ function DJWizard({
           children: state.children,
           has_another_father: state.hasAnotherFather,
         })
-        if (state.parent.parent_name.trim()) {
-          saveDraft('client_absent_parent', state.parent)
+        const hasAbsentParentData = state.parent.parent_name.trim() || state.parent2?.parent_name.trim()
+        if (hasAbsentParentData) {
+          saveDraft(
+            'client_absent_parent',
+            buildAbsentParentPayload(state.parent, state.parent2, state.minorAbuse.abandoned_by),
+          )
         }
       }
     }, 4000)
@@ -821,6 +887,10 @@ function DJWizard({
     }
     if (!state.minorAbuse.abuse_by_father.trim() && !state.minorAbuse.abuse_by_mother.trim()) {
       toast.error('Describe los hechos de abuso/abandono por al menos un padre')
+      setStep(1); return false
+    }
+    if (!state.minorAbuse.abandoned_by) {
+      toast.error('Indica quién lo/la abandonó (o selecciona "Ninguno")')
       setStep(1); return false
     }
     if (!state.minorBestInterest.wants_to_stay.trim()) {
@@ -847,7 +917,7 @@ function DJWizard({
         },
         {
           form_type: 'client_absent_parent',
-          form_data: state.parent,
+          form_data: buildAbsentParentPayload(state.parent, state.parent2, state.minorAbuse.abandoned_by),
         },
       ]
 
@@ -937,8 +1007,10 @@ function DJWizard({
         {step === 3 && (
           <ParentStep
             parent={state.parent}
+            parent2={state.parent2}
+            abandonedBy={state.minorAbuse.abandoned_by}
             childNames={[state.minorBasic.full_name].filter(Boolean)}
-            onChange={parent => updateState({ parent })}
+            onChange={(parent, parent2) => updateState({ parent, parent2 })}
           />
         )}
         {step === 4 && (
@@ -1228,33 +1300,37 @@ function StoryStep({ story, children, onChange }: {
 
 // ══ STEP 2: PARENT ═════════════════════════════════════════════════
 
-function ParentStep({ parent, childNames, onChange }: {
+/**
+ * Bloque que captura los datos de UN padre ausente.
+ * Si `forcedRelationship` está provisto, oculta el selector "Padre/Madre" y
+ * fuerza el valor (caso de "Solo el padre", "Solo la madre" o "Ambos padres").
+ * Si NO está provisto, muestra el selector original (legacy / "Ninguno").
+ */
+function ParentDetailsBlock({ parent, onChange, forcedRelationship }: {
   parent: ParentData
-  childNames: string[]
   onChange: (p: ParentData) => void
+  forcedRelationship: 'padre' | 'madre' | null
 }) {
   const set = (field: keyof ParentData, v: string) => onChange({ ...parent, [field]: v })
-  const names = childNames.join(' y ') || 'el/los menor(es)'
 
   return (
     <div className="space-y-4">
-      <h3 className="font-semibold text-gray-900">Padre/Madre de {names}</h3>
-      <p className="text-sm text-gray-500">Información sobre el padre o madre que aparece en esta declaración.</p>
-
-      <div>
-        <FieldLabel required>¿Quién es la persona ausente?</FieldLabel>
-        <div className="flex gap-3">
-          {['padre', 'madre'].map(r => (
-            <button key={r} onClick={() => set('parent_relationship', r)}
-              className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${parent.parent_relationship === r ? 'border-[#F2A900] bg-[#F2A900]/10 text-[#F2A900]' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
-              {r === 'padre' ? 'Padre' : 'Madre'}
-            </button>
-          ))}
+      {forcedRelationship === null && (
+        <div>
+          <FieldLabel required>¿Quién es la persona ausente?</FieldLabel>
+          <div className="flex gap-3">
+            {['padre', 'madre'].map(r => (
+              <button key={r} onClick={() => set('parent_relationship', r)}
+                className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${parent.parent_relationship === r ? 'border-[#F2A900] bg-[#F2A900]/10 text-[#F2A900]' : 'border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
+                {r === 'padre' ? 'Padre' : 'Madre'}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div>
-        <FieldLabel required>¿Cuál es la situación de esa persona?</FieldLabel>
+        <FieldLabel required>¿Cuál es la situación de esta persona?</FieldLabel>
         <div className="grid gap-2">
           {PARENT_SITUATIONS.map(opt => (
             <button key={opt.value} onClick={() => set('situation', opt.value)}
@@ -1327,6 +1403,84 @@ function ParentStep({ parent, childNames, onChange }: {
           <div><FieldLabel>¿Qué sabes sobre esta persona?</FieldLabel><TextArea value={parent.what_is_known} onChange={v => set('what_is_known', v)} placeholder="Describe lo que sepas, por poco que sea..." rows={4} /></div>
         </div>
       )}
+    </div>
+  )
+}
+
+function ParentStep({ parent, parent2, abandonedBy, childNames, onChange }: {
+  parent: ParentData
+  parent2: ParentData | undefined
+  abandonedBy: AbandonedBy
+  childNames: string[]
+  onChange: (p: ParentData, p2?: ParentData) => void
+}) {
+  const names = childNames.join(' y ') || 'el/los menor(es)'
+
+  // El selector original ("Padre/Madre") sólo aparece cuando el cliente no
+  // marcó quién lo abandonó (legacy o "Ninguno"). Para el resto de casos, el
+  // rol viene del paso 2 (`abandoned_by`) y se fuerza por bloque.
+  if (abandonedBy === 'both') {
+    // Forzar parent_relationship en cada bloque para que el endpoint y la
+    // persistencia sean consistentes incluso si el cliente cargó datos antes
+    // de cambiar a "Ambos".
+    const fatherData: ParentData = { ...parent, parent_relationship: 'padre' }
+    const motherData: ParentData = { ...(parent2 ?? EMPTY_PARENT), parent_relationship: 'madre' }
+    return (
+      <div className="space-y-6">
+        <h3 className="font-semibold text-gray-900">Padres ausentes de {names}</h3>
+        <p className="text-sm text-gray-500">
+          Marcaste que {names} fue abandonado/a por <strong>ambos padres</strong>.
+          Llena los datos de cada uno por separado.
+        </p>
+
+        <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4 space-y-3">
+          <p className="text-sm font-bold text-blue-900 uppercase tracking-wide">Datos del Padre</p>
+          <ParentDetailsBlock
+            parent={fatherData}
+            onChange={p => onChange({ ...p, parent_relationship: 'padre' }, parent2)}
+            forcedRelationship="padre"
+          />
+        </div>
+
+        <div className="rounded-2xl border border-pink-200 bg-pink-50/40 p-4 space-y-3">
+          <p className="text-sm font-bold text-pink-900 uppercase tracking-wide">Datos de la Madre</p>
+          <ParentDetailsBlock
+            parent={motherData}
+            onChange={p => onChange(parent, { ...p, parent_relationship: 'madre' })}
+            forcedRelationship="madre"
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (abandonedBy === 'father' || abandonedBy === 'mother') {
+    const role: 'padre' | 'madre' = abandonedBy === 'father' ? 'padre' : 'madre'
+    const roleLabel = role === 'padre' ? 'Padre' : 'Madre'
+    const data: ParentData = { ...parent, parent_relationship: role }
+    return (
+      <div className="space-y-4">
+        <h3 className="font-semibold text-gray-900">{roleLabel} de {names}</h3>
+        <p className="text-sm text-gray-500">Marcaste que {names} fue abandonado/a por su {role}. Cuéntanos sobre {role === 'padre' ? 'él' : 'ella'}.</p>
+        <ParentDetailsBlock
+          parent={data}
+          onChange={p => onChange({ ...p, parent_relationship: role }, undefined)}
+          forcedRelationship={role}
+        />
+      </div>
+    )
+  }
+
+  // 'none' o '' (legacy): selector original
+  return (
+    <div className="space-y-4">
+      <h3 className="font-semibold text-gray-900">Padre/Madre de {names}</h3>
+      <p className="text-sm text-gray-500">Información sobre el padre o madre que aparece en esta declaración.</p>
+      <ParentDetailsBlock
+        parent={parent}
+        onChange={p => onChange(p, undefined)}
+        forcedRelationship={null}
+      />
     </div>
   )
 }

@@ -10,6 +10,31 @@ import { mergeWitnesses, normalizeWitnessName } from '@/lib/witnesses'
 const log = createLogger('generate-declaration')
 
 type DeclarationType = 'tutor' | 'minor' | 'witness' | 'parental_consent' | 'parental_consent_collaborative' | 'petition_guardianship'
+type ParentRole = 'father' | 'mother'
+
+/**
+ * Selecciona el padre ausente correcto según `parent_role` cuando el cliente
+ * marcó abandono por ambos padres y el wizard guardó dos sub-objetos
+ * `father` y `mother` dentro del form_data de `client_absent_parent`.
+ *
+ * Si `role` no se provee, devuelve el `absentParent` tal cual (compat legacy).
+ * Si el sub-objeto no existe, intenta usar los campos planos cuando coincidan
+ * con el rol solicitado; en último caso devuelve los planos como fallback.
+ */
+function pickAbsentParentByRole(
+  absentParent: Record<string, unknown>,
+  role: ParentRole | undefined,
+): Record<string, unknown> {
+  if (!role) return absentParent
+  const sub = absentParent[role]
+  if (sub && typeof sub === 'object' && !Array.isArray(sub)) {
+    return sub as Record<string, unknown>
+  }
+  // Sin sub-objeto: si los campos planos coinciden con el rol, usarlos.
+  // Si no coinciden, igual devolvemos los planos (el caller puede sobreescribir
+  // `parent_relationship` para forzar coherencia).
+  return absentParent
+}
 
 /**
  * System prompt común a todos los tipos de declaración. Se cachea.
@@ -168,6 +193,7 @@ function buildDeclarationPrompt(
   index: number,
   lang: 'en' | 'es' = 'en',
   witnessName?: string,
+  parentRole?: ParentRole,
 ): string {
   const clientName = `${ctx.client.firstName} ${ctx.client.lastName}`.toUpperCase()
   const tutor = ctx.tutorGuardian as Record<string, unknown> | null
@@ -286,10 +312,15 @@ CRITICAL RULES:
 `
 
   if (type === 'parental_consent') {
-    // Get absent parent for THIS specific child
-    const absentParent = (ctx.allAbsentParents[index] || ctx.clientAbsentParent || {}) as Record<string, string>
+    // Get absent parent for THIS specific child. Si parentRole está dado,
+    // selecciona el sub-objeto father/mother dentro de form_data; si no,
+    // usa el padre ausente principal (legacy).
+    const baseAbsentParent = (ctx.allAbsentParents[index] || ctx.clientAbsentParent || {}) as Record<string, unknown>
+    const absentParent = pickAbsentParentByRole(baseAbsentParent, parentRole) as Record<string, string>
     const parentName = absentParent.parent_name || (tutor?.absent_parent_name as string) || '[FALTA: Nombre completo del padre ausente]'
-    const parentRelation = absentParent.parent_relationship || (tutor?.absent_parent_relationship as string) || 'padre'
+    const parentRelation = parentRole
+      ? (parentRole === 'mother' ? 'madre' : 'padre')
+      : (absentParent.parent_relationship || (tutor?.absent_parent_relationship as string) || 'padre')
     const parentRelationEN = parentRelation === 'madre' ? 'mother' : 'father'
     const childPronoun = parentRelationEN === 'father' ? 'daughter' : 'son'
 
@@ -371,9 +402,12 @@ ${suppBlock}${enrichedBlock}${jurisdictionBlock}`
     // COLLABORATIVE VERSION — the absent parent voluntarily signs accepting fault/negligence.
     // Does NOT mention the SIJ declaration or juvenile court proceedings.
     // Written in FIRST PERSON from the absent parent's perspective.
-    const absentParent = (ctx.allAbsentParents[index] || ctx.clientAbsentParent || {}) as Record<string, string>
+    const baseAbsentParent = (ctx.allAbsentParents[index] || ctx.clientAbsentParent || {}) as Record<string, unknown>
+    const absentParent = pickAbsentParentByRole(baseAbsentParent, parentRole) as Record<string, string>
     const parentName = absentParent.parent_name || (tutor?.absent_parent_name as string) || '[FALTA: Nombre completo del padre ausente]'
-    const parentRelation = absentParent.parent_relationship || (tutor?.absent_parent_relationship as string) || 'padre'
+    const parentRelation = parentRole
+      ? (parentRole === 'mother' ? 'madre' : 'padre')
+      : (absentParent.parent_relationship || (tutor?.absent_parent_relationship as string) || 'padre')
     const parentRelationEN = parentRelation === 'madre' ? 'mother' : 'father'
     const childPronoun = parentRelationEN === 'father' ? 'daughter' : 'son'
     const childPronounES = parentRelationEN === 'father' ? 'hija' : 'hijo'
@@ -870,7 +904,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
-  const { case_id, type, index = 0, lang = 'en', english_source, witness_name } = await request.json() as {
+  const { case_id, type, index = 0, lang = 'en', english_source, witness_name, parent_role } = await request.json() as {
     case_id: string
     type: DeclarationType
     index?: number
@@ -882,6 +916,13 @@ export async function POST(request: NextRequest) {
      * `client_witnesses.witnesses`. Si está presente, gana sobre `index`.
      */
     witness_name?: string
+    /**
+     * Para `type === 'parental_consent'` / `parental_consent_collaborative`:
+     * cuando el menor reportó abandono por ambos padres, distingue qué carta
+     * generar (la del padre o la de la madre). Selecciona los datos correctos
+     * desde `client_absent_parent.form_data.father` o `.mother`.
+     */
+    parent_role?: ParentRole
   }
 
   if (!case_id || !type) {
@@ -971,7 +1012,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Modo GENERACIÓN normal (EN, o ES sin english_source).
-  const typeSpecificPayload = buildDeclarationPrompt(type, ctx, index, lang, witness_name)
+  const typeSpecificPayload = buildDeclarationPrompt(type, ctx, index, lang, witness_name, parent_role)
   const langInstruction = lang === 'es'
     ? '\n\nGenera TODO el documento en ESPAÑOL formal. Traduce términos legales al español. Mantén nombres propios (personas, ciudades, países) en su forma original.'
     : '\n\nGenerate the ENTIRE document in formal ENGLISH. Translate narrative content to English; keep proper nouns (names, cities, countries) in their original form.'
