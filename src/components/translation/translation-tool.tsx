@@ -112,6 +112,10 @@ export function TranslationTool() {
               la página de Translation Certification firmada por Andrew Sonny Navarro y descargas
               el PDF listo para entregar.
             </p>
+            <p className="text-[11px] text-gray-500 mt-1.5">
+              <span className="font-semibold">Imágenes</span>: cualquier formato común (JPG, PNG, HEIC, WebP).{' '}
+              <span className="font-semibold">PDF</span>: solo de 1 página (sube la hoja específica que quieres traducir).
+            </p>
           </div>
         </div>
       </div>
@@ -119,7 +123,7 @@ export function TranslationTool() {
       {/* Upload */}
       <div>
         <label className="text-xs font-medium text-gray-700 block mb-2">
-          Documento original (PDF o imagen, máx. 8 MB)
+          Documento original (imagen o PDF de 1 página, máx. 8 MB)
         </label>
 
         <input
@@ -151,7 +155,7 @@ export function TranslationTool() {
             <FileUp className="w-9 h-9 text-blue-500" />
             <div>
               <p className="text-sm font-semibold text-gray-900">Haz click para seleccionar el documento</p>
-              <p className="text-[11px] text-gray-500 mt-0.5">o arrastra y suelta aquí · PDF o imagen · máx. 8 MB</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">o arrastra y suelta aquí · imagen o PDF de 1 página · máx. 8 MB</p>
             </div>
           </button>
         ) : (

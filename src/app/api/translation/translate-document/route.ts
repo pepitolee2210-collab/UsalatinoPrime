@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { PDFDocument } from 'pdf-lib'
 import { createClient } from '@/lib/supabase/server'
 import { translateWithGemini } from '@/lib/translation/gemini-translate'
 
@@ -16,6 +17,7 @@ const ACCEPTED_MIMES = [
 ]
 
 const MAX_BYTES = 8 * 1024 * 1024 // 8MB — entra en el límite de Vercel y a Gemini le sobra
+const MAX_PDF_PAGES = 1 // Henry pidió: PDFs de 1 sola página para ahorrar costos en Gemini
 
 /**
  * POST /api/translation/translate-document
@@ -63,6 +65,25 @@ export async function POST(req: NextRequest) {
   }
 
   const arrayBuffer = await file.arrayBuffer()
+
+  // Si es PDF, validar que tenga 1 sola página antes de gastar tokens en Gemini
+  if (mime === 'application/pdf') {
+    try {
+      const pdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true })
+      const pages = pdf.getPageCount()
+      if (pages > MAX_PDF_PAGES) {
+        return NextResponse.json({
+          error: `El PDF tiene ${pages} páginas. Solo se permite traducir PDFs de 1 página. Recorta el documento o sube solo la página que quieres traducir.`,
+        }, { status: 422 })
+      }
+    } catch (err) {
+      return NextResponse.json({
+        error: 'No se pudo leer el PDF. Asegúrate de que el archivo no esté dañado o protegido con contraseña.',
+        detail: err instanceof Error ? err.message : 'unknown',
+      }, { status: 400 })
+    }
+  }
+
   const base64 = Buffer.from(arrayBuffer).toString('base64')
 
   const { doc, error, raw } = await translateWithGemini(base64, mime)
