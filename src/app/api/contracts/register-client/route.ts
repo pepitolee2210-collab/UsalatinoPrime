@@ -26,7 +26,10 @@ function resolveStartingPhase(
     case 'i360':
     case 'i360-i485':
       return 'i360'
-    // 'completa' o null → todo el proceso, arranca en custodia
+    // 'completa', null, o cualquier promo (slug 'promo-*') que arranque
+    // desde el principio del proceso → fase inicial 'custodia'.
+    // Si una nueva promo cubre solo etapas posteriores, agregar un case
+    // explícito arriba de este default.
     default:
       return 'custodia'
   }

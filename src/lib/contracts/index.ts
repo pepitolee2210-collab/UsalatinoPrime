@@ -185,6 +185,37 @@ const contracts: Record<string, ContractTemplate> = {
           'Seguimiento hasta la obtenci\u00f3n de la residencia permanente',
         ],
       },
+      // \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+      // PROMOCIONES (campa\u00f1as de Vanessa). Funcionan exactamente igual que
+      // un subservice normal \u2014 aparecen en el selector, se firman igual,
+      // crean profile/case igual. Lo \u00fanico que cambia es el array `etapas`
+      // y el `objetoDelContrato` para reflejar el alcance acotado de la
+      // promo. Para crear una nueva promo, copia este patr\u00f3n con un slug
+      // \u00fanico tipo 'promo-<nombre>' y, si el alcance arranca en una fase
+      // distinta a 'custodia', agrega el slug en resolveStartingPhase()
+      // de src/app/api/contracts/register-client/route.ts.
+      // \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+      {
+        slug: 'promo-dia-madre',
+        label: 'Promo D\u00eda de la Madre (Custodia + I-360)',
+        description:
+          'Oferta lanzada por Vanessa: las 2 primeras etapas del proceso (Corte Estatal + I-360). NO incluye Ajuste de Estatus (I-485).',
+        variants: [
+          { label: 'Individual', totalPrice: 1800 },
+          { label: 'Familiar', totalPrice: 2500, installmentCount: 10 },
+        ],
+        objetoDelContrato:
+          'El CONSULTOR se compromete a brindar asesor\u00eda y asistencia en las dos primeras etapas del proceso de Estatus Especial de Inmigrante Juvenil (SIJS) para el menor beneficiario: (1) la coordinaci\u00f3n con la Corte Estatal para la obtenci\u00f3n de la Orden de Hallazgos Especiales y (2) la preparaci\u00f3n y presentaci\u00f3n del Formulario I-360 ante USCIS. El presente contrato NO incluye la preparaci\u00f3n ni presentaci\u00f3n del Ajuste de Estatus (Formulario I-485); si el CLIENTE desea ese paso posteriormente, deber\u00e1 contratarlo por separado.',
+        etapas: [
+          'Evaluaci\u00f3n inicial del caso y determinaci\u00f3n de elegibilidad del menor',
+          'Preparaci\u00f3n de la petici\u00f3n ante la Corte Estatal para hallazgos de SIJS',
+          'Coordinaci\u00f3n y representaci\u00f3n en procedimientos de la Corte Estatal',
+          'Obtenci\u00f3n de la Orden de Hallazgos Especiales (Special Findings Order)',
+          'Preparaci\u00f3n del Formulario I-360 (Petition for Amerasian, Widow(er), or Special Immigrant)',
+          'Presentaci\u00f3n de la petici\u00f3n I-360 ante USCIS',
+          'Seguimiento hasta la aprobaci\u00f3n del I-360 (este contrato termina aqu\u00ed)',
+        ],
+      },
     ],
   },
   'mociones': {
