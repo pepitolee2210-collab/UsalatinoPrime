@@ -6,6 +6,7 @@ import { generateText } from '@/lib/ai/anthropic-client'
 import { researchJurisdiction } from '@/lib/legal/research-jurisdiction'
 import { createLogger } from '@/lib/logger'
 import { mergeWitnesses, normalizeWitnessName } from '@/lib/witnesses'
+import { normalizeMinorStory, buildLegacyNarrativeBlock } from '@/lib/legal/normalize-minor-story'
 
 const log = createLogger('generate-declaration')
 
@@ -205,12 +206,29 @@ function buildDeclarationPrompt(
   // was read, which silently dropped witnesses entered via the wizard).
   const witnesses = mergeWitnesses(tutor?.witnesses, clientWitnessesData?.witnesses)
 
-  // Extract minor data
+  // Extract minor data. Normalizamos para que casos legacy (form_data con
+  // `minor_info` + narrativa libre) expongan el mismo shape que el wizard nuevo.
+  // Sin esto, los 4 casos legacy en producción generan prompts idénticos para
+  // todos sus menores y Claude devuelve la misma carta dos veces.
   const minorStory = ctx.allMinorStories[index] || ctx.allMinorStories[0]
-  const minorData = minorStory?.formData as Record<string, unknown> || {}
-  const minorBasic = (minorData.minorBasic || {}) as Record<string, string>
-  const minorAbuse = (minorData.minorAbuse || {}) as Record<string, string>
-  const minorBestInterest = (minorData.minorBestInterest || {}) as Record<string, string>
+  const minorData = (minorStory?.formData as Record<string, unknown>) || {}
+  const suppRaw = (ctx.supplementaryData || {}) as Record<string, unknown>
+  const suppMinors = (suppRaw.minors as Array<Record<string, string>> | undefined) || []
+  const supplementaryMinor = suppMinors[index]
+  const normalized = normalizeMinorStory(minorData, supplementaryMinor)
+  const minorBasic = normalized.minorBasic
+  const minorAbuse = normalized.minorAbuse
+  const minorBestInterest = normalized.minorBestInterest
+  const legacyNarrativeBlock = buildLegacyNarrativeBlock(normalized.legacyNarrative)
+
+  // Helpers para iterar sobre TODOS los menores con el shape normalizado.
+  // Necesario porque varios bloques del prompt mencionan a los hermanos
+  // ("Sibling: X", "Children in case"). En casos legacy esos `mb` salían
+  // todos vacíos y Claude no podía distinguir a un menor de otro.
+  const normalizedAt = (i: number) => normalizeMinorStory(
+    (ctx.allMinorStories[i]?.formData as Record<string, unknown>) || {},
+    suppMinors[i],
+  )
 
   // Calculate correct age from DOB
   function calcAge(dob: string): number {
@@ -380,10 +398,10 @@ Absent parent document number: ${parentDocNumber}
 Absent parent data: ${JSON.stringify(absentParent)}
 Tutor/Guardian name: ${tutor?.full_name || ''}
 Tutor/Guardian address: ${tutor?.full_address || ''}
-Child's current address: ${(ctx.allMinorStories[index]?.formData?.minorBasic as Record<string, string>)?.address || tutor?.minor_location || tutor?.full_address || '[FALTA: Dirección actual del menor]'}
+Child's current address: ${minorBasic.address || tutor?.minor_location || tutor?.full_address || '[FALTA: Dirección actual del menor]'}
 Children in case:
-${ctx.allMinorStories.map((s, i) => {
-  const mb = (s.formData?.minorBasic || {}) as Record<string, string>
+${ctx.allMinorStories.map((_s, i) => {
+  const mb = normalizedAt(i).minorBasic
   return `Child ${i + 1}: ${mb.full_name || 'Unknown'}, DOB: ${mb.dob || 'Unknown'}, Country: ${mb.country || 'Unknown'}`
 }).join('\n')}
 Client story: ${JSON.stringify(ctx.clientStory || {})}
@@ -395,7 +413,7 @@ IMPORTANT:
 - Use today's date if no signing date is specified.
 - Use the court name from the JURISDICTION block below (if present) or from the SUPPLEMENTARY DATA override (if the admin filled it). Never default to Utah unless the client actually lives there.
 - Output ONLY the letter text, nothing else. No explanations.
-${suppBlock}${enrichedBlock}${jurisdictionBlock}`
+${suppBlock}${enrichedBlock}${jurisdictionBlock}${legacyNarrativeBlock}`
   }
 
   if (type === 'parental_consent_collaborative') {
@@ -427,7 +445,7 @@ ${suppBlock}${enrichedBlock}${jurisdictionBlock}`
 
     const tutorName = (tutor?.full_name as string) || ''
     const tutorAddress = (tutor?.full_address as string) || ''
-    const childInfo = (ctx.allMinorStories[index]?.formData?.minorBasic as Record<string, string>) || {}
+    const childInfo = minorBasic
 
     const langHeader = lang === 'en'
       ? 'Generate the ENTIRE document in ENGLISH. Every word must be in formal legal English suitable for court filings.'
@@ -511,7 +529,7 @@ IMPORTANT:
 - Do NOT mention the SIJ declaration, the juvenile court, or the immigration case.
 - Extract 2-3 specific negligence incidents from the narrative above and rewrite them in paragraph 4 in FIRST PERSON from the absent ${parentRelationEN}'s perspective (admitting it was him/her who failed).
 - If a specific piece of data is missing, write [FALTA: descripción del dato] in Spanish.
-${suppBlock}${enrichedBlock}${jurisdictionBlock}`
+${suppBlock}${enrichedBlock}${jurisdictionBlock}${legacyNarrativeBlock}`
   }
 
   if (type === 'petition_guardianship') {
@@ -592,8 +610,8 @@ Absent parent data: ${JSON.stringify(absentParent)}
 Documents extracted text: ${ctx.documents.filter(d => d.extracted_text).map(d => `[${d.name}]: ${d.extracted_text?.substring(0, 500)}`).join('\n')}
 
 The guardian also has these other children (mention them ONLY if relevant, do NOT mix their stories):
-${ctx.allMinorStories.filter((_, i) => i !== index).map((s) => {
-  const mb = (s.formData?.minorBasic || {}) as Record<string, string>
+${ctx.allMinorStories.map((_s, i) => i).filter(i => i !== index).map((i) => {
+  const mb = normalizedAt(i).minorBasic
   return `Sibling: ${mb.full_name || 'Unknown'}, DOB: ${mb.dob || 'Unknown'}`
 }).join('\n')}
 
@@ -606,7 +624,7 @@ CRITICAL RULES:
 - Output ONLY the petition text, no explanations.
 - The narrative in Section II must use REAL facts from THIS child's form, improved with legal language.
 - CRITICAL WRITING RULE: When describing harmful acts, use ONLY abstract legal language such as "acts that gravely affected the minor's wellbeing". Do NOT elaborate or specify the nature of the acts. Focus on EMOTIONAL IMPACT and LEGAL CONSEQUENCES, not on describing events in detail.
-${suppBlock}${enrichedBlock}${jurisdictionBlock}`
+${suppBlock}${enrichedBlock}${jurisdictionBlock}${legacyNarrativeBlock}`
   }
 
   if (type === 'tutor') {
@@ -622,11 +640,16 @@ ALL TUTOR DATA (23 questions): ${JSON.stringify(tutor)}
 ABSENT PARENT DATA: ${JSON.stringify(absentParent)}
 CLIENT STORY: ${JSON.stringify(ctx.clientStory || {})}
 CHILDREN (each has a DIFFERENT father — do NOT mix their stories):
-${ctx.allMinorStories.map((s, i) => {
-  const mb = (s.formData?.minorBasic || {}) as Record<string, string>
-  const ma = (s.formData?.minorAbuse || {}) as Record<string, string>
+${ctx.allMinorStories.map((_s, i) => {
+  const n = normalizedAt(i)
+  const mb = n.minorBasic
+  // Para legacy combinamos abuse estructurado + narrativa libre, así Claude
+  // tiene los hechos por menor en vez de un objeto vacío.
+  const abusePayload = n.isLegacy
+    ? { ...n.minorAbuse, _narrative: n.legacyNarrative }
+    : n.minorAbuse
   const age = calcAge(mb.dob)
-  return 'Child ' + (i + 1) + ': ' + mb.full_name + ', Age: ' + age + ' years old, DOB: ' + mb.dob + '\n  Abuse data: ' + JSON.stringify(ma)
+  return 'Child ' + (i + 1) + ': ' + (mb.full_name || 'Unknown') + ', Age: ' + age + ' years old, DOB: ' + (mb.dob || 'Unknown') + '\n  Abuse data: ' + JSON.stringify(abusePayload)
 }).join('\n')}
 ${supp && (supp as Record<string, unknown>).additional_children ? `Additional children: ${JSON.stringify((supp as Record<string, unknown>).additional_children)}` : ''}
 DOCUMENTS: ${ctx.documents.filter(d => d.extracted_text).map(d => '[' + d.name + ']: ' + d.extracted_text?.substring(0, 500)).join('\n')}
@@ -670,7 +693,7 @@ IMPORTANT:
 - If data is missing, write [FALTA: descripción del dato] in Spanish.
 - Output ONLY the affidavit text.
 - CRITICAL WRITING RULE: When describing harmful acts against any child, use ONLY abstract legal language such as "committed acts that gravely affected the child's wellbeing" or "caused grave harm". Do NOT elaborate, describe, or specify the nature of harmful acts. Focus on EMOTIONAL IMPACT and LEGAL CONSEQUENCES only.
-${suppBlock}${enrichedBlock}${jurisdictionBlock}`
+${suppBlock}${enrichedBlock}${jurisdictionBlock}${legacyNarrativeBlock}`
   }
 
   if (type === 'minor') {
@@ -696,8 +719,8 @@ ABSENT PARENT FOR THIS CHILD: ${JSON.stringify(absentParent)}
 DOCUMENTS: ${ctx.documents.filter(d => d.extracted_text).map(d => '[' + d.name + ']: ' + d.extracted_text?.substring(0, 500)).join('\n')}
 
 The guardian has other children too (mention ONLY if the minor references siblings):
-${ctx.allMinorStories.filter((_, i) => i !== index).map((s) => {
-  const mb = (s.formData?.minorBasic || {}) as Record<string, string>
+${ctx.allMinorStories.map((_s, i) => i).filter(i => i !== index).map((i) => {
+  const mb = normalizedAt(i).minorBasic
   return `Sibling: ${mb.full_name || 'Unknown'}`
 }).join(', ')}
 
@@ -751,7 +774,7 @@ IMPORTANT:
 - Make sections III and IV the most detailed — these are the heart of the case.
 - If only one parent abused/abandoned, focus more on that parent and adapt the other section accordingly.
 - CRITICAL WRITING RULE: When describing harmful acts against the minor, use ONLY abstract legal language such as "actos que afectaron gravemente mi bienestar" or "daño grave a mi persona". Do NOT elaborate, describe, or specify the nature of the acts. Keep the description of harmful events brief and abstract. Focus on the EMOTIONAL IMPACT and CONSEQUENCES rather than describing what happened. This is required for proper legal processing.
-${suppBlock}${enrichedBlock}${jurisdictionBlock}`
+${suppBlock}${enrichedBlock}${jurisdictionBlock}${legacyNarrativeBlock}`
   }
 
   // type === 'witness'
@@ -806,8 +829,8 @@ GUARDIAN/PARENT: ${tutor?.full_name || clientName} (${tutor?.relationship_to_min
 ABSENT PARENT: ${absentParent.parent_name || '[FALTA: Nombre del padre ausente]'}
 TUTOR DATA: ${JSON.stringify(tutor)}
 ABSENT PARENT DATA: ${JSON.stringify(absentParent)}
-CHILDREN: ${ctx.allMinorStories.map((s, i) => {
-  const mb = (s.formData?.minorBasic || {}) as Record<string, string>
+CHILDREN: ${ctx.allMinorStories.map((_s, i) => {
+  const mb = normalizedAt(i).minorBasic
   return 'Child ' + (i + 1) + ': ' + (mb.full_name || 'Unknown')
 }).join(', ')}
 CLIENT STORY: ${JSON.stringify(ctx.clientStory || {})}
@@ -858,7 +881,7 @@ IMPORTANT:
 - Add details from the case data that the witness would reasonably know.
 - If data is missing (like ID numbers), write [FALTA: descripción del dato] in Spanish.
 - Output ONLY the affidavit text.
-${suppBlock}${enrichedBlock}${jurisdictionBlock}`
+${suppBlock}${enrichedBlock}${jurisdictionBlock}${legacyNarrativeBlock}`
 }
 
 /**

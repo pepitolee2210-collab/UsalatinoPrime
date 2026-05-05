@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { ReadinessPanel } from './readiness-panel'
 import { mergeWitnesses, normalizeWitnessName } from '@/lib/witnesses'
+import { normalizeMinorStory } from '@/lib/legal/normalize-minor-story'
 
 interface DeclarationGeneratorProps {
   caseId: string
@@ -57,6 +58,14 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
   }
 
   const tutorName = (tutorData?.full_name as string) || clientName
+  // Adapter para casos legacy: el wizard viejo guardaba `minor_info` en vez de
+  // `minorBasic`. Sin esta normalización, el nombre del menor saldría como
+  // "Hijo/a 1" en las cards y en el filename de los PDFs (ver normalize-minor-story.ts).
+  const suppMinors = ((supplementaryData as Record<string, unknown> | null | undefined)?.minors as Array<Record<string, string>> | undefined) || []
+  const getMinorBasic = (i: number) => normalizeMinorStory(
+    minorStories[i]?.formData,
+    suppMinors[i],
+  ).minorBasic
   // Usa la misma fuente que el backend (tutor_guardian + client_witnesses con
   // dedupe por nombre). Si UI y backend difieren, el `index` numérico deja de
   // ser estable y las cartas regeneradas terminan asociadas al testigo
@@ -501,8 +510,8 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
       </p>
 
       {/* Petition for Guardianship — per minor */}
-      {minorStories.map((story, i) => {
-        const mb = (story.formData?.minorBasic || {}) as Record<string, string>
+      {minorStories.map((_story, i) => {
+        const mb = getMinorBasic(i)
         const name = mb.full_name || `Hijo/a ${i + 1}`
         return (
           <DocCard
@@ -540,8 +549,8 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
       />
 
       {/* Minor Declarations */}
-      {minorStories.map((story, i) => {
-        const mb = (story.formData?.minorBasic || {}) as Record<string, string>
+      {minorStories.map((_story, i) => {
+        const mb = getMinorBasic(i)
         const name = mb.full_name || `Hijo/a ${i + 1}`
         return (
           <DocCard
@@ -592,12 +601,12 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
           disabled={!!generating}
           onClick={async () => {
             for (let i = 0; i < minorStories.length; i++) {
-              const mb = (minorStories[i].formData?.minorBasic || {}) as Record<string, string>
+              const mb = getMinorBasic(i)
               await generate('petition_guardianship', i, `Petición ${mb.full_name || `Hijo/a ${i + 1}`}`)
             }
             await generate('tutor', 0, tutorName)
             for (let i = 0; i < minorStories.length; i++) {
-              const mb = (minorStories[i].formData?.minorBasic || {}) as Record<string, string>
+              const mb = getMinorBasic(i)
               await generate('minor', i, mb.full_name || `Hijo/a ${i + 1}`)
             }
             for (let i = 0; i < witnesses.length; i++) {

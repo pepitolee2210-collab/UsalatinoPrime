@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { CheckCircle, AlertCircle, AlertTriangle, ChevronDown, ChevronUp, HelpCircle, Scale } from 'lucide-react'
+import { normalizeMinorStory } from '@/lib/legal/normalize-minor-story'
 
 const UNKNOWN_VALUE = '__UNKNOWN__'
 
@@ -135,8 +136,10 @@ export function ReadinessPanel({ tutorData, minorStories, absentParents, supplem
 
     // === Menores ===
     minorStories.forEach((s, i) => {
-      const mb = (s.formData?.minorBasic || {}) as Record<string, string>
       const suppMinor = (supp.minors?.[i] || {}) as Record<string, string>
+      // Normalizamos para que casos legacy (form_data con `minor_info` en vez
+      // de `minorBasic`) muestren correctamente "Nombre completo" como filled.
+      const mb = normalizeMinorStory(s.formData, suppMinor).minorBasic
       sections.push({
         name: minorStories.length > 1 ? `Menor #${i + 1}` : 'Menor',
         fields: [

@@ -728,6 +728,10 @@ function GeneratorsTab({
     .filter(s => s.form_type === 'client_absent_parent')
     .sort((a, b) => (a.minor_index || 0) - (b.minor_index || 0))
     .map(s => ({ formData: s.form_data }))
+  // supplementary lo llena Diana en el SupplementaryDataForm; lo necesita el
+  // DeclarationGenerator para hidratar nombre/DOB/ID en casos con esquema
+  // legacy donde el wizard del cliente no capturó esos campos.
+  const supplementaryData = formSubmissions.find(s => s.form_type === 'admin_supplementary')?.form_data ?? null
 
   return (
     <div className="space-y-6">
@@ -762,6 +766,8 @@ function GeneratorsTab({
         tutorData={tutorData}
         clientWitnessesData={clientWitnessesData}
         minorStories={minorStories}
+        absentParents={absentParents}
+        supplementaryData={supplementaryData}
       />
 
       {currentPhase && currentPhase !== 'custodia' && (
