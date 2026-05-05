@@ -73,11 +73,29 @@ NOTES
 - "original_document_title" is the SPANISH name of the document as it appears in the original (e.g. "Certificado de Nacimiento", "Acta de Matrimonio", "Cédula de Identidad"). Used to cite it in the translator's certification.
 `
 
+export interface GeminiInputPart {
+  base64: string
+  mimeType: string
+}
+
+/**
+ * Llama a Gemini con 1 o varias partes (imágenes / PDF). Acepta hasta 2
+ * archivos — 1 PDF (que puede tener hasta 2 páginas) o 2 imágenes que
+ * juntas componen el documento. Gemini multimodal procesa todas en
+ * la misma llamada y produce un JSON consolidado.
+ */
 export async function translateWithGemini(
-  base64: string,
-  mimeType: string,
+  parts: GeminiInputPart[],
 ): Promise<{ doc: TranslatedDoc | null; error?: string; raw?: string }> {
   if (!GEMINI_KEY) return { doc: null, error: 'Gemini API key no configurada' }
+  if (parts.length === 0) return { doc: null, error: 'Sin contenido para traducir' }
+
+  const promptParts: Array<{ text: string } | { inline_data: { mime_type: string; data: string } }> = [
+    { text: SYSTEM_PROMPT },
+  ]
+  for (const p of parts) {
+    promptParts.push({ inline_data: { mime_type: p.mimeType, data: p.base64 } })
+  }
 
   const result = await geminiFetch({
     model: 'gemini-3.1-pro-preview',
@@ -85,12 +103,7 @@ export async function translateWithGemini(
     timeoutMs: 90_000,
     maxRetries: 1,
     body: {
-      contents: [{
-        parts: [
-          { text: SYSTEM_PROMPT },
-          { inline_data: { mime_type: mimeType, data: base64 } },
-        ],
-      }],
+      contents: [{ parts: promptParts }],
       generationConfig: {
         temperature: 0.1,
         maxOutputTokens: 8192,
