@@ -1,46 +1,80 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { Languages, FileUp, FileText, Trash2, Loader2, Download, Sparkles, AlertTriangle } from 'lucide-react'
+import { Languages, FileUp, FileText, Trash2, Loader2, Download, Sparkles, AlertTriangle, Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import type { TranslatedDoc } from '@/lib/translation/schema'
 
 const MAX_BYTES = 8 * 1024 * 1024
+const MAX_FILES = 2
 
 // Path del PNG de la firma del traductor oficial. Se sirve como asset estático.
 const SIGNATURE_PATH = '/translation-cert/signature.png'
 
 export function TranslationTool() {
-  const [file, setFile] = useState<File | null>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [dragOver, setDragOver] = useState(false)
   const [translating, setTranslating] = useState(false)
   const [generatingPdf, setGeneratingPdf] = useState(false)
   const [doc, setDoc] = useState<TranslatedDoc | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  function handleFile(picked: File | null | undefined) {
+  function isPdf(f: File) {
+    return (f.type || '').startsWith('application/pdf')
+  }
+  function isImage(f: File) {
+    return (f.type || '').startsWith('image/')
+  }
+
+  function addFiles(picked: FileList | File[] | null | undefined) {
     if (!picked) return
-    if (picked.size > MAX_BYTES) {
-      toast.error('El archivo supera el límite de 8 MB')
-      return
-    }
-    const ok = picked.type.startsWith('application/pdf') || picked.type.startsWith('image/')
-    if (!ok) {
-      toast.error('Solo se permiten PDF o imágenes')
-      return
-    }
-    setFile(picked)
+    const incoming = Array.from(picked)
+    if (incoming.length === 0) return
+
+    setFiles(prev => {
+      const merged: File[] = [...prev]
+      for (const f of incoming) {
+        if (!isPdf(f) && !isImage(f)) {
+          toast.error(`"${f.name}" no es PDF ni imagen`)
+          continue
+        }
+        if (f.size > MAX_BYTES) {
+          toast.error(`"${f.name}" supera el límite de ${MAX_BYTES / 1024 / 1024} MB`)
+          continue
+        }
+        // Si ya hay un PDF o si el nuevo es PDF: solo se permite 1 archivo total
+        if (merged.some(isPdf) || isPdf(f)) {
+          if (merged.length >= 1) {
+            toast.error(isPdf(f)
+              ? 'Si subes un PDF debe ser el único archivo. Para 2 páginas, súbelas dentro del mismo PDF.'
+              : 'Ya hay un PDF cargado. Quítalo primero si quieres subir imágenes.')
+            continue
+          }
+        }
+        if (merged.length >= MAX_FILES) {
+          toast.error(`Máximo ${MAX_FILES} archivos.`)
+          continue
+        }
+        merged.push(f)
+      }
+      return merged
+    })
+    setDoc(null)
+  }
+
+  function removeFile(idx: number) {
+    setFiles(prev => prev.filter((_, i) => i !== idx))
     setDoc(null)
   }
 
   async function handleTranslate() {
-    if (!file) return toast.error('Selecciona un archivo primero')
+    if (files.length === 0) return toast.error('Selecciona al menos un archivo')
     setTranslating(true)
     setDoc(null)
     try {
       const fd = new FormData()
-      fd.append('file', file)
+      for (const f of files) fd.append('files', f)
       const res = await fetch('/api/translation/translate-document', {
         method: 'POST',
         body: fd,
@@ -113,8 +147,8 @@ export function TranslationTool() {
               el PDF listo para entregar.
             </p>
             <p className="text-[11px] text-gray-500 mt-1.5">
-              <span className="font-semibold">Imágenes</span>: cualquier formato común (JPG, PNG, HEIC, WebP).{' '}
-              <span className="font-semibold">PDF</span>: solo de 1 página (sube la hoja específica que quieres traducir).
+              <span className="font-semibold">Imágenes</span>: hasta 2 (frente/reverso o 2 hojas) — JPG, PNG, HEIC, WebP.{' '}
+              <span className="font-semibold">PDF</span>: 1 archivo de máximo 2 páginas. Cada archivo hasta 8 MB.
             </p>
           </div>
         </div>
@@ -123,19 +157,24 @@ export function TranslationTool() {
       {/* Upload */}
       <div>
         <label className="text-xs font-medium text-gray-700 block mb-2">
-          Documento original (imagen o PDF de 1 página, máx. 8 MB)
+          Documento original (hasta 2 imágenes o 1 PDF de 2 páginas, máx. 8 MB c/u)
         </label>
 
         <input
           ref={inputRef}
           type="file"
           accept="application/pdf,image/*"
-          onChange={e => handleFile(e.target.files?.[0])}
+          multiple
+          onChange={e => {
+            addFiles(e.target.files)
+            // Permitir volver a seleccionar el mismo archivo si lo quitan
+            if (inputRef.current) inputRef.current.value = ''
+          }}
           className="sr-only"
           aria-hidden="true"
         />
 
-        {!file ? (
+        {files.length === 0 ? (
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
@@ -144,7 +183,7 @@ export function TranslationTool() {
             onDrop={e => {
               e.preventDefault()
               setDragOver(false)
-              handleFile(e.dataTransfer.files?.[0])
+              addFiles(e.dataTransfer.files)
             }}
             className={`w-full flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed py-10 px-4 transition-colors text-center ${
               dragOver
@@ -154,33 +193,43 @@ export function TranslationTool() {
           >
             <FileUp className="w-9 h-9 text-blue-500" />
             <div>
-              <p className="text-sm font-semibold text-gray-900">Haz click para seleccionar el documento</p>
-              <p className="text-[11px] text-gray-500 mt-0.5">o arrastra y suelta aquí · imagen o PDF de 1 página · máx. 8 MB</p>
+              <p className="text-sm font-semibold text-gray-900">Haz click para seleccionar archivos</p>
+              <p className="text-[11px] text-gray-500 mt-0.5">o arrastra y suelta aquí · hasta 2 imágenes o 1 PDF de 2 páginas · máx. 8 MB c/u</p>
             </div>
           </button>
         ) : (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-white border border-emerald-200 flex items-center justify-center flex-shrink-0">
-              <FileText className="w-5 h-5 text-emerald-700" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-gray-900 truncate">{file.name}</p>
-              <p className="text-[11px] text-gray-500">
-                {(file.size / 1024).toFixed(0)} KB · {file.type || 'archivo'}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setFile(null)
-                setDoc(null)
-                if (inputRef.current) inputRef.current.value = ''
-              }}
-              className="w-8 h-8 rounded-lg hover:bg-red-50 flex items-center justify-center text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
-              title="Quitar archivo"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+          <div className="space-y-2">
+            {files.map((f, i) => (
+              <div key={`${f.name}-${i}`} className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-white border border-emerald-200 flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-5 h-5 text-emerald-700" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{f.name}</p>
+                  <p className="text-[11px] text-gray-500">
+                    {(f.size / 1024).toFixed(0)} KB · {f.type || 'archivo'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeFile(i)}
+                  className="w-8 h-8 rounded-lg hover:bg-red-50 flex items-center justify-center text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
+                  title="Quitar archivo"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            {files.length < MAX_FILES && !files.some(isPdf) && (
+              <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className="w-full rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50/30 py-3 px-4 text-sm text-gray-600 flex items-center justify-center gap-2 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Agregar otra imagen ({files.length}/{MAX_FILES})
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -201,7 +250,7 @@ export function TranslationTool() {
       <div className="flex items-center gap-2 flex-wrap">
         <Button
           onClick={handleTranslate}
-          disabled={!file || translating}
+          disabled={files.length === 0 || translating}
           className="bg-[#F2A900] hover:bg-[#D4940A] text-[#001020] font-bold"
         >
           {translating ? (
