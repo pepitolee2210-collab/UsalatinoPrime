@@ -158,6 +158,8 @@ export function DocumentCardMultiple({
           token={token}
           documentTypeId={doc.type_id}
           slotName={pendingSlotName}
+          minorIndex={doc.minor_index}
+          minorLabel={doc.minor_label}
           onDone={() => {
             setPendingSlotName('')
             onChange()
@@ -269,6 +271,8 @@ interface PendingUploadOverlayProps {
   token: string
   documentTypeId: number
   slotName: string
+  minorIndex: number | null
+  minorLabel: string | null
   onDone: () => void
   onError: (msg: string) => void
 }
@@ -281,6 +285,8 @@ function PendingUploadOverlay({
   token,
   documentTypeId,
   slotName,
+  minorIndex,
+  minorLabel,
   onDone,
   onError,
 }: PendingUploadOverlayProps) {
@@ -317,6 +323,8 @@ function PendingUploadOverlay({
             token={token}
             documentTypeId={documentTypeId}
             slotLabel={slotName}
+            minorIndex={minorIndex}
+            minorLabel={minorLabel}
             label="Elegir archivo"
             onUploaded={onDone}
             onError={onError}

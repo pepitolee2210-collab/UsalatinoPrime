@@ -20,6 +20,10 @@ export interface UploadParams {
   file: File
   documentTypeId: number
   slotLabel?: string | null
+  /** Índice del menor (0-based) al que pertenece el doc, o null si es general. */
+  minorIndex?: number | null
+  /** Snapshot del nombre del menor para denormalizar. */
+  minorLabel?: string | null
 }
 
 export const ALLOWED_MIME = [
@@ -42,7 +46,7 @@ export const MAX_SIZE_BYTES = 40 * 1024 * 1024
  *   2. Sube directo al Storage de Supabase (bypass del límite Vercel).
  *   3. Confirma con el endpoint que registra en BD.
  */
-export async function uploadClientDocument({ token, file, documentTypeId, slotLabel }: UploadParams): Promise<UploadResult> {
+export async function uploadClientDocument({ token, file, documentTypeId, slotLabel, minorIndex, minorLabel }: UploadParams): Promise<UploadResult> {
   if (file.size > MAX_SIZE_BYTES) {
     throw new Error('El archivo excede el límite de 40MB')
   }
@@ -89,6 +93,8 @@ export async function uploadClientDocument({ token, file, documentTypeId, slotLa
     body: JSON.stringify({
       document_type_id: documentTypeId,
       slot_label: slotLabel ?? null,
+      minor_index: minorIndex ?? null,
+      minor_label: minorLabel ?? null,
       file_path: filePath,
       file_name: file.name,
       file_size: file.size,

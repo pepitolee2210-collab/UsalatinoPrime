@@ -33,6 +33,10 @@ export interface DocItem {
   status: DocStatus
   uploads: Record<string, UploadFile[]>
   from_previous_phase: boolean
+  /** Índice del menor al que pertenece (0-based) o null si es general. */
+  minor_index: number | null
+  /** Snapshot del nombre del menor para mostrar "Acta de María". */
+  minor_label: string | null
 }
 
 export interface CategoryGroup {

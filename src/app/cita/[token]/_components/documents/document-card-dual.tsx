@@ -75,6 +75,8 @@ export function DocumentCardDual({
             token={token}
             documentTypeId={doc.type_id}
             slotLabel="es"
+            minorIndex={doc.minor_index}
+            minorLabel={doc.minor_label}
             phaseLabel={phaseLabel}
             fromPreviousPhase={doc.from_previous_phase}
             onPreview={onPreview}
@@ -89,6 +91,8 @@ export function DocumentCardDual({
             token={token}
             documentTypeId={doc.type_id}
             slotLabel="en"
+            minorIndex={doc.minor_index}
+            minorLabel={doc.minor_label}
             phaseLabel={phaseLabel}
             fromPreviousPhase={doc.from_previous_phase}
             onPreview={onPreview}
@@ -118,6 +122,8 @@ interface SlotSectionProps {
   token: string
   documentTypeId: number
   slotLabel: 'es' | 'en'
+  minorIndex: number | null
+  minorLabel: string | null
   phaseLabel?: string
   fromPreviousPhase: boolean
   onPreview: (file: { id: string; name: string }) => void
@@ -133,6 +139,8 @@ function SlotSection({
   token,
   documentTypeId,
   slotLabel,
+  minorIndex,
+  minorLabel,
   phaseLabel,
   fromPreviousPhase,
   onPreview,
@@ -159,6 +167,8 @@ function SlotSection({
             token={token}
             documentTypeId={documentTypeId}
             slotLabel={slotLabel}
+            minorIndex={minorIndex}
+            minorLabel={minorLabel}
             label={slotLabel === 'es' ? 'Subir original' : 'Subir traducción'}
             variant="ghost"
             onUploaded={onChange}

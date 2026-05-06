@@ -58,7 +58,18 @@ function RegisterForm() {
     const result = await res.json()
 
     if (!res.ok) {
-      toast.error('Error al registrarse', { description: result.error })
+      if (result?.code === 'phone_already_registered') {
+        toast.error('Ya tienes una cuenta', {
+          description: result.error,
+          action: {
+            label: 'Ir a /cita',
+            onClick: () => router.push('/cita'),
+          },
+          duration: 10000,
+        })
+      } else {
+        toast.error('Error al registrarse', { description: result.error })
+      }
       setLoading(false)
       return
     }

@@ -280,6 +280,7 @@ export interface DocumentType {
   sort_order: number
   is_active: boolean
   is_required: boolean
+  is_per_minor: boolean
 }
 
 export type ConditionalLogic = {

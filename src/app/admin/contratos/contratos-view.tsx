@@ -7,8 +7,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { QuickContractGenerator } from '@/components/admin/QuickContractGenerator'
-import { FileText, Plus, Pencil, Download, Trash2, ChevronLeft, Send, Link2, CheckCircle, Search } from 'lucide-react'
+import { FileText, Plus, Pencil, Download, Trash2, ChevronLeft, Send, Link2, CheckCircle, Search, Users } from 'lucide-react'
 import { toast } from 'sonner'
+import { MinorEditorModal } from './minor-editor-modal'
 
 interface ContractRow {
   id: string
@@ -76,6 +77,7 @@ function ContratosInner({ basePath }: Props) {
   const [editingContract, setEditingContract] = useState<ContractRow | null>(null)
   const [showGenerator, setShowGenerator] = useState(false)
   const [search, setSearch] = useState('')
+  const [editingMinorsOf, setEditingMinorsOf] = useState<ContractRow | null>(null)
   const supabase = createClient()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -298,7 +300,20 @@ function ContratosInner({ basePath }: Props) {
         </Card>
       ) : filteredContracts.length === 0 ? (
         <p className="text-center text-gray-400 py-8 text-sm">No se encontraron contratos con &quot;{search}&quot;.</p>
-      ) : (
+      ) : null}
+
+      {editingMinorsOf && (
+        <MinorEditorModal
+          contractId={editingMinorsOf.id}
+          minors={editingMinorsOf.minors as { fullName?: string; dob?: string; passport?: string; birthplace?: string }[]}
+          onClose={() => setEditingMinorsOf(null)}
+          onSaved={() => {
+            loadContracts()
+          }}
+        />
+      )}
+
+      {filteredContracts.length > 0 && contracts.length > 0 && (
         <div className="space-y-3">
           {filteredContracts.map((c) => (
             <Card key={c.id} className="hover:shadow-sm transition-shadow">
@@ -374,6 +389,17 @@ function ContratosInner({ basePath }: Props) {
                     <Button variant="outline" size="sm" onClick={() => handleEdit(c)} title="Editar">
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
+                    {Array.isArray(c.minors) && c.minors.length > 0 && (c.status === 'firmado' || c.status === 'activo' || c.status === 'completado') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingMinorsOf(c)}
+                        title="Editar menores (correcciones)"
+                        className="text-[#002855] hover:bg-[#002855]/5"
+                      >
+                        <Users className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" onClick={() => handleDelete(c.id, c.client_full_name)} title="Eliminar" className="text-red-500 hover:text-red-700 hover:bg-red-50">
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>

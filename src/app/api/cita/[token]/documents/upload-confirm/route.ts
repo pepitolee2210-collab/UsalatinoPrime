@@ -33,6 +33,8 @@ export async function POST(
   let body: {
     document_type_id?: number
     slot_label?: string | null
+    minor_index?: number | null
+    minor_label?: string | null
     file_path?: string
     file_name?: string
     file_size?: number
@@ -47,6 +49,13 @@ export async function POST(
 
   const { document_type_id, file_path, file_name, file_size, file_type } = body
   const slot_label = body.slot_label ?? null
+  const minor_index =
+    body.minor_index === undefined || body.minor_index === null
+      ? null
+      : Number.isInteger(body.minor_index) && body.minor_index >= 0
+        ? body.minor_index
+        : null
+  const minor_label = body.minor_label?.toString().trim().slice(0, 200) || null
 
   if (!document_type_id || !file_path || !file_name) {
     return NextResponse.json({ error: 'document_type_id, file_path y file_name requeridos' }, { status: 400 })
@@ -123,6 +132,8 @@ export async function POST(
       document_key: docType.code,            // mantener el código legible para retro-compat
       document_type_id: document_type_id,
       slot_label: normalizedSlot,
+      minor_index,
+      minor_label,
       phase_when_uploaded: caseRow?.current_phase ?? null,
       direction: 'client_to_admin',
       name: file_name,
@@ -131,7 +142,7 @@ export async function POST(
       file_size: file_size ?? 0,
       status: 'uploaded',
     })
-    .select('id, document_type_id, slot_label, name, file_type, file_size, status, rejection_reason, phase_when_uploaded, created_at')
+    .select('id, document_type_id, slot_label, minor_index, minor_label, name, file_type, file_size, status, rejection_reason, phase_when_uploaded, created_at')
     .single()
 
   if (insertErr) {

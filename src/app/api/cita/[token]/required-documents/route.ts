@@ -51,6 +51,16 @@ interface DocItem {
   status: DocStatus
   uploads: Record<string, UploadFile[]>  // indexado por slot label ('default' | 'es' | 'en' | nombre custom)
   from_previous_phase: boolean
+  /** Índice del menor (0-based) al que pertenece este item, o null si es general. */
+  minor_index: number | null
+  /** Nombre del menor para mostrar "Acta de María". */
+  minor_label: string | null
+}
+
+interface MinorDescriptor {
+  fullName: string
+  dob?: string
+  passport?: string
 }
 
 interface CategoryGroup {
@@ -210,18 +220,55 @@ export async function GET(
   // 5. Cargar uploads del caso (incluye todos los direction=client_to_admin con document_type_id)
   const { data: uploads } = await supabase
     .from('documents')
-    .select('id, document_type_id, slot_label, name, file_type, file_size, status, rejection_reason, phase_when_uploaded, created_at')
+    .select('id, document_type_id, slot_label, minor_index, minor_label, name, file_type, file_size, status, rejection_reason, phase_when_uploaded, created_at')
     .eq('case_id', tokenData.case_id)
     .or('direction.eq.client_to_admin,direction.is.null')
     .not('document_type_id', 'is', null)
     .order('created_at', { ascending: false })
 
-  // Indexar por document_type_id
-  const uploadsByType = new Map<number, UploadFile[]>()
-  for (const u of uploads ?? []) {
+  // 5.b Cargar contrato del case (para obtener los minors). Visa Juvenil
+  // soporta múltiples menores; otros servicios devuelven array vacío.
+  const { data: contractRow } = await supabase
+    .from('contracts')
+    .select('minors')
+    .eq('case_id', tokenData.case_id)
+    .maybeSingle()
+
+  const minors: MinorDescriptor[] = Array.isArray(contractRow?.minors)
+    ? (contractRow!.minors as MinorDescriptor[])
+    : []
+
+  type RawUpload = {
+    id: string
+    document_type_id: number | null
+    slot_label: string | null
+    minor_index: number | null
+    minor_label: string | null
+    name: string
+    file_type: string | null
+    file_size: number | null
+    status: string
+    rejection_reason: string | null
+    phase_when_uploaded: CasePhase | null
+    created_at: string
+  }
+  const rawUploads = (uploads ?? []) as unknown as RawUpload[]
+
+  // Indexar por (document_type_id, minor_index ?? -1). Para docs no-per-minor
+  // todo va a la key -1; para per-minor cada hijo tiene su propio bucket.
+  const uploadsKey = (typeId: number, minorIdx: number | null) =>
+    `${typeId}:${minorIdx ?? -1}`
+  const uploadsByKey = new Map<string, RawUpload[]>()
+  for (const u of rawUploads) {
     if (u.document_type_id == null) continue
-    const list = uploadsByType.get(u.document_type_id) ?? []
-    list.push({
+    const k = uploadsKey(u.document_type_id, u.minor_index)
+    const list = uploadsByKey.get(k) ?? []
+    list.push(u)
+    uploadsByKey.set(k, list)
+  }
+
+  function fileFromRaw(u: RawUpload): UploadFile {
+    return {
       id: u.id,
       name: u.name,
       file_type: u.file_type,
@@ -229,9 +276,8 @@ export async function GET(
       status: u.status,
       rejection_reason: u.rejection_reason,
       uploaded_at: u.created_at,
-      phase_when_uploaded: u.phase_when_uploaded as CasePhase | null,
-    })
-    uploadsByType.set(u.document_type_id, list)
+      phase_when_uploaded: u.phase_when_uploaded,
+    }
   }
 
   // 6. Construir DocItems agrupados por categoría
@@ -250,75 +296,33 @@ export async function GET(
   const categoryMap = new Map<string, CategoryGroup>()
   const categoryMinSort = new Map<string, number>()
 
-  for (const { dt, phaseCategory } of typesWithCategory) {
-    const filesForType = uploadsByType.get(dt.id) ?? []
+  function buildDocItem(
+    dt: DocumentType,
+    minorIdx: number | null,
+    minorName: string | null,
+  ): DocItem | null {
+    const rawFiles = uploadsByKey.get(uploadsKey(dt.id, minorIdx)) ?? []
 
-    // Docs opcionales: solo aparecen si tienen archivos. No molestamos al
-    // cliente con un slot vacío de un doc que no es requerido.
-    if (dt.is_required === false && filesForType.length === 0) continue
+    // Docs opcionales: solo aparecen si tienen archivos.
+    if (dt.is_required === false && rawFiles.length === 0) return null
 
-    // Agrupar files por slot_label según slot_kind
     const slots: Record<string, UploadFile[]> = {}
     if (dt.slot_kind === 'single') {
-      slots.default = filesForType.filter((f) => !f.status || f.status !== 'rejected' || true)
+      slots.default = rawFiles.map(fileFromRaw)
     } else if (dt.slot_kind === 'dual_es_en') {
-      slots.es = filesForType.filter((f) => {
-        // Sin slot_label legacy → asumir 'es' (idioma original)
-        const sl = (f as unknown as { slot_label?: string }).slot_label
-        return sl == null || sl === 'es' || sl === ''
-      })
-      slots.en = filesForType.filter((f) => {
-        const sl = (f as unknown as { slot_label?: string }).slot_label
-        return sl === 'en'
-      })
+      slots.es = []
+      slots.en = []
+      for (const u of rawFiles) {
+        const f = fileFromRaw(u)
+        if (u.slot_label === 'en') slots.en.push(f)
+        else slots.es.push(f)
+      }
     } else if (dt.slot_kind === 'multiple_named') {
-      for (const f of filesForType) {
-        const sl = (f as unknown as { slot_label?: string }).slot_label || f.name
+      for (const u of rawFiles) {
+        const sl = u.slot_label || u.name
         if (!slots[sl]) slots[sl] = []
-        slots[sl].push(f)
+        slots[sl].push(fileFromRaw(u))
       }
-    }
-
-    // Reasignar uploads por slot_label correctamente desde la BD original
-    // (el bloque de arriba es heurístico; preferir el slot_label real cuando exista)
-    if (dt.slot_kind !== 'single') {
-      const realSlots: Record<string, UploadFile[]> = {}
-      const rawFiles = (uploads ?? []).filter((u) => u.document_type_id === dt.id)
-      if (dt.slot_kind === 'dual_es_en') {
-        realSlots.es = []
-        realSlots.en = []
-        for (const u of rawFiles) {
-          const sl = (u as { slot_label: string | null }).slot_label
-          const f: UploadFile = {
-            id: u.id,
-            name: u.name,
-            file_type: u.file_type,
-            file_size: u.file_size,
-            status: u.status,
-            rejection_reason: u.rejection_reason,
-            uploaded_at: u.created_at,
-            phase_when_uploaded: u.phase_when_uploaded as CasePhase | null,
-          }
-          if (sl === 'en') realSlots.en.push(f)
-          else realSlots.es.push(f) // null/'es'/cualquier otra cosa cae en es
-        }
-      } else if (dt.slot_kind === 'multiple_named') {
-        for (const u of rawFiles) {
-          const sl = (u as { slot_label: string | null }).slot_label || u.name
-          if (!realSlots[sl]) realSlots[sl] = []
-          realSlots[sl].push({
-            id: u.id,
-            name: u.name,
-            file_type: u.file_type,
-            file_size: u.file_size,
-            status: u.status,
-            rejection_reason: u.rejection_reason,
-            uploaded_at: u.created_at,
-            phase_when_uploaded: u.phase_when_uploaded as CasePhase | null,
-          })
-        }
-      }
-      Object.assign(slots, realSlots)
     }
 
     const status = deriveDocStatus(
@@ -327,13 +331,18 @@ export async function GET(
     )
 
     const allFiles = Object.values(slots).flat()
-    const fromPreviousPhase = allFiles.length > 0 &&
-      allFiles.every((f) => f.phase_when_uploaded != null && f.phase_when_uploaded !== currentPhase)
+    const fromPreviousPhase =
+      allFiles.length > 0 &&
+      allFiles.every(
+        (f) => f.phase_when_uploaded != null && f.phase_when_uploaded !== currentPhase,
+      )
 
-    const docItem: DocItem = {
+    const minorSuffix = minorName ? ` — ${minorName.split(/\s+/)[0]}` : ''
+
+    return {
       type_id: dt.id,
       code: dt.code,
-      name_es: dt.name_es,
+      name_es: `${dt.name_es}${minorSuffix}`,
       description_es: dt.description_es ?? null,
       legal_reference: dt.legal_reference ?? null,
       requires_translation: dt.requires_translation,
@@ -344,7 +353,34 @@ export async function GET(
       status,
       uploads: slots,
       from_previous_phase: fromPreviousPhase,
+      minor_index: minorIdx,
+      minor_label: minorName,
     }
+  }
+
+  for (const { dt, phaseCategory } of typesWithCategory) {
+    // Para tipos `is_per_minor`, expandir 1 item por cada hijo del contrato.
+    // Si el contrato no tiene minors (datos legacy) caemos al item general
+    // sin minor_index para no esconder docs ya subidos.
+    const items: DocItem[] = []
+    if (dt.is_per_minor && minors.length > 0) {
+      minors.forEach((m, idx) => {
+        const item = buildDocItem(dt, idx, m.fullName)
+        if (item) items.push(item)
+      })
+      // Si en datos legacy hay archivos sin minor_index, mostrar también
+      // un bucket "Sin asignar" para que el cliente pueda re-clasificarlos.
+      const legacyItem = buildDocItem(dt, null, null)
+      if (legacyItem) {
+        legacyItem.name_es = `${dt.name_es} — Sin asignar`
+        items.push(legacyItem)
+      }
+    } else {
+      const item = buildDocItem(dt, null, null)
+      if (item) items.push(item)
+    }
+
+    if (items.length === 0) continue
 
     let group = categoryMap.get(phaseCategory.category_code)
     if (!group) {
@@ -359,7 +395,7 @@ export async function GET(
       categoryMap.set(phaseCategory.category_code, group)
       categoryMinSort.set(phaseCategory.category_code, phaseCategory.sort_order)
     }
-    group.docs.push(docItem)
+    for (const it of items) group.docs.push(it)
   }
 
   // 7. Computar progresos por categoría y global. Las categorías se

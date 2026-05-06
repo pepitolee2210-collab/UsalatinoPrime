@@ -7,6 +7,10 @@ interface UploadButtonProps {
   token: string
   documentTypeId: number
   slotLabel?: string | null
+  /** Índice del menor (0-based) si el doc es per-minor. */
+  minorIndex?: number | null
+  /** Snapshot del nombre del menor para denormalizar en la BD. */
+  minorLabel?: string | null
   label: string
   variant?: 'primary' | 'ghost'
   onUploaded: () => void
@@ -21,6 +25,8 @@ export function UploadButton({
   token,
   documentTypeId,
   slotLabel,
+  minorIndex,
+  minorLabel,
   label,
   variant = 'primary',
   onUploaded,
@@ -34,7 +40,7 @@ export function UploadButton({
     if (!file) return
     setBusy(true)
     try {
-      await uploadClientDocument({ token, file, documentTypeId, slotLabel })
+      await uploadClientDocument({ token, file, documentTypeId, slotLabel, minorIndex, minorLabel })
       onUploaded()
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Error al subir')

@@ -2,18 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { triggerJurisdictionResearchAsync } from '@/lib/legal/trigger-research-async'
+import { normalizePhone, isValidPhoneLength, syntheticClientEmail } from '@/lib/phone'
 import type { CasePhase } from '@/types/database'
 
-function normalizePhone(raw: string): string {
-  const digits = raw.replace(/\D/g, '')
-  if (digits.length === 11 && digits.startsWith('1')) return digits.slice(1)
-  return digits
-}
-
 /**
- * Mapea servicio + subservicio elegidos en el contrato a la fase inicial del
- * caso. Solo Visa Juvenil (SIJS) usa el sistema de fases. Para el resto se
- * devuelve null en ambos campos.
+ * Mapea servicio + subservicio a la fase inicial del caso.
+ * Solo Visa Juvenil (SIJS) usa fases. El resto: null.
  */
 function resolveStartingPhase(
   serviceSlug: string,
@@ -26,18 +20,18 @@ function resolveStartingPhase(
     case 'i360':
     case 'i360-i485':
       return 'i360'
-    // 'completa', null, o cualquier promo (slug 'promo-*') que arranque
-    // desde el principio del proceso → fase inicial 'custodia'.
-    // Si una nueva promo cubre solo etapas posteriores, agregar un case
-    // explícito arriba de este default.
     default:
       return 'custodia'
   }
 }
 
+function toTitleCase(str: string): string {
+  return str.toLowerCase().replace(/(?:^|\s)\S/g, (c) => c.toUpperCase())
+}
+
 export async function POST(request: NextRequest) {
   try {
-    // Verify caller is admin
+    // Verify caller is admin o contracts_manager.
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
@@ -52,11 +46,9 @@ export async function POST(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    // Admin o contracts_manager (Andrium). Antes solo admin podía registrar
-    // el cliente y Andrium tenía contratos creados sin profile/case/token —
-    // por eso el cliente no podía entrar al portal /cita con su número.
     const isAdmin = profile?.role === 'admin'
-    const isContractsManager = profile?.role === 'employee' && profile?.employee_type === 'contracts_manager'
+    const isContractsManager =
+      profile?.role === 'employee' && profile?.employee_type === 'contracts_manager'
     if (!isAdmin && !isContractsManager) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
@@ -72,47 +64,97 @@ export async function POST(request: NextRequest) {
       total_price,
     } = body
 
-    const startingPhase = resolveStartingPhase(service_slug, subservice_slug ?? null)
-
-    if (!client_full_name || !client_passport || !client_phone || !service_slug) {
+    if (!contract_id) {
       return NextResponse.json(
-        { error: 'Campos requeridos: client_full_name, client_passport, client_phone, service_slug' },
-        { status: 400 }
+        { error: 'contract_id requerido' },
+        { status: 400 },
+      )
+    }
+    if (!client_full_name || !client_phone || !service_slug) {
+      return NextResponse.json(
+        { error: 'Campos requeridos: client_full_name, client_phone, service_slug' },
+        { status: 400 },
       )
     }
 
-    const normalized = normalizePhone(client_phone)
-    if (normalized.length < 7 || normalized.length > 15) {
-      return NextResponse.json({ error: 'Número de teléfono inválido' }, { status: 400 })
+    const normalizedPhone = normalizePhone(client_phone)
+    if (!isValidPhoneLength(normalizedPhone)) {
+      return NextResponse.json(
+        { error: 'Número de teléfono inválido' },
+        { status: 400 },
+      )
     }
 
-    // Parse name into first/last and normalize to Title Case
-    function toTitleCase(str: string): string {
-      return str.toLowerCase().replace(/(?:^|\s)\S/g, c => c.toUpperCase())
+    const startingPhase = resolveStartingPhase(service_slug, subservice_slug ?? null)
+
+    // ─────────────────────────────────────────────────────────────────
+    // Idempotencia: si el contrato ya está vinculado a un case, devolverlo
+    // sin tocar nada. Re-ejecutar register-client jamás debe duplicar.
+    // ─────────────────────────────────────────────────────────────────
+    const { data: existingContract } = await service
+      .from('contracts')
+      .select('id, case_id, client_id')
+      .eq('id', contract_id)
+      .single()
+
+    if (!existingContract) {
+      return NextResponse.json(
+        { error: 'Contrato no encontrado' },
+        { status: 404 },
+      )
     }
+
+    if (existingContract.case_id) {
+      const { data: existingCase } = await service
+        .from('cases')
+        .select('case_number')
+        .eq('id', existingContract.case_id)
+        .single()
+      return NextResponse.json({
+        client_id: existingContract.client_id,
+        case_id: existingContract.case_id,
+        case_number: existingCase?.case_number ?? null,
+        already_registered: true,
+      })
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // 1. Identificar al cliente por teléfono normalizado (única fuente).
+    // ─────────────────────────────────────────────────────────────────
     const nameParts = client_full_name.trim().split(/\s+/)
     const firstName = toTitleCase(nameParts[0])
     const lastName = toTitleCase(nameParts.slice(1).join(' ') || nameParts[0])
 
-    // Step 1: Check if profile already exists by phone
-    let clientId: string | null = null
+    const { data: matched, error: rpcError } = await service.rpc(
+      'find_client_by_phone',
+      { p_phone: client_phone },
+    )
 
-    const { data: profiles } = await service
-      .from('profiles')
-      .select('id, phone')
-      .eq('role', 'client')
+    if (rpcError) {
+      console.error('[register-client] find_client_by_phone error:', rpcError)
+      return NextResponse.json(
+        { error: 'Error al buscar cliente: ' + rpcError.message },
+        { status: 500 },
+      )
+    }
 
-    const matchedProfile = (profiles || []).find(p => {
-      if (!p.phone) return false
-      return normalizePhone(p.phone) === normalized
-    })
+    const matchedProfile = Array.isArray(matched) && matched.length > 0 ? matched[0] : null
+    let clientId: string
 
     if (matchedProfile) {
       clientId = matchedProfile.id
+
+      // Sincronizar nombres SOLO si el profile estaba vacío. Nunca sobrescribir
+      // datos existentes ciegamente — eso fue parte del bug de Jose Luis.
+      const updates: Record<string, string> = {}
+      if (!matchedProfile.first_name?.trim()) updates.first_name = firstName
+      if (!matchedProfile.last_name?.trim()) updates.last_name = lastName
+      if (Object.keys(updates).length > 0) {
+        await service.from('profiles').update(updates).eq('id', clientId)
+      }
     } else {
-      // Step 2: Create Auth user (trigger auto-creates profile)
-      const passportNormalized = client_passport.trim().replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
-      const email = `${passportNormalized}@clientes.usalatino.internal`
+      // Crear auth.user con email sintético basado en PHONE (no passport).
+      const email = syntheticClientEmail(normalizedPhone)
       const password = crypto.randomUUID()
 
       const { data: newUser, error: createError } = await service.auth.admin.createUser({
@@ -126,23 +168,27 @@ export async function POST(request: NextRequest) {
         },
       })
 
-      if (createError) {
-        // If email already exists (same passport), find and reuse
-        if (createError.message?.includes('already been registered') || createError.message?.includes('already exists')) {
+      if (createError || !newUser?.user) {
+        // Si el email ya existe (un cliente legacy con phone normalizado igual
+        // pero almacenado distinto), buscar por email de forma transparente.
+        if (
+          createError?.message?.includes('already been registered') ||
+          createError?.message?.includes('already exists')
+        ) {
           const { data: existingUsers } = await service.auth.admin.listUsers()
-          const existing = existingUsers?.users?.find(u => u.email === email)
+          const existing = existingUsers?.users?.find((u) => u.email === email)
           if (existing) {
             clientId = existing.id
           } else {
             return NextResponse.json(
-              { error: 'Error al crear usuario: ' + createError.message },
-              { status: 500 }
+              { error: 'Conflicto creando cuenta: ' + createError.message },
+              { status: 500 },
             )
           }
         } else {
           return NextResponse.json(
-            { error: 'Error al crear usuario: ' + createError.message },
-            { status: 500 }
+            { error: 'Error al crear usuario: ' + (createError?.message ?? 'unknown') },
+            { status: 500 },
           )
         }
       } else {
@@ -150,21 +196,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    if (!clientId) {
-      return NextResponse.json({ error: 'No se pudo obtener el client_id' }, { status: 500 })
+    // Guardar passport en notes solo si está disponible (referencia, no identidad).
+    if (client_passport?.trim()) {
+      await service
+        .from('profiles')
+        .update({ passport_number: client_passport.trim() })
+        .eq('id', clientId)
+        .is('passport_number', null) // solo si estaba vacío, no sobrescribir
     }
 
-    // Always sync phone and name on the profile (handles edits and missing data)
-    await service
-      .from('profiles')
-      .update({
-        phone: client_phone.trim(),
-        first_name: firstName,
-        last_name: lastName,
-      })
-      .eq('id', clientId)
-
-    // Step 3: Find service in catalog
+    // ─────────────────────────────────────────────────────────────────
+    // 2. Resolver service del catálogo.
+    // ─────────────────────────────────────────────────────────────────
     const { data: serviceCatalog } = await service
       .from('service_catalog')
       .select('id')
@@ -174,116 +217,78 @@ export async function POST(request: NextRequest) {
     if (!serviceCatalog) {
       return NextResponse.json(
         { error: `Servicio no encontrado: ${service_slug}` },
-        { status: 404 }
+        { status: 404 },
       )
     }
 
-    // Step 4: Check if case already exists for this client + service
-    const { data: existingCase } = await service
-      .from('cases')
-      .select('id, case_number')
-      .eq('client_id', clientId)
-      .eq('service_id', serviceCatalog.id)
-      .limit(1)
-      .maybeSingle()
-
-    let caseId: string
-    let caseNumber: string
-
-    if (existingCase) {
-      // Reuse existing case, just update total_cost if changed.
-      // Si todavía no tenía fase asignada y el contrato indica una, la fijamos.
-      caseId = existingCase.id
-      caseNumber = existingCase.case_number
-      const updatePayload: Record<string, unknown> = {}
-      if (total_price) updatePayload.total_cost = total_price
-      if (startingPhase) {
-        const { data: existingPhases } = await service
-          .from('cases')
-          .select('current_phase, process_start')
-          .eq('id', existingCase.id)
-          .single()
-        if (existingPhases && !existingPhases.process_start) {
-          updatePayload.process_start = startingPhase
-        }
-        if (existingPhases && !existingPhases.current_phase) {
-          updatePayload.current_phase = startingPhase
-        }
-      }
-      if (Object.keys(updatePayload).length > 0) {
-        await service
-          .from('cases')
-          .update(updatePayload)
-          .eq('id', existingCase.id)
-      }
-    } else {
-      // Create new case
-      const insertPayload: Record<string, unknown> = {
-        client_id: clientId,
-        service_id: serviceCatalog.id,
-        total_cost: total_price || 0,
-        intake_status: 'in_progress',
-        form_data: {},
-        current_step: 0,
-      }
-      if (startingPhase) {
-        insertPayload.process_start = startingPhase
-        insertPayload.current_phase = startingPhase
-      }
-      const { data: newCase, error: caseError } = await service
-        .from('cases')
-        .insert(insertPayload)
-        .select('id, case_number')
-        .single()
-
-      if (caseError) {
-        console.error('Error creating case:', caseError)
-        if (contract_id) {
-          await service
-            .from('contracts')
-            .update({ client_id: clientId })
-            .eq('id', contract_id)
-        }
-        return NextResponse.json({
-          client_id: clientId,
-          case_id: null,
-          case_number: null,
-          warning: 'Cliente registrado pero hubo error al crear el caso',
-        })
-      }
-      caseId = newCase.id
-      caseNumber = newCase.case_number
+    // ─────────────────────────────────────────────────────────────────
+    // 3. Crear case NUEVO siempre (1 contrato = 1 case, no se deduplica).
+    // ─────────────────────────────────────────────────────────────────
+    const insertPayload: Record<string, unknown> = {
+      client_id: clientId,
+      service_id: serviceCatalog.id,
+      total_cost: total_price || 0,
+      intake_status: 'in_progress',
+      form_data: {},
+      current_step: 0,
+      contract_id,
+    }
+    if (startingPhase) {
+      insertPayload.process_start = startingPhase
+      insertPayload.current_phase = startingPhase
     }
 
-    // Step 5: Update contract with client_id
-    if (contract_id) {
+    const { data: newCase, error: caseError } = await service
+      .from('cases')
+      .insert(insertPayload)
+      .select('id, case_number')
+      .single()
+
+    if (caseError || !newCase) {
+      console.error('[register-client] Error creating case:', caseError)
+      // Vincular al menos client_id en el contrato para no perder el ownership.
       await service
         .from('contracts')
         .update({ client_id: clientId })
         .eq('id', contract_id)
+      return NextResponse.json(
+        {
+          client_id: clientId,
+          case_id: null,
+          case_number: null,
+          warning: 'Cliente registrado pero hubo error al crear el caso',
+        },
+        { status: 200 },
+      )
     }
 
-    // Step 6: Auto-disparar research de jurisdicción para visa juvenil.
-    // Corre en background — el user ve contrato creado de inmediato y el panel
-    // de jurisdicción en /admin/cases/[id] hace polling hasta que termine.
-    // NO bloquea el response. Solo para SIJS.
+    // ─────────────────────────────────────────────────────────────────
+    // 4. Vincular contrato ↔ case (bidireccional).
+    // ─────────────────────────────────────────────────────────────────
+    await service
+      .from('contracts')
+      .update({ client_id: clientId, case_id: newCase.id })
+      .eq('id', contract_id)
+
+    // ─────────────────────────────────────────────────────────────────
+    // 5. Disparar research de jurisdicción para SIJS (background, no bloquea).
+    // ─────────────────────────────────────────────────────────────────
     if (service_slug === 'visa-juvenil') {
       try {
-        const result = await triggerJurisdictionResearchAsync(caseId, service)
+        const result = await triggerJurisdictionResearchAsync(newCase.id, service)
         console.log('[register-client] jurisdiction research trigger:', result)
       } catch (err) {
-        // Nunca fallar el register por un problema del trigger.
         console.error('[register-client] trigger error (ignorado):', err)
       }
     }
 
     return NextResponse.json({
       client_id: clientId,
-      case_id: caseId,
-      case_number: caseNumber,
+      case_id: newCase.id,
+      case_number: newCase.case_number,
     })
   } catch (err) {
-    console.error('register-client error:', err)
+    console.error('[register-client] error:', err)
     return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
   }
 }
