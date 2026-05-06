@@ -9,16 +9,13 @@ interface MinorDescriptor {
   birthplace?: string
 }
 
-interface ServiceJoin {
-  name: string
-}
-
-interface CaseJoin {
+interface CaseRow {
   id: string
   case_number: string
   intake_status: string | null
   current_phase: string | null
-  service: ServiceJoin | ServiceJoin[] | null
+  service_id: string | null
+  service_name: string | null
 }
 
 interface ContractRow {
@@ -29,9 +26,24 @@ interface ContractRow {
   status: string
   signed_at: string | null
   minors: MinorDescriptor[] | null
-  case: CaseJoin | CaseJoin[] | null
+  case_id: string | null
 }
 
+/**
+ * POST /api/appointments/lookup
+ *
+ * Devuelve los contratos del cliente identificado por teléfono normalizado.
+ * Resuelve el case asociado a cada contrato con dos estrategias:
+ *   1. Preferir contracts.case_id si existe (datos nuevos / migrados).
+ *   2. Fallback (client_id, service_id) → primer case por created_at ASC,
+ *      para soportar contratos legacy creados antes del refactor 20260507
+ *      cuando el register-client viejo NO poblaba contracts.case_id.
+ *
+ * Status incluido: firmado, activo, completado y borrador (cuando hay un
+ * case asociable). Borradores sin case se descartan — son leads sin
+ * actividad real. Esta tolerancia restaura el acceso a 108 clientes
+ * legacy reportado el 6-may sin necesidad de esperar al backfill SQL.
+ */
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null)
   const phone = body?.phone?.trim()
@@ -61,42 +73,84 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ found: false, reason: 'not_found' })
   }
 
-  // Traer contratos firmados ya vinculados a un case (1:1).
+  // Traer contratos del cliente con cualquier status que pueda ser real.
+  // Borradores se incluyen y se filtran después si no tienen case asociable.
   const { data: contracts, error: contractsErr } = await supabase
     .from('contracts')
-    .select(`
-      id, service_slug, service_name, subservice_slug, status, signed_at, minors,
-      case:cases!contracts_case_id_fkey(
-        id, case_number, intake_status, current_phase,
-        service:service_catalog(name)
-      )
-    `)
+    .select(
+      'id, service_slug, service_name, subservice_slug, status, signed_at, minors, case_id',
+    )
     .eq('client_id', profileMatch.id)
-    .in('status', ['firmado', 'activo', 'completado'])
-    .not('case_id', 'is', null)
-    .order('signed_at', { ascending: false })
+    .in('status', ['firmado', 'activo', 'completado', 'borrador'])
+    .order('signed_at', { ascending: false, nullsFirst: false })
 
   if (contractsErr) {
     console.error('[lookup] contracts query error:', contractsErr)
     return NextResponse.json({ error: 'Error en la búsqueda' }, { status: 500 })
   }
 
-  const validContracts = (contracts ?? []) as unknown as ContractRow[]
+  const contractList = (contracts ?? []) as ContractRow[]
 
-  if (validContracts.length === 0) {
+  if (contractList.length === 0) {
     return NextResponse.json({ found: false, reason: 'no_cases' })
   }
 
-  // Para cada contrato: garantizar appointment_token activo.
+  // Resolución de case por contrato (con fallback para legacy).
+  async function resolveCase(c: ContractRow): Promise<CaseRow | null> {
+    // Preferir el link directo si existe.
+    if (c.case_id) {
+      const { data } = await supabase
+        .from('cases')
+        .select(
+          'id, case_number, intake_status, current_phase, service_id, service:service_catalog(name)',
+        )
+        .eq('id', c.case_id)
+        .maybeSingle()
+      if (data) {
+        const svc = Array.isArray(data.service) ? data.service[0] : data.service
+        return {
+          id: data.id,
+          case_number: data.case_number,
+          intake_status: data.intake_status,
+          current_phase: data.current_phase,
+          service_id: data.service_id,
+          service_name: (svc as { name?: string } | null)?.name ?? c.service_name,
+        }
+      }
+    }
+    // Fallback: resolver por (client_id, service_slug). Solo si el
+    // service_slug del contrato existe en el catálogo.
+    const { data: svcRow } = await supabase
+      .from('service_catalog')
+      .select('id, name')
+      .eq('slug', c.service_slug)
+      .maybeSingle()
+    if (!svcRow) return null
+    const { data: caseRow } = await supabase
+      .from('cases')
+      .select('id, case_number, intake_status, current_phase, service_id')
+      .eq('client_id', profileMatch.id)
+      .eq('service_id', svcRow.id)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+    if (!caseRow) return null
+    return {
+      id: caseRow.id,
+      case_number: caseRow.case_number,
+      intake_status: caseRow.intake_status,
+      current_phase: caseRow.current_phase,
+      service_id: caseRow.service_id,
+      service_name: svcRow.name ?? c.service_name,
+    }
+  }
+
+  // Para cada contrato: resolver case y garantizar appointment_token activo.
   const cards = await Promise.all(
-    validContracts.map(async (c) => {
-      const caseRow = Array.isArray(c.case) ? c.case[0] : c.case
+    contractList.map(async (c) => {
+      const caseRow = await resolveCase(c)
       if (!caseRow) return null
 
-      const serviceJoin = Array.isArray(caseRow.service) ? caseRow.service[0] : caseRow.service
-      const serviceName = serviceJoin?.name ?? c.service_name ?? 'Servicio'
-
-      // Reusar token activo o crear uno nuevo.
       const { data: existingToken } = await supabase
         .from('appointment_tokens')
         .select('token')
@@ -129,7 +183,7 @@ export async function POST(request: NextRequest) {
         case_id: caseRow.id,
         case_number: caseRow.case_number,
         service_slug: c.service_slug,
-        service_name: serviceName,
+        service_name: caseRow.service_name ?? c.service_name ?? 'Servicio',
         subservice_slug: c.subservice_slug,
         intake_status: caseRow.intake_status,
         current_phase: caseRow.current_phase,
@@ -140,7 +194,17 @@ export async function POST(request: NextRequest) {
     }),
   )
 
-  const filtered = cards.filter(Boolean)
+  // Deduplicar por case_id — múltiples contratos legacy del mismo (client,
+  // service) resuelven al mismo case. Mantener la card del contrato más
+  // reciente (signed_at DESC, nulls al final).
+  const seenCaseIds = new Set<string>()
+  const filtered = cards
+    .filter((c): c is NonNullable<typeof c> => c !== null)
+    .filter((c) => {
+      if (seenCaseIds.has(c.case_id)) return false
+      seenCaseIds.add(c.case_id)
+      return true
+    })
 
   if (filtered.length === 0) {
     return NextResponse.json({ found: false, reason: 'no_cases' })
