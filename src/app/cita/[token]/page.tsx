@@ -133,7 +133,7 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
     ? quickContacts
     : [
         { id: -1, name: 'Diana',  role: 'Asesora Legal',   phone_e164: '+12677874365', whatsapp_e164: '+12677874365', avatar_url: null },
-        { id: -2, name: 'Pepito', role: 'Soporte Técnico', phone_e164: '+51908765016', whatsapp_e164: '+51908765016', avatar_url: null },
+        { id: -2, name: 'Giuseppe', role: 'Soporte Técnico', phone_e164: '+51908765016', whatsapp_e164: '+51908765016', avatar_url: null },
       ]
 
   const portalProps: ClientPortalProps = {
