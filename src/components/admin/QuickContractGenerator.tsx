@@ -109,6 +109,64 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
   const [customMonthlyAmount, setCustomMonthlyAmount] = useState<string>('')
   const [useCustomMonthly, setUseCustomMonthly] = useState(false)
 
+  // Lookup automático del cliente por teléfono — informa al admin si el
+  // cliente ya tiene contratos previos (común cuando agrega un hijo nuevo).
+  // No bloquea la creación; solo muestra el contexto.
+  type ExistingContract = {
+    id: string
+    service_slug: string
+    service_name: string
+    subservice_slug: string | null
+    status: string
+    signed_at: string | null
+    minors_count: number
+    minor_names: string[]
+  }
+  type ExistingClientLookup = {
+    found: boolean
+    client?: { id: string; first_name: string; last_name: string; phone: string }
+    contracts?: ExistingContract[]
+  }
+  const [existingClient, setExistingClient] = useState<ExistingClientLookup | null>(null)
+  const [existingClientLoading, setExistingClientLoading] = useState(false)
+
+  // Lookup del cliente por teléfono al perder foco / dejar de tipear.
+  // Debounced 500ms. Solo dispara con 7+ dígitos. No corre cuando se está
+  // editando un contrato existente (ya conocemos el cliente).
+  useEffect(() => {
+    if (editData) return
+    const phone = contractForm.clientPhone.trim()
+    const digits = phone.replace(/\D/g, '')
+    if (digits.length < 7) {
+      setExistingClient(null)
+      setExistingClientLoading(false)
+      return
+    }
+    setExistingClientLoading(true)
+    const ctrl = new AbortController()
+    const tid = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/admin/contracts/lookup-by-phone', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          signal: ctrl.signal,
+          body: JSON.stringify({ phone }),
+        })
+        if (!res.ok) { setExistingClient(null); return }
+        const data = await res.json()
+        setExistingClient(data?.found ? data : null)
+      } catch (err: unknown) {
+        if (!(err instanceof Error && err.name === 'AbortError')) {
+          setExistingClient(null)
+        }
+      } finally {
+        setExistingClientLoading(false)
+      }
+    }, 500)
+    return () => { clearTimeout(tid); ctrl.abort() }
+  }, [contractForm.clientPhone, editData])
+
   // Auto-fill city + state from US ZIP via proxy server-side (evita CSP).
   // Runs 350ms after the last keystroke to avoid spamming requests.
   useEffect(() => {
@@ -1009,8 +1067,58 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                   onChange={(e) => setContractForm({ ...contractForm, clientPhone: e.target.value })}
                   className="h-10 rounded-lg"
                 />
+                {existingClientLoading && (
+                  <p className="text-[11px] text-gray-400 flex items-center gap-1">
+                    <span className="inline-block w-1 h-1 bg-gray-400 rounded-full animate-pulse" />
+                    Buscando cliente existente...
+                  </p>
+                )}
               </div>
             </div>
+
+            {existingClient?.found && existingClient.client && !editData && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm">
+                <div className="flex items-start gap-2">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-200 text-blue-800 font-semibold flex items-center justify-center text-xs">
+                    {(existingClient.client.first_name?.[0] || '') + (existingClient.client.last_name?.[0] || '')}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-blue-900">
+                      Cliente existente: {existingClient.client.first_name} {existingClient.client.last_name}
+                    </p>
+                    {(existingClient.contracts?.length ?? 0) === 0 ? (
+                      <p className="text-xs text-blue-700 mt-0.5">
+                        Sin contratos previos. Continúa creando este contrato.
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-xs text-blue-700 mt-0.5">
+                          Ya tiene {existingClient.contracts!.length} contrato{existingClient.contracts!.length === 1 ? '' : 's'} registrado{existingClient.contracts!.length === 1 ? '' : 's'}.
+                          Este será un contrato adicional (cada contrato genera su propio caso).
+                        </p>
+                        <ul className="mt-2 space-y-1">
+                          {existingClient.contracts!.slice(0, 5).map((c) => (
+                            <li key={c.id} className="text-xs text-blue-800 flex items-center gap-1.5">
+                              <span className="inline-block w-1 h-1 bg-blue-600 rounded-full" />
+                              <span className="font-medium">{c.service_name}</span>
+                              <span className="text-blue-600">·</span>
+                              <span>{c.minors_count} {c.minors_count === 1 ? 'menor' : 'menores'}{c.minor_names.length > 0 ? ` (${c.minor_names.join(', ')})` : ''}</span>
+                              <span className="text-blue-600">·</span>
+                              <span className="capitalize">{c.status.replace('_', ' ')}</span>
+                            </li>
+                          ))}
+                          {(existingClient.contracts!.length ?? 0) > 5 && (
+                            <li className="text-xs text-blue-600 italic">
+                              y {existingClient.contracts!.length - 5} más...
+                            </li>
+                          )}
+                        </ul>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
