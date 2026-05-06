@@ -122,26 +122,42 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
     minors_count: number
     minor_names: string[]
   }
+  type AlternativeMatch = {
+    reason: 'passport' | 'name'
+    client: { id: string; first_name: string; last_name: string; phone: string | null }
+    contracts: ExistingContract[]
+  }
   type ExistingClientLookup = {
     found: boolean
-    client?: { id: string; first_name: string; last_name: string; phone: string }
-    contracts?: ExistingContract[]
+    client: { id: string; first_name: string; last_name: string; phone: string | null } | null
+    contracts: ExistingContract[]
+    alternative_matches: AlternativeMatch[]
   }
   const [existingClient, setExistingClient] = useState<ExistingClientLookup | null>(null)
   const [existingClientLoading, setExistingClientLoading] = useState(false)
 
-  // Lookup del cliente por teléfono al perder foco / dejar de tipear.
-  // Debounced 500ms. Solo dispara con 7+ dígitos. No corre cuando se está
-  // editando un contrato existente (ya conocemos el cliente).
+  // Lookup del cliente por teléfono / nombre / passport. Debounced 500ms.
+  // Dispara cuando cualquiera de los 3 campos tiene datos significativos:
+  //   - phone con 7+ dígitos → match exacto (panel azul).
+  //   - fullName con 2 palabras o passport con 5+ chars → matches alternativos
+  //     (panel amarillo: "este nombre/passport ya existe con teléfono distinto").
+  // No corre cuando se está editando un contrato existente.
   useEffect(() => {
     if (editData) return
     const phone = contractForm.clientPhone.trim()
-    const digits = phone.replace(/\D/g, '')
-    if (digits.length < 7) {
+    const fullName = contractForm.clientFullName.trim()
+    const passport = contractForm.clientPassport.trim()
+    const phoneDigits = phone.replace(/\D/g, '')
+    const phoneOk = phoneDigits.length >= 7
+    const nameOk = fullName.split(/\s+/).filter(Boolean).length >= 2 && fullName.length >= 5
+    const passportOk = passport.replace(/[^a-zA-Z0-9]/g, '').length >= 5
+
+    if (!phoneOk && !nameOk && !passportOk) {
       setExistingClient(null)
       setExistingClientLoading(false)
       return
     }
+
     setExistingClientLoading(true)
     const ctrl = new AbortController()
     const tid = setTimeout(async () => {
@@ -151,11 +167,12 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
           headers: { 'Content-Type': 'application/json' },
           credentials: 'same-origin',
           signal: ctrl.signal,
-          body: JSON.stringify({ phone }),
+          body: JSON.stringify({ phone, fullName, passport }),
         })
         if (!res.ok) { setExistingClient(null); return }
-        const data = await res.json()
-        setExistingClient(data?.found ? data : null)
+        const data: ExistingClientLookup = await res.json()
+        const hasMatch = data?.found || (data?.alternative_matches?.length ?? 0) > 0
+        setExistingClient(hasMatch ? data : null)
       } catch (err: unknown) {
         if (!(err instanceof Error && err.name === 'AbortError')) {
           setExistingClient(null)
@@ -165,7 +182,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
       }
     }, 500)
     return () => { clearTimeout(tid); ctrl.abort() }
-  }, [contractForm.clientPhone, editData])
+  }, [contractForm.clientPhone, contractForm.clientFullName, contractForm.clientPassport, editData])
 
   // Auto-fill city + state from US ZIP via proxy server-side (evita CSP).
   // Runs 350ms after the last keystroke to avoid spamming requests.
@@ -1093,11 +1110,11 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                     ) : (
                       <>
                         <p className="text-xs text-blue-700 mt-0.5">
-                          Ya tiene {existingClient.contracts!.length} contrato{existingClient.contracts!.length === 1 ? '' : 's'} registrado{existingClient.contracts!.length === 1 ? '' : 's'}.
+                          Ya tiene {existingClient.contracts.length} contrato{existingClient.contracts.length === 1 ? '' : 's'} registrado{existingClient.contracts.length === 1 ? '' : 's'}.
                           Este será un contrato adicional (cada contrato genera su propio caso).
                         </p>
                         <ul className="mt-2 space-y-1">
-                          {existingClient.contracts!.slice(0, 5).map((c) => (
+                          {existingClient.contracts.slice(0, 5).map((c) => (
                             <li key={c.id} className="text-xs text-blue-800 flex items-center gap-1.5">
                               <span className="inline-block w-1 h-1 bg-blue-600 rounded-full" />
                               <span className="font-medium">{c.service_name}</span>
@@ -1107,14 +1124,83 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                               <span className="capitalize">{c.status.replace('_', ' ')}</span>
                             </li>
                           ))}
-                          {(existingClient.contracts!.length ?? 0) > 5 && (
+                          {existingClient.contracts.length > 5 && (
                             <li className="text-xs text-blue-600 italic">
-                              y {existingClient.contracts!.length - 5} más...
+                              y {existingClient.contracts.length - 5} más...
                             </li>
                           )}
                         </ul>
                       </>
                     )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {existingClient && !existingClient.found && (existingClient.alternative_matches?.length ?? 0) > 0 && !editData && (
+              <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-3 text-sm">
+                <div className="flex items-start gap-2">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-amber-200 text-amber-900 flex items-center justify-center">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                      <line x1="12" y1="9" x2="12" y2="13"/>
+                      <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-amber-900">
+                      Posible duplicado detectado
+                    </p>
+                    <p className="text-xs text-amber-800 mt-0.5">
+                      El nombre o pasaporte que ingresaste coincide con {existingClient.alternative_matches.length === 1 ? 'un cliente' : `${existingClient.alternative_matches.length} clientes`} existente{existingClient.alternative_matches.length === 1 ? '' : 's'} con un teléfono distinto.
+                      Si es la misma persona, usa su teléfono original para que los contratos queden agrupados.
+                    </p>
+                    <div className="mt-2 space-y-2">
+                      {existingClient.alternative_matches.map((m) => (
+                        <div key={m.client.id} className="rounded-lg bg-white border border-amber-200 p-2">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-amber-900">
+                                {m.client.first_name} {m.client.last_name}
+                              </p>
+                              <p className="text-[11px] text-amber-700">
+                                Teléfono registrado: <span className="font-mono">{m.client.phone || '—'}</span>
+                                <span className="ml-2 text-amber-600">
+                                  · coincide por {m.reason === 'passport' ? 'pasaporte' : 'nombre'}
+                                </span>
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (m.client.phone) {
+                                  setContractForm(prev => ({ ...prev, clientPhone: m.client.phone! }))
+                                }
+                              }}
+                              disabled={!m.client.phone}
+                              className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-40"
+                            >
+                              Usar este teléfono
+                            </button>
+                          </div>
+                          {m.contracts.length > 0 && (
+                            <ul className="mt-1.5 pl-3 space-y-0.5">
+                              {m.contracts.slice(0, 3).map((c) => (
+                                <li key={c.id} className="text-[11px] text-amber-800 list-disc">
+                                  {c.service_name} · {c.minors_count} {c.minors_count === 1 ? 'menor' : 'menores'}{c.minor_names.length > 0 ? ` (${c.minor_names.join(', ')})` : ''} · <span className="capitalize">{c.status.replace('_', ' ')}</span>
+                                </li>
+                              ))}
+                              {m.contracts.length > 3 && (
+                                <li className="text-[11px] text-amber-600 italic">y {m.contracts.length - 3} más...</li>
+                              )}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-amber-700 italic mt-2">
+                      Si confirmas que es un cliente nuevo distinto, ignora este aviso y continúa.
+                    </p>
                   </div>
                 </div>
               </div>
