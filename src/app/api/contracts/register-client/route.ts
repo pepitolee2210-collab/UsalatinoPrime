@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { triggerJurisdictionResearchAsync } from '@/lib/legal/trigger-research-async'
 import { normalizePhone, isValidPhoneLength, syntheticClientEmail } from '@/lib/phone'
+import { createCaseForContract } from '@/lib/cases/create-case'
 import type { CasePhase } from '@/types/database'
 
 /**
@@ -223,29 +224,23 @@ export async function POST(request: NextRequest) {
 
     // ─────────────────────────────────────────────────────────────────
     // 3. Crear case NUEVO siempre (1 contrato = 1 case, no se deduplica).
+    //    Usamos el helper centralizado en `lib/cases/create-case` que
+    //    también vincula bidireccionalmente contrato ↔ case.
     // ─────────────────────────────────────────────────────────────────
-    const insertPayload: Record<string, unknown> = {
-      client_id: clientId,
-      service_id: serviceCatalog.id,
-      total_cost: total_price || 0,
-      intake_status: 'in_progress',
-      form_data: {},
-      current_step: 0,
-      contract_id,
-    }
-    if (startingPhase) {
-      insertPayload.process_start = startingPhase
-      insertPayload.current_phase = startingPhase
-    }
-
-    const { data: newCase, error: caseError } = await service
-      .from('cases')
-      .insert(insertPayload)
-      .select('id, case_number')
-      .single()
-
-    if (caseError || !newCase) {
-      console.error('[register-client] Error creating case:', caseError)
+    let newCase: { id: string; case_number: string }
+    try {
+      newCase = await createCaseForContract(
+        {
+          contractId: contract_id,
+          clientId,
+          serviceId: serviceCatalog.id,
+          totalCost: total_price || 0,
+          startingPhase,
+        },
+        service,
+      )
+    } catch (err) {
+      console.error('[register-client] Error creating case:', err)
       // Vincular al menos client_id en el contrato para no perder el ownership.
       await service
         .from('contracts')
@@ -261,14 +256,6 @@ export async function POST(request: NextRequest) {
         { status: 200 },
       )
     }
-
-    // ─────────────────────────────────────────────────────────────────
-    // 4. Vincular contrato ↔ case (bidireccional).
-    // ─────────────────────────────────────────────────────────────────
-    await service
-      .from('contracts')
-      .update({ client_id: clientId, case_id: newCase.id })
-      .eq('id', contract_id)
 
     // ─────────────────────────────────────────────────────────────────
     // 5. Disparar research de jurisdicción para SIJS (background, no bloquea).
