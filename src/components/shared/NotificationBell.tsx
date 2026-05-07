@@ -116,11 +116,6 @@ export function NotificationBell() {
             </div>
           )}
         </ScrollArea>
-        <div className="p-2 border-t">
-          <Link href="/portal/notifications" className="text-xs text-blue-600 hover:underline block text-center">
-            Ver todas
-          </Link>
-        </div>
       </PopoverContent>
     </Popover>
   )

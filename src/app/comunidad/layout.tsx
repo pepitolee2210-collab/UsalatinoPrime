@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { Home, Play, FileText, Menu, LogOut, User } from 'lucide-react'
+import { Home, Play, Menu, LogOut, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Separator } from '@/components/ui/separator'
@@ -13,7 +13,6 @@ import { cn } from '@/lib/utils'
 const tabs = [
   { href: '/comunidad', label: 'Inicio', icon: Home, exact: true },
   { href: '/comunidad/videos', label: 'Videos', icon: Play },
-  { href: '/portal/services', label: 'Servicios', icon: FileText },
 ]
 
 export default function ComunidadLayout({ children }: { children: React.ReactNode }) {

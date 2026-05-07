@@ -90,7 +90,11 @@ function RegisterForm() {
 
     toast.success('Bienvenido a UsaLatinoPrime!')
 
-    // Guardar redirect promo en localStorage antes de navegar
+    // Tras eliminar el portal viejo (/portal/services/[slug]), todos los
+    // registros (con o sin promo) van a /comunidad. Para el flujo de promos
+    // el slug queda persistido para que la comunidad lo use al recibir al
+    // cliente; si en el futuro construimos una landing dedicada al servicio
+    // promovido, aquí se puede redirigir allí.
     if (promoConfig) {
       try {
         localStorage.setItem(
@@ -101,7 +105,7 @@ function RegisterForm() {
     }
 
     router.refresh()
-    router.push(promoConfig ? `/portal/services/${promoConfig.serviceSlug}` : '/comunidad')
+    router.push('/comunidad')
   }
 
   return (

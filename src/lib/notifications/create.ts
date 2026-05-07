@@ -54,8 +54,8 @@ export async function createNotification({
               <p>${message}</p>
               <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
               <p style="color: #6b7280; font-size: 14px;">
-                Inicie sesión en su portal para más detalles:
-                <a href="${process.env.NEXT_PUBLIC_APP_URL}/portal/dashboard">Ver mi portal</a>
+                Para acceder a tu caso, ingresa con tu teléfono en
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/cita">app.usalatinoprime.com/cita</a>.
               </p>
             </div>
           `,

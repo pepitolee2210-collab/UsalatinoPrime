@@ -81,7 +81,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL(dest, request.url))
   }
 
-  if ((pathname.startsWith('/portal') || pathname.startsWith('/comunidad')) && role !== 'client') {
+  if (pathname.startsWith('/comunidad') && role !== 'client') {
     const dest = role === 'admin' ? '/admin/dashboard' : '/employee/dashboard'
     return NextResponse.redirect(new URL(dest, request.url))
   }

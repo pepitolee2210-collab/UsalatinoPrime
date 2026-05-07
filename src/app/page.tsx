@@ -19,5 +19,5 @@ export default async function Home() {
     redirect('/employee/contracts')
   }
 
-  redirect('/portal/dashboard')
+  redirect('/comunidad')
 }
