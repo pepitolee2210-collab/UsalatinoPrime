@@ -141,6 +141,13 @@ export function ParentalConsentGenerator({ caseId, clientName, formSubmissions }
   const [correcting, setCorrecting] = useState(false)
   const [correctionFeedback, setCorrectionFeedback] = useState('')
   const [applyingCorrection, setApplyingCorrection] = useState(false)
+  // Si la jurisdicción del case no está investigada, mostramos un modal que
+  // explica qué hacer en vez de dejar que el endpoint se cuelgue intentando
+  // auto-investigarla (excede el maxDuration de Vercel y bloquea la UI).
+  const [jurisdictionMissing, setJurisdictionMissing] = useState<{
+    status: 'missing' | 'pending' | 'failed'
+    error: string | null
+  } | null>(null)
 
   // Carga las cartas guardadas. Filtra por (type, parent_role) según los slots
   // computados a partir de la respuesta del cliente.
@@ -207,6 +214,29 @@ export function ParentalConsentGenerator({ caseId, clientName, formSubmissions }
     const declarationType = TYPE_BY_MODE[slot.mode]
     const parentRoleParam = slot.parentRole === 'any' ? undefined : slot.parentRole
     try {
+      // Pre-check: la generación necesita jurisdicción cacheada. Si no la hay,
+      // mostramos modal y abortamos para no colgar al usuario esperando 90s.
+      try {
+        const statusRes = await fetch(`/api/cases/${encodeURIComponent(caseId)}/jurisdiction-status`, { cache: 'no-store' })
+        if (statusRes.ok) {
+          const statusData = await statusRes.json() as {
+            ready: boolean
+            status: 'completed' | 'incomplete' | 'pending' | 'failed' | 'missing'
+            research_error: string | null
+          }
+          if (!statusData.ready) {
+            setJurisdictionMissing({
+              status: statusData.status === 'pending' ? 'pending' : statusData.status === 'failed' ? 'failed' : 'missing',
+              error: statusData.research_error,
+            })
+            setGenerating(null)
+            return
+          }
+        }
+      } catch {
+        // Si el pre-check falla por red, dejamos seguir con la lógica original.
+      }
+
       const resEN = await fetch('/api/ai/generate-declaration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -596,6 +626,56 @@ export function ParentalConsentGenerator({ caseId, clientName, formSubmissions }
       )}
 
       {slots.map(renderCard)}
+
+      {jurisdictionMissing && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={() => setJurisdictionMissing(null)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-bold text-gray-900">
+                  Falta la jurisdicción del caso
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {jurisdictionMissing.status === 'pending' ? (
+                    <>La investigación del tribunal está en curso. Vuelve a intentar en 1-2 minutos cuando termine.</>
+                  ) : jurisdictionMissing.status === 'failed' ? (
+                    <>La investigación previa del tribunal falló. Debes ingresar a la pestaña <strong>&ldquo;Radicación&rdquo;</strong> y dar click en <strong>&ldquo;Re-verificar&rdquo;</strong> para obtener la jurisdicción.</>
+                  ) : (
+                    <>Para generar esta carta primero necesitamos identificar el tribunal competente. Ingresa a la pestaña <strong>&ldquo;Radicación&rdquo;</strong> de este caso para obtener la jurisdicción.</>
+                  )}
+                </p>
+                {jurisdictionMissing.error && (
+                  <p className="text-xs text-amber-700 mt-2 italic">
+                    Detalle: {jurisdictionMissing.error}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <Button
+                variant="outline"
+                onClick={() => setJurisdictionMissing(null)}
+              >
+                Entendido
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
