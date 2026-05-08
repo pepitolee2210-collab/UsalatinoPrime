@@ -59,6 +59,9 @@ export function buildFreeTranslationPDF({
   }
 
   // ── Última página: Translation Certification ───────────────────
+  // Bloque copiado tal cual del sistema de actas civiles para uniformidad
+  // legal — Andrew Sonny Navarro firma como traductor certificado de la
+  // misma forma en ambos sistemas.
   pdf.addPage()
   let y = MT + 8
 
@@ -69,11 +72,10 @@ export function buildFreeTranslationPDF({
 
   pdf.setFont(FONT, 'normal')
   pdf.setFontSize(11)
-  // El cuerpo de la certificación se redacta en el idioma DESTINO para que
-  // sea coherente con el resto del documento que entrega Diana.
-  const certBody = targetIsEnglish
-    ? 'I, Andrew Sonny Navarro, hereby certify that I translated the attached document from Spanish into English and that, to the best of my ability, it is a true and correct translation. I further certify that I am competent in both Spanish and English to render and certify such translation.'
-    : 'Yo, Andrew Sonny Navarro, certifico por la presente que he traducido el documento adjunto del inglés al español y que, según mi leal saber y entender, es una traducción fiel y correcta. Además certifico que soy competente tanto en español como en inglés para realizar y certificar dicha traducción.'
+  // Solo cambia la frase "from X into Y" según la dirección. El resto del
+  // texto y las etiquetas (Signature, Date) son idénticas al sistema de actas.
+  const fromInto = targetIsEnglish ? 'from Spanish into English' : 'from English into Spanish'
+  const certBody = `I, Andrew Sonny Navarro, hereby certify that I translated the attached document ${fromInto} and that, to the best of my ability, it is a true and correct translation. I further certify that I am competent in both Spanish and English to render and certify such translation.`
 
   const wrapW = PAGE_W - ML - MR
   const lines = pdf.splitTextToSize(certBody, wrapW)
@@ -83,9 +85,10 @@ export function buildFreeTranslationPDF({
   }
   y += 10
 
-  const sigLabel = targetIsEnglish ? 'Signature:' : 'Firma:'
-  pdf.text(sigLabel, ML, y)
-  const sigLabelW = pdf.getTextWidth(`${sigLabel} `)
+  // "Signature:" + firma incrustada como imagen — mismo formato que el
+  // sistema de actas (55x13 mm, offset y-9 para cruzar la línea base).
+  pdf.text('Signature:', ML, y)
+  const sigLabelW = pdf.getTextWidth('Signature: ')
   if (signatureDataUrl) {
     const sigW = 55
     const sigH = 13
@@ -93,8 +96,7 @@ export function buildFreeTranslationPDF({
   }
   y += 14
 
-  const dateLabel = targetIsEnglish ? `Date: ${certDate}` : `Fecha: ${certDate}`
-  pdf.text(dateLabel, ML, y)
+  pdf.text(`Date: ${certDate}`, ML, y)
 
   return pdf.output('blob')
 }
