@@ -15,26 +15,24 @@ const TEXT: [number, number, number] = [20, 20, 20]
 const MUTED: [number, number, number] = [110, 110, 110]
 const PAGE_W = 216
 const PAGE_H = 279
-const ML = 18
-const MR = 18
+const ML = 22
+const MR = 22
 const MT = 22
 const MB = 22
 const FONT = 'helvetica'
 
-const COL_GAP = 8
-const HEADER_H = 16
+const HEADER_H = 12
 const FOOTER_H = 8
 
-// Bloque fijo (mismo del traductor de actas civiles para consistencia legal)
-const CERT_BLOCK = {
-  title: 'Translation Certification',
-  body: 'I, Andrew Sonny Navarro, hereby certify that I translated the attached document from Spanish into English / from English into Spanish and that, to the best of my ability, it is a true and correct translation. I further certify that I am competent in both Spanish and English to render and certify such translation.',
-}
-
 /**
- * Arma el PDF de 2 columnas (original | traducción) página por página y
- * agrega al final una página de Translation Certification firmada por
- * Andrew Sonny Navarro — el patrón ya validado por el sistema de actas.
+ * Arma el PDF descargable con SOLO la traducción (una columna). Una página
+ * por cada página del documento original. Al final agrega la página de
+ * Translation Certification firmada por Andrew Sonny Navarro.
+ *
+ * El preview en pantalla muestra 2 columnas (original | traducción) para
+ * que Diana revise — pero el PDF que entrega al cliente / corte / USCIS
+ * solo tiene el texto traducido. Para el original, Diana entrega el archivo
+ * fuente por separado.
  */
 export function buildFreeTranslationPDF({
   result, certDate, signatureDataUrl,
@@ -42,25 +40,22 @@ export function buildFreeTranslationPDF({
   const pdf = new jsPDF('p', 'mm', 'letter')
   pdf.setTextColor(...TEXT)
 
-  const sourceLabel = result.source_language === 'es' ? 'Original (Español)' : 'Original (English)'
-  const targetLabel = result.target_language === 'es' ? 'Traducción (Español)' : 'Translation (English)'
+  const targetIsEnglish = result.target_language === 'en'
+  const targetLabel = targetIsEnglish ? 'Translation (English)' : 'Traducción (Español)'
 
-  // ── Páginas 1..N: 2 columnas (original | traducción) ────────────
+  // ── Páginas 1..N: solo texto traducido ─────────────────────────
   for (let i = 0; i < result.pages.length; i++) {
     if (i > 0) pdf.addPage()
 
-    drawPageHeader(pdf, result.document_title, i + 1, result.pages.length, sourceLabel, targetLabel)
+    drawPageHeader(pdf, result.document_title, i + 1, result.pages.length, targetLabel)
 
-    const colW = (PAGE_W - ML - MR - COL_GAP) / 2
-    const leftX = ML
-    const rightX = ML + colW + COL_GAP
     const startY = MT + HEADER_H + 4
     const endY = PAGE_H - MB - FOOTER_H
+    const fullWidth = PAGE_W - ML - MR
 
-    drawColumnText(pdf, result.pages[i].original, leftX, startY, colW, endY)
-    drawColumnText(pdf, result.pages[i].translated, rightX, startY, colW, endY)
+    drawBodyText(pdf, result.pages[i].translated, ML, startY, fullWidth, endY)
 
-    drawPageFooter(pdf, i + 1, result.pages.length)
+    drawPageFooter(pdf)
   }
 
   // ── Última página: Translation Certification ───────────────────
@@ -69,14 +64,16 @@ export function buildFreeTranslationPDF({
 
   pdf.setFont(FONT, 'normal')
   pdf.setFontSize(13)
-  pdf.text(CERT_BLOCK.title, PAGE_W / 2, y, { align: 'center' })
+  pdf.text('Translation Certification', PAGE_W / 2, y, { align: 'center' })
   y += 14
 
   pdf.setFont(FONT, 'normal')
   pdf.setFontSize(11)
-  const certBody = result.target_language === 'en'
+  // El cuerpo de la certificación se redacta en el idioma DESTINO para que
+  // sea coherente con el resto del documento que entrega Diana.
+  const certBody = targetIsEnglish
     ? 'I, Andrew Sonny Navarro, hereby certify that I translated the attached document from Spanish into English and that, to the best of my ability, it is a true and correct translation. I further certify that I am competent in both Spanish and English to render and certify such translation.'
-    : 'I, Andrew Sonny Navarro, hereby certify that I translated the attached document from English into Spanish and that, to the best of my ability, it is a true and correct translation. I further certify that I am competent in both Spanish and English to render and certify such translation.'
+    : 'Yo, Andrew Sonny Navarro, certifico por la presente que he traducido el documento adjunto del inglés al español y que, según mi leal saber y entender, es una traducción fiel y correcta. Además certifico que soy competente tanto en español como en inglés para realizar y certificar dicha traducción.'
 
   const wrapW = PAGE_W - ML - MR
   const lines = pdf.splitTextToSize(certBody, wrapW)
@@ -86,8 +83,9 @@ export function buildFreeTranslationPDF({
   }
   y += 10
 
-  pdf.text('Signature:', ML, y)
-  const sigLabelW = pdf.getTextWidth('Signature: ')
+  const sigLabel = targetIsEnglish ? 'Signature:' : 'Firma:'
+  pdf.text(sigLabel, ML, y)
+  const sigLabelW = pdf.getTextWidth(`${sigLabel} `)
   if (signatureDataUrl) {
     const sigW = 55
     const sigH = 13
@@ -95,7 +93,8 @@ export function buildFreeTranslationPDF({
   }
   y += 14
 
-  pdf.text(`Date: ${certDate}`, ML, y)
+  const dateLabel = targetIsEnglish ? `Date: ${certDate}` : `Fecha: ${certDate}`
+  pdf.text(dateLabel, ML, y)
 
   return pdf.output('blob')
 }
@@ -107,7 +106,6 @@ function drawPageHeader(
   docTitle: string,
   pageIdx: number,
   totalPages: number,
-  sourceLabel: string,
   targetLabel: string,
 ) {
   const wrapW = PAGE_W - ML - MR
@@ -127,22 +125,19 @@ function drawPageHeader(
   pdf.setTextColor(...MUTED)
   pdf.text(`Page ${pageIdx} of ${totalPages}`, PAGE_W - MR, MT, { align: 'right' })
 
+  // Etiqueta del idioma destino
+  pdf.setFont(FONT, 'bold')
+  pdf.setFontSize(8.5)
+  pdf.text(targetLabel.toUpperCase(), ML, MT + 6)
+
   // Línea divisoria
   pdf.setDrawColor(180, 180, 180)
   pdf.setLineWidth(0.2)
-  pdf.line(ML, MT + 7, PAGE_W - MR, MT + 7)
-
-  // Etiquetas de columnas
-  const colW = (PAGE_W - ML - MR - COL_GAP) / 2
-  pdf.setFont(FONT, 'bold')
-  pdf.setFontSize(9)
-  pdf.setTextColor(...MUTED)
-  pdf.text(sourceLabel.toUpperCase(), ML, MT + 13)
-  pdf.text(targetLabel.toUpperCase(), ML + colW + COL_GAP, MT + 13)
+  pdf.line(ML, MT + 9, PAGE_W - MR, MT + 9)
   pdf.setTextColor(...TEXT)
 }
 
-function drawPageFooter(pdf: jsPDF, pageIdx: number, _total: number) {
+function drawPageFooter(pdf: jsPDF) {
   pdf.setFont(FONT, 'normal')
   pdf.setFontSize(7.5)
   pdf.setTextColor(...MUTED)
@@ -153,16 +148,14 @@ function drawPageFooter(pdf: jsPDF, pageIdx: number, _total: number) {
     { align: 'center' },
   )
   pdf.setTextColor(...TEXT)
-  void pageIdx
 }
 
 /**
- * Dibuja texto multilínea dentro de una columna. Si el texto no entra,
- * muestra un indicador "[continúa...]" al final — la división por página
- * la hizo Gemini upstream, así que solo respetamos el corte por página
- * que recibimos.
+ * Dibuja el cuerpo de la traducción ocupando todo el ancho de la página.
+ * Si el texto excede la altura disponible, recorta con un indicador (la
+ * división por página la define Gemini upstream — respetamos su corte).
  */
-function drawColumnText(
+function drawBodyText(
   pdf: jsPDF,
   text: string,
   x: number,
@@ -171,16 +164,15 @@ function drawColumnText(
   endY: number,
 ) {
   pdf.setFont(FONT, 'normal')
-  pdf.setFontSize(9.5)
+  pdf.setFontSize(11)
   pdf.setTextColor(...TEXT)
 
-  const lineH = 4.4
+  const lineH = 5.5
   const paragraphs = (text || '').split(/\n\n+/)
   let y = startY
 
   for (let pi = 0; pi < paragraphs.length; pi++) {
     const paragraph = paragraphs[pi]
-    // splitTextToSize respeta saltos de línea simples dentro del párrafo
     const subLines = paragraph.split(/\n/).flatMap((sub) =>
       pdf.splitTextToSize(sub, width)
     )
@@ -188,16 +180,15 @@ function drawColumnText(
     for (const line of subLines) {
       if (y + lineH > endY) {
         pdf.setTextColor(...MUTED)
-        pdf.setFontSize(8)
+        pdf.setFontSize(9)
         pdf.text('[continúa en la siguiente página…]', x, endY)
         pdf.setTextColor(...TEXT)
-        pdf.setFontSize(9.5)
+        pdf.setFontSize(11)
         return
       }
       pdf.text(line, x, y)
       y += lineH
     }
-    // Espacio entre párrafos
     if (pi < paragraphs.length - 1) y += lineH * 0.7
   }
 }
