@@ -52,10 +52,16 @@ export function EmployeeClientesView({ clients }: { clients: Client[] }) {
   }, [clients])
 
   const filtered = useMemo(() => {
+    // Vanessa escribe "Alvarez" pero el cliente está guardado como "Álvarez".
+    // El .includes() es sensible a tildes; normalizamos quitándolas en ambos
+    // lados para que coincida sin importar acentos.
+    const stripAccents = (s: string) =>
+      s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
     return clients.filter(c => {
       if (search.trim()) {
-        const q = search.toLowerCase()
-        const match = `${c.first_name} ${c.last_name}`.toLowerCase().includes(q) ||
+        const q = stripAccents(search)
+        const haystack = stripAccents(`${c.first_name} ${c.last_name}`)
+        const match = haystack.includes(q) ||
           c.email.toLowerCase().includes(q) ||
           (c.phone || '').includes(q)
         if (!match) return false
