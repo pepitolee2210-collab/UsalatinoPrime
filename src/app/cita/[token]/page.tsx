@@ -127,13 +127,12 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
     }))
 
   // Fallback de cortesía mientras la migración no esté aplicada y no haya seed.
-  // Hardcodea Diana y Pepito (consistente con lo que el código actual mostraba)
-  // para que la pantalla Inicio nunca se vea vacía.
+  // Solo Diana — Giuseppe (soporte técnico) no debe aparecer en el portal
+  // del cliente: es para uso interno, no contacto público.
   const effectiveQuickContacts: QuickContact[] = quickContacts.length > 0
     ? quickContacts
     : [
-        { id: -1, name: 'Diana',  role: 'Asesora Legal',   phone_e164: '+12677874365', whatsapp_e164: '+12677874365', avatar_url: null },
-        { id: -2, name: 'Giuseppe', role: 'Soporte Técnico', phone_e164: '+51908765016', whatsapp_e164: '+51908765016', avatar_url: null },
+        { id: -1, name: 'Diana', role: 'Asesora Legal', phone_e164: '+12677874365', whatsapp_e164: '+12677874365', avatar_url: null },
       ]
 
   const portalProps: ClientPortalProps = {
