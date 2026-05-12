@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { buildCaseContext } from '@/lib/ai/prompts/chat-system'
 import { generateText } from '@/lib/ai/anthropic-client'
 import { researchJurisdiction } from '@/lib/legal/research-jurisdiction'
+import { inferProceduralRoute } from '@/lib/legal/infer-procedural-route'
 import { createLogger } from '@/lib/logger'
 import { mergeWitnesses, normalizeWitnessName } from '@/lib/witnesses'
 import { normalizeMinorStory, buildLegacyNarrativeBlock } from '@/lib/legal/normalize-minor-story'
@@ -967,8 +968,9 @@ export async function POST(request: NextRequest) {
         caseId: case_id,
         stateCode: ctx.clientLocation.stateCode,
       })
-      const research = await researchJurisdiction(ctx.clientLocation, request.signal)
       const service = createServiceClient()
+      const procedural = await inferProceduralRoute(case_id, service)
+      const research = await researchJurisdiction(ctx.clientLocation, procedural, request.signal)
       await service.from('case_jurisdictions').upsert({
         case_id,
         state_code: research.state_code,
@@ -983,6 +985,10 @@ export async function POST(request: NextRequest) {
         sources: research.sources,
         confidence: research.confidence,
         notes: research.notes,
+        procedural_route: procedural.route,
+        petitioner_relation: procedural.petitionerRelation,
+        procedural_route_reason: procedural.reasonForChoice,
+        procedural_route_confidence: procedural.confidence,
         verified_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }, { onConflict: 'case_id' })

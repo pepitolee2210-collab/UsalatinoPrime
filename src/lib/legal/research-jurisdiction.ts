@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { jsonrepair } from 'jsonrepair'
 import { createLogger } from '@/lib/logger'
 import type { ClientLocation } from './resolve-client-location'
-import { getStateCourtHint } from './state-court-registry'
+import { getStateCourtHint, getSijRulesForRoute } from './state-court-registry'
 import { getRegisteredSlugCatalogMarkdown } from './automated-forms-registry'
 import {
   validateSIJCorePackage,
@@ -11,6 +11,7 @@ import {
   describeMissingFamilies,
   type SIJCoreFamily,
 } from './sij-core-validator'
+import type { ProceduralContext } from './infer-procedural-route'
 import type { UsStateCode } from '@/lib/timezones/us-states'
 
 const log = createLogger('research-jurisdiction')
@@ -33,6 +34,14 @@ export type AttachmentType =
   | 'abandonment_proof'
   | 'other'
 
+/**
+ * Tipo de archivo del formulario. acroform = PDF con campos interactivos
+ * rellenables digitalmente (priorizar). static = PDF plano, hay que imprimir y
+ * llenar a mano. docx/doc = template Word (Texas DFPS). unknown cuando la IA
+ * no pudo determinar.
+ */
+export type PdfFormat = 'acroform' | 'static' | 'docx' | 'doc' | 'unknown'
+
 export interface RequiredForm {
   name: string
   url_official: string
@@ -45,6 +54,16 @@ export interface RequiredForm {
    * link externo solamente.
    */
   slug?: string | null
+  /**
+   * Tipo de archivo. Si es `acroform`, la UI prioriza el formulario porque el
+   * cliente puede rellenarlo digitalmente sin reimprimir.
+   */
+  pdf_format?: PdfFormat
+  /**
+   * True cuando la IA confirma que el PDF tiene campos AcroForm
+   * interactivos. Convenience flag — la UI puede mostrar badge "Rellenable".
+   */
+  is_fillable?: boolean
 }
 
 export interface FilingStep {
@@ -127,6 +146,12 @@ const FormSchema = z.object({
   description_es: z.string().min(1),
   is_mandatory: z.boolean().catch(true),
   slug: z.string().optional().nullable().transform(v => v ?? null),
+  pdf_format: z
+    .enum(['acroform', 'static', 'docx', 'doc', 'unknown'])
+    .optional()
+    .catch('unknown')
+    .transform(v => v ?? 'unknown'),
+  is_fillable: z.boolean().optional().catch(false).transform(v => v ?? false),
 })
 
 const StepSchema = z.object({
@@ -201,6 +226,18 @@ const RESEARCHER_SYSTEM = `Eres una investigadora legal senior especializada en 
 
 La ley SIJS de 1990 es federal y general para los 50 estados. CADA juzgado de distrito tiene autonomía administrativa para definir SU propio procedimiento de radicación local, sin violar la norma federal. Esto significa que el mismo estado puede tener 10–12 distritos judiciales con formularios DIFERENTES.
 
+## RUTA PROCEDIMENTAL (CRÍTICO — define qué set de formularios buscar)
+
+La ruta procedimental Fase 1 SIJS de este caso ya se infirió desde el formulario tutor_guardian que llenó el cliente: **{{PROCEDURAL_ROUTE}}**.
+
+REGLA ABSOLUTA: solo busca y lista formularios de la ruta indicada. No mezcles formularios de rutas distintas — eso produce un paquete que el clerk rechaza en ventanilla.
+
+Distinción esencial:
+- Si la ruta es **custody**: el peticionario es padre/madre/padrastro/madrastra del menor y pide custodia exclusiva por abandono del otro padre. Formularios típicos: NY → GF-17 (Petition for Custody/Visitation); CA → FL-200/FL-260/FL-300; TX → SAPCR by parent; FL → 12.940(b). NO listes Form 6-1, OCFS-3909, GC-210, GC-212, FM-SAPCR-AFF-100, 12.961 — esos son exclusivos de guardianship.
+- Si la ruta es **guardianship**: el peticionario NO es padre del menor (tía/abuelo/hermano mayor/cuidador). Formularios típicos: NY → Form 6-1 + OCFS-3909; CA → GC-210 + GC-212; TX → FM-SAPCR-100 + FM-SAPCR-AFF-100; FL → 12.961. NO listes GF-17 ni petitions de custody — esas son exclusivas de custody.
+- Si la ruta es **surrogate_17a**: forms de NY Surrogate Court Article 17-A (raro, solo cuando el menor tiene discapacidad intelectual).
+- Si la ruta es **juvenile_dependency**: forms del juvenile/dependency court (NY Article 10, CA JV-356/JV-357).
+
 El proceso tiene DOS ETAPAS BIEN DIFERENCIADAS que debes investigar por separado:
 
 ### Etapa 1 — Radicación de la presentación (INTAKE)
@@ -236,6 +273,13 @@ Debes investigar y reportar LAS DOS ETAPAS por separado. El sistema las muestra 
     - \`intake_packet.required_forms\` NUNCA puede estar vacío salvo que documentes en \`intake_packet.notes\` por qué este juzgado solo acepta carta libre o por qué la propia petición sustantiva funciona como commencement document (caso típico de NY Family Court). Todos los condados grandes (Harris TX, Kings NY, Cook IL, Maricopa AZ, Los Angeles CA, etc.) tienen Civil Case Information Sheet o Family Court Coversheet.
     - \`required_forms\` (Etapa 2) DEBE incluir TODOS los formularios sustantivos conocidos para SIJS estatal (petition for guardianship/SAPCR, motion for SIJ findings, affidavits del menor + del peticionario + de testigos, proposed order con findings, certificate of conference si aplica).
     - Si el estado no publica un template oficial para alguno, dilo en \`notes\` — no lo omitas.
+
+11.b **pdf_format / is_fillable** — para cada entry en \`required_forms\` y \`intake_packet.required_forms\`, agrega los campos:
+    - Si la URL termina en \`.pdf\` y conoces (por inspección directa o por convención del estado — ej. NY GF-* suele ser AcroForm) que el PDF tiene campos rellenables interactivos, usa \`"pdf_format": "acroform"\` y \`"is_fillable": true\`.
+    - Si es \`.pdf\` plano (imagen escaneada o flatten), usa \`"pdf_format": "static"\` y \`"is_fillable": false\`.
+    - Si la URL termina en \`.docx\` o \`.doc\` (común en Texas DFPS Section 13 Tools), usa \`"pdf_format": "docx"\` o \`"doc"\` y \`"is_fillable": false\`.
+    - Si no puedes determinar, omite ambos campos (el sistema asume \`unknown\`).
+    Cuando exista ambas versiones (AcroForm vs static) para el mismo form, prefiere la AcroForm en url_official — el cliente la puede rellenar digitalmente sin reimprimir.
 
 12. **CHECKLIST INTERNA OBLIGATORIA — antes de cerrar el JSON, responde mentalmente las 5 preguntas**:
     ☐ ¿\`required_forms\` contiene una **Petition** (Guardianship/Custody/SAPCR/Appointment)? Si NO, busca otra vez con la query del estado (FM-SAPCR-100 en TX, Form 6-1 en NY, GC-210 en CA, Form 12.961 en FL).
@@ -286,9 +330,11 @@ Busca explícitamente:
 - I-360 + G-28 + copia certificada del predicate order + evidencia de "reasonable factual basis" se presentan en USCIS National Benefits Center (Overland Park, KS).
 - Tarifa I-360 SIJS desde Julio 2025: $250 (OBBBA).
 
-## REGLAS POR ESTADO — URLs canónicas conocidas (úsalas siempre)
+## REGLAS POR ESTADO PARA ESTA RUTA — URLs canónicas conocidas (úsalas siempre)
 
-{{STATE_SIJ_RULES}}
+El bloque siguiente contiene las reglas específicas para el estado + la ruta procedimental ya inferida. Si está vacío, busca con la pista genérica del state judiciary.
+
+{{STATE_SIJ_RULES_FOR_ROUTE}}
 
 
 ### Texas (TX) — TODOS los condados (Harris, Dallas, Bexar, Travis, Tarrant, El Paso, etc.)
@@ -508,6 +554,7 @@ function getClient(): Anthropic {
  */
 export async function researchJurisdiction(
   location: ClientLocation,
+  procedural: ProceduralContext,
   signal?: AbortSignal,
 ): Promise<JurisdictionResearchResult> {
   const stateCode = location.stateCode as UsStateCode
@@ -516,16 +563,18 @@ export async function researchJurisdiction(
   // anterior se quedaba corto cuando el catálogo SIJS exigía buscar
   // explícitamente petition + motion + affidavit + order + coversheet por
   // estado/condado).
-  const firstAttempt = await callClaudeForResearch(location, {
+  const firstAttempt = await callClaudeForResearch(location, procedural, {
     signal,
     maxUses: 10,
     retryContext: null,
   })
 
-  const validation = validateSIJCorePackage(firstAttempt, stateCode)
+  const validation = validateSIJCorePackage(firstAttempt, stateCode, procedural)
   if (validation.ok) {
     log.info('research first-attempt passed validator', {
       stateCode,
+      route: procedural.route,
+      relation: procedural.petitionerRelation,
       meritsForms: firstAttempt.required_forms.length,
       intakeForms: firstAttempt.intake_packet.required_forms.length,
     })
@@ -534,17 +583,18 @@ export async function researchJurisdiction(
 
   log.warn('research first-attempt missing core families — running targeted retry', {
     stateCode,
+    route: procedural.route,
     missing: validation.missing,
     warnings: validation.warnings,
   })
 
   // Pasada 2: retry dirigido con queries específicas para los gaps.
-  const targetedQueries = buildTargetedQueries(stateCode, validation.missing)
+  const targetedQueries = buildTargetedQueries(stateCode, validation.missing, procedural)
   const missingDescriptions = describeMissingFamilies(validation.missing)
 
   let secondAttempt: JurisdictionResearchResult | null = null
   try {
-    secondAttempt = await callClaudeForResearch(location, {
+    secondAttempt = await callClaudeForResearch(location, procedural, {
       signal,
       maxUses: 5,
       retryContext: {
@@ -566,7 +616,7 @@ export async function researchJurisdiction(
     ? mergeResearchResults(firstAttempt, secondAttempt)
     : firstAttempt
 
-  const finalValidation = validateSIJCorePackage(merged, stateCode)
+  const finalValidation = validateSIJCorePackage(merged, stateCode, procedural)
   if (finalValidation.ok) {
     log.info('research passed validator after retry', {
       stateCode,
@@ -640,26 +690,33 @@ interface CallOptions {
  */
 async function callClaudeForResearch(
   location: ClientLocation,
+  procedural: ProceduralContext,
   opts: CallOptions,
 ): Promise<JurisdictionResearchResult> {
   const client = getClient()
+  const stateCode = location.stateCode as UsStateCode
   const hint = getStateCourtHint(location.stateCode)
   const isRetry = Boolean(opts.retryContext)
 
-  // System prompt: inyectamos catálogo de slugs + reglas SIJS específicas del estado.
-  const stateSijRules = hint.sijRules ?? ''
+  // System prompt: inyectamos catálogo de slugs + reglas SIJS específicas del
+  // estado PARA LA RUTA inferida (custody/guardianship/etc) — sin esto la IA
+  // mezcla formularios de rutas distintas y produce un paquete incorrecto.
+  const stateSijRules = getSijRulesForRoute(stateCode, procedural.route)
   const systemPrompt = RESEARCHER_SYSTEM
     .replace('{{SLUG_CATALOG}}', getRegisteredSlugCatalogMarkdown())
-    .replace('{{STATE_SIJ_RULES}}', stateSijRules)
+    .replace('{{STATE_SIJ_RULES_FOR_ROUTE}}', stateSijRules)
+    .replace('{{PROCEDURAL_ROUTE}}', procedural.route)
 
   const userPrompt = isRetry
-    ? buildRetryUserPrompt(location, hint, opts.retryContext!)
-    : buildPrimaryUserPrompt(location, hint, opts.maxUses)
+    ? buildRetryUserPrompt(location, procedural, hint, opts.retryContext!)
+    : buildPrimaryUserPrompt(location, procedural, hint, opts.maxUses)
 
   log.debug('callClaudeForResearch', {
     stateCode: location.stateCode,
     zip: location.zip,
     source: location.source,
+    route: procedural.route,
+    relation: procedural.petitionerRelation,
     isRetry,
     maxUses: opts.maxUses,
   })
@@ -797,6 +854,7 @@ async function callClaudeForResearch(
 
 function buildPrimaryUserPrompt(
   location: ClientLocation,
+  procedural: ProceduralContext,
   hint: ReturnType<typeof getStateCourtHint>,
   maxUses: number,
 ): string {
@@ -806,6 +864,14 @@ function buildPrimaryUserPrompt(
 - ZIP: ${location.zip ?? '(desconocido — usa la corte estatal genérica)'}
 - Ciudad: ${location.city ?? '(desconocida)'}
 - Dirección: ${location.street ?? '(no disponible)'}
+
+## Contexto procesal (CRÍTICO — define qué set de formularios buscar)
+
+- Ruta procedimental: **${procedural.route}**
+- Relación peticionario↔menor: ${procedural.petitionerRelation}
+- Razón de la elección: ${procedural.reasonForChoice}
+
+Reaplica la REGLA ABSOLUTA del system prompt: solo busca formularios de la ruta indicada. No mezcles formularios de rutas distintas.
 
 ## Pistas para tu research
 
@@ -862,6 +928,7 @@ Empieza tu respuesta con \`{\` ahora.`
 
 function buildRetryUserPrompt(
   location: ClientLocation,
+  procedural: ProceduralContext,
   hint: ReturnType<typeof getStateCourtHint>,
   ctx: NonNullable<CallOptions['retryContext']>,
 ): string {
@@ -872,13 +939,14 @@ function buildRetryUserPrompt(
     .map(f => `  - ${f.name}`)
     .join('\n') || '  (ninguno encontrado)'
 
-  return `RETRY DIRIGIDO — tu primera investigación pasó la mayoría del trabajo pero OMITIÓ formularios SIJS legalmente requeridos. Ahora SOLO tienes que llenar los gaps.
+  return `RETRY DIRIGIDO — tu primera investigación pasó la mayoría del trabajo pero OMITIÓ formularios SIJS legalmente requeridos para la ruta ${procedural.route}. Ahora SOLO tienes que llenar los gaps.
 
 ## Contexto del caso (no cambió)
 - Estado: ${location.stateName} (${location.stateCode})
 - ZIP: ${location.zip ?? '(desconocido)'}
 - Ciudad: ${location.city ?? '(desconocida)'}
 - Sitio judiciary: ${hint.officialJudiciaryUrl}
+- Ruta procedimental: **${procedural.route}** (${procedural.petitionerRelation})
 
 ## Lo que YA encontraste (no busques esto otra vez)
 **Merits forms ya identificados**:

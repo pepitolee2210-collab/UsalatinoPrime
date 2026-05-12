@@ -2,6 +2,7 @@ import { after } from 'next/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveClientLocation } from './resolve-client-location'
 import { researchJurisdiction } from './research-jurisdiction'
+import { inferProceduralRoute } from './infer-procedural-route'
 import { createServiceClient } from '@/lib/supabase/service'
 import { createLogger } from '@/lib/logger'
 
@@ -148,7 +149,19 @@ export async function runJurisdictionResearchSync(caseId: string): Promise<void>
       updated_at: new Date().toISOString(),
     }, { onConflict: 'case_id', ignoreDuplicates: false })
 
-  log.info('research started', { caseId, state: location.stateCode })
+  // Infiere la ruta procedimental Fase 1 (custody/guardianship/etc) leyendo
+  // el tutor_guardian form. Si el cliente no ha llenado el form aún, devuelve
+  // un default conservador (guardianship/low) y la IA usa el set ampliado.
+  // Re-verificar después de que el cliente complete el form ajusta la ruta.
+  const procedural = await inferProceduralRoute(caseId, service)
+  log.info('procedural route inferred', {
+    caseId,
+    route: procedural.route,
+    relation: procedural.petitionerRelation,
+    confidence: procedural.confidence,
+  })
+
+  log.info('research started', { caseId, state: location.stateCode, route: procedural.route })
 
   // AbortSignal de seguridad: si Claude tarda > 240s (típico ~60-120s),
   // rendimos antes de los 300s de Vercel para poder persistir `failed`.
@@ -156,7 +169,7 @@ export async function runJurisdictionResearchSync(caseId: string): Promise<void>
   const safetyTimer = setTimeout(() => safetyAbort.abort(new Error('Safety timeout 240s — research demoró demasiado')), 240_000)
 
   try {
-    const research = await researchJurisdiction(location, safetyAbort.signal)
+    const research = await researchJurisdiction(location, procedural, safetyAbort.signal)
     clearTimeout(safetyTimer)
 
     // El research devuelve `_missing_families` cuando pasó por retry pero
@@ -193,6 +206,10 @@ export async function runJurisdictionResearchSync(caseId: string): Promise<void>
         intake_filing_channel: research.intake_packet.filing_channel,
         intake_procedure_es: research.intake_packet.procedure_es,
         intake_notes: research.intake_packet.notes,
+        procedural_route: procedural.route,
+        petitioner_relation: procedural.petitionerRelation,
+        procedural_route_reason: procedural.reasonForChoice,
+        procedural_route_confidence: procedural.confidence,
         research_status: finalStatus,
         research_error: errorMessage,
         research_warnings: missingFamilies,

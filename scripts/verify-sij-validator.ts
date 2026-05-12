@@ -15,16 +15,29 @@
 
 import { validateSIJCorePackage, buildTargetedQueries } from '../src/lib/legal/sij-core-validator'
 import type { JurisdictionResearchResult, RequiredForm } from '../src/lib/legal/research-jurisdiction'
+import type { ProceduralContext, ProceduralRoute } from '../src/lib/legal/infer-procedural-route'
 import type { UsStateCode } from '../src/lib/timezones/us-states'
 
 interface TestCase {
   name: string
   stateCode: UsStateCode
+  /** Ruta procedimental Fase 1; default 'guardianship' (lo más común). */
+  route?: ProceduralRoute
   forms: { name: string; description?: string; mandatory?: boolean }[]
   intakeForms: { name: string; description?: string; mandatory?: boolean }[]
   intakeNotes?: string
   expectedOk: boolean
   expectedMissing?: string[]
+}
+
+function buildProceduralContext(route: ProceduralRoute): ProceduralContext {
+  return {
+    route,
+    petitionerRelation: route === 'custody' ? 'biological_parent' : 'relative_non_parent',
+    reasonForChoice: `Test fixture route=${route}`,
+    confidence: 'high',
+    rawRelationshipText: null,
+  }
 }
 
 const TESTS: TestCase[] = [
@@ -177,7 +190,8 @@ function runTests() {
 
   for (const tc of TESTS) {
     const result = buildResult(tc)
-    const validation = validateSIJCorePackage(result, tc.stateCode)
+    const procedural = buildProceduralContext(tc.route ?? 'guardianship')
+    const validation = validateSIJCorePackage(result, tc.stateCode, procedural)
     const ok = validation.ok === tc.expectedOk
     const missingOk = !tc.expectedMissing || tc.expectedMissing.every(m => validation.missing.includes(m as never))
 
@@ -197,7 +211,7 @@ function runTests() {
 
     // Bonus: para los casos fallidos, imprimimos las queries que el retry usaría.
     if (!validation.ok) {
-      const queries = buildTargetedQueries(tc.stateCode, validation.missing)
+      const queries = buildTargetedQueries(tc.stateCode, validation.missing, procedural)
       console.log(`   queries de retry sugeridas (primeras 3): ${queries.slice(0, 3).join(' | ')}`)
     }
     console.log('')

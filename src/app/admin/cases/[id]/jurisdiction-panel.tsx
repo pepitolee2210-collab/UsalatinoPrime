@@ -24,13 +24,19 @@ type AttachmentType =
   | 'abandonment_proof'
   | 'other'
 
+type PdfFormat = 'acroform' | 'static' | 'docx' | 'doc' | 'unknown'
+
 interface RequiredForm {
   name: string
   url_official: string
   description_es: string
   is_mandatory: boolean
   slug?: string | null
+  pdf_format?: PdfFormat
+  is_fillable?: boolean
 }
+
+type ProceduralRoute = 'custody' | 'guardianship' | 'surrogate_17a' | 'juvenile_dependency'
 
 interface FilingStep {
   step_number: number
@@ -82,6 +88,12 @@ interface CachedJurisdiction {
   intake_filing_channel?: FilingChannel | null
   intake_procedure_es?: string | null
   intake_notes?: string | null
+  // Ruta procedimental inferida (custody/guardianship/etc) — determina qué
+  // set de formularios pide el clerk para abrir el caso.
+  procedural_route?: ProceduralRoute | null
+  petitioner_relation?: string | null
+  procedural_route_reason?: string | null
+  procedural_route_confidence?: 'high' | 'medium' | 'low' | null
 }
 
 interface ClientLocation {
@@ -144,6 +156,71 @@ const ATTACHMENT_LABELS: Record<AttachmentType, string> = {
   parental_consent: 'Consentimiento parental',
   abandonment_proof: 'Prueba de abandono',
   other: 'Otro',
+}
+
+/**
+ * Ordena formularios poniendo los AcroForm (rellenables digitalmente) primero,
+ * luego static (PDF plano para imprimir), luego docx/doc, luego unknown.
+ * El admin tiende a priorizar formularios rellenables porque el cliente puede
+ * llenarlos sin reimprimir.
+ */
+function sortByFillable(forms: RequiredForm[]): RequiredForm[] {
+  const rank = (f: RequiredForm): number => {
+    if (f.is_fillable === true || f.pdf_format === 'acroform') return 0
+    if (f.pdf_format === 'static') return 1
+    if (f.pdf_format === 'docx' || f.pdf_format === 'doc') return 2
+    return 3
+  }
+  return [...forms].sort((a, b) => rank(a) - rank(b))
+}
+
+const ROUTE_LABELS: Record<ProceduralRoute, string> = {
+  custody: 'Custodia',
+  guardianship: 'Tutela',
+  surrogate_17a: 'Surrogate 17-A',
+  juvenile_dependency: 'Juvenile Dependency',
+}
+
+const ROUTE_DESCRIPTIONS: Record<ProceduralRoute, string> = {
+  custody: 'Peticionario es padre/madre del menor',
+  guardianship: 'Peticionario es familiar/cuidador (no-padre)',
+  surrogate_17a: 'Surrogate Court — menor con discapacidad (NY)',
+  juvenile_dependency: 'Caso con involucramiento de CPS/ACS',
+}
+
+function ProceduralRouteBlock({ jurisdiction }: { jurisdiction: CachedJurisdiction }) {
+  const route = jurisdiction.procedural_route
+  if (!route) return null
+  const confidence = jurisdiction.procedural_route_confidence ?? 'medium'
+  const confidenceClass = confidence === 'high'
+    ? 'bg-emerald-100 text-emerald-800'
+    : confidence === 'low'
+    ? 'bg-red-100 text-red-800'
+    : 'bg-amber-100 text-amber-800'
+  const confidenceLabel = confidence === 'high'
+    ? 'Inferida con alta confianza'
+    : confidence === 'low'
+    ? 'Confianza baja — verifica el form del cliente'
+    : 'Confianza media'
+
+  return (
+    <section className="rounded-lg border border-violet-200 bg-violet-50/60 px-3 py-2">
+      <div className="flex items-center gap-2 flex-wrap">
+        <Scale className="w-4 h-4 text-violet-700 flex-shrink-0" />
+        <p className="text-[11px] font-bold uppercase tracking-wider text-violet-900">Ruta procedimental</p>
+        <span className="text-sm font-semibold text-violet-700">{ROUTE_LABELS[route]}</span>
+        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${confidenceClass}`}>
+          {confidenceLabel}
+        </span>
+      </div>
+      <p className="text-[11px] text-violet-700/90 mt-1 ml-6">{ROUTE_DESCRIPTIONS[route]}</p>
+      {jurisdiction.procedural_route_reason && (
+        <p className="text-[10px] text-violet-700/70 mt-0.5 ml-6 italic">
+          {jurisdiction.procedural_route_reason}
+        </p>
+      )}
+    </section>
+  )
 }
 
 function ConfidenceBadge({ confidence }: { confidence: CachedJurisdiction['confidence'] }) {
@@ -467,6 +544,9 @@ export function JurisdictionPanel({ caseId }: Props) {
                     )}
                   </section>
 
+                  {/* Ruta procedimental inferida (custody/guardianship/etc) */}
+                  <ProceduralRouteBlock jurisdiction={data.jurisdiction} />
+
                   {/* ══════════════════════════════════════════════ */}
                   {/* ETAPA 1 — Radicación de la presentación        */}
                   {/* ══════════════════════════════════════════════ */}
@@ -676,12 +756,20 @@ function FormsBlock({ forms, caseId }: { forms: RequiredForm[]; caseId: string }
         )}
       </div>
       <div className="space-y-2">
-        {forms.map((f, i) => {
+        {sortByFillable(forms).map((f, i) => {
           const interactiveSlug = resolveAutomatedFormSlug(f)
+          const isFillable = f.is_fillable === true || f.pdf_format === 'acroform'
           return (
             <div key={i} className="rounded-lg border border-gray-200 p-2.5 bg-gray-50/50">
               <div className="flex items-start justify-between gap-2 flex-wrap">
-                <p className="text-xs font-semibold text-gray-900 flex-1 min-w-0">{f.name}</p>
+                <div className="flex items-center gap-1.5 flex-1 min-w-0 flex-wrap">
+                  <p className="text-xs font-semibold text-gray-900">{f.name}</p>
+                  {isFillable && (
+                    <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+                      <Pencil className="w-2.5 h-2.5" /> Rellenable
+                    </span>
+                  )}
+                </div>
                 <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${
                   f.is_mandatory ? 'bg-red-100 text-red-700' : 'bg-gray-200 text-gray-600'
                 }`}>
