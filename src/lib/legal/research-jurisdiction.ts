@@ -5,6 +5,7 @@ import { createLogger } from '@/lib/logger'
 import type { ClientLocation } from './resolve-client-location'
 import { getStateCourtHint, getSijRulesForRoute } from './state-court-registry'
 import { getRegisteredSlugCatalogMarkdown } from './automated-forms-registry'
+import { verifyFormsBatch } from './verify-pdf-acroform'
 import {
   validateSIJCorePackage,
   buildTargetedQueries,
@@ -832,6 +833,35 @@ async function callClaudeForResearch(
         return ok
       }),
     }
+  }
+
+  // Verificación REAL de AcroForm: la IA suele marcar pdf_format=acroform por
+  // conocimiento previo aunque el PDF concreto sea static (caso real reportado
+  // con NY GF-17). Descargamos cada URL y la inspeccionamos con pdf-lib para
+  // confirmar o corregir el flag. Errores individuales no abortan — se marcan
+  // como 'unknown' + is_fillable=false (badge no se muestra en UI).
+  try {
+    const [verifiedMerits, verifiedIntake] = await Promise.all([
+      verifyFormsBatch(parsed.required_forms),
+      verifyFormsBatch(parsed.intake_packet?.required_forms ?? []),
+    ])
+    parsed.required_forms = verifiedMerits
+    parsed.intake_packet = {
+      ...parsed.intake_packet,
+      required_forms: verifiedIntake,
+    }
+    const corrected = [...verifiedMerits, ...verifiedIntake]
+      .filter(f => f.pdf_format !== 'acroform' && f.is_fillable === false)
+      .length
+    log.info('acroform verification complete', {
+      meritsCount: verifiedMerits.length,
+      intakeCount: verifiedIntake.length,
+      correctedFromIa: corrected,
+    })
+  } catch (err) {
+    log.warn('acroform verification batch failed — keeping IA flags as-is', {
+      err: err instanceof Error ? err.message : err,
+    })
   }
 
   const usage = message.usage as Anthropic.Usage & {
