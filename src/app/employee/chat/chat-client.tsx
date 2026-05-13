@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { MessageCircle } from 'lucide-react'
-import type { ConversationListItem, ChatMessage, StaffProfile } from './types'
+import type { ConversationListItem, ChatMessage, StaffProfile, ChatMention } from './types'
 import { ConversationsSidebar } from './conversations-sidebar'
 import { ChatThread } from './chat-thread'
 
@@ -163,7 +163,8 @@ export function ChatClient({ currentUserId, currentUserName }: Props) {
       attachment_type: 'image' | 'document'
       attachment_name: string
       attachment_size: number
-    }
+    },
+    mentions?: ChatMention[]
   ) {
     if (!activeConvId) return
     if (!body.trim() && !attachment) return
@@ -178,6 +179,7 @@ export function ChatClient({ currentUserId, currentUserName }: Props) {
         attachment_type: attachment?.attachment_type,
         attachment_name: attachment?.attachment_name,
         attachment_size: attachment?.attachment_size,
+        mentions: mentions || [],
       }),
     })
     if (!res.ok) {

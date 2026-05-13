@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, useState, useLayoutEffect } from 'react'
 import { Users, Send, Loader2, Paperclip, X } from 'lucide-react'
-import type { ConversationListItem, ChatMessage, StaffProfile } from './types'
+import type { ConversationListItem, ChatMessage, StaffProfile, ChatMention } from './types'
 import { MessageAttachment } from './message-attachment'
+import { MentionAutocomplete } from './mention-autocomplete'
+import { MessageBody } from './message-body'
 
 export interface PendingAttachment {
   path: string
@@ -19,7 +21,11 @@ interface Props {
   currentUserId: string
   loading: boolean
   hasMore: boolean
-  onSendMessage: (body: string, attachment?: PendingAttachment) => Promise<void>
+  onSendMessage: (
+    body: string,
+    attachment?: PendingAttachment,
+    mentions?: ChatMention[]
+  ) => Promise<void>
   onLoadOlder: () => Promise<void>
 }
 
@@ -31,8 +37,16 @@ export function ChatThread({
   const [sending, setSending] = useState(false)
   const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [pendingMentions, setPendingMentions] = useState<ChatMention[]>([])
+  // Estado del autocomplete: si hay trigger activo, qué se está buscando
+  const [mentionState, setMentionState] = useState<{
+    trigger: '@' | '#'
+    query: string
+    startIdx: number
+  } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const lastMsgIdRef = useRef<string | null>(null)
 
   // Auto-scroll cuando llega un mensaje nuevo (no cuando se cargan viejos)
@@ -87,16 +101,81 @@ export function ChatThread({
         }
         setUploading(false)
       }
-      await onSendMessage(draft, attachment)
+      // Filtrar mentions a las que efectivamente quedaron en el draft
+      const activeMentions = pendingMentions.filter((m) => {
+        const prefix = m.type === 'client' ? '@' : '#'
+        return draft.includes(`${prefix}${m.label}`)
+      })
+      await onSendMessage(draft, attachment, activeMentions)
       setDraft('')
       setPendingFile(null)
+      setPendingMentions([])
+      setMentionState(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
     } finally {
       setSending(false)
     }
   }
 
+  function handleDraftChange(value: string) {
+    setDraft(value)
+    // Detectar trigger @ o # antes del cursor
+    const el = textareaRef.current
+    if (!el) return
+    const cursor = el.selectionStart ?? value.length
+    // Mira el último carácter @ o # antes del cursor
+    const upToCursor = value.slice(0, cursor)
+    const atIdx = upToCursor.lastIndexOf('@')
+    const hashIdx = upToCursor.lastIndexOf('#')
+    const triggerIdx = Math.max(atIdx, hashIdx)
+    if (triggerIdx === -1) {
+      setMentionState(null)
+      return
+    }
+    // El trigger debe estar al inicio o precedido de espacio/salto
+    if (triggerIdx > 0 && !/\s/.test(value[triggerIdx - 1])) {
+      setMentionState(null)
+      return
+    }
+    const after = upToCursor.slice(triggerIdx + 1)
+    // Si hay espacio en lo que sigue, abortar
+    if (/\s/.test(after)) {
+      setMentionState(null)
+      return
+    }
+    const trigger = (atIdx === triggerIdx ? '@' : '#') as '@' | '#'
+    setMentionState({ trigger, query: after, startIdx: triggerIdx })
+  }
+
+  function applyMention(mention: ChatMention) {
+    if (!mentionState) return
+    const prefix = mention.type === 'client' ? '@' : '#'
+    const replaceFrom = mentionState.startIdx
+    const replaceTo = mentionState.startIdx + 1 + mentionState.query.length
+    const newDraft =
+      draft.slice(0, replaceFrom) +
+      prefix + mention.label + ' ' +
+      draft.slice(replaceTo)
+    setDraft(newDraft)
+    setPendingMentions((prev) => {
+      // Evitar duplicados por id+type
+      const exists = prev.some((m) => m.id === mention.id && m.type === mention.type)
+      return exists ? prev : [...prev, mention]
+    })
+    setMentionState(null)
+    // Reposicionar el cursor justo después de la mención insertada
+    setTimeout(() => {
+      const el = textareaRef.current
+      if (!el) return
+      const newPos = replaceFrom + prefix.length + mention.label.length + 1
+      el.focus()
+      el.setSelectionRange(newPos, newPos)
+    }, 0)
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
+    // Si el autocomplete está abierto, dejamos que él maneje Enter/Tab/flechas
+    if (mentionState) return
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSubmit(e as unknown as React.FormEvent)
@@ -190,7 +269,16 @@ export function ChatThread({
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="px-4 py-3 border-t border-gray-200 bg-white">
+      <form onSubmit={handleSubmit} className="relative px-4 py-3 border-t border-gray-200 bg-white">
+        {mentionState && (
+          <div className="absolute left-4 right-4 bottom-full">
+            <MentionAutocomplete
+              trigger={mentionState.trigger}
+              query={mentionState.query}
+              onSelect={applyMention}
+            />
+          </div>
+        )}
         {pendingFile && (
           <div className="mb-2 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
             <Paperclip className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
@@ -231,10 +319,11 @@ export function ChatThread({
             <Paperclip className="w-4 h-4" />
           </button>
           <textarea
+            ref={textareaRef}
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => handleDraftChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Escribe un mensaje..."
+            placeholder="Escribe un mensaje... usa @ para clientes y # para casos"
             rows={1}
             disabled={sending}
             className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/30 focus:border-[#F2A900] max-h-32"
@@ -288,9 +377,11 @@ function MessageBubble({
           }`}
         >
           {message.body && (
-            <p className="text-sm whitespace-pre-wrap break-words leading-snug">
-              {message.body}
-            </p>
+            <MessageBody
+              body={message.body}
+              mentions={message.mentions || []}
+              isMe={isMe}
+            />
           )}
           {message.attachment_url && message.attachment_type && (
             <MessageAttachment
