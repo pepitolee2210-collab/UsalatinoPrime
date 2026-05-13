@@ -91,6 +91,15 @@ export function ChatClient({ currentUserId, currentUserName }: Props) {
 
   // Suscripción Realtime global a INSERTs en messages
   useEffect(() => {
+    let mounted = true
+    // Supabase Realtime con RLS requiere un access_token activo en el módulo
+    // Realtime — el client browser no lo hereda automáticamente de las cookies
+    // de SSR. Lo seteamos manualmente antes de suscribir.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted || !session) return
+      supabase.realtime.setAuth(session.access_token)
+    })
+
     const channel = supabase
       .channel('chat-messages-realtime')
       .on(
@@ -152,6 +161,7 @@ export function ChatClient({ currentUserId, currentUserName }: Props) {
       .subscribe()
 
     return () => {
+      mounted = false
       supabase.removeChannel(channel)
     }
   }, [activeConvId, currentUserId, markAsRead, sendersById, supabase])
@@ -185,8 +195,38 @@ export function ChatClient({ currentUserId, currentUserName }: Props) {
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       alert(err.error || 'Error enviando mensaje')
+      return
     }
-    // No actualizo localmente: el realtime listener inserta el mensaje
+    // Insert optimista: append local del mensaje retornado para que el sender
+    // lo vea inmediatamente aunque el Realtime tarde / falle.
+    const data = await res.json()
+    if (data?.message) {
+      const newMsg = data.message as ChatMessage
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === newMsg.id)) return prev
+        return [...prev, newMsg]
+      })
+      // Y mover esta conv al tope de la lista
+      setConversations((prev) => {
+        const updated = prev.map((c) =>
+          c.id === activeConvId
+            ? {
+                ...c,
+                last_message_at: newMsg.created_at,
+                last_message: {
+                  id: newMsg.id,
+                  body: newMsg.body,
+                  attachment_type: newMsg.attachment_type,
+                  attachment_name: newMsg.attachment_name,
+                  created_at: newMsg.created_at,
+                  sender_id: newMsg.sender_id,
+                },
+              }
+            : c
+        )
+        return updated.sort((a, b) => b.last_message_at.localeCompare(a.last_message_at))
+      })
+    }
   }
 
   async function handleStartDM(otherUserId: string) {
