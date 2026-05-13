@@ -20,7 +20,7 @@ import { ChatWidget } from '@/components/employee/chat-widget'
 
 type EmployeeType = 'paralegal' | 'senior_consultant' | 'contracts_manager' | null
 
-type BadgeKey = 'whatsappActive'
+type BadgeKey = 'whatsappActive' | 'chatUnread'
 type BadgeCounts = Record<BadgeKey, number>
 
 const navConfig: Array<{
@@ -32,7 +32,7 @@ const navConfig: Array<{
 }> = [
   { href: '/employee/dashboard', label: 'Mis Tareas', icon: Briefcase, show: () => true },
   // Chat interno — visible para todo el equipo
-  { href: '/employee/chat', label: 'Chat Equipo', icon: MessagesSquare, show: () => true },
+  { href: '/employee/chat', label: 'Chat Equipo', icon: MessagesSquare, show: () => true, badgeKey: 'chatUnread' },
   // Casos (acceso directo a Radicación · PDFs y demás secciones) — exclusivo paralegal,
   // así no depende de que Henry asigne caso por caso para poder avanzar.
   { href: '/employee/casos', label: 'Casos', icon: Briefcase, show: (t) => t === 'paralegal' },
@@ -67,7 +67,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
   const [userName, setUserName] = useState('')
   const [userId, setUserId] = useState<string | null>(null)
   const [employeeType, setEmployeeType] = useState<EmployeeType>(null)
-  const [counts, setCounts] = useState<BadgeCounts>({ whatsappActive: 0 })
+  const [counts, setCounts] = useState<BadgeCounts>({ whatsappActive: 0, chatUnread: 0 })
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
@@ -92,12 +92,18 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
   }, [])
 
   useEffect(() => {
-    if (employeeType !== 'senior_consultant') return
-    fetch('/api/employee/sidebar-counts')
-      .then(r => (r.ok ? r.json() : null))
-      .then(data => { if (data) setCounts(data) })
-      .catch(() => {})
-  }, [pathname, employeeType])
+    if (!userId) return
+    function loadCounts() {
+      fetch('/api/employee/sidebar-counts')
+        .then(r => (r.ok ? r.json() : null))
+        .then(data => { if (data) setCounts(data) })
+        .catch(() => {})
+    }
+    loadCounts()
+    // Refrescar al cambiar de ruta + cada 30s para mantener badges al día
+    const interval = setInterval(loadCounts, 30000)
+    return () => clearInterval(interval)
+  }, [pathname, userId])
 
   async function handleLogout() {
     await supabase.auth.signOut()
