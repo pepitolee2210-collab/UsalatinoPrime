@@ -153,55 +153,103 @@ export function ContractsManagerDashboard({
           </CardHeader>
           <CardContent className="space-y-3">
             {pendingSignature.length > 0 && (
-              <Link href="/employee/contratos" className="block">
-                <div className="rounded-lg border border-amber-100 bg-amber-50/40 p-3 hover:bg-amber-50 transition-colors">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-gray-900">Contratos esperando firma del cliente</span>
-                    <Badge className="bg-amber-100 text-amber-800">{pendingSignature.length}</Badge>
-                  </div>
-                  <div className="space-y-1">
-                    {pendingSignature.slice(0, 4).map(c => (
-                      <div key={c.id} className="flex items-center justify-between text-sm">
-                        <span className="font-medium text-gray-700 truncate">{c.client_full_name}</span>
-                        <span className="text-gray-500 text-xs ml-3 whitespace-nowrap">
-                          {c.service_name} · ${Number(c.total_price).toLocaleString()}
-                        </span>
-                      </div>
-                    ))}
-                    {pendingSignature.length > 4 && (
-                      <p className="text-xs text-[#F2A900] text-right pt-1">Ver {pendingSignature.length - 4} más</p>
-                    )}
-                  </div>
+              <div className="rounded-lg border border-amber-100 bg-amber-50/40 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold text-gray-900">
+                    Contratos esperando firma del cliente
+                  </span>
+                  <Badge className="bg-amber-100 text-amber-800">{pendingSignature.length}</Badge>
                 </div>
-              </Link>
+                <div className="space-y-2">
+                  {pendingSignature.slice(0, 4).map(c => {
+                    const firstName = c.client_full_name.split(' ')[0]
+                    return (
+                      <div
+                        key={c.id}
+                        className="flex items-center justify-between gap-2 text-sm bg-white rounded-md border border-amber-100/60 px-2.5 py-2 flex-wrap"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-gray-800 truncate">{c.client_full_name}</p>
+                          <p className="text-[11px] text-gray-500">
+                            {c.service_name} · ${Number(c.total_price).toLocaleString()}
+                          </p>
+                        </div>
+                        <WhatsAppTemplates
+                          context={{
+                            client_name: c.client_full_name,
+                            client_first_name: firstName,
+                            client_phone: c.client_phone,
+                            service_name: c.service_name,
+                            signing_url: c.signing_token
+                              ? `${typeof window !== 'undefined' ? window.location.origin : ''}/contrato/${c.signing_token}`
+                              : undefined,
+                          }}
+                          triggerLabel="Recordar"
+                        />
+                      </div>
+                    )
+                  })}
+                  {pendingSignature.length > 4 && (
+                    <Link
+                      href="/employee/contratos"
+                      className="block text-xs text-[#F2A900] hover:underline text-right pt-1"
+                    >
+                      Ver {pendingSignature.length - 4} más →
+                    </Link>
+                  )}
+                </div>
+              </div>
             )}
             {todayAppointments.length > 0 && (
-              <Link href="/employee/citas" className="block">
-                <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-3 hover:bg-blue-50 transition-colors">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-semibold text-gray-900">Citas de hoy</span>
-                    <Badge className="bg-blue-100 text-blue-800">{todayAppointments.length}</Badge>
-                  </div>
-                  <div className="space-y-1">
-                    {todayAppointments.map(apt => {
-                      const c = apt.client
-                      return (
-                        <div key={apt.id} className="flex items-center justify-between text-sm">
-                          <span className="font-medium text-gray-700 truncate">
-                            {c?.first_name} {c?.last_name}
-                          </span>
-                          <span className="text-gray-500 text-xs ml-3 whitespace-nowrap">
-                            {new Date(apt.scheduled_at).toLocaleTimeString('en-US', {
-                              timeZone: 'America/Denver', hour: 'numeric', minute: '2-digit', hour12: true,
-                            })}
-                            {apt.case?.case_number && ` · #${apt.case.case_number}`}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
+              <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-semibold text-gray-900">Citas de hoy</span>
+                  <Badge className="bg-blue-100 text-blue-800">{todayAppointments.length}</Badge>
                 </div>
-              </Link>
+                <div className="space-y-2">
+                  {todayAppointments.map(apt => {
+                    const c = apt.client
+                    const fullName = c ? `${c.first_name} ${c.last_name}` : 'Cliente sin nombre'
+                    const timeStr = new Date(apt.scheduled_at).toLocaleTimeString('en-US', {
+                      timeZone: 'America/Denver', hour: 'numeric', minute: '2-digit', hour12: true,
+                    })
+                    const dateStr = new Date(apt.scheduled_at).toLocaleDateString('es-US', {
+                      timeZone: 'America/Denver', day: 'numeric', month: 'long',
+                    })
+                    return (
+                      <div
+                        key={apt.id}
+                        className="flex items-center justify-between gap-2 text-sm bg-white rounded-md border border-blue-100/60 px-2.5 py-2 flex-wrap"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-gray-800 truncate">{fullName}</p>
+                          <p className="text-[11px] text-gray-500">
+                            {timeStr}
+                            {apt.case?.case_number && ` · #${apt.case.case_number}`}
+                          </p>
+                        </div>
+                        <WhatsAppTemplates
+                          context={{
+                            client_name: fullName,
+                            client_first_name: c?.first_name,
+                            client_phone: null, // las citas de hoy no traen phone en el query
+                            appointment_date: dateStr,
+                            appointment_time: timeStr,
+                            case_number: apt.case?.case_number,
+                          }}
+                          triggerLabel="Confirmar"
+                        />
+                      </div>
+                    )
+                  })}
+                  <Link
+                    href="/employee/citas"
+                    className="block text-xs text-blue-600 hover:underline text-right pt-1"
+                  >
+                    Ver todas las citas →
+                  </Link>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
