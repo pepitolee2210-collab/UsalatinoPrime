@@ -695,8 +695,10 @@ function ContractPipeline({
 }
 
 /**
- * Tabla de servicios — minimalista, tipografía grande. Cada fila con
- * nombre del servicio + clientes + firmados + ingreso.
+ * Servicios — mobile-first. En pantallas chicas cada servicio es una
+ * card apilada con métricas en grid 3x1. En desktop se convierte en
+ * tabla horizontal con columnas alineadas. Sin truncate forzado en
+ * mobile — el nombre completo es visible aunque ocupe 2 líneas.
  */
 function ServicesTable({
   items,
@@ -717,49 +719,91 @@ function ServicesTable({
       className="rounded-2xl border border-white/[0.08] overflow-hidden"
       style={{ background: 'rgba(255,255,255,0.012)' }}
     >
-      {/* Header */}
-      <div className="grid grid-cols-12 gap-4 border-b border-white/[0.08] px-7 lg:px-8 py-4 font-mono-ceo text-[11px] uppercase tracking-[0.18em] text-white/65 font-medium">
-        <div className="col-span-1">#</div>
-        <div className="col-span-5">Servicio</div>
-        <div className="col-span-2 text-right">Clientes</div>
-        <div className="col-span-2 text-right">Firmados</div>
-        <div className="col-span-2 text-right">Ingreso</div>
+      {/* HEADER — visible solo en desktop. En mobile lo ocultamos porque
+          cada card tiene sus propios labels. */}
+      <div className="hidden lg:grid lg:grid-cols-[40px_1fr_140px_140px_180px] gap-6 border-b border-white/[0.08] px-8 py-4 font-mono-ceo text-[11px] uppercase tracking-[0.18em] text-white/65 font-medium">
+        <div>#</div>
+        <div>Servicio</div>
+        <div className="text-right">Clientes</div>
+        <div className="text-right">Firmados</div>
+        <div className="text-right">Ingreso</div>
       </div>
-      {/* Rows */}
+
+      {/* ROWS */}
       {items.map((s, idx) => {
         const widthPct = (s.unique_clients / maxClients) * 100
         return (
           <div
             key={s.slug}
-            className="group grid grid-cols-12 gap-4 border-b border-white/[0.04] px-7 lg:px-8 py-5 items-center transition-colors hover:bg-white/[0.02] relative last:border-b-0"
+            className="group relative border-b border-white/[0.04] transition-colors hover:bg-white/[0.02] last:border-b-0"
           >
+            {/* Barra de fondo proporcional (visible en ambos breakpoints) */}
             <span
-              className="pointer-events-none absolute inset-y-0 left-0 transition-opacity"
+              className="pointer-events-none absolute inset-y-0 left-0"
               style={{
                 width: `${widthPct}%`,
                 background:
                   'linear-gradient(90deg, rgba(232,184,74,0.06) 0%, rgba(232,184,74,0.01) 100%)',
               }}
             />
-            <div className="col-span-1 relative font-mono-ceo text-base text-white/75 tabular-nums">
-              {String(idx + 1).padStart(2, '0')}
+
+            {/* ── MOBILE: stack vertical (oculto en lg+) ────────────── */}
+            <div className="relative lg:hidden px-5 py-6">
+              {/* Top row: rank + nombre */}
+              <div className="flex items-start gap-3 mb-4">
+                <span className="font-mono-ceo text-sm text-white/65 tabular-nums flex-shrink-0 mt-1">
+                  {String(idx + 1).padStart(2, '0')}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base sm:text-lg text-white font-medium leading-snug break-words">
+                    {s.name}
+                  </p>
+                  <p className="mt-1.5 font-mono-ceo text-[11px] uppercase tracking-wider text-white/55">
+                    {s.share_pct}% de la demanda
+                  </p>
+                </div>
+              </div>
+
+              {/* Métricas: grid 3 columnas con labels propios */}
+              <div className="grid grid-cols-3 gap-3 mt-5">
+                <MobileMetric
+                  label="Clientes"
+                  value={String(s.unique_clients)}
+                />
+                <MobileMetric
+                  label="Firmados"
+                  value={String(s.contracts_signed)}
+                />
+                <MobileMetric
+                  label="Ingreso"
+                  value={`$${s.revenue_signed.toLocaleString()}`}
+                  small
+                />
+              </div>
             </div>
-            <div className="col-span-5 relative">
-              <p className="text-base lg:text-lg text-white font-medium leading-tight truncate">
-                {s.name}
-              </p>
-              <p className="mt-1 font-mono-ceo text-[11px] uppercase tracking-wider text-white/55">
-                {s.share_pct}% de la demanda
-              </p>
-            </div>
-            <div className="col-span-2 relative text-right font-display text-2xl text-white tabular-nums font-light tracking-tight">
-              {s.unique_clients}
-            </div>
-            <div className="col-span-2 relative text-right font-display text-2xl text-white tabular-nums font-light tracking-tight">
-              {s.contracts_signed}
-            </div>
-            <div className="col-span-2 relative text-right font-display text-2xl text-white tabular-nums font-light tracking-tight">
-              ${s.revenue_signed.toLocaleString()}
+
+            {/* ── DESKTOP: tabla horizontal (oculto en mobile) ──────── */}
+            <div className="relative hidden lg:grid lg:grid-cols-[40px_1fr_140px_140px_180px] gap-6 px-8 py-5 items-center">
+              <div className="font-mono-ceo text-base text-white/75 tabular-nums">
+                {String(idx + 1).padStart(2, '0')}
+              </div>
+              <div className="min-w-0">
+                <p className="text-lg text-white font-medium leading-tight truncate">
+                  {s.name}
+                </p>
+                <p className="mt-1 font-mono-ceo text-[11px] uppercase tracking-wider text-white/55">
+                  {s.share_pct}% de la demanda
+                </p>
+              </div>
+              <div className="text-right font-display text-2xl text-white tabular-nums font-light tracking-tight">
+                {s.unique_clients}
+              </div>
+              <div className="text-right font-display text-2xl text-white tabular-nums font-light tracking-tight">
+                {s.contracts_signed}
+              </div>
+              <div className="text-right font-display text-2xl text-white tabular-nums font-light tracking-tight">
+                ${s.revenue_signed.toLocaleString()}
+              </div>
             </div>
           </div>
         )
@@ -768,46 +812,226 @@ function ServicesTable({
   )
 }
 
-function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
-  if (!points.length) return <p className="text-base text-white/65">Sin datos</p>
-  const maxRev = Math.max(...points.map((p) => p.revenue_collected), 1)
+function MobileMetric({
+  label, value, small,
+}: { label: string; value: string; small?: boolean }) {
   return (
     <div>
-      <div className="grid grid-cols-6 gap-4 h-44 items-end mb-4">
-        {points.map((p) => {
-          const height = (p.revenue_collected / maxRev) * 100
-          const isLast = p === points[points.length - 1]
-          return (
-            <div key={p.month} className="flex flex-col items-center gap-3 group">
-              <div
-                className="w-full rounded-sm transition-all"
-                style={{
-                  height: `${Math.max(2, height)}%`,
-                  background: isLast ? 'var(--ceo-gold)' : 'rgba(232,184,74,0.35)',
-                  opacity: isLast ? 1 : 0.7,
-                }}
-                title={`$${p.revenue_collected.toLocaleString()}`}
-              />
-              <span
-                className="font-mono-ceo text-[11px] uppercase tracking-wider text-white/65 capitalize"
-                style={{ color: isLast ? 'var(--ceo-text)' : undefined }}
-              >
-                {p.label}
-              </span>
+      <p className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/55 font-medium mb-1.5">
+        {label}
+      </p>
+      <p
+        className={`font-display font-light text-white tabular-nums leading-none tracking-tight ${
+          small ? 'text-base' : 'text-2xl'
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  )
+}
+
+/**
+ * Evolución basada en % de cambio mes a mes (cliente pidió foco en %,
+ * no en barras de cobrado absoluto). Look minimalista Apple:
+ *  - KPI grande arriba: crecimiento total del semestre (+X%)
+ *  - 3 stats secundarias: mejor mes, peor mes, promedio
+ *  - Lista de meses con % vs el mes anterior + ingreso pequeño
+ */
+function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
+  if (!points.length) return <p className="text-base text-white/65">Sin datos</p>
+
+  // Calcular crecimiento mes a mes
+  const monthlyChanges = points.map((p, i) => {
+    const prev = i > 0 ? points[i - 1].revenue_collected : 0
+    const cur = p.revenue_collected
+    const pct = prev > 0 ? ((cur - prev) / prev) * 100 : (cur > 0 ? 100 : 0)
+    return { ...p, pct, prev }
+  })
+
+  // Excluir el primer mes (no tiene comparación con anterior) para los stats
+  const withDelta = monthlyChanges.slice(1)
+  const totalGrowth = (() => {
+    const first = points[0].revenue_collected
+    const last = points[points.length - 1].revenue_collected
+    if (first === 0) return last > 0 ? 100 : 0
+    return ((last - first) / first) * 100
+  })()
+
+  const avgGrowth = withDelta.length > 0
+    ? withDelta.reduce((s, p) => s + p.pct, 0) / withDelta.length
+    : 0
+
+  const bestMonth = withDelta.length > 0
+    ? withDelta.reduce((max, p) => (p.pct > max.pct ? p : max), withDelta[0])
+    : null
+
+  const worstMonth = withDelta.length > 0
+    ? withDelta.reduce((min, p) => (p.pct < min.pct ? p : min), withDelta[0])
+    : null
+
+  const totalIsPositive = totalGrowth >= 0
+
+  return (
+    <div>
+      {/* HERO: crecimiento total del semestre */}
+      <div className="flex items-start justify-between gap-6 flex-wrap mb-10">
+        <div>
+          <p className="font-mono-ceo text-[11px] uppercase tracking-[0.22em] text-white/65 font-medium">
+            Crecimiento últimos 6 meses
+          </p>
+          <div className="mt-3 flex items-baseline gap-3 flex-wrap">
+            <span
+              className="font-display font-light leading-none tabular-nums tracking-[-0.03em]"
+              style={{
+                fontSize: 'clamp(3rem, 6vw, 5rem)',
+                color: totalIsPositive ? 'var(--ceo-good)' : 'var(--ceo-bad)',
+              }}
+            >
+              {totalIsPositive ? '+' : ''}{totalGrowth.toFixed(0)}%
+            </span>
+            <div className="flex items-center gap-1.5">
+              {totalIsPositive ? (
+                <ArrowUpRight className="w-5 h-5" style={{ color: 'var(--ceo-good)' }} />
+              ) : (
+                <ArrowDownRight className="w-5 h-5" style={{ color: 'var(--ceo-bad)' }} />
+              )}
             </div>
-          )
-        })}
+          </div>
+          <p className="mt-4 text-sm lg:text-base text-white/75 leading-relaxed max-w-md">
+            {totalIsPositive
+              ? `Tu negocio creció ${totalGrowth.toFixed(0)}% desde ${points[0].label}.`
+              : `Tu negocio cayó ${Math.abs(totalGrowth).toFixed(0)}% desde ${points[0].label}.`}
+          </p>
+        </div>
+
+        {/* Stats secundarias: mejor / peor / promedio mes */}
+        <div className="grid grid-cols-3 gap-4 lg:gap-6 w-full lg:w-auto lg:min-w-[420px]">
+          <CompactStat
+            label="Mejor mes"
+            value={bestMonth ? `${bestMonth.pct >= 0 ? '+' : ''}${bestMonth.pct.toFixed(0)}%` : '—'}
+            hint={bestMonth?.label}
+            tone={bestMonth && bestMonth.pct >= 0 ? 'good' : 'bad'}
+          />
+          <CompactStat
+            label="Peor mes"
+            value={worstMonth ? `${worstMonth.pct >= 0 ? '+' : ''}${worstMonth.pct.toFixed(0)}%` : '—'}
+            hint={worstMonth?.label}
+            tone={worstMonth && worstMonth.pct >= 0 ? 'good' : 'bad'}
+          />
+          <CompactStat
+            label="Promedio"
+            value={`${avgGrowth >= 0 ? '+' : ''}${avgGrowth.toFixed(0)}%`}
+            hint="mensual"
+            tone={avgGrowth >= 0 ? 'good' : 'bad'}
+          />
+        </div>
       </div>
-      <div className="grid grid-cols-2 gap-4 pt-6 border-t border-white/[0.06]">
-        <Stat
-          label="Firmados (últ. 6m)"
-          value={points.reduce((s, p) => s + p.contracts_signed, 0).toString()}
-        />
-        <Stat
-          label="Cobrado (últ. 6m)"
-          value={`$${points.reduce((s, p) => s + p.revenue_collected, 0).toLocaleString()}`}
-        />
+
+      {/* Lista mes a mes con % de cambio */}
+      <div className="border-t border-white/[0.06] pt-6">
+        <p className="font-mono-ceo text-[11px] uppercase tracking-[0.22em] text-white/65 font-medium mb-5">
+          Detalle mes a mes
+        </p>
+        <div className="space-y-3">
+          {monthlyChanges.map((m, i) => {
+            // El primer mes no tiene % de cambio
+            const hasDelta = i > 0
+            const positive = m.pct >= 0
+            const barWidth = hasDelta
+              ? Math.min(100, Math.abs(m.pct))
+              : 0
+            return (
+              <div
+                key={m.month}
+                className="grid grid-cols-[80px_1fr_120px] sm:grid-cols-[120px_1fr_160px] gap-3 sm:gap-5 items-center"
+              >
+                {/* Mes */}
+                <span className="font-mono-ceo text-xs sm:text-sm uppercase tracking-wider text-white/85 capitalize font-medium">
+                  {m.label}
+                </span>
+
+                {/* Barra de % desde el centro */}
+                <div className="relative h-7 flex items-center">
+                  {hasDelta ? (
+                    <>
+                      {/* Línea central */}
+                      <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/[0.10]" />
+                      {/* Barra (a la izq si negativo, a la der si positivo) */}
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 h-1.5 rounded-sm transition-all"
+                        style={{
+                          left: positive ? '50%' : `${50 - (barWidth / 2)}%`,
+                          width: `${barWidth / 2}%`,
+                          background: positive ? 'var(--ceo-good)' : 'var(--ceo-bad)',
+                          opacity: 0.85,
+                        }}
+                      />
+                    </>
+                  ) : (
+                    <span className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/40">
+                      mes base
+                    </span>
+                  )}
+                </div>
+
+                {/* % + ingreso */}
+                <div className="text-right">
+                  {hasDelta ? (
+                    <div className="flex items-baseline justify-end gap-1.5">
+                      <span
+                        className="font-display text-lg sm:text-xl tabular-nums font-light tracking-tight"
+                        style={{ color: positive ? 'var(--ceo-good)' : 'var(--ceo-bad)' }}
+                      >
+                        {positive ? '+' : ''}{m.pct.toFixed(0)}%
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="font-display text-base sm:text-lg text-white/65 tabular-nums font-light">
+                      —
+                    </span>
+                  )}
+                  <p className="mt-0.5 font-mono-ceo text-[10px] uppercase tracking-wider text-white/55 tabular-nums">
+                    ${m.revenue_collected.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
+    </div>
+  )
+}
+
+function CompactStat({
+  label, value, hint, tone,
+}: {
+  label: string
+  value: string
+  hint?: string
+  tone?: 'good' | 'bad' | 'neutral'
+}) {
+  const color =
+    tone === 'good' ? 'var(--ceo-good)' :
+    tone === 'bad'  ? 'var(--ceo-bad)'  :
+    'var(--ceo-text)'
+  return (
+    <div>
+      <p className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/65 font-medium mb-1.5">
+        {label}
+      </p>
+      <p
+        className="font-display text-xl lg:text-2xl tabular-nums font-light tracking-tight leading-none"
+        style={{ color }}
+      >
+        {value}
+      </p>
+      {hint && (
+        <p className="mt-1 font-mono-ceo text-[10px] uppercase tracking-wider text-white/55 capitalize">
+          {hint}
+        </p>
+      )}
     </div>
   )
 }
@@ -858,19 +1082,6 @@ function FunnelChart({ stages }: { stages: CeoDashboardData['funnel'] }) {
           </div>
         )
       })}
-    </div>
-  )
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="font-mono-ceo text-[11px] uppercase tracking-wider text-white/65 font-medium">
-        {label}
-      </p>
-      <p className="font-display text-2xl lg:text-3xl text-white mt-2 tabular-nums font-light tracking-tight">
-        {value}
-      </p>
     </div>
   )
 }
