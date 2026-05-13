@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { CommandK } from '@/components/employee/command-k'
 
 type EmployeeType = 'paralegal' | 'senior_consultant' | 'contracts_manager' | null
 
@@ -160,6 +161,10 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
           <SheetContent side="left" className="p-0 w-64"><NavContent /></SheetContent>
         </Sheet>
         <h1 className="font-semibold">UsaLatino Prime</h1>
+      </div>
+      {/* Topbar desktop con buscador global Cmd+K */}
+      <div className="hidden md:flex md:ml-64 sticky top-0 z-30 items-center justify-end gap-2 bg-white/70 backdrop-blur-md border-b border-gray-100 px-6 h-12">
+        <CommandK />
       </div>
       <main className="md:ml-64 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">{children}</main>
     </div>
