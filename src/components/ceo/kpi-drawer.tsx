@@ -7,14 +7,14 @@ import Link from 'next/link'
 interface Props {
   open: boolean
   onClose: () => void
-  /** Etiqueta encima del título — ej "ESTE MES" */
+  /** Etiqueta encima del título — ej "este mes" */
   eyebrow?: string
   title: string
   /** Número grande (count o total) */
   bigNumber: string
   /** Subtítulo descriptivo */
   subtitle?: string
-  /** Color del acento (por defecto dorado UsaLatino) */
+  /** Color del acento. Default dorado suave. */
   accent?: string
   children: React.ReactNode
 }
@@ -26,7 +26,7 @@ export function KpiDrawer({
   title,
   bigNumber,
   subtitle,
-  accent = '#F2A900',
+  accent = '#E8B84A',
   children,
 }: Props) {
   useEffect(() => {
@@ -35,7 +35,6 @@ export function KpiDrawer({
       if (e.key === 'Escape') onClose()
     }
     document.addEventListener('keydown', onKey)
-    // Bloquea el scroll del body mientras el drawer está abierto
     document.body.style.overflow = 'hidden'
     return () => {
       document.removeEventListener('keydown', onKey)
@@ -46,69 +45,55 @@ export function KpiDrawer({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50">
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-50 ceo-scope">
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/65 backdrop-blur-[2px]"
         onClick={onClose}
-        style={{ animation: 'kpi-fade 200ms ease-out' }}
+        style={{ animation: 'kpi-fade 160ms ease-out' }}
       />
 
-      {/* Panel */}
       <div
-        className="absolute right-0 top-0 h-full w-full max-w-[480px] overflow-y-auto border-l border-white/10 bg-[#0a1424]"
-        style={{ animation: 'kpi-slide 280ms cubic-bezier(0.32, 0.72, 0, 1)' }}
+        className="absolute right-0 top-0 h-full w-full max-w-[460px] overflow-y-auto border-l border-white/[0.06] bg-[#0A0A0B]"
+        style={{ animation: 'kpi-slide 220ms cubic-bezier(0.32, 0.72, 0, 1)' }}
       >
-        {/* Glow decorativo arriba */}
-        <div
-          className="pointer-events-none absolute right-0 top-0 h-40 w-full opacity-40"
-          style={{
-            background: `radial-gradient(circle at top right, ${accent}33 0%, transparent 60%)`,
-          }}
-        />
+        {/* Linea dorada superior */}
+        <div className="h-px w-full" style={{ background: accent, opacity: 0.6 }} />
 
-        <div className="relative">
-          {/* Header */}
-          <div className="sticky top-0 z-10 border-b border-white/10 bg-[#0a1424]/95 backdrop-blur-md">
-            <div className="flex items-start justify-between gap-4 px-6 py-5">
-              <div className="min-w-0 flex-1">
-                {eyebrow && (
-                  <p
-                    className="text-[10px] font-bold uppercase tracking-[0.25em]"
-                    style={{ color: accent }}
-                  >
-                    {eyebrow}
-                  </p>
-                )}
-                <h2 className="mt-1 font-display text-2xl font-medium text-white leading-tight">
-                  {title}
-                </h2>
-                <div className="mt-3 flex items-baseline gap-2">
-                  <span
-                    className="font-display text-5xl font-medium leading-none tabular-nums"
-                    style={{ color: accent }}
-                  >
-                    {bigNumber}
-                  </span>
-                </div>
-                {subtitle && (
-                  <p className="mt-2 text-xs text-white/50">{subtitle}</p>
-                )}
+        <div className="sticky top-0 z-10 border-b border-white/[0.06] bg-[#0A0A0B]/95 backdrop-blur-md">
+          <div className="flex items-start justify-between gap-4 px-7 py-6">
+            <div className="min-w-0 flex-1">
+              {eyebrow && (
+                <p
+                  className="font-mono-ceo text-[10px] uppercase tracking-[0.22em] font-medium"
+                  style={{ color: accent }}
+                >
+                  {eyebrow}
+                </p>
+              )}
+              <h2 className="font-display mt-2 text-xl text-white font-medium leading-tight">
+                {title}
+              </h2>
+              <div className="mt-4 font-display text-5xl text-white font-light leading-none tabular-nums tracking-tight">
+                {bigNumber}
               </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"
-                aria-label="Cerrar"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              {subtitle && (
+                <p className="mt-3 text-xs text-white/45 leading-relaxed max-w-[320px]">
+                  {subtitle}
+                </p>
+              )}
             </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.02] text-white/55 transition hover:bg-white/[0.06] hover:text-white"
+              aria-label="Cerrar"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
           </div>
-
-          {/* Content */}
-          <div className="px-6 py-5">{children}</div>
         </div>
+
+        <div className="px-7 py-5">{children}</div>
 
         <style>{`
           @keyframes kpi-slide {
@@ -126,9 +111,8 @@ export function KpiDrawer({
 }
 
 /**
- * Fila reutilizable para listar items dentro del drawer. Mantiene un look
- * consistente: avatar inicial, nombre + sub-info, badge de "días en este
- * estado", monto, y link al perfil del cliente si aplica.
+ * Fila minimal del drawer — sin avatars decorativos, mucho espacio,
+ * tipografía como protagonista. Estilo Linear command palette.
  */
 export function DrawerRow({
   name,
@@ -145,53 +129,35 @@ export function DrawerRow({
   daysTone?: 'good' | 'warn' | 'bad' | 'neutral'
   href?: string
 }) {
-  const initials = name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase()
-
-  const toneStyles = {
-    good: { bg: 'rgba(0, 229, 160, 0.10)', color: '#00E5A0', border: 'rgba(0,229,160,0.25)' },
-    warn: { bg: 'rgba(242, 169, 0, 0.10)', color: '#F2A900', border: 'rgba(242,169,0,0.25)' },
-    bad: { bg: 'rgba(255, 77, 109, 0.10)', color: '#FF8AA0', border: 'rgba(255,77,109,0.25)' },
-    neutral: { bg: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.55)', border: 'rgba(255,255,255,0.1)' },
+  const toneColor = {
+    good: '#4ADE80',
+    warn: '#E8B84A',
+    bad: '#F87171',
+    neutral: 'rgba(255,255,255,0.45)',
   }[daysTone]
 
   const content = (
-    <div className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.02] px-3.5 py-3 transition hover:border-white/15 hover:bg-white/[0.05]">
-      <div
-        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full font-mono-ceo text-[11px] font-bold"
-        style={{
-          background: 'linear-gradient(135deg, rgba(242,169,0,0.18), rgba(242,169,0,0.04))',
-          color: '#F2A900',
-          border: '1px solid rgba(242,169,0,0.25)',
-        }}
-      >
-        {initials || '—'}
-      </div>
+    <div className="group flex items-center gap-4 border-b border-white/[0.04] px-1 py-3.5 transition hover:bg-white/[0.015]">
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-white">{name}</p>
-        {subtitle && <p className="truncate text-[11px] text-white/40">{subtitle}</p>}
-      </div>
-      <div className="flex flex-shrink-0 flex-col items-end gap-1">
-        {amount && (
-          <span className="font-mono-ceo text-sm font-semibold text-white tabular-nums">
-            {amount}
-          </span>
+        <p className="text-sm text-white font-medium leading-tight truncate">{name}</p>
+        {subtitle && (
+          <p className="mt-0.5 font-mono-ceo text-[10px] uppercase tracking-wider text-white/40 truncate">
+            {subtitle}
+          </p>
         )}
+      </div>
+      <div className="flex flex-shrink-0 items-center gap-3">
         {daysLabel && (
           <span
-            className="rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider"
-            style={{
-              background: toneStyles.bg,
-              color: toneStyles.color,
-              borderColor: toneStyles.border,
-            }}
+            className="font-mono-ceo text-[10px] uppercase tracking-wider tabular-nums font-medium"
+            style={{ color: toneColor }}
           >
             {daysLabel}
+          </span>
+        )}
+        {amount && (
+          <span className="font-display text-sm text-white tabular-nums font-medium min-w-[80px] text-right">
+            {amount}
           </span>
         )}
       </div>

@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 
 /**
- * Reloj en vivo HH:MM (sin segundos, menos ruidoso). Punto verde pulsando
- * al lado para señalar "datos en vivo". Se actualiza cada 30 segundos.
+ * Reloj sutil HH:MM con indicador "EN VIVO" tipográfico (sin punto pulsante
+ * ruidoso). Refresca cada 30s. Estilo Linear/Vercel — el dato es el héroe,
+ * no la decoración.
  */
 export function LiveClock() {
   const [now, setNow] = useState<Date | null>(null)
@@ -21,27 +22,26 @@ export function LiveClock() {
 
   const date = now
     ? now.toLocaleDateString('es-US', {
-        weekday: 'long',
+        weekday: 'short',
         day: 'numeric',
-        month: 'long',
+        month: 'short',
       })
     : ''
 
   return (
-    <div className="flex flex-col items-end gap-1">
-      <div className="flex items-center gap-2">
-        <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-        </span>
-        <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-300/90">
-          En vivo
+    <div className="flex flex-col items-end gap-1.5">
+      <div className="flex items-center gap-1.5">
+        <span className="h-1 w-1 rounded-full bg-emerald-400" />
+        <span className="font-mono-ceo text-[10px] uppercase tracking-[0.24em] text-emerald-400/70 font-medium">
+          Live
         </span>
       </div>
-      <div className="font-mono-ceo text-2xl text-white tabular-nums leading-none">
+      <div className="font-mono-ceo text-2xl text-white tabular-nums leading-none font-light tracking-tight">
         {time}
       </div>
-      <div className="text-[11px] text-white/40 capitalize">{date}</div>
+      <div className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/35 capitalize">
+        {date}
+      </div>
     </div>
   )
 }

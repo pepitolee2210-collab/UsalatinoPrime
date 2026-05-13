@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Fraunces, Sora, JetBrains_Mono } from "next/font/google";
+import { Inter, Fraunces, Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -15,12 +15,13 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
-// Sans geométrico moderno para el dashboard CEO (UI labels). Display swap
-// para no bloquear el primer paint del resto de la app.
-const sora = Sora({
+// Bricolage Grotesque: variable sans con optical sizing automático. Usada
+// en el dashboard CEO para los números KPI (look "ops console" tipo Linear
+// / Vercel, sin caer en serif editorial). Awwwards-favorite.
+const bricolage = Bricolage_Grotesque({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
-  variable: "--font-sora",
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-bricolage",
   display: "swap",
 });
 
@@ -66,7 +67,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${fraunces.variable} ${sora.variable} ${jetbrainsMono.variable}`}>
+    <html lang="es" className={`${fraunces.variable} ${bricolage.variable} ${jetbrainsMono.variable}`}>
       <body className={`${inter.className} antialiased`}>
         {children}
         <Toaster richColors position="top-right" />

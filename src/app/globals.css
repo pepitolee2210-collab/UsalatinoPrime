@@ -996,13 +996,38 @@
 }
 
 /* ═══ CEO Dashboard — font utilities ═══ */
+/* Display = Bricolage Grotesque (sans variable con optical sizing) para
+   los números KPI grandes — look "ops console" minimalista tipo Linear /
+   Vercel, sin caer en serif editorial. */
 .font-display {
-  font-family: var(--font-fraunces), Georgia, 'Times New Roman', serif;
-  font-feature-settings: 'ss01' on, 'ss02' on, 'ss03' on;
+  font-family: var(--font-bricolage), 'Helvetica Neue', system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  font-feature-settings: 'tnum' on, 'cv11' on;
 }
 .font-sora {
-  font-family: var(--font-sora), 'Helvetica Neue', sans-serif;
+  /* Alias retro-compatible — apunta también a Bricolage para que cualquier
+     componente legacy que aún use .font-sora se vea consistente. */
+  font-family: var(--font-bricolage), 'Helvetica Neue', system-ui, sans-serif;
 }
 .font-mono-ceo {
   font-family: var(--font-mono-ceo), 'SF Mono', Menlo, monospace;
+  font-feature-settings: 'tnum' on, 'zero' on;
+}
+
+/* CSS variables del CEO dashboard — scope local con .ceo-scope */
+.ceo-scope {
+  --ceo-bg: #0A0A0B;
+  --ceo-surface: #0F0F11;
+  --ceo-surface-2: #131316;
+  --ceo-line: rgba(255, 255, 255, 0.06);
+  --ceo-line-strong: rgba(255, 255, 255, 0.10);
+  --ceo-text: #FAFAFA;
+  --ceo-text-2: rgba(255, 255, 255, 0.55);
+  --ceo-text-3: rgba(255, 255, 255, 0.35);
+  --ceo-gold: #E8B84A;
+  --ceo-gold-soft: rgba(232, 184, 74, 0.10);
+  --ceo-good: #4ADE80;
+  --ceo-good-soft: rgba(74, 222, 128, 0.08);
+  --ceo-bad: #F87171;
+  --ceo-bad-soft: rgba(248, 113, 113, 0.08);
 }

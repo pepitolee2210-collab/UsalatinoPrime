@@ -1,12 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import {
-  TrendingUp, TrendingDown, FileSignature, AlertTriangle,
-  DollarSign, Clock, ArrowRight, Users, Activity, Sparkles,
-  Briefcase, Layers, Zap, CheckCircle2, BadgeAlert, Timer,
-  Target, ChevronRight,
-} from 'lucide-react'
+import { ArrowUpRight, ArrowDownRight, ChevronRight, CheckCircle2 } from 'lucide-react'
 import type { CeoDashboardData } from '@/lib/ceo-dashboard-data'
 import { Sparkline } from '@/components/ceo/sparkline'
 import { LiveClock } from '@/components/ceo/live-clock'
@@ -45,397 +40,357 @@ export function CeoDashboardV2({ data, firstName }: Props) {
   const signedSpark = trend.map((t) => t.contracts_signed)
   const createdSpark = trend.map((t) => t.contracts_created)
 
+  const pendingCount = kpi.contracts_pending_signature_count ?? ops.pending_signature.length
+  const overdueCount = kpi.payments_clients_overdue ?? ops.overdue_clients.length
+
   return (
-    <div className="font-sora relative min-h-screen">
-      {/* Atmósfera: glow dorado + grid sutil */}
-      <div
-        className="pointer-events-none absolute inset-0 -z-10 opacity-60"
-        style={{
-          background: `
-            radial-gradient(circle at 15% 0%, rgba(242,169,0,0.10) 0%, transparent 45%),
-            radial-gradient(circle at 85% 100%, rgba(0,229,160,0.06) 0%, transparent 50%)
-          `,
-        }}
-      />
-      <div
-        className="pointer-events-none absolute inset-0 -z-10 opacity-[0.025]"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
-          backgroundSize: '64px 64px',
-        }}
-      />
+    <div className="ceo-scope font-sora min-h-screen" style={{ background: 'var(--ceo-bg)' }}>
+      <div className="mx-auto w-full max-w-[1240px] px-6 lg:px-10 py-10 lg:py-14">
 
-      {/* HERO ───────────────────────────────────────────────── */}
-      <header
-        className="mb-8 flex items-start justify-between gap-6 flex-wrap"
-        style={{ animation: 'reveal 600ms 50ms ease-out both' }}
-      >
-        <div className="min-w-0">
-          <p
-            className="font-mono-ceo text-[10px] font-bold uppercase tracking-[0.3em] text-amber-300/80"
+        {/* ── HEADER ──────────────────────────────────────────────── */}
+        <header className="flex items-start justify-between gap-6 flex-wrap mb-12">
+          <div>
+            <p className="font-mono-ceo text-[10px] uppercase tracking-[0.24em] text-white/35 font-medium">
+              Centro de mando
+            </p>
+            <h1 className="font-display mt-2 text-4xl lg:text-5xl text-white font-light leading-[1.05] tracking-tight">
+              {firstName}.
+            </h1>
+            <p className="mt-3 max-w-md text-sm text-white/45 leading-relaxed">
+              La operación de UsaLatino Prime en este momento. Cada número aquí es lo que tu
+              equipo está moviendo.
+            </p>
+          </div>
+          <LiveClock />
+        </header>
+
+        {/* ── KPI ROW PRINCIPAL ───────────────────────────────────── */}
+        {/* Look "terminal financiera": 3 columnas separadas por líneas
+            verticales, números tabulares grandes, espaciado generoso. */}
+        <section className="mb-12">
+          <div
+            className="grid grid-cols-1 lg:grid-cols-3 border-y border-white/[0.06]"
+            style={{ gap: '1px', background: 'rgba(255,255,255,0.06)' }}
           >
-            Centro de mando · Sala de control
-          </p>
-          <h1 className="mt-2 font-display text-5xl lg:text-6xl font-medium text-white leading-[1.05] tracking-tight">
-            Hola, <span className="italic text-amber-300/95">{firstName}</span>.
-          </h1>
-          <p className="mt-3 max-w-xl text-sm text-white/55 leading-relaxed">
-            Esta es la operación de UsaLatino Prime ahora mismo. Cada número refleja lo que tu equipo
-            está moviendo —{' '}
-            <span className="text-white/80">úsalo para presionar lo que importa.</span>
-          </p>
-        </div>
-        <LiveClock />
-      </header>
+            <KpiCellHero
+              label="Cobrado este mes"
+              value={`$${kpi.revenue_this_month.toLocaleString()}`}
+              deltaPct={monthDelta}
+              deltaLabel={`vs $${kpi.revenue_last_month.toLocaleString()} mes pasado`}
+              sparkline={revenueSpark}
+              accent="var(--ceo-gold)"
+              footnote={
+                kpi.collection_rate_this_month != null
+                  ? `${kpi.collection_rate_this_month}% del esperado del mes`
+                  : undefined
+              }
+              onClick={() => setOpenDrawer('paid_this_month')}
+            />
+            <KpiCell
+              label="Firmados este mes"
+              value={String(kpi.contracts_signed_this_month ?? 0)}
+              deltaPct={signedDelta}
+              deltaLabel={`${kpi.contracts_signed_last_month ?? 0} mes pasado`}
+              sparkline={signedSpark}
+              accent="var(--ceo-good)"
+              onClick={() => setOpenDrawer('signed_this_month')}
+            />
+            <KpiCell
+              label="Contratos nuevos"
+              value={String(kpi.contracts_new_this_month ?? 0)}
+              deltaPct={null}
+              deltaLabel="creados este mes"
+              sparkline={createdSpark}
+              accent="rgba(255,255,255,0.55)"
+              onClick={() => setOpenDrawer('new_contracts')}
+            />
+          </div>
+        </section>
 
-      {/* KPI HERO — Cobrado este mes (card grande, ocupa 2 cols) ───────── */}
-      <section
-        className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4"
-        style={{ animation: 'reveal 600ms 150ms ease-out both' }}
-      >
-        <KpiHero
-          eyebrow="Cobrado este mes"
-          value={`$${kpi.revenue_this_month.toLocaleString()}`}
-          deltaPct={monthDelta}
-          deltaLabel={`vs $${kpi.revenue_last_month.toLocaleString()} mes pasado`}
-          sparkline={revenueSpark}
-          accent="#F2A900"
-          footnote={
-            kpi.collection_rate_this_month !== null && kpi.collection_rate_this_month !== undefined
-              ? `${kpi.collection_rate_this_month}% del esperado del mes`
-              : undefined
-          }
-          onClick={() => setOpenDrawer('paid_this_month')}
-        />
-        <KpiCard
-          icon={<FileSignature className="w-4 h-4" />}
-          label="Firmados este mes"
-          value={String(kpi.contracts_signed_this_month ?? 0)}
-          deltaPct={signedDelta}
-          deltaLabel={`${kpi.contracts_signed_last_month ?? 0} mes pasado`}
-          sparkline={signedSpark}
-          sparklineColor="#00E5A0"
-          accent="#00E5A0"
-          onClick={() => setOpenDrawer('signed_this_month')}
-        />
-        <KpiCard
-          icon={<Sparkles className="w-4 h-4" />}
-          label="Contratos nuevos del mes"
-          value={String(kpi.contracts_new_this_month ?? 0)}
-          deltaPct={null}
-          deltaLabel="creados este mes"
-          sparkline={createdSpark}
-          sparklineColor="#7DD3FC"
-          accent="#7DD3FC"
-          onClick={() => setOpenDrawer('new_contracts')}
-        />
-      </section>
+        {/* ── ALERT ROW — 4 micro-KPIs en línea ────────────────────── */}
+        <section className="mb-16">
+          <SectionLabel>Métricas operativas</SectionLabel>
+          <div
+            className="grid grid-cols-2 lg:grid-cols-4 border-y border-white/[0.06]"
+            style={{ gap: '1px', background: 'rgba(255,255,255,0.06)' }}
+          >
+            <MicroKpi
+              label="Faltan firmar"
+              value={String(pendingCount)}
+              tone={pendingCount > 5 ? 'bad' : pendingCount > 0 ? 'warn' : 'good'}
+              subline={
+                ops.pending_signature.length > 0
+                  ? `${ops.pending_signature[0].days_waiting}d el más antiguo`
+                  : 'todo al día'
+              }
+              onClick={() => setOpenDrawer('pending_signature')}
+            />
+            <MicroKpi
+              label="Pagos vencidos"
+              value={`$${kpi.revenue_overdue.toLocaleString()}`}
+              tone={kpi.revenue_overdue > 0 ? 'bad' : 'good'}
+              subline={`${overdueCount} clientes`}
+              onClick={() => setOpenDrawer('overdue')}
+            />
+            <MicroKpi
+              label="Pagaron este mes"
+              value={String(kpi.payments_clients_this_month ?? 0)}
+              tone="neutral"
+              subline="clientes únicos"
+              onClick={() => setOpenDrawer('paid_this_month')}
+            />
+            <MicroKpi
+              label="Tiempo firma"
+              value={
+                kpi.avg_days_create_to_sign != null
+                  ? `${kpi.avg_days_create_to_sign}d`
+                  : '—'
+              }
+              tone={
+                (kpi.avg_days_create_to_sign ?? 0) > 14
+                  ? 'bad'
+                  : (kpi.avg_days_create_to_sign ?? 0) > 7
+                    ? 'warn'
+                    : 'good'
+              }
+              subline="promedio crear → firmar"
+            />
+          </div>
+        </section>
 
-      {/* KPI Row — Alertas operativas (Andrium) ───────────────────────── */}
-      <section
-        className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10"
-        style={{ animation: 'reveal 600ms 250ms ease-out both' }}
-      >
-        <AlertKpi
-          icon={<Timer className="w-3.5 h-3.5" />}
-          label="Faltan firmar"
-          value={String(kpi.contracts_pending_signature_count ?? 0)}
-          tone={(kpi.contracts_pending_signature_count ?? 0) > 5 ? 'bad' : 'warn'}
-          subline={
-            ops.pending_signature.length > 0
-              ? `${ops.pending_signature[0].days_waiting}d el más antiguo`
-              : 'todo al día'
-          }
-          onClick={() => setOpenDrawer('pending_signature')}
-        />
-        <AlertKpi
-          icon={<BadgeAlert className="w-3.5 h-3.5" />}
-          label="Pagos vencidos"
-          value={`$${kpi.revenue_overdue.toLocaleString()}`}
-          tone="bad"
-          subline={`${kpi.payments_clients_overdue ?? ops.overdue_clients.length} clientes`}
-          onClick={() => setOpenDrawer('overdue')}
-        />
-        <AlertKpi
-          icon={<Target className="w-3.5 h-3.5" />}
-          label="Pagos del mes"
-          value={String(kpi.payments_clients_this_month ?? 0)}
-          tone="good"
-          subline={`${(kpi.payments_clients_this_month ?? 0)} clientes pagaron`}
-          onClick={() => setOpenDrawer('paid_this_month')}
-        />
-        <AlertKpi
-          icon={<Clock className="w-3.5 h-3.5" />}
-          label="Tiempo firma"
-          value={
-            kpi.avg_days_create_to_sign !== null && kpi.avg_days_create_to_sign !== undefined
-              ? `${kpi.avg_days_create_to_sign}d`
-              : '—'
-          }
-          tone={
-            (kpi.avg_days_create_to_sign ?? 0) > 14
-              ? 'bad'
-              : (kpi.avg_days_create_to_sign ?? 0) > 7
-                ? 'warn'
-                : 'good'
-          }
-          subline="promedio crear → firmar"
-        />
-      </section>
+        {/* ── OPERACIÓN — 3 cards de prioridades ───────────────────── */}
+        <section className="mb-16">
+          <SectionLabel
+            subline="Lo que Andrium está gestionando hoy. Si algo se acumula, ahí está."
+          >
+            Pendientes en curso
+          </SectionLabel>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-px bg-white/[0.06] border-y border-white/[0.06]">
+            <PriorityCard
+              tone="warn"
+              title={`${ops.pending_signature.length} esperando firma`}
+              description={
+                ops.pending_signature.length > 0
+                  ? `${ops.pending_signature[0].client_name} — ${ops.pending_signature[0].days_waiting}d`
+                  : 'Sin pendientes'
+              }
+              cta="Ver lista"
+              onClick={() => setOpenDrawer('pending_signature')}
+              disabled={ops.pending_signature.length === 0}
+            />
+            <PriorityCard
+              tone="bad"
+              title={`$${kpi.revenue_overdue.toLocaleString()} sin cobrar`}
+              description={
+                ops.overdue_clients.length > 0
+                  ? `${ops.overdue_clients.length} clientes — top: $${ops.overdue_clients[0].total_overdue.toLocaleString()}`
+                  : 'Sin pagos vencidos'
+              }
+              cta="Ver clientes"
+              onClick={() => setOpenDrawer('overdue')}
+              disabled={ops.overdue_clients.length === 0}
+            />
+            <PriorityCard
+              tone="info"
+              title={`${ops.upcoming_payments_7d_count} pagos próximos`}
+              description={
+                ops.upcoming_payments_7d_count > 0
+                  ? `$${ops.upcoming_payments_7d_amount.toLocaleString()} esperados en 7 días`
+                  : 'Ningún pago esperado esta semana'
+              }
+              cta="Pendiente cobranza"
+              disabled
+            />
+          </div>
+        </section>
 
-      {/* PERFORMANCE BLOCK — Lo que Andrium gestiona ──────────────────── */}
-      <section
-        className="mb-10"
-        style={{ animation: 'reveal 600ms 350ms ease-out both' }}
-      >
-        <SectionHeader
-          icon={<Briefcase className="w-4 h-4" />}
-          title="Operación · Performance del equipo"
-          subtitle="Lo que Andrium gestiona hoy. Si algo se acumula, presiónalo."
-        />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <ActionCard
-            tone="warn"
-            icon={<FileSignature className="w-4 h-4" />}
-            title={`${ops.pending_signature.length} contratos esperando firma`}
-            description={
-              ops.pending_signature.length > 0
-                ? `El más viejo: ${ops.pending_signature[0].client_name} — ${ops.pending_signature[0].days_waiting} días esperando.`
-                : 'Sin pendientes. ✓'
-            }
-            cta="Ver lista"
-            onClick={() => setOpenDrawer('pending_signature')}
-            disabled={ops.pending_signature.length === 0}
-          />
-          <ActionCard
-            tone="bad"
-            icon={<DollarSign className="w-4 h-4" />}
-            title={`$${kpi.revenue_overdue.toLocaleString()} en pagos vencidos`}
-            description={
-              ops.overdue_clients.length > 0
-                ? `${ops.overdue_clients.length} clientes adeudan. El más grande: $${ops.overdue_clients[0].total_overdue.toLocaleString()}.`
-                : 'Sin pagos vencidos. ✓'
-            }
-            cta="Ver clientes"
-            onClick={() => setOpenDrawer('overdue')}
-            disabled={ops.overdue_clients.length === 0}
-          />
-          <ActionCard
-            tone="info"
-            icon={<Clock className="w-4 h-4" />}
-            title={`${ops.upcoming_payments_7d_count} pagos esperados (7 días)`}
-            description={
-              ops.upcoming_payments_7d_count > 0
-                ? `$${ops.upcoming_payments_7d_amount.toLocaleString()} a cobrar la próxima semana.`
-                : 'Sin pagos esperados esta semana.'
-            }
-            cta="Confirmar cobranza"
-            disabled
-          />
-        </div>
-      </section>
+        {/* ── TENDENCIA + SERVICIOS ─────────────────────────────────── */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-px bg-white/[0.06] border-y border-white/[0.06] mb-16">
+          <div className="lg:col-span-7 p-7 lg:p-8" style={{ background: 'var(--ceo-bg)' }}>
+            <SectionLabel inline subline="Cobrado mensual y firmas">
+              Tendencia · 6 meses
+            </SectionLabel>
+            <TrendChart points={trend} />
+          </div>
+          <div className="lg:col-span-5 p-7 lg:p-8" style={{ background: 'var(--ceo-bg)' }}>
+            <SectionLabel inline subline="Ingresos firmados, top 6">
+              Por servicio
+            </SectionLabel>
+            <ServicesBreakdown services={services.slice(0, 6)} />
+          </div>
+        </section>
 
-      {/* Tendencia y Servicios ────────────────────────────────────────── */}
-      <section
-        className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-10"
-        style={{ animation: 'reveal 600ms 450ms ease-out both' }}
-      >
-        <Panel className="lg:col-span-3">
-          <SectionHeader
-            icon={<Activity className="w-4 h-4" />}
-            title="Tendencia · últimos 6 meses"
-            subtitle="Contratos firmados, creados y cobrado mensual."
-            inline
-          />
-          <TrendChart points={trend} />
-        </Panel>
-        <Panel className="lg:col-span-2">
-          <SectionHeader
-            icon={<Layers className="w-4 h-4" />}
-            title="Por servicio"
-            subtitle="Ingresos firmados, top 6."
-            inline
-          />
-          <ServicesBreakdown services={services.slice(0, 6)} />
-        </Panel>
-      </section>
+        {/* ── FUNNEL ──────────────────────────────────────────────── */}
+        <section className="mb-16">
+          <SectionLabel subline="Desde la primera llamada IA hasta el contrato firmado">
+            Funnel del cliente
+          </SectionLabel>
+          <div
+            className="border-y border-white/[0.06] py-7 lg:py-8"
+            style={{ background: 'var(--ceo-bg)' }}
+          >
+            <FunnelChart stages={data.funnel} />
+          </div>
+        </section>
 
-      {/* Funnel ──────────────────────────────────────────────────────── */}
-      <section
-        className="mb-10"
-        style={{ animation: 'reveal 600ms 550ms ease-out both' }}
-      >
-        <Panel>
-          <SectionHeader
-            icon={<Zap className="w-4 h-4" />}
-            title="Funnel del cliente"
-            subtitle="Desde la primera llamada IA hasta el contrato firmado."
-            inline
-          />
-          <FunnelChart stages={data.funnel} />
-        </Panel>
-      </section>
+        <p className="font-mono-ceo text-[10px] uppercase tracking-[0.18em] text-white/25 text-right">
+          última actualización ·{' '}
+          {new Date(data.generated_at).toLocaleTimeString('es-US', { hour: '2-digit', minute: '2-digit' })}
+        </p>
 
-      <p className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/30 text-right">
-        Última actualización: {new Date(data.generated_at).toLocaleTimeString('es-US', { hour: '2-digit', minute: '2-digit' })}
-      </p>
-
-      {/* DRAWERS ─────────────────────────────────────────────────────── */}
-      <KpiDrawer
-        open={openDrawer === 'pending_signature'}
-        onClose={() => setOpenDrawer(null)}
-        eyebrow="Operación · pendiente"
-        title="Contratos esperando firma"
-        bigNumber={String(ops.pending_signature.length)}
-        subtitle="Top 10 por antigüedad. Andrium debería estar haciendo seguimiento."
-        accent="#F2A900"
-      >
-        <div className="space-y-2">
+        {/* ── DRAWERS ──────────────────────────────────────────────── */}
+        <KpiDrawer
+          open={openDrawer === 'pending_signature'}
+          onClose={() => setOpenDrawer(null)}
+          eyebrow="Operación · pendiente"
+          title="Esperando firma"
+          bigNumber={String(ops.pending_signature.length)}
+          subtitle="Top 10 por antigüedad. Andrium debería estar haciendo seguimiento."
+          accent="var(--ceo-gold)"
+        >
           {ops.pending_signature.length === 0 ? (
-            <EmptyState text="Sin pendientes — todo firmado." />
+            <EmptyState text="Sin pendientes. Todo firmado." />
           ) : (
-            ops.pending_signature.map((c) => (
-              <DrawerRow
-                key={c.id}
-                name={c.client_name}
-                subtitle={`${humanizeService(c.service_name)} · creado hace ${c.days_waiting}d`}
-                amount={`$${c.total_price.toLocaleString()}`}
-                daysLabel={`${c.days_waiting}d`}
-                daysTone={c.days_waiting > 7 ? 'bad' : c.days_waiting > 3 ? 'warn' : 'good'}
-              />
-            ))
-          )}
-        </div>
-      </KpiDrawer>
-
-      <KpiDrawer
-        open={openDrawer === 'overdue'}
-        onClose={() => setOpenDrawer(null)}
-        eyebrow="Cobranza · atrasado"
-        title="Clientes con pagos vencidos"
-        bigNumber={`$${kpi.revenue_overdue.toLocaleString()}`}
-        subtitle={`${ops.overdue_clients.length} clientes. Andrium debería estar cobrando.`}
-        accent="#FF8AA0"
-      >
-        <div className="space-y-2">
-          {ops.overdue_clients.length === 0 ? (
-            <EmptyState text="Sin pagos vencidos. ✓" />
-          ) : (
-            ops.overdue_clients.map((c) => {
-              const daysOver = Math.floor(
-                (Date.now() - new Date(c.oldest_due_date).getTime()) / 86400_000,
-              )
-              return (
+            <div>
+              {ops.pending_signature.map((c) => (
                 <DrawerRow
-                  key={c.client_id}
-                  name={c.name}
-                  subtitle={`${c.installments_overdue} cuota(s) · ${c.phone ?? 'sin teléfono'}`}
-                  amount={`$${c.total_overdue.toLocaleString()}`}
-                  daysLabel={`${daysOver}d`}
-                  daysTone={daysOver > 30 ? 'bad' : daysOver > 14 ? 'warn' : 'neutral'}
+                  key={c.id}
+                  name={c.client_name}
+                  subtitle={`${humanizeService(c.service_name)} · creado hace ${c.days_waiting}d`}
+                  amount={`$${c.total_price.toLocaleString()}`}
+                  daysLabel={`${c.days_waiting}d`}
+                  daysTone={c.days_waiting > 7 ? 'bad' : c.days_waiting > 3 ? 'warn' : 'good'}
                 />
-              )
-            })
+              ))}
+            </div>
           )}
-        </div>
-      </KpiDrawer>
+        </KpiDrawer>
 
-      <KpiDrawer
-        open={openDrawer === 'signed_this_month'}
-        onClose={() => setOpenDrawer(null)}
-        eyebrow="Este mes · firmados"
-        title="Contratos firmados este mes"
-        bigNumber={String(lists?.signed_this_month?.length ?? 0)}
-        subtitle="Cada firma es venta cerrada — el trabajo de Andrium."
-        accent="#00E5A0"
-      >
-        <div className="space-y-2">
+        <KpiDrawer
+          open={openDrawer === 'overdue'}
+          onClose={() => setOpenDrawer(null)}
+          eyebrow="Cobranza · atrasado"
+          title="Pagos vencidos"
+          bigNumber={`$${kpi.revenue_overdue.toLocaleString()}`}
+          subtitle={`${ops.overdue_clients.length} clientes con cuotas vencidas.`}
+          accent="var(--ceo-bad)"
+        >
+          {ops.overdue_clients.length === 0 ? (
+            <EmptyState text="Sin pagos vencidos." />
+          ) : (
+            <div>
+              {ops.overdue_clients.map((c) => {
+                const daysOver = Math.floor(
+                  (Date.now() - new Date(c.oldest_due_date).getTime()) / 86400_000,
+                )
+                return (
+                  <DrawerRow
+                    key={c.client_id}
+                    name={c.name}
+                    subtitle={`${c.installments_overdue} cuota(s) · ${c.phone ?? 'sin teléfono'}`}
+                    amount={`$${c.total_overdue.toLocaleString()}`}
+                    daysLabel={`${daysOver}d`}
+                    daysTone={daysOver > 30 ? 'bad' : daysOver > 14 ? 'warn' : 'neutral'}
+                  />
+                )
+              })}
+            </div>
+          )}
+        </KpiDrawer>
+
+        <KpiDrawer
+          open={openDrawer === 'signed_this_month'}
+          onClose={() => setOpenDrawer(null)}
+          eyebrow="Este mes · firmados"
+          title="Contratos firmados"
+          bigNumber={String(lists?.signed_this_month?.length ?? 0)}
+          subtitle="Cada firma es venta cerrada."
+          accent="var(--ceo-good)"
+        >
           {(lists?.signed_this_month ?? []).length === 0 ? (
             <EmptyState text="Ninguno firmado este mes todavía." />
           ) : (
-            lists!.signed_this_month.map((c) => (
-              <DrawerRow
-                key={c.id}
-                name={c.client_name}
-                subtitle={`${humanizeService(c.service_name)} · ${formatDate(c.signed_at)}`}
-                amount={`$${c.total_price.toLocaleString()}`}
-              />
-            ))
+            <div>
+              {lists!.signed_this_month.map((c) => (
+                <DrawerRow
+                  key={c.id}
+                  name={c.client_name}
+                  subtitle={`${humanizeService(c.service_name)} · ${formatDate(c.signed_at)}`}
+                  amount={`$${c.total_price.toLocaleString()}`}
+                />
+              ))}
+            </div>
           )}
-        </div>
-      </KpiDrawer>
+        </KpiDrawer>
 
-      <KpiDrawer
-        open={openDrawer === 'new_contracts'}
-        onClose={() => setOpenDrawer(null)}
-        eyebrow="Este mes · creados"
-        title="Contratos nuevos del mes"
-        bigNumber={String(lists?.new_contracts_this_month?.length ?? 0)}
-        subtitle="Volumen de entrada. Si crecen pero no firman, hay un cuello de botella."
-        accent="#7DD3FC"
-      >
-        <div className="space-y-2">
+        <KpiDrawer
+          open={openDrawer === 'new_contracts'}
+          onClose={() => setOpenDrawer(null)}
+          eyebrow="Este mes · creados"
+          title="Contratos nuevos"
+          bigNumber={String(lists?.new_contracts_this_month?.length ?? 0)}
+          subtitle="Volumen de entrada del mes."
+          accent="rgba(255,255,255,0.55)"
+        >
           {(lists?.new_contracts_this_month ?? []).length === 0 ? (
             <EmptyState text="Ningún contrato nuevo este mes." />
           ) : (
-            lists!.new_contracts_this_month.map((c) => (
-              <DrawerRow
-                key={c.id}
-                name={c.client_name}
-                subtitle={`${humanizeService(c.service_name)} · ${c.status} · hace ${c.days_old}d`}
-                amount={`$${c.total_price.toLocaleString()}`}
-                daysLabel={c.status}
-                daysTone={c.status === 'firmado' ? 'good' : c.status === 'borrador' ? 'warn' : 'neutral'}
-              />
-            ))
+            <div>
+              {lists!.new_contracts_this_month.map((c) => (
+                <DrawerRow
+                  key={c.id}
+                  name={c.client_name}
+                  subtitle={`${humanizeService(c.service_name)} · ${c.status} · hace ${c.days_old}d`}
+                  amount={`$${c.total_price.toLocaleString()}`}
+                  daysLabel={c.status}
+                  daysTone={c.status === 'firmado' ? 'good' : c.status === 'borrador' ? 'warn' : 'neutral'}
+                />
+              ))}
+            </div>
           )}
-        </div>
-      </KpiDrawer>
+        </KpiDrawer>
 
-      <KpiDrawer
-        open={openDrawer === 'paid_this_month'}
-        onClose={() => setOpenDrawer(null)}
-        eyebrow="Este mes · cobrado"
-        title="Pagos recibidos este mes"
-        bigNumber={`$${kpi.revenue_this_month.toLocaleString()}`}
-        subtitle={`${lists?.paid_this_month?.length ?? 0} pagos de ${kpi.payments_clients_this_month ?? 0} clientes únicos.`}
-        accent="#F2A900"
-      >
-        <div className="space-y-2">
+        <KpiDrawer
+          open={openDrawer === 'paid_this_month'}
+          onClose={() => setOpenDrawer(null)}
+          eyebrow="Este mes · cobrado"
+          title="Pagos recibidos"
+          bigNumber={`$${kpi.revenue_this_month.toLocaleString()}`}
+          subtitle={`${lists?.paid_this_month?.length ?? 0} pagos · ${kpi.payments_clients_this_month ?? 0} clientes únicos.`}
+          accent="var(--ceo-gold)"
+        >
           {(lists?.paid_this_month ?? []).length === 0 ? (
             <EmptyState text="Sin pagos cobrados este mes." />
           ) : (
-            lists!.paid_this_month.map((p) => (
-              <DrawerRow
-                key={p.payment_id || `${p.client_id}-${p.paid_at}`}
-                name={p.client_name}
-                subtitle={`Pagó el ${formatDate(p.paid_at)}`}
-                amount={`$${p.amount.toLocaleString()}`}
-              />
-            ))
+            <div>
+              {lists!.paid_this_month.map((p) => (
+                <DrawerRow
+                  key={p.payment_id || `${p.client_id}-${p.paid_at}`}
+                  name={p.client_name}
+                  subtitle={`Pagó el ${formatDate(p.paid_at)}`}
+                  amount={`$${p.amount.toLocaleString()}`}
+                />
+              ))}
+            </div>
           )}
-        </div>
-      </KpiDrawer>
-
-      <style>{`
-        @keyframes reveal {
-          from { opacity: 0; transform: translateY(8px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+        </KpiDrawer>
+      </div>
     </div>
   )
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// Sub-componentes visuales
+// Sub-componentes
 // ══════════════════════════════════════════════════════════════════════
 
-function KpiHero({
-  eyebrow, value, deltaPct, deltaLabel, sparkline, accent, footnote, onClick,
+/**
+ * Cell del KPI principal — fondo plano, sin sombras, hover sutil con
+ * borde superior dorado.
+ */
+function KpiCellHero({
+  label, value, deltaPct, deltaLabel, sparkline, accent, footnote, onClick,
 }: {
-  eyebrow: string
+  label: string
   value: string
   deltaPct: number
   deltaLabel: string
@@ -449,62 +404,52 @@ function KpiHero({
     <button
       type="button"
       onClick={onClick}
-      className="group relative lg:col-span-1 text-left rounded-2xl border border-white/[0.08] bg-white/[0.025] p-6 transition-all hover:border-amber-400/30 hover:bg-white/[0.04] overflow-hidden"
-      style={{
-        boxShadow: '0 0 0 1px rgba(242,169,0,0.05) inset',
-      }}
+      className="group relative text-left px-7 py-7 lg:py-8 transition-colors"
+      style={{ background: 'var(--ceo-bg)' }}
     >
-      <div
-        className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full opacity-50 transition-opacity group-hover:opacity-90"
-        style={{ background: `radial-gradient(circle, ${accent}33 0%, transparent 65%)` }}
+      {/* Línea dorada en hover (top accent) */}
+      <span
+        className="absolute top-0 left-0 right-0 h-px opacity-0 transition-opacity group-hover:opacity-100"
+        style={{ background: accent }}
       />
-      <div className="relative">
-        <p className="font-mono-ceo text-[10px] uppercase tracking-[0.2em] text-white/45 font-bold">
-          {eyebrow}
-        </p>
-        <p
-          className="font-display font-medium mt-2 leading-none tabular-nums tracking-tight"
-          style={{ fontSize: '3.5rem', color: '#F5F7FA' }}
-        >
+      <p className="font-mono-ceo text-[10px] uppercase tracking-[0.22em] text-white/40 font-medium">
+        {label}
+      </p>
+      <div className="mt-5 flex items-end justify-between gap-4">
+        <p className="font-display text-5xl text-white font-light leading-none tabular-nums tracking-tight">
           {value}
         </p>
-        <div className="mt-3 flex items-center gap-2">
-          <span
-            className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider"
-            style={{
-              borderColor: positive ? 'rgba(0,229,160,0.3)' : 'rgba(255,77,109,0.3)',
-              background: positive ? 'rgba(0,229,160,0.08)' : 'rgba(255,77,109,0.08)',
-              color: positive ? '#00E5A0' : '#FF8AA0',
-            }}
-          >
-            {positive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-            {Math.abs(deltaPct).toFixed(0)}%
-          </span>
-          <span className="text-[11px] text-white/40">{deltaLabel}</span>
-        </div>
-        <div className="mt-4">
-          <Sparkline data={sparkline} width={260} height={48} stroke={accent} fill={`${accent}20`} />
-        </div>
-        {footnote && (
-          <p className="mt-3 font-mono-ceo text-[10px] uppercase tracking-wider text-white/50">
-            {footnote}
-          </p>
-        )}
+        <Sparkline data={sparkline} width={120} height={32} stroke={accent} />
       </div>
+      <div className="mt-4 flex items-center gap-2">
+        <span
+          className="inline-flex items-center gap-1 font-mono-ceo text-[10px] uppercase tracking-wider font-medium"
+          style={{ color: positive ? 'var(--ceo-good)' : 'var(--ceo-bad)' }}
+        >
+          {positive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+          {Math.abs(deltaPct).toFixed(0)}%
+        </span>
+        <span className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/35">
+          {deltaLabel}
+        </span>
+      </div>
+      {footnote && (
+        <p className="mt-3 font-mono-ceo text-[10px] uppercase tracking-wider text-white/35">
+          {footnote}
+        </p>
+      )}
     </button>
   )
 }
 
-function KpiCard({
-  icon, label, value, deltaPct, deltaLabel, sparkline, sparklineColor, accent, onClick,
+function KpiCell({
+  label, value, deltaPct, deltaLabel, sparkline, accent, onClick,
 }: {
-  icon: React.ReactNode
   label: string
   value: string
   deltaPct: number | null
   deltaLabel: string
   sparkline: number[]
-  sparklineColor: string
   accent: string
   onClick?: () => void
 }) {
@@ -513,83 +458,84 @@ function KpiCard({
     <button
       type="button"
       onClick={onClick}
-      className="group relative text-left rounded-2xl border border-white/[0.08] bg-white/[0.025] p-5 transition-all hover:border-white/20 hover:bg-white/[0.045] overflow-hidden"
+      className="group relative text-left px-7 py-7 lg:py-8 transition-colors"
+      style={{ background: 'var(--ceo-bg)' }}
     >
-      <div
-        className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full opacity-30 transition-opacity group-hover:opacity-60"
-        style={{ background: `radial-gradient(circle, ${accent}30 0%, transparent 70%)` }}
+      <span
+        className="absolute top-0 left-0 right-0 h-px opacity-0 transition-opacity group-hover:opacity-100"
+        style={{ background: accent }}
       />
-      <div className="relative">
-        <div className="flex items-center justify-between mb-3">
-          <span
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg"
-            style={{ background: `${accent}15`, color: accent, border: `1px solid ${accent}30` }}
-          >
-            {icon}
-          </span>
-          <ChevronRight className="w-4 h-4 text-white/20 transition-transform group-hover:translate-x-0.5 group-hover:text-white/50" />
-        </div>
-        <p className="font-mono-ceo text-[10px] uppercase tracking-[0.18em] text-white/45 font-bold">
+      <div className="flex items-start justify-between gap-3">
+        <p className="font-mono-ceo text-[10px] uppercase tracking-[0.22em] text-white/40 font-medium">
           {label}
         </p>
-        <p
-          className="font-display font-medium mt-1 leading-none tabular-nums tracking-tight"
-          style={{ fontSize: '2.5rem', color: '#F5F7FA' }}
-        >
+        <ChevronRight className="w-3.5 h-3.5 text-white/15 transition-all group-hover:translate-x-0.5 group-hover:text-white/45" />
+      </div>
+      <div className="mt-5 flex items-end justify-between gap-4">
+        <p className="font-display text-5xl text-white font-light leading-none tabular-nums tracking-tight">
           {value}
         </p>
-        <div className="mt-2 flex items-center gap-1.5 text-[11px]">
-          {deltaPct !== null && (
-            <span
-              className="inline-flex items-center gap-1"
-              style={{ color: positive ? '#00E5A0' : '#FF8AA0' }}
-            >
-              {positive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-              {Math.abs(deltaPct).toFixed(0)}%
-            </span>
-          )}
-          <span className="text-white/40">{deltaLabel}</span>
-        </div>
-        <div className="mt-3 -mx-1">
-          <Sparkline data={sparkline} width={160} height={32} stroke={sparklineColor} fill={`${sparklineColor}15`} showDots={false} />
-        </div>
+        <Sparkline data={sparkline} width={90} height={28} stroke={accent} />
+      </div>
+      <div className="mt-4 flex items-center gap-2">
+        {deltaPct !== null && (
+          <span
+            className="inline-flex items-center gap-1 font-mono-ceo text-[10px] uppercase tracking-wider font-medium"
+            style={{ color: positive ? 'var(--ceo-good)' : 'var(--ceo-bad)' }}
+          >
+            {positive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+            {Math.abs(deltaPct).toFixed(0)}%
+          </span>
+        )}
+        <span className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/35">
+          {deltaLabel}
+        </span>
       </div>
     </button>
   )
 }
 
-function AlertKpi({
-  icon, label, value, tone, subline, onClick,
+function MicroKpi({
+  label, value, tone, subline, onClick,
 }: {
-  icon: React.ReactNode
   label: string
   value: string
-  tone: 'good' | 'warn' | 'bad'
+  tone: 'good' | 'warn' | 'bad' | 'neutral'
   subline?: string
   onClick?: () => void
 }) {
-  const tones = {
-    good: { color: '#00E5A0', bg: 'rgba(0,229,160,0.06)', border: 'rgba(0,229,160,0.2)' },
-    warn: { color: '#F2A900', bg: 'rgba(242,169,0,0.06)', border: 'rgba(242,169,0,0.2)' },
-    bad: { color: '#FF8AA0', bg: 'rgba(255,77,109,0.06)', border: 'rgba(255,77,109,0.25)' },
+  const toneColor = {
+    good: 'var(--ceo-good)',
+    warn: 'var(--ceo-gold)',
+    bad: 'var(--ceo-bad)',
+    neutral: 'var(--ceo-text-2)',
   }[tone]
+
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={!onClick}
-      className="text-left rounded-xl border p-4 transition disabled:opacity-100 enabled:hover:translate-y-[-1px] enabled:hover:shadow-lg"
-      style={{ borderColor: tones.border, background: tones.bg, color: tones.color }}
+      className="group relative text-left px-6 py-6 transition-colors disabled:cursor-default enabled:hover:bg-white/[0.012]"
+      style={{ background: 'var(--ceo-bg)' }}
     >
-      <div className="flex items-center gap-1.5 mb-2">
-        <span className="opacity-70">{icon}</span>
-        <p className="text-[10px] font-bold uppercase tracking-[0.15em] opacity-90">{label}</p>
-      </div>
-      <p className="font-display font-medium leading-none tabular-nums" style={{ fontSize: '2rem' }}>
+      {onClick && (
+        <span
+          className="absolute top-0 left-0 right-0 h-px opacity-0 transition-opacity group-hover:opacity-100"
+          style={{ background: toneColor }}
+        />
+      )}
+      <p className="font-mono-ceo text-[10px] uppercase tracking-[0.22em] text-white/40 font-medium">
+        {label}
+      </p>
+      <p
+        className="font-display mt-4 text-3xl font-light leading-none tabular-nums tracking-tight"
+        style={{ color: tone === 'neutral' ? 'var(--ceo-text)' : toneColor }}
+      >
         {value}
       </p>
       {subline && (
-        <p className="mt-2 font-mono-ceo text-[10px] uppercase tracking-wider opacity-60">
+        <p className="mt-3 font-mono-ceo text-[10px] uppercase tracking-wider text-white/35">
           {subline}
         </p>
       )}
@@ -597,114 +543,108 @@ function AlertKpi({
   )
 }
 
-function ActionCard({
-  icon, title, description, cta, tone, onClick, disabled,
+function PriorityCard({
+  tone, title, description, cta, onClick, disabled,
 }: {
-  icon: React.ReactNode
+  tone: 'warn' | 'bad' | 'good' | 'info'
   title: string
   description: string
   cta: string
-  tone: 'warn' | 'bad' | 'good' | 'info'
   onClick?: () => void
   disabled?: boolean
 }) {
-  const tones = {
-    warn: { dot: '#F2A900', border: 'rgba(242,169,0,0.18)' },
-    bad: { dot: '#FF8AA0', border: 'rgba(255,77,109,0.22)' },
-    good: { dot: '#00E5A0', border: 'rgba(0,229,160,0.2)' },
-    info: { dot: '#7DD3FC', border: 'rgba(125,211,252,0.18)' },
+  const accent = {
+    warn: 'var(--ceo-gold)',
+    bad: 'var(--ceo-bad)',
+    good: 'var(--ceo-good)',
+    info: 'rgba(255,255,255,0.55)',
   }[tone]
+
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="group relative text-left rounded-2xl border p-5 transition disabled:cursor-default disabled:opacity-60 enabled:hover:translate-y-[-1px] enabled:hover:shadow-xl bg-white/[0.025]"
-      style={{ borderColor: tones.border }}
+      className="group relative text-left px-7 py-7 transition-colors disabled:cursor-default disabled:opacity-60 enabled:hover:bg-white/[0.012]"
+      style={{ background: 'var(--ceo-bg)' }}
     >
-      <div className="flex items-center gap-2 mb-3">
-        <span className="relative flex h-2 w-2">
-          {!disabled && (
-            <span
-              className="absolute inline-flex h-full w-full rounded-full opacity-50 animate-ping"
-              style={{ background: tones.dot }}
-            />
-          )}
-          <span
-            className="relative inline-flex h-2 w-2 rounded-full"
-            style={{ background: tones.dot }}
-          />
-        </span>
-        <span className="text-white/40">{icon}</span>
+      {!disabled && (
+        <span
+          className="absolute top-0 left-0 right-0 h-px opacity-0 transition-opacity group-hover:opacity-100"
+          style={{ background: accent }}
+        />
+      )}
+      <div className="flex items-start gap-3 mb-1">
+        <span
+          className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full"
+          style={{ background: accent }}
+        />
+        <h4 className="font-display text-lg text-white font-medium leading-tight tracking-tight">
+          {title}
+        </h4>
       </div>
-      <h4 className="font-display text-lg text-white font-medium leading-tight tracking-tight">
-        {title}
-      </h4>
-      <p className="mt-2 text-xs text-white/55 leading-relaxed">{description}</p>
-      <div className="mt-4 flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-amber-300/80">
+      <p className="mt-3 text-xs text-white/45 leading-relaxed pl-[18px]">{description}</p>
+      <div
+        className="mt-5 flex items-center gap-1.5 pl-[18px] font-mono-ceo text-[10px] uppercase tracking-[0.18em] font-medium transition-all"
+        style={{ color: disabled ? 'rgba(255,255,255,0.25)' : accent }}
+      >
         {cta}
-        <ArrowRight className="w-3 h-3 transition-transform group-enabled:group-hover:translate-x-0.5" />
+        {!disabled && (
+          <ChevronRight className="w-3 h-3 transition-transform group-enabled:group-hover:translate-x-0.5" />
+        )}
       </div>
     </button>
   )
 }
 
-function Panel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div
-      className={`rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 ${className}`}
-    >
-      {children}
-    </div>
-  )
-}
-
-function SectionHeader({
-  icon, title, subtitle, inline,
+function SectionLabel({
+  children, subline, inline,
 }: {
-  icon: React.ReactNode
-  title: string
-  subtitle?: string
+  children: React.ReactNode
+  subline?: string
   inline?: boolean
 }) {
   return (
-    <div className={`${inline ? 'mb-4' : 'mb-5'}`}>
-      <div className="flex items-center gap-2">
-        <span className="text-amber-300/80">{icon}</span>
-        <h3 className="font-display text-base text-white font-medium tracking-tight">{title}</h3>
-      </div>
-      {subtitle && <p className="text-[11px] text-white/45 mt-1">{subtitle}</p>}
+    <div className={inline ? 'mb-5' : 'mb-5'}>
+      <p className="font-mono-ceo text-[10px] uppercase tracking-[0.24em] text-white/40 font-medium">
+        {children}
+      </p>
+      {subline && <p className="mt-1.5 text-xs text-white/35">{subline}</p>}
     </div>
   )
 }
 
 function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
-  if (!points.length) return <p className="text-xs text-white/40">Sin datos</p>
+  if (!points.length) return <p className="text-xs text-white/35">Sin datos</p>
   const maxRev = Math.max(...points.map((p) => p.revenue_collected), 1)
   return (
     <div>
-      <div className="grid grid-cols-6 gap-2 h-32 items-end">
+      <div className="grid grid-cols-6 gap-3 h-36 items-end mb-3">
         {points.map((p) => {
           const height = (p.revenue_collected / maxRev) * 100
+          const isLast = p === points[points.length - 1]
           return (
-            <div key={p.month} className="flex flex-col items-center gap-1.5">
+            <div key={p.month} className="flex flex-col items-center gap-2 group">
               <div
-                className="w-full rounded-t-md transition-all hover:opacity-100"
+                className="w-full transition-all"
                 style={{
                   height: `${Math.max(2, height)}%`,
-                  background: 'linear-gradient(to top, rgba(242,169,0,0.7), rgba(242,169,0,0.25))',
-                  opacity: 0.85,
+                  background: isLast ? 'var(--ceo-gold)' : 'rgba(232,184,74,0.35)',
+                  opacity: isLast ? 1 : 0.7,
                 }}
                 title={`$${p.revenue_collected.toLocaleString()}`}
               />
-              <span className="font-mono-ceo text-[9px] uppercase text-white/45 tracking-wide">
+              <span
+                className="font-mono-ceo text-[9px] uppercase tracking-wider text-white/40 capitalize"
+                style={{ color: isLast ? 'var(--ceo-text)' : undefined }}
+              >
                 {p.label}
               </span>
             </div>
           )
         })}
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+      <div className="grid grid-cols-2 gap-3 pt-5 border-t border-white/[0.06]">
         <Stat
           label="Firmados (últ. 6m)"
           value={points.reduce((s, p) => s + p.contracts_signed, 0).toString()}
@@ -720,27 +660,30 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
 
 function ServicesBreakdown({ services }: { services: CeoDashboardData['services'] }) {
   const visible = services.filter((s) => s.contracts > 0 || s.cases > 0)
-  if (!visible.length) return <p className="text-xs text-white/40">Sin servicios con actividad</p>
+  if (!visible.length) return <p className="text-xs text-white/35">Sin servicios con actividad</p>
   const maxRev = Math.max(...visible.map((s) => s.revenue_signed), 1)
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
       {visible.map((s) => {
         const pct = (s.revenue_signed / maxRev) * 100
         return (
           <div key={s.slug}>
-            <div className="flex items-center justify-between text-xs mb-1">
-              <span className="text-white font-medium truncate flex-1 mr-2">{s.name}</span>
-              <span className="font-mono-ceo text-white/70 tabular-nums flex-shrink-0">
+            <div className="flex items-center justify-between text-xs mb-1.5">
+              <span className="text-white/85 font-medium truncate flex-1 mr-2 leading-tight">
+                {s.name}
+              </span>
+              <span className="font-display text-white tabular-nums flex-shrink-0">
                 ${s.revenue_signed.toLocaleString()}
               </span>
             </div>
-            <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
+            <div className="h-px bg-white/[0.05] relative">
               <div
-                className="h-full rounded-full"
+                className="absolute top-0 left-0 h-px"
                 style={{
                   width: `${Math.max(3, pct)}%`,
-                  background: 'linear-gradient(90deg, #F2A900, #FFD56B)',
+                  background: 'var(--ceo-gold)',
+                  opacity: 0.85,
                 }}
               />
             </div>
@@ -754,36 +697,43 @@ function ServicesBreakdown({ services }: { services: CeoDashboardData['services'
 function FunnelChart({ stages }: { stages: CeoDashboardData['funnel'] }) {
   const max = Math.max(...stages.map((s) => s.count), 1)
   return (
-    <div className="space-y-2">
+    <div className="space-y-3.5 px-7 lg:px-8">
       {stages.map((stage, i) => {
         const pct = (stage.count / max) * 100
         const prev = i > 0 ? stages[i - 1] : null
         const conversion = prev && prev.count > 0 ? (stage.count / prev.count) * 100 : null
         return (
           <div key={stage.key}>
-            <div className="flex items-center justify-between mb-1 text-xs">
+            <div className="flex items-center justify-between mb-1.5 text-xs">
               <span className="text-white font-medium">{stage.label}</span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 {conversion !== null && (
                   <span
-                    className="font-mono-ceo text-[10px]"
+                    className="font-mono-ceo text-[10px] uppercase tracking-wider"
                     style={{
                       color:
-                        conversion >= 50 ? '#00E5A0' : conversion >= 20 ? '#F2A900' : '#FF8AA0',
+                        conversion >= 50
+                          ? 'var(--ceo-good)'
+                          : conversion >= 20
+                            ? 'var(--ceo-gold)'
+                            : 'var(--ceo-bad)',
                     }}
                   >
                     {conversion.toFixed(0)}%
                   </span>
                 )}
-                <span className="font-display text-white tabular-nums">{stage.count}</span>
+                <span className="font-display text-base text-white tabular-nums w-12 text-right">
+                  {stage.count}
+                </span>
               </div>
             </div>
-            <div className="h-6 bg-white/[0.04] rounded-md overflow-hidden">
+            <div className="h-1.5 bg-white/[0.04] overflow-hidden">
               <div
-                className="h-full"
+                className="h-full transition-all"
                 style={{
-                  width: `${Math.max(2, pct)}%`,
-                  background: `linear-gradient(90deg, rgba(242,169,0,${0.4 + (i * 0.08)}), rgba(255,213,107,${0.4 + (i * 0.08)}))`,
+                  width: `${Math.max(1, pct)}%`,
+                  background: 'var(--ceo-gold)',
+                  opacity: 0.5 + (i * 0.08),
                 }}
               />
             </div>
@@ -797,17 +747,19 @@ function FunnelChart({ stages }: { stages: CeoDashboardData['funnel'] }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="font-mono-ceo text-[9px] uppercase tracking-wider text-white/40">{label}</p>
-      <p className="font-display text-base text-white mt-0.5 tabular-nums">{value}</p>
+      <p className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/35 font-medium">
+        {label}
+      </p>
+      <p className="font-display text-lg text-white mt-1 tabular-nums font-light">{value}</p>
     </div>
   )
 }
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-10 text-center">
-      <CheckCircle2 className="w-10 h-10 text-emerald-400/60 mb-3" />
-      <p className="text-sm text-white/60">{text}</p>
+    <div className="flex flex-col items-center justify-center py-14 text-center">
+      <CheckCircle2 className="w-8 h-8 text-emerald-400/40 mb-3" />
+      <p className="text-xs text-white/45">{text}</p>
     </div>
   )
 }
@@ -823,10 +775,7 @@ function humanizeService(slug: string): string {
 function formatDate(iso: string): string {
   if (!iso) return ''
   try {
-    return new Date(iso).toLocaleDateString('es-US', {
-      day: 'numeric',
-      month: 'short',
-    })
+    return new Date(iso).toLocaleDateString('es-US', { day: 'numeric', month: 'short' })
   } catch {
     return iso.slice(0, 10)
   }

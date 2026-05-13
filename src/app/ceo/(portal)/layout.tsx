@@ -3,14 +3,14 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Crown, LayoutGrid, LogOut } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { LayoutGrid, LogOut } from 'lucide-react'
 import { ErrorBoundary } from '@/components/error-boundary'
 
 /**
- * Layout del portal ejecutivo de Henry — sin sidebar lleno de tabs
- * operativas. Vista de comando, minimalista. Si quiere bajar al detalle
- * del día a día tiene un solo botón "Panel Operativo".
+ * Layout del portal ejecutivo de Henry. Minimalismo total — fondo carbón
+ * `#0A0A0B`, sin gradientes decorativos, sin sidebar. Solo el dashboard.
+ * Header sticky con marca a la izquierda y acciones operativas/logout a
+ * la derecha. Estilo Linear/Vercel/Stripe Dashboard.
  */
 export default function CeoLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -22,44 +22,53 @@ export default function CeoLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0b1730] via-[#0f1f3d] to-[#0b1730] text-white">
-      <header className="sticky top-0 z-40 backdrop-blur-md bg-[#0b1730]/80 border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-5 lg:px-8 py-3 flex items-center justify-between gap-4">
-          <Link href="/ceo" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#F2A900] to-[#D4940A] flex items-center justify-center shadow-lg shadow-amber-500/20">
-              <Crown className="w-5 h-5 text-[#0b1730]" />
-            </div>
-            <div>
-              <p className="text-sm font-bold leading-tight">UsaLatino Prime</p>
-              <p className="text-[10px] text-white/60 leading-tight tracking-wide uppercase">Vista Ejecutiva</p>
+    <div className="min-h-screen text-white" style={{ background: '#0A0A0B' }}>
+      <header
+        className="sticky top-0 z-40 backdrop-blur-md border-b"
+        style={{
+          background: 'rgba(10, 10, 11, 0.85)',
+          borderColor: 'rgba(255, 255, 255, 0.06)',
+        }}
+      >
+        <div className="mx-auto w-full max-w-[1240px] px-6 lg:px-10 py-4 flex items-center justify-between gap-4">
+          <Link href="/ceo" className="flex items-center gap-3 group">
+            {/* Marca minimalista: cuadrado dorado pequeño + wordmark */}
+            <div className="flex items-center gap-2.5">
+              <span
+                className="block h-4 w-4"
+                style={{ background: '#E8B84A', clipPath: 'polygon(0 0, 100% 0, 100% 100%, 0 100%)' }}
+              />
+              <span className="font-display text-base text-white font-medium tracking-tight">
+                UsaLatino Prime
+              </span>
+              <span className="hidden sm:inline-block h-3 w-px bg-white/10 mx-1" />
+              <span className="hidden sm:inline font-mono-ceo text-[10px] uppercase tracking-[0.22em] text-white/40 font-medium">
+                Vista CEO
+              </span>
             </div>
           </Link>
 
-          <div className="flex items-center gap-2">
-            <Link href="/admin/citas">
-              <Button
-                variant="outline"
-                size="sm"
-                className="bg-white/5 border-white/15 text-white hover:bg-white/10 hover:text-white hover:border-white/25"
-              >
-                <LayoutGrid className="w-4 h-4 mr-2" />
-                Panel Operativo
-              </Button>
-            </Link>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleLogout}
-              className="text-white/70 hover:text-white hover:bg-white/10"
+          <div className="flex items-center gap-1">
+            <Link
+              href="/admin/citas"
+              className="inline-flex items-center gap-2 px-3 h-9 text-xs font-medium text-white/70 hover:text-white border border-transparent hover:border-white/[0.08] rounded-md transition-colors"
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              Salir
-            </Button>
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Panel Operativo</span>
+            </Link>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="inline-flex items-center gap-2 px-3 h-9 text-xs font-medium text-white/55 hover:text-white border border-transparent hover:border-white/[0.08] rounded-md transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Salir</span>
+            </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-5 lg:px-8 py-6 pb-[max(2rem,env(safe-area-inset-bottom))]">
+      <main className="pb-[max(2rem,env(safe-area-inset-bottom))]">
         <ErrorBoundary>{children}</ErrorBoundary>
       </main>
     </div>
