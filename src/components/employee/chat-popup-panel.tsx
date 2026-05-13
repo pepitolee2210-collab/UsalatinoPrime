@@ -1,0 +1,561 @@
+'use client'
+
+import { useCallback, useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { ChevronLeft, Plus, X, Users, MessageCircle, Search, Loader2 } from 'lucide-react'
+import { ChatThread, type PendingAttachment } from '@/app/employee/chat/chat-thread'
+import type {
+  ConversationListItem,
+  ChatMessage,
+  StaffProfile,
+  ChatMention,
+} from '@/app/employee/chat/types'
+
+interface Props {
+  currentUserId: string
+  onClose: () => void
+  onUnreadChange?: (total: number) => void
+}
+
+/**
+ * Panel completo de chat embebido dentro del widget flotante.
+ * Tiene 2 vistas: lista de conversaciones (default) y thread.
+ * Reutiliza ChatThread del módulo /employee/chat.
+ */
+export function ChatPopupPanel({ currentUserId, onClose, onUnreadChange }: Props) {
+  const supabase = createClient()
+  const [conversations, setConversations] = useState<ConversationListItem[]>([])
+  const [activeConvId, setActiveConvId] = useState<string | null>(null)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [sendersById, setSendersById] = useState<Map<string, StaffProfile>>(new Map())
+  const [loadingConvs, setLoadingConvs] = useState(true)
+  const [loadingMessages, setLoadingMessages] = useState(false)
+  const [hasMoreMessages, setHasMoreMessages] = useState(false)
+  const [view, setView] = useState<'list' | 'thread' | 'new-dm'>('list')
+  const [staff, setStaff] = useState<StaffProfile[]>([])
+  const [dmSearch, setDmSearch] = useState('')
+
+  const totalUnread = conversations.reduce((s, c) => s + c.unread_count, 0)
+
+  useEffect(() => {
+    onUnreadChange?.(totalUnread)
+  }, [totalUnread, onUnreadChange])
+
+  const loadConversations = useCallback(async () => {
+    setLoadingConvs(true)
+    try {
+      const res = await fetch('/api/chat/conversations', { credentials: 'same-origin' })
+      if (res.ok) {
+        const data = await res.json()
+        setConversations(data.conversations || [])
+      }
+    } finally {
+      setLoadingConvs(false)
+    }
+  }, [])
+
+  const loadMessages = useCallback(async (convId: string, before?: string) => {
+    setLoadingMessages(true)
+    try {
+      const url = new URL(`/api/chat/conversations/${convId}/messages`, window.location.origin)
+      if (before) url.searchParams.set('before', before)
+      const res = await fetch(url.toString(), { credentials: 'same-origin' })
+      if (!res.ok) return
+      const data = await res.json()
+      const newMsgs: ChatMessage[] = data.messages || []
+      const newSenders: StaffProfile[] = data.senders || []
+      setHasMoreMessages(!!data.has_more)
+      setSendersById((prev) => {
+        const m = new Map(prev)
+        for (const s of newSenders) m.set(s.id, s)
+        return m
+      })
+      if (before) setMessages((prev) => [...newMsgs, ...prev])
+      else setMessages(newMsgs)
+    } finally {
+      setLoadingMessages(false)
+    }
+  }, [])
+
+  const markAsRead = useCallback(async (convId: string) => {
+    await fetch(`/api/chat/conversations/${convId}/read`, {
+      method: 'POST',
+      credentials: 'same-origin',
+    })
+    setConversations((prev) =>
+      prev.map((c) => (c.id === convId ? { ...c, unread_count: 0 } : c))
+    )
+  }, [])
+
+  // Carga inicial
+  useEffect(() => {
+    loadConversations()
+  }, [loadConversations])
+
+  // Cuando cambia la conv activa: cargar mensajes y marcar como leído
+  useEffect(() => {
+    if (!activeConvId) return
+    setMessages([])
+    loadMessages(activeConvId)
+    markAsRead(activeConvId)
+  }, [activeConvId, loadMessages, markAsRead])
+
+  // Suscripción Realtime
+  useEffect(() => {
+    let mounted = true
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted || !session) return
+      supabase.realtime.setAuth(session.access_token)
+    })
+
+    const channel = supabase
+      .channel('chat-popup-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        async (payload) => {
+          const msg = payload.new as ChatMessage
+          if (msg.conversation_id === activeConvId) {
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === msg.id)) return prev
+              return [...prev, msg]
+            })
+            if (!sendersById.has(msg.sender_id)) {
+              const { data } = await supabase
+                .from('profiles')
+                .select('id, first_name, last_name, email, role, employee_type')
+                .eq('id', msg.sender_id)
+                .single()
+              if (data) {
+                setSendersById((prev) => {
+                  const m = new Map(prev)
+                  m.set(data.id, data as StaffProfile)
+                  return m
+                })
+              }
+            }
+            if (msg.sender_id !== currentUserId) markAsRead(activeConvId)
+          } else {
+            setConversations((prev) => {
+              const updated = prev.map((c) =>
+                c.id === msg.conversation_id
+                  ? {
+                      ...c,
+                      last_message_at: msg.created_at,
+                      last_message: {
+                        id: msg.id,
+                        body: msg.body,
+                        attachment_type: msg.attachment_type,
+                        attachment_name: msg.attachment_name,
+                        created_at: msg.created_at,
+                        sender_id: msg.sender_id,
+                      },
+                      unread_count:
+                        msg.sender_id === currentUserId
+                          ? c.unread_count
+                          : c.unread_count + 1,
+                    }
+                  : c
+              )
+              return updated.sort((a, b) =>
+                b.last_message_at.localeCompare(a.last_message_at)
+              )
+            })
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      mounted = false
+      supabase.removeChannel(channel)
+    }
+  }, [activeConvId, currentUserId, markAsRead, sendersById, supabase])
+
+  async function handleSendMessage(
+    body: string,
+    attachment?: PendingAttachment,
+    mentions?: ChatMention[]
+  ) {
+    if (!activeConvId) return
+    if (!body.trim() && !attachment) return
+    const res = await fetch('/api/chat/messages', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        conversation_id: activeConvId,
+        body: body.trim() || null,
+        attachment_url: attachment?.path,
+        attachment_type: attachment?.attachment_type,
+        attachment_name: attachment?.attachment_name,
+        attachment_size: attachment?.attachment_size,
+        mentions: mentions || [],
+      }),
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      alert(err.error || 'Error enviando mensaje')
+      return
+    }
+    const data = await res.json()
+    if (data?.message) {
+      const newMsg = data.message as ChatMessage
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === newMsg.id)) return prev
+        return [...prev, newMsg]
+      })
+      setConversations((prev) => {
+        const updated = prev.map((c) =>
+          c.id === activeConvId
+            ? {
+                ...c,
+                last_message_at: newMsg.created_at,
+                last_message: {
+                  id: newMsg.id,
+                  body: newMsg.body,
+                  attachment_type: newMsg.attachment_type,
+                  attachment_name: newMsg.attachment_name,
+                  created_at: newMsg.created_at,
+                  sender_id: newMsg.sender_id,
+                },
+              }
+            : c
+        )
+        return updated.sort((a, b) => b.last_message_at.localeCompare(a.last_message_at))
+      })
+    }
+  }
+
+  async function loadStaff() {
+    const res = await fetch('/api/chat/staff', { credentials: 'same-origin' })
+    if (res.ok) {
+      const data = await res.json()
+      setStaff(data.staff || [])
+    }
+  }
+
+  async function handleStartDM(otherUserId: string) {
+    const res = await fetch('/api/chat/conversations/dm', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ other_user_id: otherUserId }),
+    })
+    if (!res.ok) {
+      alert('Error iniciando conversación')
+      return
+    }
+    const data = await res.json()
+    await loadConversations()
+    setActiveConvId(data.conversation.id)
+    setView('thread')
+    setDmSearch('')
+  }
+
+  async function handleLoadOlder() {
+    if (!activeConvId || messages.length === 0 || !hasMoreMessages) return
+    await loadMessages(activeConvId, messages[0].created_at)
+  }
+
+  const activeConv = conversations.find((c) => c.id === activeConvId) || null
+
+  // ────────────────── Render ──────────────────
+
+  if (view === 'thread' && activeConv) {
+    return (
+      <div className="flex flex-col h-full">
+        {/* Header con back */}
+        <div className="px-3 py-2.5 border-b border-gray-100 flex items-center gap-2 bg-white">
+          <button
+            type="button"
+            onClick={() => setView('list')}
+            className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-600"
+            aria-label="Volver"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-gray-900 truncate">
+              {convDisplayName(activeConv)}
+            </p>
+            <p className="text-[10px] text-gray-500 truncate">
+              {convDisplaySubtitle(activeConv)}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-400"
+            aria-label="Cerrar"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex-1 min-h-0 flex flex-col">
+          <ChatThread
+            conversation={activeConv}
+            messages={messages}
+            sendersById={sendersById}
+            currentUserId={currentUserId}
+            loading={loadingMessages}
+            hasMore={hasMoreMessages}
+            onSendMessage={handleSendMessage}
+            onLoadOlder={handleLoadOlder}
+            hideHeader
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (view === 'new-dm') {
+    const filteredStaff = staff.filter((s) => {
+      if (!dmSearch.trim()) return true
+      const q = dmSearch.toLowerCase()
+      const name = `${s.first_name || ''} ${s.last_name || ''}`.toLowerCase()
+      return name.includes(q) || s.email.toLowerCase().includes(q)
+    })
+    return (
+      <div className="flex flex-col h-full">
+        <div className="px-3 py-2.5 border-b border-gray-100 flex items-center gap-2 bg-white">
+          <button
+            type="button"
+            onClick={() => setView('list')}
+            className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-600"
+            aria-label="Volver"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <p className="text-sm font-bold text-gray-900 flex-1">Nuevo mensaje</p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-400"
+            aria-label="Cerrar"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="px-3 py-2 border-b border-gray-100">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+            <input
+              type="text"
+              value={dmSearch}
+              onChange={(e) => setDmSearch(e.target.value)}
+              placeholder="Buscar persona..."
+              className="w-full pl-8 pr-3 h-9 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
+              autoFocus
+            />
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          {filteredStaff.length === 0 ? (
+            <p className="text-xs text-gray-400 px-3 py-6 text-center">
+              {staff.length === 0 ? 'Cargando equipo...' : 'Sin resultados'}
+            </p>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {filteredStaff.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => handleStartDM(s.id)}
+                  className="w-full text-left flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors"
+                >
+                  <Avatar name={`${s.first_name || ''} ${s.last_name || ''}`} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {`${s.first_name || ''} ${s.last_name || ''}`.trim() || s.email}
+                    </p>
+                    <p className="text-[10px] text-gray-500 truncate">
+                      {staffRoleLabel(s.role, s.employee_type)}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Vista lista (default)
+  return (
+    <div className="flex flex-col h-full">
+      <div className="px-3 py-2.5 border-b border-gray-100 flex items-center gap-2 bg-white">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-gray-900">Chat del equipo</p>
+          <p className="text-[10px] text-gray-500">
+            {totalUnread > 0 ? `${totalUnread} sin leer` : 'Al día'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setView('new-dm')
+            loadStaff()
+          }}
+          className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-600"
+          aria-label="Nueva conversación"
+          title="Nueva conversación"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-400"
+          aria-label="Cerrar"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto">
+        {loadingConvs && conversations.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <Loader2 className="w-5 h-5 text-gray-400 animate-spin mx-auto mb-2" />
+            <p className="text-xs text-gray-400">Cargando conversaciones...</p>
+          </div>
+        ) : conversations.length === 0 ? (
+          <div className="px-4 py-8 text-center">
+            <MessageCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+            <p className="text-xs text-gray-500 mb-3">
+              Aún no tienes conversaciones.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setView('new-dm')
+                loadStaff()
+              }}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-[#F2A900] hover:underline"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Iniciar conversación
+            </button>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {conversations.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => {
+                  setActiveConvId(c.id)
+                  setView('thread')
+                }}
+                className="w-full text-left flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors"
+              >
+                {c.type === 'group' ? (
+                  <span className="flex-shrink-0 h-9 w-9 rounded-full bg-[#002855] text-white inline-flex items-center justify-center">
+                    <Users className="w-4 h-4" />
+                  </span>
+                ) : (
+                  <Avatar name={convDisplayName(c)} size="md" />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-1">
+                    <p
+                      className={`text-sm truncate ${
+                        c.unread_count > 0 ? 'font-bold text-gray-900' : 'font-medium text-gray-800'
+                      }`}
+                    >
+                      {convDisplayName(c)}
+                    </p>
+                    {c.last_message && (
+                      <p className="text-[10px] text-gray-400 flex-shrink-0">
+                        {formatRelativeTime(c.last_message.created_at)}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between gap-2 mt-0.5">
+                    <p
+                      className={`text-[11px] truncate ${
+                        c.unread_count > 0 ? 'text-gray-700' : 'text-gray-500'
+                      }`}
+                    >
+                      {lastMessageSummary(c.last_message, currentUserId)}
+                    </p>
+                    {c.unread_count > 0 && (
+                      <span className="flex-shrink-0 h-4 min-w-[16px] px-1 rounded-full bg-[#F2A900] text-white text-[9px] font-bold inline-flex items-center justify-center">
+                        {c.unread_count > 9 ? '9+' : c.unread_count}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ────────────────── Helpers ──────────────────
+
+function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
+  const initials =
+    name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase() || '')
+      .join('') || '?'
+  const classes = size === 'sm' ? 'h-8 w-8 text-[10px]' : 'h-9 w-9 text-xs'
+  return (
+    <span
+      className={`flex-shrink-0 ${classes} rounded-full bg-gradient-to-br from-[#002855] to-[#003b7a] text-white font-bold inline-flex items-center justify-center`}
+    >
+      {initials}
+    </span>
+  )
+}
+
+function convDisplayName(c: ConversationListItem): string {
+  if (c.type === 'group') return c.name || 'Grupo'
+  const other = c.participants[0]
+  if (!other) return 'Conversación'
+  return `${other.first_name || ''} ${other.last_name || ''}`.trim() || other.email
+}
+
+function convDisplaySubtitle(c: ConversationListItem): string {
+  if (c.type === 'group') return `${c.participants.length + 1} miembros`
+  const other = c.participants[0]
+  if (!other) return ''
+  return staffRoleLabel(other.role, other.employee_type)
+}
+
+function lastMessageSummary(
+  last: ConversationListItem['last_message'],
+  currentUserId: string
+): string {
+  if (!last) return 'Sin mensajes aún'
+  const prefix = last.sender_id === currentUserId ? 'Tú: ' : ''
+  if (last.attachment_type === 'image') return `${prefix}📷 Imagen`
+  if (last.attachment_type === 'document') return `${prefix}📎 ${last.attachment_name || 'Documento'}`
+  return prefix + (last.body || '')
+}
+
+function formatRelativeTime(iso: string): string {
+  const d = new Date(iso)
+  const now = new Date()
+  const diffSec = Math.floor((now.getTime() - d.getTime()) / 1000)
+  if (diffSec < 60) return 'ahora'
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m`
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h`
+  if (diffSec < 86400 * 7) return `${Math.floor(diffSec / 86400)}d`
+  return d.toLocaleDateString('es-US', { day: 'numeric', month: 'short' })
+}
+
+function staffRoleLabel(role: string, employeeType: string | null): string {
+  if (role === 'admin') return 'Admin'
+  if (employeeType === 'paralegal') return 'Paralegal'
+  if (employeeType === 'senior_consultant') return 'Consultora Senior'
+  if (employeeType === 'contracts_manager') return 'Contratos · Logística'
+  return 'Empleado'
+}

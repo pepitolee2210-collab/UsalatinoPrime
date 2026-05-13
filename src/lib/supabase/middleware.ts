@@ -76,9 +76,7 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL(dest, request.url))
   }
 
-  // El chat interno es compartido entre admin y employees, así que se accede
-  // bajo /employee/chat para ambos roles.
-  if (pathname.startsWith('/employee') && role !== 'employee' && !pathname.startsWith('/employee/chat')) {
+  if (pathname.startsWith('/employee') && role !== 'employee') {
     const dest = role === 'admin' ? '/admin/dashboard' : '/comunidad'
     return NextResponse.redirect(new URL(dest, request.url))
   }

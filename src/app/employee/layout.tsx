@@ -11,7 +11,6 @@ import { Separator } from '@/components/ui/separator'
 import {
   LogOut, Menu, Briefcase, CalendarClock, Users, Scale,
   PhoneCall, CalendarDays, FileSignature, BarChart3, MessageCircle, FileCheck, Languages, BookOpenText,
-  MessagesSquare,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -31,8 +30,8 @@ const navConfig: Array<{
   badgeKey?: BadgeKey
 }> = [
   { href: '/employee/dashboard', label: 'Mis Tareas', icon: Briefcase, show: () => true },
-  // Chat interno — visible para todo el equipo
-  { href: '/employee/chat', label: 'Chat Equipo', icon: MessagesSquare, show: () => true, badgeKey: 'chatUnread' },
+  // El chat interno está disponible siempre via widget flotante,
+  // no como ítem del nav.
   // Casos (acceso directo a Radicación · PDFs y demás secciones) — exclusivo paralegal,
   // así no depende de que Henry asigne caso por caso para poder avanzar.
   { href: '/employee/casos', label: 'Casos', icon: Briefcase, show: (t) => t === 'paralegal' },
@@ -179,8 +178,8 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
         <CommandK />
       </div>
       <main className="md:ml-64 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">{children}</main>
-      {/* Widget flotante de chat — oculto en la página dedicada para evitar duplicidad */}
-      {!pathname.startsWith('/employee/chat') && <ChatWidgetAutoMount />}
+      {/* Widget flotante de chat — todo ocurre embebido, sin redirects */}
+      <ChatWidgetAutoMount />
     </div>
   )
 }

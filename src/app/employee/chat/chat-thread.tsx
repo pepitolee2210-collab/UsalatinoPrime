@@ -27,11 +27,13 @@ interface Props {
     mentions?: ChatMention[]
   ) => Promise<void>
   onLoadOlder: () => Promise<void>
+  /** Si true, no renderiza el header interno — usado cuando el padre tiene el suyo */
+  hideHeader?: boolean
 }
 
 export function ChatThread({
   conversation, messages, sendersById, currentUserId, loading, hasMore,
-  onSendMessage, onLoadOlder,
+  onSendMessage, onLoadOlder, hideHeader = false,
 }: Props) {
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
@@ -210,19 +212,21 @@ export function ChatThread({
   return (
     <>
       {/* Header */}
-      <div className="px-5 py-3 border-b border-gray-200 bg-white flex items-center gap-3">
-        {isGroup ? (
-          <span className="h-9 w-9 rounded-full bg-[#002855] text-white inline-flex items-center justify-center">
-            <Users className="w-4 h-4" />
-          </span>
-        ) : (
-          <Avatar name={headerName} />
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-gray-900 truncate">{headerName}</p>
-          <p className="text-[11px] text-gray-500 truncate">{headerSub}</p>
+      {!hideHeader && (
+        <div className="px-5 py-3 border-b border-gray-200 bg-white flex items-center gap-3">
+          {isGroup ? (
+            <span className="h-9 w-9 rounded-full bg-[#002855] text-white inline-flex items-center justify-center">
+              <Users className="w-4 h-4" />
+            </span>
+          ) : (
+            <Avatar name={headerName} />
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-gray-900 truncate">{headerName}</p>
+            <p className="text-[11px] text-gray-500 truncate">{headerSub}</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Mensajes */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4">
