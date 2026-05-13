@@ -71,6 +71,25 @@ export interface NewContractItem {
   status: string
 }
 
+/** Breakdown del pipeline de contratos por su estado actual. */
+export interface ContractStatusBreakdown {
+  status: string
+  label: string
+  count: number
+  total_value: number
+}
+
+/** Servicio agrupado con métricas — usado en el ranking de demanda. */
+export interface ServiceRankingItem {
+  slug: string
+  name: string
+  unique_clients: number
+  contracts_total: number
+  contracts_signed: number
+  revenue_signed: number
+  share_pct: number
+}
+
 export interface CeoDashboardData {
   kpi: {
     total_clients: number
@@ -115,6 +134,10 @@ export interface CeoDashboardData {
     new_contracts_this_month: NewContractItem[]
     paid_this_month: PaidThisMonthItem[]
   }
+  /** Breakdown del pipeline de contratos por estado actual. */
+  contracts_by_status?: ContractStatusBreakdown[]
+  /** Servicios ordenados por demanda (clientes únicos). */
+  services_ranking?: ServiceRankingItem[]
   autopilot: {
     auto_contracts_this_month: number
     auto_whatsapp_sent_this_month: number
@@ -437,6 +460,68 @@ export async function getCeoDashboardData(
     .order('paid_at', { ascending: false })
     .limit(60)
 
+  // ── Pipeline de contratos por estado ─────────────────────────────
+  // Henry quiere ver capas del pipeline: cuántos en cada estado y cuánto
+  // dinero representan. Solo los estados que importan para el negocio.
+  const STATUS_LABELS: Record<string, string> = {
+    borrador: 'Borrador',
+    pendiente_firma: 'Pendiente firma',
+    firmado: 'Firmado',
+    activo: 'Activo',
+    completado: 'Completado',
+    cancelado: 'Cancelado',
+  }
+  const statusMap = new Map<string, ContractStatusBreakdown>()
+  for (const c of allContracts) {
+    const status = c.status || 'sin_estado'
+    const label = STATUS_LABELS[status] || status
+    const existing = statusMap.get(status)
+    if (existing) {
+      existing.count++
+      existing.total_value += Number(c.total_price || 0)
+    } else {
+      statusMap.set(status, {
+        status,
+        label,
+        count: 1,
+        total_value: Number(c.total_price || 0),
+      })
+    }
+  }
+  const PIPELINE_ORDER = ['borrador', 'pendiente_firma', 'firmado', 'activo', 'completado', 'cancelado']
+  const contractsByStatus: ContractStatusBreakdown[] = PIPELINE_ORDER
+    .map((s) => statusMap.get(s))
+    .filter((x): x is ContractStatusBreakdown => Boolean(x))
+    // Agregar los estados desconocidos al final
+    .concat(
+      Array.from(statusMap.values()).filter((s) => !PIPELINE_ORDER.includes(s.status)),
+    )
+
+  // ── Ranking de servicios por demanda (clientes únicos) ──────────
+  // 'services' ya viene ordenado por revenue_signed. Aquí construimos
+  // un ranking PARALELO ordenado por clientes únicos (qué servicio se
+  // pide más, no cuál cobra más).
+  const totalUniqueClients = services.reduce((sum, s) => sum + s.unique_clients, 0) || 1
+  const servicesRanking: ServiceRankingItem[] = services
+    .filter((s) => s.unique_clients > 0 || s.contracts > 0)
+    .map((s) => {
+      const signedCount = allContracts.filter(
+        (c) =>
+          c.service_slug === s.slug &&
+          ['firmado', 'activo', 'completado'].includes(c.status),
+      ).length
+      return {
+        slug: s.slug,
+        name: s.name,
+        unique_clients: s.unique_clients,
+        contracts_total: s.contracts,
+        contracts_signed: signedCount,
+        revenue_signed: s.revenue_signed,
+        share_pct: Math.round((s.unique_clients / totalUniqueClients) * 100),
+      }
+    })
+    .sort((a, b) => b.unique_clients - a.unique_clients || b.revenue_signed - a.revenue_signed)
+
   const paidThisMonthList: PaidThisMonthItem[] = (paidThisMonthRaw || []).map((p) => {
     const cli = Array.isArray(p.client) ? p.client[0] : p.client
     const fullName = cli
@@ -485,6 +570,8 @@ export async function getCeoDashboardData(
       new_contracts_this_month: newContractsList,
       paid_this_month: paidThisMonthList,
     },
+    contracts_by_status: contractsByStatus,
+    services_ranking: servicesRanking,
     autopilot: {
       auto_contracts_this_month: 0,
       auto_whatsapp_sent_this_month: 0,

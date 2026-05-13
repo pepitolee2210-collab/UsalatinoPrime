@@ -996,18 +996,18 @@
 }
 
 /* ═══ CEO Dashboard — font utilities ═══ */
-/* Display = Bricolage Grotesque (sans variable con optical sizing) para
-   los números KPI grandes — look "ops console" minimalista tipo Linear /
-   Vercel, sin caer en serif editorial. */
+/* Display = Plus Jakarta Sans — la fuente más cercana a SF Pro Display
+   de Apple disponible en Google Fonts. Geometría limpia, peso variable,
+   curvas perfectas. Look Apple minimalista para los números KPI. */
 .font-display {
-  font-family: var(--font-bricolage), 'Helvetica Neue', system-ui, sans-serif;
-  letter-spacing: -0.02em;
-  font-feature-settings: 'tnum' on, 'cv11' on;
+  font-family: var(--font-jakarta), -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif;
+  letter-spacing: -0.025em;
+  font-feature-settings: 'tnum' on, 'ss01' on, 'ss02' on, 'ss03' on, 'ss04' on;
 }
 .font-sora {
-  /* Alias retro-compatible — apunta también a Bricolage para que cualquier
-     componente legacy que aún use .font-sora se vea consistente. */
-  font-family: var(--font-bricolage), 'Helvetica Neue', system-ui, sans-serif;
+  /* Alias retro-compatible — apunta también a Plus Jakarta para que
+     cualquier componente legacy use el mismo look Apple. */
+  font-family: var(--font-jakarta), -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', system-ui, sans-serif;
 }
 .font-mono-ceo {
   font-family: var(--font-mono-ceo), 'SF Mono', Menlo, monospace;

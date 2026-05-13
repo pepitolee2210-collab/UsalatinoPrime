@@ -22,7 +22,7 @@ type DrawerKey =
 
 export function CeoDashboardV2({ data, firstName }: Props) {
   const [openDrawer, setOpenDrawer] = useState<DrawerKey>(null)
-  const { kpi, ops, trend, services, lists } = data
+  const { kpi, ops, trend, lists } = data
 
   const monthDelta = useMemo(() => {
     if (!kpi.revenue_last_month) return kpi.revenue_this_month > 0 ? 100 : 0
@@ -204,23 +204,50 @@ export function CeoDashboardV2({ data, firstName }: Props) {
           </div>
         </section>
 
-        {/* ── TENDENCIA + SERVICIOS ─────────────────────────────────── */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-px bg-white/[0.06] border-y border-white/[0.06] mb-16">
-          <div className="lg:col-span-7 p-7 lg:p-8" style={{ background: 'var(--ceo-bg)' }}>
-            <SectionLabel inline subline="Cobrado mensual y firmas">
-              Tendencia · 6 meses
-            </SectionLabel>
-            <TrendChart points={trend} />
-          </div>
-          <div className="lg:col-span-5 p-7 lg:p-8" style={{ background: 'var(--ceo-bg)' }}>
-            <SectionLabel inline subline="Ingresos firmados, top 6">
-              Por servicio
-            </SectionLabel>
-            <ServicesBreakdown services={services.slice(0, 6)} />
+        {/* ── CAPA: SERVICIOS — qué se demanda más ────────────────────── */}
+        <section className="mb-16">
+          <SectionLabel
+            subline="Ranking por clientes únicos — qué se vende, cuál genera más ingreso."
+          >
+            Servicios
+          </SectionLabel>
+          <div
+            className="border-y border-white/[0.06]"
+            style={{ background: 'var(--ceo-bg)' }}
+          >
+            <ServicesRanking items={data.services_ranking ?? []} />
           </div>
         </section>
 
-        {/* ── FUNNEL ──────────────────────────────────────────────── */}
+        {/* ── CAPA: PIPELINE DE CONTRATOS por estado ──────────────────── */}
+        <section className="mb-16">
+          <SectionLabel
+            subline="Estado actual de TODOS los contratos. Cada barra muestra dónde están parados."
+          >
+            Pipeline de contratos
+          </SectionLabel>
+          <div
+            className="border-y border-white/[0.06] p-7 lg:p-8"
+            style={{ background: 'var(--ceo-bg)' }}
+          >
+            <ContractStatusBar items={data.contracts_by_status ?? []} />
+          </div>
+        </section>
+
+        {/* ── CAPA: TENDENCIA 6 MESES ─────────────────────────────────── */}
+        <section className="mb-16">
+          <SectionLabel subline="Cobrado mensual de los últimos 6 meses">
+            Evolución del negocio
+          </SectionLabel>
+          <div
+            className="border-y border-white/[0.06] p-7 lg:p-8"
+            style={{ background: 'var(--ceo-bg)' }}
+          >
+            <TrendChart points={trend} />
+          </div>
+        </section>
+
+        {/* ── CAPA: FUNNEL ─────────────────────────────────────────────── */}
         <section className="mb-16">
           <SectionLabel subline="Desde la primera llamada IA hasta el contrato firmado">
             Funnel del cliente
@@ -658,38 +685,172 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
   )
 }
 
-function ServicesBreakdown({ services }: { services: CeoDashboardData['services'] }) {
-  const visible = services.filter((s) => s.contracts > 0 || s.cases > 0)
-  if (!visible.length) return <p className="text-xs text-white/75">Sin servicios con actividad</p>
-  const maxRev = Math.max(...visible.map((s) => s.revenue_signed), 1)
-
+/**
+ * Ranking de servicios — qué se demanda más. Tabla minimal estilo Apple:
+ * rank tipográfico + nombre del servicio + clientes + contratos firmados +
+ * ingreso firmado + barra horizontal de share %.
+ */
+function ServicesRanking({ items }: { items: NonNullable<CeoDashboardData['services_ranking']> }) {
+  if (!items.length) {
+    return (
+      <div className="px-7 py-10 text-center text-xs text-white/65">
+        Sin actividad por servicio todavía.
+      </div>
+    )
+  }
+  const maxClients = Math.max(...items.map((s) => s.unique_clients), 1)
   return (
-    <div className="space-y-3">
-      {visible.map((s) => {
-        const pct = (s.revenue_signed / maxRev) * 100
+    <div className="px-7 lg:px-8">
+      {/* Header */}
+      <div className="grid grid-cols-12 gap-4 border-b border-white/[0.06] py-3.5 font-mono-ceo text-[10px] uppercase tracking-[0.18em] text-white/55 font-medium">
+        <div className="col-span-1">#</div>
+        <div className="col-span-5">Servicio</div>
+        <div className="col-span-2 text-right">Clientes</div>
+        <div className="col-span-2 text-right">Firmados</div>
+        <div className="col-span-2 text-right">Ingreso</div>
+      </div>
+      {/* Rows */}
+      {items.map((s, idx) => {
+        const widthPct = (s.unique_clients / maxClients) * 100
         return (
-          <div key={s.slug}>
-            <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="text-white/95 font-medium truncate flex-1 mr-2 leading-tight">
-                {s.name}
-              </span>
-              <span className="font-display text-white tabular-nums flex-shrink-0">
-                ${s.revenue_signed.toLocaleString()}
-              </span>
+          <div
+            key={s.slug}
+            className="group grid grid-cols-12 gap-4 border-b border-white/[0.04] py-4 items-center transition-colors hover:bg-white/[0.012] relative"
+          >
+            {/* Barra de fondo (% de clientes vs el top) */}
+            <span
+              className="pointer-events-none absolute inset-y-0 left-0 transition-opacity"
+              style={{
+                width: `${widthPct}%`,
+                background:
+                  'linear-gradient(90deg, rgba(232,184,74,0.07) 0%, rgba(232,184,74,0.01) 100%)',
+              }}
+            />
+            <div className="col-span-1 relative font-mono-ceo text-xs text-white/65 tabular-nums">
+              {String(idx + 1).padStart(2, '0')}
             </div>
-            <div className="h-px bg-white/[0.05] relative">
-              <div
-                className="absolute top-0 left-0 h-px"
-                style={{
-                  width: `${Math.max(3, pct)}%`,
-                  background: 'var(--ceo-gold)',
-                  opacity: 0.85,
-                }}
-              />
+            <div className="col-span-5 relative">
+              <p className="text-sm text-white font-medium leading-tight truncate">{s.name}</p>
+              <p className="mt-0.5 font-mono-ceo text-[10px] uppercase tracking-wider text-white/55">
+                {s.share_pct}% de la demanda
+              </p>
+            </div>
+            <div className="col-span-2 relative text-right font-display text-lg text-white tabular-nums font-light">
+              {s.unique_clients}
+            </div>
+            <div className="col-span-2 relative text-right font-display text-lg text-white tabular-nums font-light">
+              {s.contracts_signed}
+            </div>
+            <div className="col-span-2 relative text-right font-display text-lg text-white tabular-nums font-light">
+              ${s.revenue_signed.toLocaleString()}
             </div>
           </div>
         )
       })}
+    </div>
+  )
+}
+
+/**
+ * Pipeline de contratos — stack horizontal proporcional + breakdown
+ * numérico debajo (cards minimalistas, una por estado).
+ *
+ * Cada estado tiene su color (borrador=blanco apagado, pendiente=dorado,
+ * firmado=verde, activo=cyan, completado=blanco fuerte, cancelado=rojo).
+ */
+function ContractStatusBar({
+  items,
+}: {
+  items: NonNullable<CeoDashboardData['contracts_by_status']>
+}) {
+  if (!items.length) {
+    return <p className="text-xs text-white/65">Sin contratos en el pipeline.</p>
+  }
+  const totalCount = items.reduce((s, x) => s + x.count, 0) || 1
+  const totalValue = items.reduce((s, x) => s + x.total_value, 0)
+
+  const colorFor = (status: string): string => {
+    switch (status) {
+      case 'borrador': return 'rgba(255, 255, 255, 0.30)'
+      case 'pendiente_firma': return '#E8B84A'
+      case 'firmado': return '#4ADE80'
+      case 'activo': return '#7DD3FC'
+      case 'completado': return '#FFFFFF'
+      case 'cancelado': return '#F87171'
+      default: return 'rgba(255, 255, 255, 0.45)'
+    }
+  }
+
+  return (
+    <div>
+      {/* Stack horizontal proporcional */}
+      <div className="mb-6">
+        <div className="flex items-baseline justify-between mb-3">
+          <p className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/65 font-medium">
+            {totalCount} contratos · ${totalValue.toLocaleString()} valor total
+          </p>
+          <p className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/55">
+            distribución del pipeline
+          </p>
+        </div>
+        <div className="flex h-2.5 w-full overflow-hidden rounded-sm bg-white/[0.04]">
+          {items.map((s) => {
+            const pct = (s.count / totalCount) * 100
+            if (pct < 0.5) return null
+            return (
+              <div
+                key={s.status}
+                style={{
+                  width: `${pct}%`,
+                  background: colorFor(s.status),
+                  opacity: 0.85,
+                }}
+                title={`${s.label}: ${s.count} (${pct.toFixed(1)}%)`}
+              />
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Breakdown numérico por estado — cards en grid */}
+      <div
+        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-y border-white/[0.06]"
+        style={{ gap: '1px', background: 'rgba(255,255,255,0.06)' }}
+      >
+        {items.map((s) => {
+          const color = colorFor(s.status)
+          const pct = (s.count / totalCount) * 100
+          return (
+            <div
+              key={s.status}
+              className="px-4 py-5"
+              style={{ background: 'var(--ceo-bg)' }}
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <span
+                  className="h-1.5 w-1.5 rounded-full flex-shrink-0"
+                  style={{ background: color }}
+                />
+                <p className="font-mono-ceo text-[10px] uppercase tracking-[0.18em] text-white/65 font-medium truncate">
+                  {s.label}
+                </p>
+              </div>
+              <p
+                className="font-display text-3xl font-light tabular-nums leading-none tracking-tight"
+                style={{ color: s.status === 'borrador' ? 'var(--ceo-text)' : color }}
+              >
+                {s.count}
+              </p>
+              <p className="mt-2.5 font-mono-ceo text-[10px] uppercase tracking-wider text-white/55 tabular-nums">
+                ${s.total_value.toLocaleString()}
+              </p>
+              <p className="mt-0.5 font-mono-ceo text-[10px] uppercase tracking-wider text-white/40 tabular-nums">
+                {pct.toFixed(1)}% del total
+              </p>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

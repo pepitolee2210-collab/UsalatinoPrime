@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Fraunces, Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
+import { Inter, Fraunces, Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -15,13 +15,13 @@ const fraunces = Fraunces({
   display: "swap",
 });
 
-// Bricolage Grotesque: variable sans con optical sizing automático. Usada
-// en el dashboard CEO para los números KPI (look "ops console" tipo Linear
-// / Vercel, sin caer en serif editorial). Awwwards-favorite.
-const bricolage = Bricolage_Grotesque({
+// Plus Jakarta Sans: la fuente más cercana a SF Pro Display de Apple
+// disponible en Google Fonts. Geometría limpia, curvas perfectas, peso
+// variable. Usada en el dashboard CEO (look Apple/minimalista).
+const jakartaSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-bricolage",
+  weight: ["200", "300", "400", "500", "600", "700", "800"],
+  variable: "--font-jakarta",
   display: "swap",
 });
 
@@ -67,7 +67,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${fraunces.variable} ${bricolage.variable} ${jetbrainsMono.variable}`}>
+    <html lang="es" className={`${fraunces.variable} ${jakartaSans.variable} ${jetbrainsMono.variable}`}>
       <body className={`${inter.className} antialiased`}>
         {children}
         <Toaster richColors position="top-right" />
