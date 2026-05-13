@@ -11,6 +11,7 @@ import { Separator } from '@/components/ui/separator'
 import {
   LogOut, Menu, Briefcase, CalendarClock, Users, Scale,
   PhoneCall, CalendarDays, FileSignature, BarChart3, MessageCircle, FileCheck, Languages, BookOpenText,
+  MessagesSquare,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
@@ -29,6 +30,8 @@ const navConfig: Array<{
   badgeKey?: BadgeKey
 }> = [
   { href: '/employee/dashboard', label: 'Mis Tareas', icon: Briefcase, show: () => true },
+  // Chat interno — visible para todo el equipo
+  { href: '/employee/chat', label: 'Chat Equipo', icon: MessagesSquare, show: () => true },
   // Casos (acceso directo a Radicación · PDFs y demás secciones) — exclusivo paralegal,
   // así no depende de que Henry asigne caso por caso para poder avanzar.
   { href: '/employee/casos', label: 'Casos', icon: Briefcase, show: (t) => t === 'paralegal' },
