@@ -10,11 +10,19 @@ export async function POST(request: NextRequest) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, employee_type')
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+  // Admin o contracts_manager (Andrium). Antes solo admin podía marcar
+  // pagos; el contracts_manager necesita esto para su trabajo diario
+  // de actualizar cobros desde el dashboard.
+  const isAdmin = profile?.role === 'admin'
+  const isContractsManager =
+    profile?.role === 'employee' && profile?.employee_type === 'contracts_manager'
+  if (!isAdmin && !isContractsManager) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
+  }
 
   const body = await request.json()
   const { payment_id, payment_method, notes } = body

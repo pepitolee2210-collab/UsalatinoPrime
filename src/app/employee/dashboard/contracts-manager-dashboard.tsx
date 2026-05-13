@@ -1,4 +1,7 @@
+'use client'
+
 import Link from 'next/link'
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -6,6 +9,7 @@ import {
   TrendingUp, CreditCard, CheckCircle, Send, Users, ArrowRight, Calendar,
   Briefcase,
 } from 'lucide-react'
+import { MarkPaidModal, type OverduePayment } from '@/components/payments/mark-paid-modal'
 
 interface Contract {
   id: string
@@ -86,19 +90,44 @@ export function ContractsManagerDashboard({
     .filter(p => p.status === 'completed')
     .reduce((s, p) => s + Number(p.amount), 0)
 
-  // Clientes con cuotas vencidas (agrupando por client_id)
-  const clientsWithOverdue = new Map<string, { name: string; phone: string | null; count: number; total: number }>()
+  // Clientes con cuotas vencidas — agrupado pero conservando los pagos
+  // individuales para poder pasarlos al modal de "Marcar pagado".
+  interface ClientOverdue {
+    name: string
+    phone: string | null
+    total: number
+    payments: OverduePayment[]
+  }
+  const clientsWithOverdue = new Map<string, ClientOverdue>()
   overdue.forEach(p => {
     const existing = clientsWithOverdue.get(p.client_id)
     const name = p.client ? `${p.client.first_name} ${p.client.last_name}` : 'Cliente desconocido'
     const phone = p.client?.phone ?? null
+    const paymentItem: OverduePayment = {
+      id: p.id,
+      amount: Number(p.amount),
+      due_date: p.due_date,
+      installment_number: p.installment_number,
+      total_installments: p.total_installments,
+    }
     if (existing) {
-      existing.count += 1
       existing.total += Number(p.amount)
+      existing.payments.push(paymentItem)
     } else {
-      clientsWithOverdue.set(p.client_id, { name, phone, count: 1, total: Number(p.amount) })
+      clientsWithOverdue.set(p.client_id, {
+        name,
+        phone,
+        total: Number(p.amount),
+        payments: [paymentItem],
+      })
     }
   })
+
+  // Estado del modal "Marcar pagado"
+  const [markPaidTarget, setMarkPaidTarget] = useState<{
+    clientName: string
+    payments: OverduePayment[]
+  } | null>(null)
 
   return (
     <div className="space-y-6 max-w-6xl">
@@ -289,36 +318,55 @@ export function ContractsManagerDashboard({
               <AlertTriangle className="w-5 h-5" />
               Clientes con cuotas vencidas
             </CardTitle>
-            <p className="text-xs text-red-700">Contactar para retención. Prioriza por monto y antigüedad.</p>
+            <p className="text-xs text-red-700">
+              Contactar para retención. Marca pagados sin salir de aquí — se notifica al cliente y queda en bitácora.
+            </p>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               {Array.from(clientsWithOverdue.entries())
                 .sort((a, b) => b[1].total - a[1].total)
                 .slice(0, 6)
-                .map(([clientId, info]) => (
-                  <div key={clientId} className="bg-white rounded-lg border border-red-100 p-3 flex items-center justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{info.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {info.count} cuota{info.count !== 1 ? 's' : ''} vencida{info.count !== 1 ? 's' : ''} · {info.phone || 'sin teléfono'}
-                      </p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-bold text-red-700">${info.total.toLocaleString()}</p>
-                      {info.phone && (
-                        <a
-                          href={`https://wa.me/${info.phone.replace(/\D/g, '').replace(/^(\d{10})$/, '1$1')}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[11px] text-green-600 hover:underline"
+                .map(([clientId, info]) => {
+                  const waHref = info.phone
+                    ? `https://wa.me/${info.phone.replace(/\D/g, '').replace(/^(\d{10})$/, '1$1')}`
+                    : null
+                  return (
+                    <div key={clientId} className="bg-white rounded-lg border border-red-100 p-3 flex items-center justify-between gap-3 flex-wrap">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{info.name}</p>
+                        <p className="text-xs text-gray-500">
+                          {info.payments.length} cuota{info.payments.length !== 1 ? 's' : ''} vencida{info.payments.length !== 1 ? 's' : ''} · {info.phone || 'sin teléfono'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <p className="text-sm font-bold text-red-700 mr-1">
+                          ${info.total.toLocaleString()}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setMarkPaidTarget({ clientName: info.name, payments: info.payments })}
+                          className="inline-flex items-center gap-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold px-2.5 py-1.5 transition-colors"
+                          title="Marcar como pagado"
                         >
-                          WhatsApp
-                        </a>
-                      )}
+                          <CheckCircle className="w-3 h-3" />
+                          Pagado
+                        </button>
+                        {waHref && (
+                          <a
+                            href={waHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded-md bg-white border border-green-200 hover:bg-green-50 text-green-700 text-[11px] font-semibold px-2.5 py-1.5 transition-colors"
+                            title="Enviar WhatsApp"
+                          >
+                            WhatsApp
+                          </a>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               {clientsWithOverdue.size > 6 && (
                 <p className="text-xs text-gray-500 text-center pt-2">+{clientsWithOverdue.size - 6} más</p>
               )}
@@ -326,6 +374,14 @@ export function ContractsManagerDashboard({
           </CardContent>
         </Card>
       )}
+
+      {/* Modal "Marcar pagado" */}
+      <MarkPaidModal
+        open={markPaidTarget !== null}
+        onClose={() => setMarkPaidTarget(null)}
+        clientName={markPaidTarget?.clientName ?? ''}
+        payments={markPaidTarget?.payments ?? []}
+      />
 
       {/* ZONA 5: ACCESOS RÁPIDOS */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
