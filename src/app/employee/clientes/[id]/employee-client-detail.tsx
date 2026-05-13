@@ -62,6 +62,8 @@ export function EmployeeClientDetail({
   henryDocuments,
   formSubmissions,
   appointments,
+  currentUserId,
+  isAdmin,
 }: {
   client: Client
   cases: Case[]
@@ -69,6 +71,8 @@ export function EmployeeClientDetail({
   henryDocuments: Doc[]
   formSubmissions: FormSub[]
   appointments: { id: string; case_id: string; status: string }[]
+  currentUserId: string
+  isAdmin: boolean
 }) {
   const router = useRouter()
   const [selectedCaseId, setSelectedCaseId] = useState(cases[0]?.id || '')
@@ -184,6 +188,8 @@ export function EmployeeClientDetail({
           loading={loading}
           formSubmissions={caseForms}
           henryNotes={activeCase.henry_notes ?? ''}
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
           extraTabs={[
             {
               id: 'bitacora',

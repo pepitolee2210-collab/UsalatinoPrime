@@ -51,6 +51,11 @@ export const SUBCATEGORIES = {
   APPT_CANCELLED: 'appointment.cancelled',
   APPT_COMPLETED: 'appointment.completed',
   APPT_NO_SHOW: 'appointment.no_show',
+  APPT_OBJECTIVE_NOT_COMPLETED: 'appointment.objective_not_completed',
+  // notes (categoría 'communication')
+  NOTE_CREATED: 'communication.note_created',
+  NOTE_UPDATED: 'communication.note_updated',
+  NOTE_DELETED: 'communication.note_deleted',
   // document
   DOC_UPLOADED_CLIENT: 'document.uploaded_by_client',
   DOC_UPLOADED_STAFF: 'document.uploaded_by_staff',

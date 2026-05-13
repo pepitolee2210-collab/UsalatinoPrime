@@ -16,6 +16,9 @@ export default async function EmployeeClientDetailPage({ params }: { params: Pro
     .single()
   if (profile?.role !== 'employee') redirect('/employee')
 
+  const currentUserId = user.id
+  const isAdmin = false // role==='employee' siempre aquí (admin usa /admin)
+
   const { data: client } = await supabase
     .from('profiles')
     .select('id, first_name, last_name, email, phone')
@@ -34,7 +37,7 @@ export default async function EmployeeClientDetailPage({ params }: { params: Pro
     .eq('client_id', id)
     .order('created_at', { ascending: false })
 
-  const caseIds = (cases || []).map((c: any) => c.id)
+  const caseIds = (cases || []).map((c: { id: string }) => c.id)
 
   const [docsRes, henryDocsRes, formsRes, appointmentsRes] = await Promise.all([
     caseIds.length > 0
@@ -55,19 +58,24 @@ export default async function EmployeeClientDetailPage({ params }: { params: Pro
       : Promise.resolve({ data: [] }),
   ])
 
-  const normalizedCases = (cases || []).map((c: any) => ({
-    ...c,
-    service: Array.isArray(c.service) ? c.service[0] : c.service,
-  }))
+  const normalizedCases = ((cases || []) as unknown as Array<Record<string, unknown>>).map((c) => {
+    const svc = c.service
+    return {
+      ...c,
+      service: Array.isArray(svc) ? svc[0] : svc,
+    }
+  }) as unknown as Parameters<typeof EmployeeClientDetail>[0]['cases']
 
   return (
     <EmployeeClientDetail
       client={client}
       cases={normalizedCases}
-      documents={(docsRes.data || []).filter((d: any) => !d.direction || d.direction === 'client_to_admin')}
+      documents={(docsRes.data || []).filter((d: { direction?: string | null }) => !d.direction || d.direction === 'client_to_admin')}
       henryDocuments={henryDocsRes.data || []}
       formSubmissions={formsRes.data || []}
       appointments={appointmentsRes.data || []}
+      currentUserId={currentUserId}
+      isAdmin={isAdmin}
     />
   )
 }

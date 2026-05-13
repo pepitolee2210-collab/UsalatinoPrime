@@ -1,13 +1,17 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { Phone, CalendarClock, Clock, CheckCircle, XCircle, AlertTriangle, Save, Loader2, MessageSquare, X, Search } from 'lucide-react'
+import {
+  Phone, CalendarClock, Clock, CheckCircle, XCircle, AlertTriangle,
+  MessageSquare, X, Search, ChevronRight,
+} from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { toast } from 'sonner'
+import { CompleteAppointmentDialog, type DialogMode } from './_components/complete-appointment-dialog'
 
 const statusColors: Record<string, string> = {
   scheduled: 'bg-blue-100 text-blue-800',
@@ -30,11 +34,12 @@ const statusIcons: Record<string, typeof Clock> = {
   no_show: AlertTriangle,
 }
 
-function visitLabel(count: number): string {
-  if (count === 0) return '1ra cita'
-  if (count === 1) return '2da cita'
-  if (count === 2) return '3ra cita'
-  return `${count + 1}ta cita`
+function visitLabel(n: number): string {
+  if (n <= 0) return 'Sesión'
+  if (n === 1) return '1ra cita'
+  if (n === 2) return '2da cita'
+  if (n === 3) return '3ra cita'
+  return `Sesión #${n}`
 }
 
 interface Appointment {
@@ -45,47 +50,41 @@ interface Appointment {
   guest_name?: string
   notes?: string
   employee_notes?: string | null
+  session_number?: number | null
+  objective_completed?: boolean | null
+  case_id?: string | null
   client?: { first_name: string; last_name: string; phone?: string } | null
   case?: { case_number: string; service?: { name: string } | null } | null
 }
 
-export function EmployeeCitasView({ appointments: initial }: { appointments: Appointment[] }) {
+interface EmployeeCitasViewProps {
+  appointments: Appointment[]
+  canManageStatus: boolean
+}
+
+export function EmployeeCitasView({ appointments: initial, canManageStatus }: EmployeeCitasViewProps) {
+  const router = useRouter()
   const [appointments, setAppointments] = useState(initial)
   const [filter, setFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [letterFilter, setLetterFilter] = useState<string | null>(null)
   const [dateFilter, setDateFilter] = useState('')
-  const [localNotes, setLocalNotes] = useState<Record<string, string>>({})
-  const [savingId, setSavingId] = useState<string | null>(null)
-  const [editingId, setEditingId] = useState<string | null>(null)
   const [viewingNote, setViewingNote] = useState<{ name: string; note: string } | null>(null)
-
-  // Build visit counts
-  const completedCounts = new Map<string, number>()
-  const sorted = [...appointments]
-    .filter(a => a.status === 'completed' && a.client_id)
-    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
-  for (const apt of sorted) {
-    const cid = apt.client_id!
-    completedCounts.set(cid, (completedCounts.get(cid) || 0) + 1)
-  }
+  const [dialogApt, setDialogApt] = useState<Appointment | null>(null)
+  const [dialogMode, setDialogMode] = useState<DialogMode>('complete')
 
   const filtered = appointments.filter(a => {
-    // Status filter
     if (filter !== 'all' && a.status !== filter) return false
-    // Text search
     if (search.trim()) {
       const q = search.toLowerCase()
       const name = a.client ? `${a.client.first_name} ${a.client.last_name}`.toLowerCase() : (a.guest_name || '').toLowerCase()
       const phone = a.client?.phone || ''
       if (!name.includes(q) && !phone.includes(q)) return false
     }
-    // Letter filter
     if (letterFilter) {
       const firstName = a.client?.first_name || a.guest_name || ''
       if (!firstName.toUpperCase().startsWith(letterFilter)) return false
     }
-    // Date filter
     if (dateFilter) {
       const aptDate = a.scheduled_at.slice(0, 10)
       if (aptDate !== dateFilter) return false
@@ -96,32 +95,32 @@ export function EmployeeCitasView({ appointments: initial }: { appointments: App
   const scheduled = appointments.filter(a => a.status === 'scheduled').length
   const completed = appointments.filter(a => a.status === 'completed').length
 
-  async function saveNotes(aptId: string) {
-    setSavingId(aptId)
-    const noteText = localNotes[aptId] || ''
-    try {
-      const res = await fetch('/api/employee/appointment-notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ appointment_id: aptId, employee_notes: noteText }),
-      })
-      if (!res.ok) throw new Error()
-      // Update local state so the note appears immediately
-      setAppointments(prev => prev.map(a =>
-        a.id === aptId ? { ...a, employee_notes: noteText } : a
-      ))
-      toast.success('Notas guardadas')
-      setEditingId(null)
-    } catch {
-      toast.error('Error al guardar')
-    } finally {
-      setSavingId(null)
-    }
+  function openDialog(apt: Appointment, mode: DialogMode) {
+    setDialogApt(apt)
+    setDialogMode(mode)
+  }
+
+  function closeDialog() {
+    setDialogApt(null)
+  }
+
+  function onDialogDone() {
+    closeDialog()
+    // refrescar el RSC para que la lista refleje el nuevo status y session_number
+    router.refresh()
+    // optimistic local update para que la UI no espere al refresh
+    setAppointments(prev =>
+      prev.map(a =>
+        a.id === dialogApt?.id
+          ? { ...a, status: dialogMode === 'complete' ? 'completed' : dialogMode === 'no_show' ? 'no_show' : 'cancelled' }
+          : a
+      )
+    )
   }
 
   return (
     <div className="space-y-4">
-      {/* Note viewing modal */}
+      {/* Note viewing modal (legacy: visualizar nota previa de appointment) */}
       {viewingNote && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}
           onClick={() => setViewingNote(null)}>
@@ -131,7 +130,7 @@ export function EmployeeCitasView({ appointments: initial }: { appointments: App
               <div>
                 <p className="font-bold text-gray-900 text-sm">{viewingNote.name}</p>
                 <p className="text-xs text-[#9a6500] flex items-center gap-1">
-                  <MessageSquare className="w-3 h-3" /> Notas de seguimiento
+                  <MessageSquare className="w-3 h-3" /> Notas de seguimiento (histórica)
                 </p>
               </div>
               <button onClick={() => setViewingNote(null)}
@@ -164,7 +163,6 @@ export function EmployeeCitasView({ appointments: initial }: { appointments: App
 
       {/* Search + filters */}
       <div className="space-y-3">
-        {/* Text search + date */}
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -182,7 +180,6 @@ export function EmployeeCitasView({ appointments: initial }: { appointments: App
           )}
         </div>
 
-        {/* Letter filter */}
         <div className="flex flex-wrap gap-1">
           <button onClick={() => setLetterFilter(null)}
             className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
@@ -200,7 +197,6 @@ export function EmployeeCitasView({ appointments: initial }: { appointments: App
           ))}
         </div>
 
-        {/* Status filter */}
         <div className="flex gap-2">
           {[
             { value: 'all', label: 'Todas' },
@@ -234,30 +230,30 @@ export function EmployeeCitasView({ appointments: initial }: { appointments: App
           const clientName = apt.client
             ? `${apt.client.first_name} ${apt.client.last_name}`
             : apt.guest_name || 'Sin nombre'
-          const completedCount = apt.client_id ? (completedCounts.get(apt.client_id) || 0) : 0
-          const isEditing = editingId === apt.id
-          const currentNotes = localNotes[apt.id] !== undefined ? localNotes[apt.id] : (apt.employee_notes || '')
+          const sessionN = apt.session_number ?? 1
+          const isScheduled = apt.status === 'scheduled'
 
           return (
             <div key={apt.id} className="bg-white rounded-xl border p-4">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="flex-1 min-w-0">
                   {/* Client name + visit badge + status */}
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span className="font-semibold text-gray-900 text-sm">{clientName}</span>
-                    {apt.client_id && (
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                        completedCount === 0
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {visitLabel(completedCount)}
+                    {apt.case_id && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                        {visitLabel(sessionN)}
                       </span>
                     )}
                     <Badge className={statusColors[apt.status] || ''}>
                       <StatusIcon className="w-3 h-3 mr-1" />
                       {statusLabels[apt.status] || apt.status}
                     </Badge>
+                    {apt.status === 'completed' && apt.objective_completed === false && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                        Objetivo pendiente
+                      </span>
+                    )}
                   </div>
 
                   {/* Date, phone, case */}
@@ -277,69 +273,82 @@ export function EmployeeCitasView({ appointments: initial }: { appointments: App
                     )}
                   </div>
 
-                  {/* Henry's notes */}
+                  {/* Henry's notes (legacy) */}
                   {apt.notes && (
                     <p className="text-xs text-gray-500 mt-1.5 bg-gray-50 rounded-lg p-2">{apt.notes}</p>
                   )}
 
-                  {/* Diana's notes */}
-                  <div className="mt-2">
-                    {isEditing ? (
-                      <div className="space-y-2">
-                        <Textarea
-                          value={currentNotes}
-                          onChange={e => setLocalNotes(prev => ({ ...prev, [apt.id]: e.target.value }))}
-                          placeholder="Anota en qué quedaste con el/la cliente para la próxima cita..."
-                          rows={3}
-                          className="text-xs"
-                        />
-                        <div className="flex gap-2">
-                          <button onClick={() => saveNotes(apt.id)}
-                            disabled={savingId === apt.id}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#002855] text-white text-xs font-bold">
-                            {savingId === apt.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                            Guardar
-                          </button>
-                          <button onClick={() => setEditingId(null)}
-                            className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 text-xs">
-                            Cancelar
-                          </button>
-                        </div>
+                  {/* Notas históricas inline (legacy employee_notes) */}
+                  {apt.employee_notes && (
+                    <button
+                      type="button"
+                      onClick={() => setViewingNote({ name: clientName, note: apt.employee_notes! })}
+                      className="mt-2 w-full text-left p-2.5 rounded-xl bg-[#F2A900]/5 border border-[#F2A900]/20 hover:bg-[#F2A900]/10 transition-colors"
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <MessageSquare className="w-3 h-3 text-[#F2A900]" />
+                        <span className="text-[10px] font-bold text-[#9a6500]">Notas históricas</span>
+                        <span className="text-[10px] text-gray-400 ml-auto">Toca para ver</span>
                       </div>
-                    ) : (
-                      <div className="flex gap-2">
-                        {apt.employee_notes ? (
-                          <button onClick={() => setViewingNote({ name: clientName, note: apt.employee_notes! })}
-                            className="flex-1 text-left p-2.5 rounded-xl bg-[#F2A900]/5 border border-[#F2A900]/20 hover:bg-[#F2A900]/10 transition-colors">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <MessageSquare className="w-3 h-3 text-[#F2A900]" />
-                              <span className="text-[10px] font-bold text-[#9a6500]">Mis notas</span>
-                              <span className="text-[10px] text-gray-400 ml-auto">Toca para ver</span>
-                            </div>
-                            <p className="text-xs text-gray-700 line-clamp-2">{apt.employee_notes}</p>
-                          </button>
-                        ) : null}
-                        <button
-                          onClick={() => {
-                            setEditingId(apt.id)
-                            setLocalNotes(prev => ({ ...prev, [apt.id]: apt.employee_notes || '' }))
-                          }}
-                          className={apt.employee_notes
-                            ? "flex-shrink-0 px-3 py-2 rounded-xl border border-gray-200 text-xs text-gray-500 hover:bg-gray-50"
-                            : "w-full p-2.5 rounded-lg border-2 border-dashed border-[#F2A900]/40 text-center bg-[#F2A900]/5 hover:bg-[#F2A900]/10 transition-colors"
-                          }
-                        >
-                          {apt.employee_notes ? 'Editar' : '+ Agregar notas de seguimiento'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                      <p className="text-xs text-gray-700 line-clamp-2">{apt.employee_notes}</p>
+                    </button>
+                  )}
+
+                  {/* Link a notas del caso */}
+                  {apt.client_id && (
+                    <div className="mt-2">
+                      <Link
+                        href={`/employee/clientes/${apt.client_id}`}
+                        className="inline-flex items-center gap-1 text-xs text-[#002855] hover:underline"
+                      >
+                        Ver notas y bitácora del cliente <ChevronRight className="w-3 h-3" />
+                      </Link>
+                    </div>
+                  )}
                 </div>
+
+                {/* Action buttons */}
+                {canManageStatus && isScheduled && (
+                  <div className="flex flex-col gap-1.5 min-w-[140px]">
+                    <button
+                      type="button"
+                      onClick={() => openDialog(apt, 'complete')}
+                      className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" /> Cerrar cita
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openDialog(apt, 'no_show')}
+                      className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-xs font-semibold hover:bg-red-100"
+                    >
+                      <AlertTriangle className="w-3.5 h-3.5" /> No-show
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openDialog(apt, 'cancel')}
+                      className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs font-semibold hover:bg-gray-200"
+                    >
+                      <XCircle className="w-3.5 h-3.5" /> Cancelar
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )
         })}
       </div>
+
+      {/* Dialog */}
+      {dialogApt && (
+        <CompleteAppointmentDialog
+          appointmentId={dialogApt.id}
+          sessionNumber={dialogApt.session_number ?? 1}
+          mode={dialogMode}
+          onClose={closeDialog}
+          onDone={onDialogDone}
+        />
+      )}
     </div>
   )
 }

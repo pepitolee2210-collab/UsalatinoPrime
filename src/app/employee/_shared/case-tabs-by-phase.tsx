@@ -11,6 +11,7 @@ import { ParentalConsentGenerator } from '@/app/admin/cases/[id]/parental-consen
 import { SupplementaryDataForm } from '@/app/admin/cases/[id]/supplementary-data-form'
 import { JurisdictionPanel } from '@/app/admin/cases/[id]/jurisdiction-panel'
 import { PhaseHistoryTab } from '@/app/admin/cases/[id]/phase-history-tab'
+import { NotesTab } from './notes-tab'
 import { PhaseAccordion } from './phase-accordion'
 import { PhaseDocumentList } from './phase-document-list'
 import { PhaseFormsList } from './phase-forms-list'
@@ -63,7 +64,10 @@ interface CaseTabsByPhaseProps {
   overview: CaseOverview | null
   loading: boolean
   formSubmissions: FormSub[]
+  /** @deprecated leído desde NotesTab ahora; preservado por compat de callers */
   henryNotes: string
+  currentUserId: string
+  isAdmin: boolean
   extraTabs?: ExtraTab[]
   onRefresh: () => void
 }
@@ -77,7 +81,8 @@ export function CaseTabsByPhase({
   overview,
   loading,
   formSubmissions,
-  henryNotes,
+  currentUserId,
+  isAdmin,
   extraTabs = [],
   onRefresh,
 }: CaseTabsByPhaseProps) {
@@ -338,16 +343,7 @@ export function CaseTabsByPhase({
 
       {/* === NOTAS === */}
       {tab === 'notas' && (
-        <div className="space-y-3">
-          {henryNotes ? (
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-              <p className="text-xs font-bold text-yellow-700 mb-2">Notas del Abogado</p>
-              <p className="text-sm text-gray-800 whitespace-pre-wrap">{henryNotes}</p>
-            </div>
-          ) : (
-            <p className="text-center text-gray-400 py-8 text-sm">Sin notas en este caso.</p>
-          )}
-        </div>
+        <NotesTab caseId={caseId} currentUserId={currentUserId} isAdmin={isAdmin} />
       )}
 
       {/* === HISTORIA === */}

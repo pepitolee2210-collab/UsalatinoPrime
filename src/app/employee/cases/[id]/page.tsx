@@ -118,6 +118,7 @@ export default async function EmployeeCasePage({ params }: { params: Promise<{ i
       formSubmissions={formSubsRes.data || []}
       submissions={(subsRes.data as unknown[] as Parameters<typeof EmployeeCaseView>[0]['submissions']) ?? []}
       henryNotes={raw.henry_notes || ''}
+      currentUserId={user.id}
     />
   )
 }

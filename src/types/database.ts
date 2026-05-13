@@ -223,11 +223,36 @@ export interface Appointment {
   cancellation_reason?: string
   penalty_waived?: boolean
   notes?: string
+  employee_notes?: string | null
+  consultant_notes?: string | null
+  session_number: number
+  objective_completed?: boolean | null
   created_at: string
   updated_at: string
   // Joined fields
   client?: Profile
   case?: Case
+}
+
+export type CaseNoteCategory = 'general' | 'session' | 'followup' | 'internal' | 'legacy'
+export type CaseNoteAuthorRole = 'admin' | 'employee' | 'system'
+
+export interface CaseNote {
+  id: string
+  case_id: string
+  appointment_id?: string | null
+  author_id?: string | null
+  author_role: CaseNoteAuthorRole
+  author_label: string
+  category: CaseNoteCategory
+  body: string
+  visible_to_client: boolean
+  created_at: string
+  updated_at: string
+  deleted_at?: string | null
+  deleted_by?: string | null
+  // Joined fields
+  author?: Profile
 }
 
 export interface AppointmentToken {

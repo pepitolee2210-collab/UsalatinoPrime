@@ -31,6 +31,9 @@ import {
   ChevronDown,
   ChevronRight,
   Filter,
+  StickyNote,
+  Edit3,
+  Trash2,
 } from 'lucide-react'
 import type {
   CaseActivityCategory,
@@ -127,6 +130,10 @@ const SUBCATEGORY_LABELS_ES: Record<string, string> = {
   'appointment.cancelled': 'Cita cancelada',
   'appointment.completed': 'Cita completada',
   'appointment.no_show': 'Cliente no se presentó',
+  'appointment.objective_not_completed': 'Cita realizada sin lograr objetivo',
+  'communication.note_created': 'Nota agregada',
+  'communication.note_updated': 'Nota editada',
+  'communication.note_deleted': 'Nota eliminada',
   'document.uploaded_by_client': 'Documento subido por el cliente',
   'document.uploaded_by_staff': 'Documento subido por staff',
   'document.approved': 'Documento aprobado',
@@ -176,6 +183,14 @@ function iconForSubcategory(sub: string | null) {
       return FileBadge
     case 'document.archived':
       return FileText
+    case 'communication.note_created':
+      return StickyNote
+    case 'communication.note_updated':
+      return Edit3
+    case 'communication.note_deleted':
+      return Trash2
+    case 'appointment.objective_not_completed':
+      return CalendarX
     case 'form.pdf_generated':
     case 'form.submitted_by_client':
     case 'form.locked_for_print':

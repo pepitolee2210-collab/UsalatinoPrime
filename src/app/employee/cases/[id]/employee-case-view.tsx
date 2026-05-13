@@ -69,6 +69,7 @@ export function EmployeeCaseView({
   formSubmissions = [],
   submissions,
   henryNotes,
+  currentUserId,
 }: {
   caseData: CaseData
   /** Null cuando el paralegal accede a un caso sin asignación explícita. */
@@ -78,6 +79,7 @@ export function EmployeeCaseView({
   formSubmissions?: FormSubmission[]
   submissions: Submission[]
   henryNotes: string
+  currentUserId: string
 }) {
   const router = useRouter()
   const hasAssignment = Boolean(assignment)
@@ -205,6 +207,8 @@ export function EmployeeCaseView({
         loading={loading}
         formSubmissions={formSubmissions}
         henryNotes={henryNotes}
+        currentUserId={currentUserId}
+        isAdmin={false}
         extraTabs={[...i360Tab, ...i485Tab, ...miTrabajoTab]}
         onRefresh={() => {
           refresh()
