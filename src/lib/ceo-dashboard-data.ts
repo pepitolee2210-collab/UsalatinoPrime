@@ -156,6 +156,8 @@ export interface CeoDashboardData {
     week: PeriodMetrics
     month: PeriodMetrics
   }
+  /** Evolución anual — para el toggle "Mensual/Anual" de la sección de evolución. */
+  trend_yearly?: MonthlyPoint[]
   autopilot: {
     auto_contracts_this_month: number
     auto_whatsapp_sent_this_month: number
@@ -570,6 +572,56 @@ export async function getCeoDashboardData(
     month: periodMetrics(monthStart),
   }
 
+  // ── Evolución ANUAL (últimos 5 años incluyendo el actual) ────────
+  // Reusa el shape MonthlyPoint para que el componente TrendChart pueda
+  // renderizar ambas vistas. El "label" pasa de 'mar 26' a '2026'.
+  const trendYearly: MonthlyPoint[] = []
+  const currentYear = now.getFullYear()
+  for (let i = 4; i >= 0; i--) {
+    const year = currentYear - i
+    const yearStart = new Date(year, 0, 1)
+    const yearEnd = new Date(year + 1, 0, 1)
+
+    const contractsCreatedY = allContracts.filter((c) => {
+      const ct = new Date(c.created_at)
+      return ct >= yearStart && ct < yearEnd
+    }).length
+
+    const contractsSignedY = allContracts.filter((c) => {
+      if (!c.signed_at) return false
+      const sd = new Date(c.signed_at)
+      return sd >= yearStart && sd < yearEnd
+    }).length
+
+    const revenueCollectedY = allPayments
+      .filter(
+        (p) =>
+          p.status === 'completed' &&
+          p.paid_at &&
+          new Date(p.paid_at) >= yearStart &&
+          new Date(p.paid_at) < yearEnd,
+      )
+      .reduce((s, p) => s + Number(p.amount), 0)
+
+    const revenueExpectedY = allPayments
+      .filter(
+        (p) =>
+          p.due_date &&
+          new Date(p.due_date) >= yearStart &&
+          new Date(p.due_date) < yearEnd,
+      )
+      .reduce((s, p) => s + Number(p.amount), 0)
+
+    trendYearly.push({
+      month: String(year),
+      label: String(year),
+      contracts_created: contractsCreatedY,
+      contracts_signed: contractsSignedY,
+      revenue_collected: revenueCollectedY,
+      revenue_expected: revenueExpectedY,
+    })
+  }
+
   const paidThisMonthList: PaidThisMonthItem[] = (paidThisMonthRaw || []).map((p) => {
     const cli = Array.isArray(p.client) ? p.client[0] : p.client
     const fullName = cli
@@ -621,6 +673,7 @@ export async function getCeoDashboardData(
     contracts_by_status: contractsByStatus,
     services_ranking: servicesRanking,
     periods,
+    trend_yearly: trendYearly,
     autopilot: {
       auto_contracts_this_month: 0,
       auto_whatsapp_sent_this_month: 0,

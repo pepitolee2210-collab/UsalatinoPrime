@@ -27,10 +27,17 @@ const PERIOD_OPTIONS: { key: Period; label: string; sub: string }[] = [
   { key: 'month', label: 'Mes', sub: 'este mes' },
 ]
 
+type TrendView = 'monthly' | 'yearly'
+
 export function CeoDashboardV2({ data, firstName }: Props) {
   const [period, setPeriod] = useState<Period>('month')
+  const [trendView, setTrendView] = useState<TrendView>('monthly')
   const [openDrawer, setOpenDrawer] = useState<DrawerKey>(null)
   const { kpi, ops, trend, lists } = data
+
+  const trendPoints = trendView === 'yearly' && data.trend_yearly?.length
+    ? data.trend_yearly
+    : trend
 
   // Métricas filtradas por el período activo (con fallback a mes pasado si no llegan)
   const currentPeriod = data.periods?.[period] ?? {
@@ -234,19 +241,51 @@ export function CeoDashboardV2({ data, firstName }: Props) {
         </section>
 
         {/* ──────────────────────────────────────────────────────────
-            SECCIÓN 6 · EVOLUCIÓN HISTÓRICA
+            SECCIÓN 6 · EVOLUCIÓN HISTÓRICA — con toggle Mensual/Anual
             ────────────────────────────────────────────────────────── */}
         <section className="mb-20">
-          <SectionTitle
-            number="04"
-            title="Evolución del negocio"
-            subtitle="Cobrado mensual de los últimos 6 meses."
-          />
+          <div className="flex items-end justify-between gap-4 flex-wrap mb-7">
+            <SectionTitle
+              number="04"
+              title="Evolución del negocio"
+              subtitle={
+                trendView === 'monthly'
+                  ? 'Cambio porcentual mes a mes de los últimos 6 meses.'
+                  : 'Cambio porcentual año a año de los últimos 5 años.'
+              }
+            />
+            {/* Toggle Mensual / Anual */}
+            <div className="inline-flex items-center gap-1 p-1 rounded-xl border border-white/[0.08] bg-white/[0.02] mb-0">
+              <button
+                type="button"
+                onClick={() => setTrendView('monthly')}
+                className={`px-4 py-2 rounded-lg transition-all font-mono-ceo text-[11px] uppercase tracking-[0.18em] font-medium ${
+                  trendView === 'monthly'
+                    ? 'bg-white text-black'
+                    : 'text-white/65 hover:text-white hover:bg-white/[0.04]'
+                }`}
+              >
+                Mensual
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrendView('yearly')}
+                disabled={!data.trend_yearly?.length}
+                className={`px-4 py-2 rounded-lg transition-all font-mono-ceo text-[11px] uppercase tracking-[0.18em] font-medium disabled:opacity-40 disabled:cursor-not-allowed ${
+                  trendView === 'yearly'
+                    ? 'bg-white text-black'
+                    : 'text-white/65 enabled:hover:text-white enabled:hover:bg-white/[0.04]'
+                }`}
+              >
+                Anual
+              </button>
+            </div>
+          </div>
           <div
             className="rounded-2xl border border-white/[0.08] p-7 lg:p-9"
             style={{ background: 'rgba(255,255,255,0.012)' }}
           >
-            <TrendChart points={trend} />
+            <TrendChart points={trendPoints} view={trendView} />
           </div>
         </section>
 
@@ -832,25 +871,38 @@ function MobileMetric({
 }
 
 /**
- * Evolución basada en % de cambio mes a mes (cliente pidió foco en %,
- * no en barras de cobrado absoluto). Look minimalista Apple:
- *  - KPI grande arriba: crecimiento total del semestre (+X%)
- *  - 3 stats secundarias: mejor mes, peor mes, promedio
- *  - Lista de meses con % vs el mes anterior + ingreso pequeño
+ * Evolución basada en % de cambio. Acepta puntos mensuales (6 meses)
+ * o anuales (5 años) según el toggle. Look minimalista Apple:
+ *  - KPI grande arriba: crecimiento total del período (+X%)
+ *  - 3 stats secundarias: mejor / peor / promedio
+ *  - Lista detalle con % vs el período anterior + ingreso pequeño
  */
-function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
+function TrendChart({
+  points,
+  view = 'monthly',
+}: {
+  points: CeoDashboardData['trend']
+  view?: 'monthly' | 'yearly'
+}) {
   if (!points.length) return <p className="text-base text-white/65">Sin datos</p>
 
-  // Calcular crecimiento mes a mes
-  const monthlyChanges = points.map((p, i) => {
+  const isYearly = view === 'yearly'
+  const unitLabel = isYearly ? 'año' : 'mes'
+  const unitLabelPlural = isYearly ? 'años' : 'meses'
+  const totalPeriodLabel = isYearly
+    ? `Crecimiento últimos ${points.length} ${unitLabelPlural}`
+    : `Crecimiento últimos ${points.length} ${unitLabelPlural}`
+
+  // Calcular crecimiento punto a punto
+  const changes = points.map((p, i) => {
     const prev = i > 0 ? points[i - 1].revenue_collected : 0
     const cur = p.revenue_collected
     const pct = prev > 0 ? ((cur - prev) / prev) * 100 : (cur > 0 ? 100 : 0)
     return { ...p, pct, prev }
   })
 
-  // Excluir el primer mes (no tiene comparación con anterior) para los stats
-  const withDelta = monthlyChanges.slice(1)
+  // Excluir el primer punto (no tiene comparación) para los stats
+  const withDelta = changes.slice(1)
   const totalGrowth = (() => {
     const first = points[0].revenue_collected
     const last = points[points.length - 1].revenue_collected
@@ -862,23 +914,24 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
     ? withDelta.reduce((s, p) => s + p.pct, 0) / withDelta.length
     : 0
 
-  const bestMonth = withDelta.length > 0
+  const best = withDelta.length > 0
     ? withDelta.reduce((max, p) => (p.pct > max.pct ? p : max), withDelta[0])
     : null
 
-  const worstMonth = withDelta.length > 0
+  const worst = withDelta.length > 0
     ? withDelta.reduce((min, p) => (p.pct < min.pct ? p : min), withDelta[0])
     : null
 
   const totalIsPositive = totalGrowth >= 0
+  const fromLabel = points[0].label
 
   return (
     <div>
-      {/* HERO: crecimiento total del semestre */}
+      {/* HERO: crecimiento total del período */}
       <div className="flex items-start justify-between gap-6 flex-wrap mb-10">
         <div>
           <p className="font-mono-ceo text-[11px] uppercase tracking-[0.22em] text-white/65 font-medium">
-            Crecimiento últimos 6 meses
+            {totalPeriodLabel}
           </p>
           <div className="mt-3 flex items-baseline gap-3 flex-wrap">
             <span
@@ -900,53 +953,49 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
           </div>
           <p className="mt-4 text-sm lg:text-base text-white/75 leading-relaxed max-w-md">
             {totalIsPositive
-              ? `Tu negocio creció ${totalGrowth.toFixed(0)}% desde ${points[0].label}.`
-              : `Tu negocio cayó ${Math.abs(totalGrowth).toFixed(0)}% desde ${points[0].label}.`}
+              ? `Tu negocio creció ${totalGrowth.toFixed(0)}% desde ${fromLabel}.`
+              : `Tu negocio cayó ${Math.abs(totalGrowth).toFixed(0)}% desde ${fromLabel}.`}
           </p>
         </div>
 
-        {/* Stats secundarias: mejor / peor / promedio mes */}
+        {/* Stats secundarias: mejor / peor / promedio */}
         <div className="grid grid-cols-3 gap-4 lg:gap-6 w-full lg:w-auto lg:min-w-[420px]">
           <CompactStat
-            label="Mejor mes"
-            value={bestMonth ? `${bestMonth.pct >= 0 ? '+' : ''}${bestMonth.pct.toFixed(0)}%` : '—'}
-            hint={bestMonth?.label}
-            tone={bestMonth && bestMonth.pct >= 0 ? 'good' : 'bad'}
+            label={`Mejor ${unitLabel}`}
+            value={best ? `${best.pct >= 0 ? '+' : ''}${best.pct.toFixed(0)}%` : '—'}
+            hint={best?.label}
+            tone={best && best.pct >= 0 ? 'good' : 'bad'}
           />
           <CompactStat
-            label="Peor mes"
-            value={worstMonth ? `${worstMonth.pct >= 0 ? '+' : ''}${worstMonth.pct.toFixed(0)}%` : '—'}
-            hint={worstMonth?.label}
-            tone={worstMonth && worstMonth.pct >= 0 ? 'good' : 'bad'}
+            label={`Peor ${unitLabel}`}
+            value={worst ? `${worst.pct >= 0 ? '+' : ''}${worst.pct.toFixed(0)}%` : '—'}
+            hint={worst?.label}
+            tone={worst && worst.pct >= 0 ? 'good' : 'bad'}
           />
           <CompactStat
             label="Promedio"
             value={`${avgGrowth >= 0 ? '+' : ''}${avgGrowth.toFixed(0)}%`}
-            hint="mensual"
+            hint={isYearly ? 'anual' : 'mensual'}
             tone={avgGrowth >= 0 ? 'good' : 'bad'}
           />
         </div>
       </div>
 
-      {/* Lista mes a mes con % de cambio */}
+      {/* Lista período a período con % de cambio */}
       <div className="border-t border-white/[0.06] pt-6">
         <p className="font-mono-ceo text-[11px] uppercase tracking-[0.22em] text-white/65 font-medium mb-5">
-          Detalle mes a mes
+          {isYearly ? 'Detalle año a año' : 'Detalle mes a mes'}
         </p>
         <div className="space-y-3">
-          {monthlyChanges.map((m, i) => {
-            // El primer mes no tiene % de cambio
+          {changes.map((m, i) => {
             const hasDelta = i > 0
             const positive = m.pct >= 0
-            const barWidth = hasDelta
-              ? Math.min(100, Math.abs(m.pct))
-              : 0
+            const barWidth = hasDelta ? Math.min(100, Math.abs(m.pct)) : 0
             return (
               <div
                 key={m.month}
                 className="grid grid-cols-[80px_1fr_120px] sm:grid-cols-[120px_1fr_160px] gap-3 sm:gap-5 items-center"
               >
-                {/* Mes */}
                 <span className="font-mono-ceo text-xs sm:text-sm uppercase tracking-wider text-white/85 capitalize font-medium">
                   {m.label}
                 </span>
@@ -955,9 +1004,7 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
                 <div className="relative h-7 flex items-center">
                   {hasDelta ? (
                     <>
-                      {/* Línea central */}
                       <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/[0.10]" />
-                      {/* Barra (a la izq si negativo, a la der si positivo) */}
                       <div
                         className="absolute top-1/2 -translate-y-1/2 h-1.5 rounded-sm transition-all"
                         style={{
@@ -970,22 +1017,19 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
                     </>
                   ) : (
                     <span className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/40">
-                      mes base
+                      {isYearly ? 'año base' : 'mes base'}
                     </span>
                   )}
                 </div>
 
-                {/* % + ingreso */}
                 <div className="text-right">
                   {hasDelta ? (
-                    <div className="flex items-baseline justify-end gap-1.5">
-                      <span
-                        className="font-display text-lg sm:text-xl tabular-nums font-light tracking-tight"
-                        style={{ color: positive ? 'var(--ceo-good)' : 'var(--ceo-bad)' }}
-                      >
-                        {positive ? '+' : ''}{m.pct.toFixed(0)}%
-                      </span>
-                    </div>
+                    <span
+                      className="font-display text-lg sm:text-xl tabular-nums font-light tracking-tight"
+                      style={{ color: positive ? 'var(--ceo-good)' : 'var(--ceo-bad)' }}
+                    >
+                      {positive ? '+' : ''}{m.pct.toFixed(0)}%
+                    </span>
                   ) : (
                     <span className="font-display text-base sm:text-lg text-white/65 tabular-nums font-light">
                       —
