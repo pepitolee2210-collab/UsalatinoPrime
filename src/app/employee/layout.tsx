@@ -16,6 +16,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { CommandK } from '@/components/employee/command-k'
+import { ChatWidget } from '@/components/employee/chat-widget'
 
 type EmployeeType = 'paralegal' | 'senior_consultant' | 'contracts_manager' | null
 
@@ -64,6 +65,7 @@ const ROLE_LABEL: Record<NonNullable<EmployeeType> | 'default', string> = {
 export default function EmployeeLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [userName, setUserName] = useState('')
+  const [userId, setUserId] = useState<string | null>(null)
   const [employeeType, setEmployeeType] = useState<EmployeeType>(null)
   const [counts, setCounts] = useState<BadgeCounts>({ whatsappActive: 0 })
   const pathname = usePathname()
@@ -74,6 +76,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
     async function fetchProfile() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
+        setUserId(user.id)
         const { data } = await supabase
           .from('profiles')
           .select('first_name, last_name, employee_type')
@@ -170,6 +173,10 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
         <CommandK />
       </div>
       <main className="md:ml-64 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">{children}</main>
+      {/* Widget flotante de chat — oculto en la página dedicada para evitar duplicidad */}
+      {userId && !pathname.startsWith('/employee/chat') && (
+        <ChatWidget currentUserId={userId} />
+      )}
     </div>
   )
 }
