@@ -11,6 +11,7 @@ import { CasePipeline } from '@/components/case-pipeline'
 import { CaseTabsByPhase } from '@/app/employee/_shared/case-tabs-by-phase'
 import { useCaseOverview } from '@/app/employee/_shared/use-case-overview'
 import { BitacoraTab } from '@/app/employee/_shared/bitacora-tab'
+import { CollectionTab, type CollectionContract, type CollectionPayment } from '@/components/payments/collection-tab'
 import type { CasePhase } from '@/types/database'
 
 interface Client {
@@ -64,6 +65,9 @@ export function EmployeeClientDetail({
   appointments,
   currentUserId,
   isAdmin,
+  isContractsManager = false,
+  contracts = [],
+  payments = [],
 }: {
   client: Client
   cases: Case[]
@@ -73,6 +77,9 @@ export function EmployeeClientDetail({
   appointments: { id: string; case_id: string; status: string }[]
   currentUserId: string
   isAdmin: boolean
+  isContractsManager?: boolean
+  contracts?: CollectionContract[]
+  payments?: CollectionPayment[]
 }) {
   const router = useRouter()
   const [selectedCaseId, setSelectedCaseId] = useState(cases[0]?.id || '')
@@ -191,6 +198,23 @@ export function EmployeeClientDetail({
           currentUserId={currentUserId}
           isAdmin={isAdmin}
           extraTabs={[
+            // Tab "Cobranza" — solo visible para contracts_manager (Andrium).
+            // Va PRIMERO porque es lo más relevante para su trabajo diario.
+            ...(isContractsManager
+              ? [{
+                  id: 'cobranza' as const,
+                  label: '💸 Cobranza',
+                  content: (
+                    <CollectionTab
+                      caseId={activeCase.id}
+                      clientName={clientName}
+                      clientPhone={client.phone}
+                      contracts={contracts.filter((c) => c.case_id === activeCase.id)}
+                      payments={payments.filter((p) => p.case_id === activeCase.id)}
+                    />
+                  ),
+                }]
+              : []),
             {
               id: 'bitacora',
               label: 'Bitácora',

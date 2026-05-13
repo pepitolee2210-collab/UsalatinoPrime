@@ -11,13 +11,14 @@ export default async function EmployeeClientDetailPage({ params }: { params: Pro
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, employee_type')
     .eq('id', user.id)
     .single()
   if (profile?.role !== 'employee') redirect('/employee')
 
   const currentUserId = user.id
   const isAdmin = false // role==='employee' siempre aquí (admin usa /admin)
+  const isContractsManager = profile?.employee_type === 'contracts_manager'
 
   const { data: client } = await supabase
     .from('profiles')
@@ -39,7 +40,7 @@ export default async function EmployeeClientDetailPage({ params }: { params: Pro
 
   const caseIds = (cases || []).map((c: { id: string }) => c.id)
 
-  const [docsRes, henryDocsRes, formsRes, appointmentsRes] = await Promise.all([
+  const [docsRes, henryDocsRes, formsRes, appointmentsRes, contractsRes, paymentsRes] = await Promise.all([
     caseIds.length > 0
       ? service.from('documents').select('id, case_id, document_key, name, file_size, file_path, created_at, direction')
           .in('case_id', caseIds).order('created_at', { ascending: false })
@@ -55,6 +56,14 @@ export default async function EmployeeClientDetailPage({ params }: { params: Pro
     caseIds.length > 0
       ? service.from('appointments').select('id, case_id, status')
           .in('case_id', caseIds)
+      : Promise.resolve({ data: [] }),
+    // Contratos del cliente — necesarios para que Andrium vea el detalle de cobranza
+    isContractsManager
+      ? service.from('contracts').select('id, case_id, service_name, total_price, status, signed_at, signing_token, has_installments, initial_payment, installment_count').eq('client_id', id)
+      : Promise.resolve({ data: [] }),
+    // Pagos del cliente
+    isContractsManager
+      ? service.from('payments').select('id, case_id, amount, status, due_date, paid_at, installment_number, total_installments, payment_method').eq('client_id', id)
       : Promise.resolve({ data: [] }),
   ])
 
@@ -76,6 +85,9 @@ export default async function EmployeeClientDetailPage({ params }: { params: Pro
       appointments={appointmentsRes.data || []}
       currentUserId={currentUserId}
       isAdmin={isAdmin}
+      isContractsManager={isContractsManager}
+      contracts={(contractsRes.data || []) as Parameters<typeof EmployeeClientDetail>[0]['contracts']}
+      payments={(paymentsRes.data || []) as Parameters<typeof EmployeeClientDetail>[0]['payments']}
     />
   )
 }
