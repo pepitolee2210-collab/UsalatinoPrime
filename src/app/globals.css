@@ -1021,9 +1021,9 @@
   --ceo-surface-2: #131316;
   --ceo-line: rgba(255, 255, 255, 0.06);
   --ceo-line-strong: rgba(255, 255, 255, 0.10);
-  --ceo-text: #FAFAFA;
-  --ceo-text-2: rgba(255, 255, 255, 0.55);
-  --ceo-text-3: rgba(255, 255, 255, 0.35);
+  --ceo-text: #FFFFFF;
+  --ceo-text-2: rgba(255, 255, 255, 0.78);
+  --ceo-text-3: rgba(255, 255, 255, 0.55);
   --ceo-gold: #E8B84A;
   --ceo-gold-soft: rgba(232, 184, 74, 0.10);
   --ceo-good: #4ADE80;

@@ -39,7 +39,7 @@ export function LiveClock() {
       <div className="font-mono-ceo text-2xl text-white tabular-nums leading-none font-light tracking-tight">
         {time}
       </div>
-      <div className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/35 capitalize">
+      <div className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/60 capitalize">
         {date}
       </div>
     </div>

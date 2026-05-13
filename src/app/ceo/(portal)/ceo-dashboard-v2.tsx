@@ -50,13 +50,13 @@ export function CeoDashboardV2({ data, firstName }: Props) {
         {/* ── HEADER ──────────────────────────────────────────────── */}
         <header className="flex items-start justify-between gap-6 flex-wrap mb-12">
           <div>
-            <p className="font-mono-ceo text-[10px] uppercase tracking-[0.24em] text-white/35 font-medium">
+            <p className="font-mono-ceo text-[10px] uppercase tracking-[0.24em] text-white/75 font-medium">
               Centro de mando
             </p>
             <h1 className="font-display mt-2 text-4xl lg:text-5xl text-white font-light leading-[1.05] tracking-tight">
               {firstName}.
             </h1>
-            <p className="mt-3 max-w-md text-sm text-white/45 leading-relaxed">
+            <p className="mt-3 max-w-md text-sm text-white/70 leading-relaxed">
               La operación de UsaLatino Prime en este momento. Cada número aquí es lo que tu
               equipo está moviendo.
             </p>
@@ -233,7 +233,7 @@ export function CeoDashboardV2({ data, firstName }: Props) {
           </div>
         </section>
 
-        <p className="font-mono-ceo text-[10px] uppercase tracking-[0.18em] text-white/25 text-right">
+        <p className="font-mono-ceo text-[10px] uppercase tracking-[0.18em] text-white/50 text-right">
           última actualización ·{' '}
           {new Date(data.generated_at).toLocaleTimeString('es-US', { hour: '2-digit', minute: '2-digit' })}
         </p>
@@ -412,7 +412,7 @@ function KpiCellHero({
         className="absolute top-0 left-0 right-0 h-px opacity-0 transition-opacity group-hover:opacity-100"
         style={{ background: accent }}
       />
-      <p className="font-mono-ceo text-[10px] uppercase tracking-[0.22em] text-white/40 font-medium">
+      <p className="font-mono-ceo text-[10px] uppercase tracking-[0.22em] text-white/65 font-medium">
         {label}
       </p>
       <div className="mt-5 flex items-end justify-between gap-4">
@@ -429,12 +429,12 @@ function KpiCellHero({
           {positive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
           {Math.abs(deltaPct).toFixed(0)}%
         </span>
-        <span className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/35">
+        <span className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/75">
           {deltaLabel}
         </span>
       </div>
       {footnote && (
-        <p className="mt-3 font-mono-ceo text-[10px] uppercase tracking-wider text-white/35">
+        <p className="mt-3 font-mono-ceo text-[10px] uppercase tracking-wider text-white/75">
           {footnote}
         </p>
       )}
@@ -466,10 +466,10 @@ function KpiCell({
         style={{ background: accent }}
       />
       <div className="flex items-start justify-between gap-3">
-        <p className="font-mono-ceo text-[10px] uppercase tracking-[0.22em] text-white/40 font-medium">
+        <p className="font-mono-ceo text-[10px] uppercase tracking-[0.22em] text-white/65 font-medium">
           {label}
         </p>
-        <ChevronRight className="w-3.5 h-3.5 text-white/15 transition-all group-hover:translate-x-0.5 group-hover:text-white/45" />
+        <ChevronRight className="w-3.5 h-3.5 text-white/40 transition-all group-hover:translate-x-0.5 group-hover:text-white/70" />
       </div>
       <div className="mt-5 flex items-end justify-between gap-4">
         <p className="font-display text-5xl text-white font-light leading-none tabular-nums tracking-tight">
@@ -487,7 +487,7 @@ function KpiCell({
             {Math.abs(deltaPct).toFixed(0)}%
           </span>
         )}
-        <span className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/35">
+        <span className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/75">
           {deltaLabel}
         </span>
       </div>
@@ -525,7 +525,7 @@ function MicroKpi({
           style={{ background: toneColor }}
         />
       )}
-      <p className="font-mono-ceo text-[10px] uppercase tracking-[0.22em] text-white/40 font-medium">
+      <p className="font-mono-ceo text-[10px] uppercase tracking-[0.22em] text-white/65 font-medium">
         {label}
       </p>
       <p
@@ -535,7 +535,7 @@ function MicroKpi({
         {value}
       </p>
       {subline && (
-        <p className="mt-3 font-mono-ceo text-[10px] uppercase tracking-wider text-white/35">
+        <p className="mt-3 font-mono-ceo text-[10px] uppercase tracking-wider text-white/75">
           {subline}
         </p>
       )}
@@ -583,7 +583,7 @@ function PriorityCard({
           {title}
         </h4>
       </div>
-      <p className="mt-3 text-xs text-white/45 leading-relaxed pl-[18px]">{description}</p>
+      <p className="mt-3 text-xs text-white/70 leading-relaxed pl-[18px]">{description}</p>
       <div
         className="mt-5 flex items-center gap-1.5 pl-[18px] font-mono-ceo text-[10px] uppercase tracking-[0.18em] font-medium transition-all"
         style={{ color: disabled ? 'rgba(255,255,255,0.25)' : accent }}
@@ -606,16 +606,16 @@ function SectionLabel({
 }) {
   return (
     <div className={inline ? 'mb-5' : 'mb-5'}>
-      <p className="font-mono-ceo text-[10px] uppercase tracking-[0.24em] text-white/40 font-medium">
+      <p className="font-mono-ceo text-[10px] uppercase tracking-[0.24em] text-white/65 font-medium">
         {children}
       </p>
-      {subline && <p className="mt-1.5 text-xs text-white/35">{subline}</p>}
+      {subline && <p className="mt-1.5 text-xs text-white/75">{subline}</p>}
     </div>
   )
 }
 
 function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
-  if (!points.length) return <p className="text-xs text-white/35">Sin datos</p>
+  if (!points.length) return <p className="text-xs text-white/75">Sin datos</p>
   const maxRev = Math.max(...points.map((p) => p.revenue_collected), 1)
   return (
     <div>
@@ -635,7 +635,7 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
                 title={`$${p.revenue_collected.toLocaleString()}`}
               />
               <span
-                className="font-mono-ceo text-[9px] uppercase tracking-wider text-white/40 capitalize"
+                className="font-mono-ceo text-[9px] uppercase tracking-wider text-white/65 capitalize"
                 style={{ color: isLast ? 'var(--ceo-text)' : undefined }}
               >
                 {p.label}
@@ -660,7 +660,7 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
 
 function ServicesBreakdown({ services }: { services: CeoDashboardData['services'] }) {
   const visible = services.filter((s) => s.contracts > 0 || s.cases > 0)
-  if (!visible.length) return <p className="text-xs text-white/35">Sin servicios con actividad</p>
+  if (!visible.length) return <p className="text-xs text-white/75">Sin servicios con actividad</p>
   const maxRev = Math.max(...visible.map((s) => s.revenue_signed), 1)
 
   return (
@@ -670,7 +670,7 @@ function ServicesBreakdown({ services }: { services: CeoDashboardData['services'
         return (
           <div key={s.slug}>
             <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="text-white/85 font-medium truncate flex-1 mr-2 leading-tight">
+              <span className="text-white/95 font-medium truncate flex-1 mr-2 leading-tight">
                 {s.name}
               </span>
               <span className="font-display text-white tabular-nums flex-shrink-0">
@@ -747,7 +747,7 @@ function FunnelChart({ stages }: { stages: CeoDashboardData['funnel'] }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/35 font-medium">
+      <p className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/75 font-medium">
         {label}
       </p>
       <p className="font-display text-lg text-white mt-1 tabular-nums font-light">{value}</p>
@@ -759,7 +759,7 @@ function EmptyState({ text }: { text: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-14 text-center">
       <CheckCircle2 className="w-8 h-8 text-emerald-400/40 mb-3" />
-      <p className="text-xs text-white/45">{text}</p>
+      <p className="text-xs text-white/70">{text}</p>
     </div>
   )
 }

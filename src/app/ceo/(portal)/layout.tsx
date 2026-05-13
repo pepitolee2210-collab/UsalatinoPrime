@@ -42,7 +42,7 @@ export default function CeoLayout({ children }: { children: React.ReactNode }) {
                 UsaLatino Prime
               </span>
               <span className="hidden sm:inline-block h-3 w-px bg-white/10 mx-1" />
-              <span className="hidden sm:inline font-mono-ceo text-[10px] uppercase tracking-[0.22em] text-white/40 font-medium">
+              <span className="hidden sm:inline font-mono-ceo text-[10px] uppercase tracking-[0.22em] text-white/65 font-medium">
                 Vista CEO
               </span>
             </div>
@@ -51,7 +51,7 @@ export default function CeoLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-1">
             <Link
               href="/admin/citas"
-              className="inline-flex items-center gap-2 px-3 h-9 text-xs font-medium text-white/70 hover:text-white border border-transparent hover:border-white/[0.08] rounded-md transition-colors"
+              className="inline-flex items-center gap-2 px-3 h-9 text-xs font-medium text-white/85 hover:text-white border border-transparent hover:border-white/[0.08] rounded-md transition-colors"
             >
               <LayoutGrid className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Panel Operativo</span>
@@ -59,7 +59,7 @@ export default function CeoLayout({ children }: { children: React.ReactNode }) {
             <button
               type="button"
               onClick={handleLogout}
-              className="inline-flex items-center gap-2 px-3 h-9 text-xs font-medium text-white/55 hover:text-white border border-transparent hover:border-white/[0.08] rounded-md transition-colors"
+              className="inline-flex items-center gap-2 px-3 h-9 text-xs font-medium text-white/75 hover:text-white border border-transparent hover:border-white/[0.08] rounded-md transition-colors"
             >
               <LogOut className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Salir</span>

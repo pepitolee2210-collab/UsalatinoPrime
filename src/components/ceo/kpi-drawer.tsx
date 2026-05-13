@@ -77,7 +77,7 @@ export function KpiDrawer({
                 {bigNumber}
               </div>
               {subtitle && (
-                <p className="mt-3 text-xs text-white/45 leading-relaxed max-w-[320px]">
+                <p className="mt-3 text-xs text-white/70 leading-relaxed max-w-[320px]">
                   {subtitle}
                 </p>
               )}
@@ -85,7 +85,7 @@ export function KpiDrawer({
             <button
               type="button"
               onClick={onClose}
-              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.02] text-white/55 transition hover:bg-white/[0.06] hover:text-white"
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md border border-white/[0.08] bg-white/[0.02] text-white/75 transition hover:bg-white/[0.06] hover:text-white"
               aria-label="Cerrar"
             >
               <X className="h-3.5 w-3.5" />
@@ -141,7 +141,7 @@ export function DrawerRow({
       <div className="min-w-0 flex-1">
         <p className="text-sm text-white font-medium leading-tight truncate">{name}</p>
         {subtitle && (
-          <p className="mt-0.5 font-mono-ceo text-[10px] uppercase tracking-wider text-white/40 truncate">
+          <p className="mt-0.5 font-mono-ceo text-[10px] uppercase tracking-wider text-white/65 truncate">
             {subtitle}
           </p>
         )}
