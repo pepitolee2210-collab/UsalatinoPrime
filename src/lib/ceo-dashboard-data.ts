@@ -79,6 +79,18 @@ export interface ContractStatusBreakdown {
   total_value: number
 }
 
+/** Métricas filtradas por período (hoy / 7d / 30d). */
+export interface PeriodMetrics {
+  /** Ingreso cobrado en el período */
+  revenue: number
+  /** Contratos firmados en el período */
+  contracts_signed: number
+  /** Contratos creados en el período */
+  contracts_new: number
+  /** Pagos recibidos (count) en el período */
+  payments_count: number
+}
+
 /** Servicio agrupado con métricas — usado en el ranking de demanda. */
 export interface ServiceRankingItem {
   slug: string
@@ -138,6 +150,12 @@ export interface CeoDashboardData {
   contracts_by_status?: ContractStatusBreakdown[]
   /** Servicios ordenados por demanda (clientes únicos). */
   services_ranking?: ServiceRankingItem[]
+  /** Métricas filtradas por período — para el toggle "Hoy/Semana/Mes". */
+  periods?: {
+    today: PeriodMetrics
+    week: PeriodMetrics
+    month: PeriodMetrics
+  }
   autopilot: {
     auto_contracts_this_month: number
     auto_whatsapp_sent_this_month: number
@@ -522,6 +540,36 @@ export async function getCeoDashboardData(
     })
     .sort((a, b) => b.unique_clients - a.unique_clients || b.revenue_signed - a.revenue_signed)
 
+  // ── Métricas filtradas por período (Hoy / Semana / Mes) ──────────
+  // Henry quiere alternar entre vistas para entender ritmo diario,
+  // semanal y mensual. Calculo ingresos, firmas, contratos nuevos y
+  // count de pagos para cada ventana.
+  const todayStart00 = new Date(now)
+  todayStart00.setHours(0, 0, 0, 0)
+  const weekStart7d = new Date(now.getTime() - 7 * 86400_000)
+
+  const periodMetrics = (since: Date): PeriodMetrics => ({
+    revenue: allPayments
+      .filter(
+        (p) => p.status === 'completed' && p.paid_at && new Date(p.paid_at) >= since,
+      )
+      .reduce((s, p) => s + Number(p.amount), 0),
+    contracts_signed: allContracts.filter(
+      (c) => c.signed_at && new Date(c.signed_at) >= since,
+    ).length,
+    contracts_new: allContracts.filter((c) => new Date(c.created_at) >= since)
+      .length,
+    payments_count: allPayments.filter(
+      (p) => p.status === 'completed' && p.paid_at && new Date(p.paid_at) >= since,
+    ).length,
+  })
+
+  const periods = {
+    today: periodMetrics(todayStart00),
+    week: periodMetrics(weekStart7d),
+    month: periodMetrics(monthStart),
+  }
+
   const paidThisMonthList: PaidThisMonthItem[] = (paidThisMonthRaw || []).map((p) => {
     const cli = Array.isArray(p.client) ? p.client[0] : p.client
     const fullName = cli
@@ -572,6 +620,7 @@ export async function getCeoDashboardData(
     },
     contracts_by_status: contractsByStatus,
     services_ranking: servicesRanking,
+    periods,
     autopilot: {
       auto_contracts_this_month: 0,
       auto_whatsapp_sent_this_month: 0,

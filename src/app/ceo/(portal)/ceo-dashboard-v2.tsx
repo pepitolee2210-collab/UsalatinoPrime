@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react'
 import { ArrowUpRight, ArrowDownRight, ChevronRight, CheckCircle2 } from 'lucide-react'
 import type { CeoDashboardData } from '@/lib/ceo-dashboard-data'
-import { Sparkline } from '@/components/ceo/sparkline'
 import { LiveClock } from '@/components/ceo/live-clock'
 import { KpiDrawer, DrawerRow } from '@/components/ceo/kpi-drawer'
 
@@ -20,259 +19,270 @@ type DrawerKey =
   | 'new_contracts'
   | 'paid_this_month'
 
+type Period = 'today' | 'week' | 'month'
+
+const PERIOD_OPTIONS: { key: Period; label: string; sub: string }[] = [
+  { key: 'today', label: 'Hoy', sub: 'lo que pasó hoy' },
+  { key: 'week', label: 'Semana', sub: 'últimos 7 días' },
+  { key: 'month', label: 'Mes', sub: 'este mes' },
+]
+
 export function CeoDashboardV2({ data, firstName }: Props) {
+  const [period, setPeriod] = useState<Period>('month')
   const [openDrawer, setOpenDrawer] = useState<DrawerKey>(null)
   const { kpi, ops, trend, lists } = data
 
+  // Métricas filtradas por el período activo (con fallback a mes pasado si no llegan)
+  const currentPeriod = data.periods?.[period] ?? {
+    revenue: kpi.revenue_this_month,
+    contracts_signed: kpi.contracts_signed_this_month ?? 0,
+    contracts_new: kpi.contracts_new_this_month ?? 0,
+    payments_count: kpi.payments_clients_this_month ?? 0,
+  }
+
   const monthDelta = useMemo(() => {
+    if (period !== 'month') return null
     if (!kpi.revenue_last_month) return kpi.revenue_this_month > 0 ? 100 : 0
     return ((kpi.revenue_this_month - kpi.revenue_last_month) / kpi.revenue_last_month) * 100
-  }, [kpi.revenue_this_month, kpi.revenue_last_month])
-
-  const signedDelta = useMemo(() => {
-    const cur = kpi.contracts_signed_this_month ?? 0
-    const prev = kpi.contracts_signed_last_month ?? 0
-    if (!prev) return cur > 0 ? 100 : 0
-    return ((cur - prev) / prev) * 100
-  }, [kpi.contracts_signed_this_month, kpi.contracts_signed_last_month])
-
-  const revenueSpark = trend.map((t) => t.revenue_collected)
-  const signedSpark = trend.map((t) => t.contracts_signed)
-  const createdSpark = trend.map((t) => t.contracts_created)
+  }, [period, kpi.revenue_this_month, kpi.revenue_last_month])
 
   const pendingCount = kpi.contracts_pending_signature_count ?? ops.pending_signature.length
   const overdueCount = kpi.payments_clients_overdue ?? ops.overdue_clients.length
 
+  const periodLabel = PERIOD_OPTIONS.find((p) => p.key === period)?.label ?? 'Mes'
+  const periodSub = PERIOD_OPTIONS.find((p) => p.key === period)?.sub ?? ''
+
   return (
     <div className="ceo-scope font-sora min-h-screen" style={{ background: 'var(--ceo-bg)' }}>
-      <div className="mx-auto w-full max-w-[1240px] px-6 lg:px-10 py-10 lg:py-14">
+      <div className="mx-auto w-full max-w-[1320px] px-6 lg:px-12 py-12 lg:py-16">
 
-        {/* ── HEADER ──────────────────────────────────────────────── */}
-        <header className="flex items-start justify-between gap-6 flex-wrap mb-12">
+        {/* ──────────────────────────────────────────────────────────
+            SECCIÓN 0 · SALUDO
+            ────────────────────────────────────────────────────────── */}
+        <header className="flex items-start justify-between gap-6 flex-wrap mb-14">
           <div>
-            <p className="font-mono-ceo text-[10px] uppercase tracking-[0.24em] text-white/75 font-medium">
-              Centro de mando
+            <p className="font-mono-ceo text-[11px] uppercase tracking-[0.28em] text-white/55 font-medium">
+              Vista CEO · UsaLatino Prime
             </p>
-            <h1 className="font-display mt-2 text-4xl lg:text-5xl text-white font-light leading-[1.05] tracking-tight">
-              {firstName}.
+            <h1 className="font-display mt-3 text-5xl lg:text-7xl text-white font-light leading-[1.05] tracking-[-0.03em]">
+              Hola, {firstName}.
             </h1>
-            <p className="mt-3 max-w-md text-sm text-white/70 leading-relaxed">
-              La operación de UsaLatino Prime en este momento. Cada número aquí es lo que tu
-              equipo está moviendo.
+            <p className="mt-4 max-w-lg text-base lg:text-lg text-white/75 leading-relaxed">
+              Esto es lo que está pasando en tu empresa{' '}
+              <span className="text-white">ahora mismo</span>.
             </p>
           </div>
           <LiveClock />
         </header>
 
-        {/* ── KPI ROW PRINCIPAL ───────────────────────────────────── */}
-        {/* Look "terminal financiera": 3 columnas separadas por líneas
-            verticales, números tabulares grandes, espaciado generoso. */}
-        <section className="mb-12">
-          <div
-            className="grid grid-cols-1 lg:grid-cols-3 border-y border-white/[0.06]"
-            style={{ gap: '1px', background: 'rgba(255,255,255,0.06)' }}
-          >
-            <KpiCellHero
-              label="Cobrado este mes"
-              value={`$${kpi.revenue_this_month.toLocaleString()}`}
+        {/* ──────────────────────────────────────────────────────────
+            SECCIÓN 1 · TOGGLE DE PERÍODO
+            Botones grandes con el período activo destacado.
+            ────────────────────────────────────────────────────────── */}
+        <section className="mb-10">
+          <p className="font-mono-ceo text-[10px] uppercase tracking-[0.24em] text-white/65 font-medium mb-4">
+            Ver datos de
+          </p>
+          <div className="inline-flex items-center gap-2 p-1.5 rounded-2xl border border-white/[0.08] bg-white/[0.02]">
+            {PERIOD_OPTIONS.map((opt) => {
+              const active = period === opt.key
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setPeriod(opt.key)}
+                  className={`relative px-6 py-3.5 rounded-xl transition-all ${
+                    active
+                      ? 'bg-white text-black shadow-lg shadow-black/30'
+                      : 'text-white/75 hover:text-white hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <span className="font-display text-base font-semibold tracking-tight">
+                    {opt.label}
+                  </span>
+                  <span className={`ml-3 font-mono-ceo text-[10px] uppercase tracking-wider ${
+                    active ? 'text-black/55' : 'text-white/50'
+                  }`}>
+                    {opt.sub}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </section>
+
+        {/* ──────────────────────────────────────────────────────────
+            SECCIÓN 2 · LO MÁS IMPORTANTE — 3 KPIs hero
+            Números gigantes. Cero distracciones. Click para ver detalle.
+            ────────────────────────────────────────────────────────── */}
+        <section className="mb-20">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <HeroKpi
+              label="Cobrado"
+              periodLabel={periodLabel}
+              value={`$${currentPeriod.revenue.toLocaleString()}`}
+              subtext={
+                currentPeriod.payments_count > 0
+                  ? `de ${currentPeriod.payments_count} ${currentPeriod.payments_count === 1 ? 'pago' : 'pagos'}`
+                  : 'sin pagos en este período'
+              }
               deltaPct={monthDelta}
-              deltaLabel={`vs $${kpi.revenue_last_month.toLocaleString()} mes pasado`}
-              sparkline={revenueSpark}
-              accent="var(--ceo-gold)"
-              footnote={
-                kpi.collection_rate_this_month != null
-                  ? `${kpi.collection_rate_this_month}% del esperado del mes`
+              deltaLabel={
+                period === 'month' && kpi.revenue_last_month
+                  ? `vs $${kpi.revenue_last_month.toLocaleString()} mes pasado`
                   : undefined
               }
+              accent="var(--ceo-gold)"
               onClick={() => setOpenDrawer('paid_this_month')}
             />
-            <KpiCell
-              label="Firmados este mes"
-              value={String(kpi.contracts_signed_this_month ?? 0)}
-              deltaPct={signedDelta}
-              deltaLabel={`${kpi.contracts_signed_last_month ?? 0} mes pasado`}
-              sparkline={signedSpark}
+            <HeroKpi
+              label="Contratos firmados"
+              periodLabel={periodLabel}
+              value={String(currentPeriod.contracts_signed)}
+              subtext={
+                currentPeriod.contracts_signed === 0
+                  ? 'todavía no hay firmas'
+                  : currentPeriod.contracts_signed === 1
+                    ? 'un contrato cerrado'
+                    : `${currentPeriod.contracts_signed} contratos cerrados`
+              }
               accent="var(--ceo-good)"
               onClick={() => setOpenDrawer('signed_this_month')}
             />
-            <KpiCell
+            <HeroKpi
               label="Contratos nuevos"
-              value={String(kpi.contracts_new_this_month ?? 0)}
-              deltaPct={null}
-              deltaLabel="creados este mes"
-              sparkline={createdSpark}
-              accent="rgba(255,255,255,0.55)"
+              periodLabel={periodLabel}
+              value={String(currentPeriod.contracts_new)}
+              subtext={
+                currentPeriod.contracts_new === 0
+                  ? 'sin contratos nuevos'
+                  : `${currentPeriod.contracts_new} ${currentPeriod.contracts_new === 1 ? 'nuevo cliente' : 'nuevos clientes'}`
+              }
+              accent="rgba(255,255,255,0.7)"
               onClick={() => setOpenDrawer('new_contracts')}
             />
           </div>
+          <p className="mt-5 font-mono-ceo text-[10px] uppercase tracking-wider text-white/50">
+            {periodSub} · click sobre cualquier número para ver detalle
+          </p>
         </section>
 
-        {/* ── ALERT ROW — 4 micro-KPIs en línea ────────────────────── */}
-        <section className="mb-16">
-          <SectionLabel>Métricas operativas</SectionLabel>
-          <div
-            className="grid grid-cols-2 lg:grid-cols-4 border-y border-white/[0.06]"
-            style={{ gap: '1px', background: 'rgba(255,255,255,0.06)' }}
-          >
-            <MicroKpi
-              label="Faltan firmar"
-              value={String(pendingCount)}
-              tone={pendingCount > 5 ? 'bad' : pendingCount > 0 ? 'warn' : 'good'}
-              subline={
-                ops.pending_signature.length > 0
-                  ? `${ops.pending_signature[0].days_waiting}d el más antiguo`
-                  : 'todo al día'
-              }
-              onClick={() => setOpenDrawer('pending_signature')}
-            />
-            <MicroKpi
-              label="Pagos vencidos"
-              value={`$${kpi.revenue_overdue.toLocaleString()}`}
-              tone={kpi.revenue_overdue > 0 ? 'bad' : 'good'}
-              subline={`${overdueCount} clientes`}
-              onClick={() => setOpenDrawer('overdue')}
-            />
-            <MicroKpi
-              label="Pagaron este mes"
-              value={String(kpi.payments_clients_this_month ?? 0)}
-              tone="neutral"
-              subline="clientes únicos"
-              onClick={() => setOpenDrawer('paid_this_month')}
-            />
-            <MicroKpi
-              label="Tiempo firma"
-              value={
-                kpi.avg_days_create_to_sign != null
-                  ? `${kpi.avg_days_create_to_sign}d`
-                  : '—'
-              }
-              tone={
-                (kpi.avg_days_create_to_sign ?? 0) > 14
-                  ? 'bad'
-                  : (kpi.avg_days_create_to_sign ?? 0) > 7
-                    ? 'warn'
-                    : 'good'
-              }
-              subline="promedio crear → firmar"
-            />
-          </div>
-        </section>
-
-        {/* ── OPERACIÓN — 3 cards de prioridades ───────────────────── */}
-        <section className="mb-16">
-          <SectionLabel
-            subline="Lo que Andrium está gestionando hoy. Si algo se acumula, ahí está."
-          >
-            Pendientes en curso
-          </SectionLabel>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-px bg-white/[0.06] border-y border-white/[0.06]">
-            <PriorityCard
+        {/* ──────────────────────────────────────────────────────────
+            SECCIÓN 3 · NECESITAN TU ATENCIÓN
+            Solo problemas en curso. Cards grandes, claros.
+            ────────────────────────────────────────────────────────── */}
+        <section className="mb-20">
+          <SectionTitle
+            number="01"
+            title="Necesitan tu atención"
+            subtitle="Lo que Andrium debería estar resolviendo hoy."
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <AttentionCard
               tone="warn"
-              title={`${ops.pending_signature.length} esperando firma`}
+              big={String(pendingCount)}
+              label={pendingCount === 1 ? 'Contrato esperando firma' : 'Contratos esperando firma'}
               description={
                 ops.pending_signature.length > 0
-                  ? `${ops.pending_signature[0].client_name} — ${ops.pending_signature[0].days_waiting}d`
-                  : 'Sin pendientes'
+                  ? `${ops.pending_signature[0].client_name} lleva ${ops.pending_signature[0].days_waiting} días esperando.`
+                  : 'Todos los contratos están firmados o aún sin enviar.'
               }
-              cta="Ver lista"
+              actionText="Ver lista completa"
               onClick={() => setOpenDrawer('pending_signature')}
-              disabled={ops.pending_signature.length === 0}
+              disabled={pendingCount === 0}
             />
-            <PriorityCard
+            <AttentionCard
               tone="bad"
-              title={`$${kpi.revenue_overdue.toLocaleString()} sin cobrar`}
+              big={`$${kpi.revenue_overdue.toLocaleString()}`}
+              label={overdueCount === 1 ? 'cliente con pago vencido' : 'clientes con pagos vencidos'}
+              labelCountPrefix={String(overdueCount)}
               description={
                 ops.overdue_clients.length > 0
-                  ? `${ops.overdue_clients.length} clientes — top: $${ops.overdue_clients[0].total_overdue.toLocaleString()}`
-                  : 'Sin pagos vencidos'
+                  ? `El mayor adeudo: ${ops.overdue_clients[0].name} — $${ops.overdue_clients[0].total_overdue.toLocaleString()}.`
+                  : 'Cero deudas vencidas. ✓'
               }
-              cta="Ver clientes"
+              actionText="Ver clientes morosos"
               onClick={() => setOpenDrawer('overdue')}
-              disabled={ops.overdue_clients.length === 0}
-            />
-            <PriorityCard
-              tone="info"
-              title={`${ops.upcoming_payments_7d_count} pagos próximos`}
-              description={
-                ops.upcoming_payments_7d_count > 0
-                  ? `$${ops.upcoming_payments_7d_amount.toLocaleString()} esperados en 7 días`
-                  : 'Ningún pago esperado esta semana'
-              }
-              cta="Pendiente cobranza"
-              disabled
+              disabled={overdueCount === 0}
             />
           </div>
         </section>
 
-        {/* ── CAPA: SERVICIOS — qué se demanda más ────────────────────── */}
-        <section className="mb-16">
-          <SectionLabel
-            subline="Ranking por clientes únicos — qué se vende, cuál genera más ingreso."
-          >
-            Servicios
-          </SectionLabel>
-          <div
-            className="border-y border-white/[0.06]"
-            style={{ background: 'var(--ceo-bg)' }}
-          >
-            <ServicesRanking items={data.services_ranking ?? []} />
-          </div>
+        {/* ──────────────────────────────────────────────────────────
+            SECCIÓN 4 · PIPELINE DE CONTRATOS
+            En qué estado están todos los contratos. Visual claro.
+            ────────────────────────────────────────────────────────── */}
+        <section className="mb-20">
+          <SectionTitle
+            number="02"
+            title="Pipeline de contratos"
+            subtitle="Estado actual de todos los contratos en tu empresa."
+          />
+          <ContractPipeline items={data.contracts_by_status ?? []} />
         </section>
 
-        {/* ── CAPA: PIPELINE DE CONTRATOS por estado ──────────────────── */}
-        <section className="mb-16">
-          <SectionLabel
-            subline="Estado actual de TODOS los contratos. Cada barra muestra dónde están parados."
-          >
-            Pipeline de contratos
-          </SectionLabel>
-          <div
-            className="border-y border-white/[0.06] p-7 lg:p-8"
-            style={{ background: 'var(--ceo-bg)' }}
-          >
-            <ContractStatusBar items={data.contracts_by_status ?? []} />
-          </div>
+        {/* ──────────────────────────────────────────────────────────
+            SECCIÓN 5 · SERVICIOS — qué se demanda más
+            ────────────────────────────────────────────────────────── */}
+        <section className="mb-20">
+          <SectionTitle
+            number="03"
+            title="Servicios más demandados"
+            subtitle="Ranking por clientes — qué pide más gente, cuánto genera cada uno."
+          />
+          <ServicesTable items={data.services_ranking ?? []} />
         </section>
 
-        {/* ── CAPA: TENDENCIA 6 MESES ─────────────────────────────────── */}
-        <section className="mb-16">
-          <SectionLabel subline="Cobrado mensual de los últimos 6 meses">
-            Evolución del negocio
-          </SectionLabel>
+        {/* ──────────────────────────────────────────────────────────
+            SECCIÓN 6 · EVOLUCIÓN HISTÓRICA
+            ────────────────────────────────────────────────────────── */}
+        <section className="mb-20">
+          <SectionTitle
+            number="04"
+            title="Evolución del negocio"
+            subtitle="Cobrado mensual de los últimos 6 meses."
+          />
           <div
-            className="border-y border-white/[0.06] p-7 lg:p-8"
-            style={{ background: 'var(--ceo-bg)' }}
+            className="rounded-2xl border border-white/[0.08] p-7 lg:p-9"
+            style={{ background: 'rgba(255,255,255,0.012)' }}
           >
             <TrendChart points={trend} />
           </div>
         </section>
 
-        {/* ── CAPA: FUNNEL ─────────────────────────────────────────────── */}
-        <section className="mb-16">
-          <SectionLabel subline="Desde la primera llamada IA hasta el contrato firmado">
-            Funnel del cliente
-          </SectionLabel>
+        {/* ──────────────────────────────────────────────────────────
+            SECCIÓN 7 · FUNNEL DEL CLIENTE
+            ────────────────────────────────────────────────────────── */}
+        <section className="mb-12">
+          <SectionTitle
+            number="05"
+            title="Funnel del cliente"
+            subtitle="Desde la primera llamada IA hasta el contrato firmado."
+          />
           <div
-            className="border-y border-white/[0.06] py-7 lg:py-8"
-            style={{ background: 'var(--ceo-bg)' }}
+            className="rounded-2xl border border-white/[0.08] p-7 lg:p-9"
+            style={{ background: 'rgba(255,255,255,0.012)' }}
           >
             <FunnelChart stages={data.funnel} />
           </div>
         </section>
 
-        <p className="font-mono-ceo text-[10px] uppercase tracking-[0.18em] text-white/50 text-right">
+        <p className="font-mono-ceo text-[11px] uppercase tracking-[0.18em] text-white/50 text-right">
           última actualización ·{' '}
-          {new Date(data.generated_at).toLocaleTimeString('es-US', { hour: '2-digit', minute: '2-digit' })}
+          {new Date(data.generated_at).toLocaleTimeString('es-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
         </p>
 
         {/* ── DRAWERS ──────────────────────────────────────────────── */}
         <KpiDrawer
           open={openDrawer === 'pending_signature'}
           onClose={() => setOpenDrawer(null)}
-          eyebrow="Operación · pendiente"
-          title="Esperando firma"
+          eyebrow="Pendiente firma"
+          title="Esperando firma del cliente"
           bigNumber={String(ops.pending_signature.length)}
-          subtitle="Top 10 por antigüedad. Andrium debería estar haciendo seguimiento."
+          subtitle="Andrium debería estar haciendo seguimiento."
           accent="var(--ceo-gold)"
         >
           {ops.pending_signature.length === 0 ? (
@@ -296,8 +306,8 @@ export function CeoDashboardV2({ data, firstName }: Props) {
         <KpiDrawer
           open={openDrawer === 'overdue'}
           onClose={() => setOpenDrawer(null)}
-          eyebrow="Cobranza · atrasado"
-          title="Pagos vencidos"
+          eyebrow="Pagos vencidos"
+          title="Clientes con deudas"
           bigNumber={`$${kpi.revenue_overdue.toLocaleString()}`}
           subtitle={`${ops.overdue_clients.length} clientes con cuotas vencidas.`}
           accent="var(--ceo-bad)"
@@ -411,249 +421,366 @@ export function CeoDashboardV2({ data, firstName }: Props) {
 // ══════════════════════════════════════════════════════════════════════
 
 /**
- * Cell del KPI principal — fondo plano, sin sombras, hover sutil con
- * borde superior dorado.
+ * Encabezado numerado por sección. Estilo Apple landing page —
+ * número grande gris arriba + título grande + subtítulo.
  */
-function KpiCellHero({
-  label, value, deltaPct, deltaLabel, sparkline, accent, footnote, onClick,
+function SectionTitle({
+  number, title, subtitle,
 }: {
-  label: string
-  value: string
-  deltaPct: number
-  deltaLabel: string
-  sparkline: number[]
-  accent: string
-  footnote?: string
-  onClick?: () => void
+  number: string
+  title: string
+  subtitle: string
 }) {
-  const positive = deltaPct >= 0
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group relative text-left px-7 py-7 lg:py-8 transition-colors"
-      style={{ background: 'var(--ceo-bg)' }}
-    >
-      {/* Línea dorada en hover (top accent) */}
-      <span
-        className="absolute top-0 left-0 right-0 h-px opacity-0 transition-opacity group-hover:opacity-100"
-        style={{ background: accent }}
-      />
-      <p className="font-mono-ceo text-[10px] uppercase tracking-[0.22em] text-white/65 font-medium">
-        {label}
-      </p>
-      <div className="mt-5 flex items-end justify-between gap-4">
-        <p className="font-display text-5xl text-white font-light leading-none tabular-nums tracking-tight">
-          {value}
-        </p>
-        <Sparkline data={sparkline} width={120} height={32} stroke={accent} />
+    <div className="mb-7 flex items-baseline gap-5">
+      <span className="font-display text-3xl lg:text-4xl font-light text-white/40 tabular-nums leading-none">
+        {number}
+      </span>
+      <div className="min-w-0">
+        <h2 className="font-display text-2xl lg:text-3xl text-white font-medium leading-tight tracking-tight">
+          {title}
+        </h2>
+        <p className="mt-2 text-sm lg:text-base text-white/65 leading-relaxed">{subtitle}</p>
       </div>
-      <div className="mt-4 flex items-center gap-2">
-        <span
-          className="inline-flex items-center gap-1 font-mono-ceo text-[10px] uppercase tracking-wider font-medium"
-          style={{ color: positive ? 'var(--ceo-good)' : 'var(--ceo-bad)' }}
-        >
-          {positive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-          {Math.abs(deltaPct).toFixed(0)}%
-        </span>
-        <span className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/75">
-          {deltaLabel}
-        </span>
-      </div>
-      {footnote && (
-        <p className="mt-3 font-mono-ceo text-[10px] uppercase tracking-wider text-white/75">
-          {footnote}
-        </p>
-      )}
-    </button>
+    </div>
   )
 }
 
-function KpiCell({
-  label, value, deltaPct, deltaLabel, sparkline, accent, onClick,
+/**
+ * KPI hero — número MUY grande, label arriba pequeño, click para drill-down.
+ * Estilo Apple feature card (rounded-2xl, padding generoso, hover sutil).
+ */
+function HeroKpi({
+  label, periodLabel, value, subtext, deltaPct, deltaLabel, accent, onClick,
 }: {
   label: string
+  periodLabel: string
   value: string
-  deltaPct: number | null
-  deltaLabel: string
-  sparkline: number[]
+  subtext: string
+  deltaPct?: number | null
+  deltaLabel?: string
   accent: string
   onClick?: () => void
 }) {
-  const positive = deltaPct !== null && deltaPct >= 0
+  const positive = deltaPct != null && deltaPct >= 0
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group relative text-left px-7 py-7 lg:py-8 transition-colors"
-      style={{ background: 'var(--ceo-bg)' }}
+      className="group relative text-left rounded-2xl border border-white/[0.08] p-7 lg:p-9 transition-all hover:border-white/20 overflow-hidden"
+      style={{ background: 'rgba(255,255,255,0.012)' }}
     >
+      {/* Línea dorada arriba en hover */}
       <span
-        className="absolute top-0 left-0 right-0 h-px opacity-0 transition-opacity group-hover:opacity-100"
+        className="absolute top-0 left-7 right-7 h-px opacity-0 transition-opacity group-hover:opacity-100"
         style={{ background: accent }}
       />
-      <div className="flex items-start justify-between gap-3">
-        <p className="font-mono-ceo text-[10px] uppercase tracking-[0.22em] text-white/65 font-medium">
-          {label}
-        </p>
-        <ChevronRight className="w-3.5 h-3.5 text-white/40 transition-all group-hover:translate-x-0.5 group-hover:text-white/70" />
-      </div>
-      <div className="mt-5 flex items-end justify-between gap-4">
-        <p className="font-display text-5xl text-white font-light leading-none tabular-nums tracking-tight">
-          {value}
-        </p>
-        <Sparkline data={sparkline} width={90} height={28} stroke={accent} />
-      </div>
-      <div className="mt-4 flex items-center gap-2">
-        {deltaPct !== null && (
-          <span
-            className="inline-flex items-center gap-1 font-mono-ceo text-[10px] uppercase tracking-wider font-medium"
-            style={{ color: positive ? 'var(--ceo-good)' : 'var(--ceo-bad)' }}
-          >
-            {positive ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-            {Math.abs(deltaPct).toFixed(0)}%
-          </span>
-        )}
-        <span className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/75">
-          {deltaLabel}
-        </span>
-      </div>
-    </button>
-  )
-}
 
-function MicroKpi({
-  label, value, tone, subline, onClick,
-}: {
-  label: string
-  value: string
-  tone: 'good' | 'warn' | 'bad' | 'neutral'
-  subline?: string
-  onClick?: () => void
-}) {
-  const toneColor = {
-    good: 'var(--ceo-good)',
-    warn: 'var(--ceo-gold)',
-    bad: 'var(--ceo-bad)',
-    neutral: 'var(--ceo-text-2)',
-  }[tone]
+      {/* Top label + chevron */}
+      <div className="flex items-start justify-between gap-3 mb-8">
+        <div>
+          <p className="font-mono-ceo text-[11px] uppercase tracking-[0.22em] text-white/65 font-medium">
+            {label}
+          </p>
+          <p className="mt-1.5 font-mono-ceo text-[10px] uppercase tracking-wider text-white/45">
+            {periodLabel}
+          </p>
+        </div>
+        <ChevronRight className="w-5 h-5 text-white/40 transition-all group-hover:translate-x-0.5 group-hover:text-white" />
+      </div>
 
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={!onClick}
-      className="group relative text-left px-6 py-6 transition-colors disabled:cursor-default enabled:hover:bg-white/[0.012]"
-      style={{ background: 'var(--ceo-bg)' }}
-    >
-      {onClick && (
-        <span
-          className="absolute top-0 left-0 right-0 h-px opacity-0 transition-opacity group-hover:opacity-100"
-          style={{ background: toneColor }}
-        />
-      )}
-      <p className="font-mono-ceo text-[10px] uppercase tracking-[0.22em] text-white/65 font-medium">
-        {label}
-      </p>
+      {/* Número GIGANTE */}
       <p
-        className="font-display mt-4 text-3xl font-light leading-none tabular-nums tracking-tight"
-        style={{ color: tone === 'neutral' ? 'var(--ceo-text)' : toneColor }}
+        className="font-display font-light leading-none tabular-nums tracking-[-0.03em] text-white"
+        style={{ fontSize: 'clamp(3rem, 5.5vw, 4.75rem)' }}
       >
         {value}
       </p>
-      {subline && (
-        <p className="mt-3 font-mono-ceo text-[10px] uppercase tracking-wider text-white/75">
-          {subline}
-        </p>
+
+      {/* Subtexto */}
+      <p className="mt-5 text-sm text-white/75 leading-relaxed">{subtext}</p>
+
+      {/* Delta % opcional */}
+      {deltaPct != null && deltaLabel && (
+        <div className="mt-4 flex items-center gap-2">
+          <span
+            className="inline-flex items-center gap-1 font-mono-ceo text-[11px] uppercase tracking-wider font-medium"
+            style={{ color: positive ? 'var(--ceo-good)' : 'var(--ceo-bad)' }}
+          >
+            {positive ? <ArrowUpRight className="w-3.5 h-3.5" /> : <ArrowDownRight className="w-3.5 h-3.5" />}
+            {Math.abs(deltaPct).toFixed(0)}%
+          </span>
+          <span className="font-mono-ceo text-[11px] uppercase tracking-wider text-white/55">
+            {deltaLabel}
+          </span>
+        </div>
       )}
     </button>
   )
 }
 
-function PriorityCard({
-  tone, title, description, cta, onClick, disabled,
+/**
+ * Card de "necesita atención" — número grande con label dentro de la
+ * misma línea. Look Apple banner card.
+ */
+function AttentionCard({
+  tone, big, label, labelCountPrefix, description, actionText, onClick, disabled,
 }: {
-  tone: 'warn' | 'bad' | 'good' | 'info'
-  title: string
+  tone: 'warn' | 'bad'
+  big: string
+  label: string
+  labelCountPrefix?: string
   description: string
-  cta: string
+  actionText: string
   onClick?: () => void
   disabled?: boolean
 }) {
-  const accent = {
-    warn: 'var(--ceo-gold)',
-    bad: 'var(--ceo-bad)',
-    good: 'var(--ceo-good)',
-    info: 'rgba(255,255,255,0.55)',
-  }[tone]
-
+  const accent = tone === 'warn' ? 'var(--ceo-gold)' : 'var(--ceo-bad)'
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="group relative text-left px-7 py-7 transition-colors disabled:cursor-default disabled:opacity-60 enabled:hover:bg-white/[0.012]"
-      style={{ background: 'var(--ceo-bg)' }}
+      className="group relative text-left rounded-2xl border p-7 lg:p-9 transition-all overflow-hidden disabled:cursor-default disabled:opacity-50 enabled:hover:bg-white/[0.025]"
+      style={{
+        background: 'rgba(255,255,255,0.012)',
+        borderColor: disabled ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.10)',
+      }}
     >
+      {/* Línea de acento arriba (cuando no disabled) */}
       {!disabled && (
         <span
-          className="absolute top-0 left-0 right-0 h-px opacity-0 transition-opacity group-hover:opacity-100"
-          style={{ background: accent }}
+          className="absolute top-0 left-7 right-7 h-px"
+          style={{ background: accent, opacity: 0.5 }}
         />
       )}
-      <div className="flex items-start gap-3 mb-1">
+
+      <div className="flex items-baseline gap-5 mb-5 flex-wrap">
         <span
-          className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full"
-          style={{ background: accent }}
-        />
-        <h4 className="font-display text-lg text-white font-medium leading-tight tracking-tight">
-          {title}
-        </h4>
+          className="font-display font-light leading-none tabular-nums tracking-[-0.03em]"
+          style={{ fontSize: 'clamp(2.75rem, 5vw, 4.25rem)', color: accent }}
+        >
+          {big}
+        </span>
+        <span className="text-base lg:text-lg text-white/85 leading-tight font-medium">
+          {labelCountPrefix && (
+            <span className="font-display text-2xl font-light text-white/95 mr-2 tabular-nums">
+              {labelCountPrefix}
+            </span>
+          )}
+          {label}
+        </span>
       </div>
-      <p className="mt-3 text-xs text-white/70 leading-relaxed pl-[18px]">{description}</p>
+
+      <p className="text-sm lg:text-base text-white/75 leading-relaxed mb-5">{description}</p>
+
       <div
-        className="mt-5 flex items-center gap-1.5 pl-[18px] font-mono-ceo text-[10px] uppercase tracking-[0.18em] font-medium transition-all"
-        style={{ color: disabled ? 'rgba(255,255,255,0.25)' : accent }}
+        className="inline-flex items-center gap-2 font-mono-ceo text-[11px] uppercase tracking-[0.2em] font-medium"
+        style={{ color: disabled ? 'rgba(255,255,255,0.35)' : accent }}
       >
-        {cta}
+        {actionText}
         {!disabled && (
-          <ChevronRight className="w-3 h-3 transition-transform group-enabled:group-hover:translate-x-0.5" />
+          <ChevronRight className="w-3.5 h-3.5 transition-transform group-enabled:group-hover:translate-x-0.5" />
         )}
       </div>
     </button>
   )
 }
 
-function SectionLabel({
-  children, subline, inline,
+/**
+ * Pipeline de contratos — stack horizontal + 6 cards numéricas debajo
+ * (una por estado). Grid responsive con tipografía grande.
+ */
+function ContractPipeline({
+  items,
 }: {
-  children: React.ReactNode
-  subline?: string
-  inline?: boolean
+  items: NonNullable<CeoDashboardData['contracts_by_status']>
 }) {
+  if (!items.length) {
+    return (
+      <div className="rounded-2xl border border-white/[0.08] p-9 text-center text-base text-white/65"
+        style={{ background: 'rgba(255,255,255,0.012)' }}>
+        Sin contratos en el pipeline todavía.
+      </div>
+    )
+  }
+  const totalCount = items.reduce((s, x) => s + x.count, 0) || 1
+  const totalValue = items.reduce((s, x) => s + x.total_value, 0)
+
+  const colorFor = (status: string): string => {
+    switch (status) {
+      case 'borrador': return 'rgba(255, 255, 255, 0.35)'
+      case 'pendiente_firma': return '#E8B84A'
+      case 'firmado': return '#4ADE80'
+      case 'activo': return '#7DD3FC'
+      case 'completado': return '#FFFFFF'
+      case 'cancelado': return '#F87171'
+      default: return 'rgba(255, 255, 255, 0.45)'
+    }
+  }
+
   return (
-    <div className={inline ? 'mb-5' : 'mb-5'}>
-      <p className="font-mono-ceo text-[10px] uppercase tracking-[0.24em] text-white/65 font-medium">
-        {children}
-      </p>
-      {subline && <p className="mt-1.5 text-xs text-white/75">{subline}</p>}
+    <div
+      className="rounded-2xl border border-white/[0.08] p-7 lg:p-9"
+      style={{ background: 'rgba(255,255,255,0.012)' }}
+    >
+      {/* Totales arriba */}
+      <div className="flex items-baseline justify-between mb-6 flex-wrap gap-3">
+        <div>
+          <p className="font-mono-ceo text-[11px] uppercase tracking-[0.22em] text-white/65 font-medium">
+            Total en el pipeline
+          </p>
+          <div className="mt-2 flex items-baseline gap-3 flex-wrap">
+            <span className="font-display text-4xl lg:text-5xl text-white font-light tabular-nums tracking-tight">
+              {totalCount}
+            </span>
+            <span className="text-base text-white/75">contratos</span>
+            <span className="text-white/30 mx-1">·</span>
+            <span className="font-display text-2xl lg:text-3xl text-white/85 font-light tabular-nums tracking-tight">
+              ${totalValue.toLocaleString()}
+            </span>
+            <span className="text-sm text-white/65">en valor</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Stack horizontal grande */}
+      <div className="flex h-4 w-full overflow-hidden rounded-md bg-white/[0.04] mb-8">
+        {items.map((s) => {
+          const pct = (s.count / totalCount) * 100
+          if (pct < 0.5) return null
+          return (
+            <div
+              key={s.status}
+              style={{ width: `${pct}%`, background: colorFor(s.status), opacity: 0.9 }}
+              title={`${s.label}: ${s.count}`}
+            />
+          )
+        })}
+      </div>
+
+      {/* Cards numéricas — una por estado */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-px"
+        style={{ background: 'rgba(255,255,255,0.06)' }}>
+        {items.map((s) => {
+          const color = colorFor(s.status)
+          const pct = (s.count / totalCount) * 100
+          return (
+            <div key={s.status} className="px-5 py-6"
+              style={{ background: 'rgba(20, 20, 22, 1)' }}>
+              <div className="flex items-center gap-2 mb-4">
+                <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                <p className="font-mono-ceo text-[11px] uppercase tracking-[0.18em] text-white/75 font-medium truncate">
+                  {s.label}
+                </p>
+              </div>
+              <p
+                className="font-display text-4xl lg:text-5xl font-light tabular-nums leading-none tracking-[-0.02em]"
+                style={{ color: s.status === 'borrador' ? 'var(--ceo-text)' : color }}
+              >
+                {s.count}
+              </p>
+              <p className="mt-3 text-sm text-white/75 tabular-nums">
+                ${s.total_value.toLocaleString()}
+              </p>
+              <p className="mt-1 font-mono-ceo text-[10px] uppercase tracking-wider text-white/55 tabular-nums">
+                {pct.toFixed(1)}% del total
+              </p>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Tabla de servicios — minimalista, tipografía grande. Cada fila con
+ * nombre del servicio + clientes + firmados + ingreso.
+ */
+function ServicesTable({
+  items,
+}: {
+  items: NonNullable<CeoDashboardData['services_ranking']>
+}) {
+  if (!items.length) {
+    return (
+      <div className="rounded-2xl border border-white/[0.08] p-9 text-center text-base text-white/65"
+        style={{ background: 'rgba(255,255,255,0.012)' }}>
+        Sin actividad por servicio todavía.
+      </div>
+    )
+  }
+  const maxClients = Math.max(...items.map((s) => s.unique_clients), 1)
+  return (
+    <div
+      className="rounded-2xl border border-white/[0.08] overflow-hidden"
+      style={{ background: 'rgba(255,255,255,0.012)' }}
+    >
+      {/* Header */}
+      <div className="grid grid-cols-12 gap-4 border-b border-white/[0.08] px-7 lg:px-8 py-4 font-mono-ceo text-[11px] uppercase tracking-[0.18em] text-white/65 font-medium">
+        <div className="col-span-1">#</div>
+        <div className="col-span-5">Servicio</div>
+        <div className="col-span-2 text-right">Clientes</div>
+        <div className="col-span-2 text-right">Firmados</div>
+        <div className="col-span-2 text-right">Ingreso</div>
+      </div>
+      {/* Rows */}
+      {items.map((s, idx) => {
+        const widthPct = (s.unique_clients / maxClients) * 100
+        return (
+          <div
+            key={s.slug}
+            className="group grid grid-cols-12 gap-4 border-b border-white/[0.04] px-7 lg:px-8 py-5 items-center transition-colors hover:bg-white/[0.02] relative last:border-b-0"
+          >
+            <span
+              className="pointer-events-none absolute inset-y-0 left-0 transition-opacity"
+              style={{
+                width: `${widthPct}%`,
+                background:
+                  'linear-gradient(90deg, rgba(232,184,74,0.06) 0%, rgba(232,184,74,0.01) 100%)',
+              }}
+            />
+            <div className="col-span-1 relative font-mono-ceo text-base text-white/75 tabular-nums">
+              {String(idx + 1).padStart(2, '0')}
+            </div>
+            <div className="col-span-5 relative">
+              <p className="text-base lg:text-lg text-white font-medium leading-tight truncate">
+                {s.name}
+              </p>
+              <p className="mt-1 font-mono-ceo text-[11px] uppercase tracking-wider text-white/55">
+                {s.share_pct}% de la demanda
+              </p>
+            </div>
+            <div className="col-span-2 relative text-right font-display text-2xl text-white tabular-nums font-light tracking-tight">
+              {s.unique_clients}
+            </div>
+            <div className="col-span-2 relative text-right font-display text-2xl text-white tabular-nums font-light tracking-tight">
+              {s.contracts_signed}
+            </div>
+            <div className="col-span-2 relative text-right font-display text-2xl text-white tabular-nums font-light tracking-tight">
+              ${s.revenue_signed.toLocaleString()}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
 
 function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
-  if (!points.length) return <p className="text-xs text-white/75">Sin datos</p>
+  if (!points.length) return <p className="text-base text-white/65">Sin datos</p>
   const maxRev = Math.max(...points.map((p) => p.revenue_collected), 1)
   return (
     <div>
-      <div className="grid grid-cols-6 gap-3 h-36 items-end mb-3">
+      <div className="grid grid-cols-6 gap-4 h-44 items-end mb-4">
         {points.map((p) => {
           const height = (p.revenue_collected / maxRev) * 100
           const isLast = p === points[points.length - 1]
           return (
-            <div key={p.month} className="flex flex-col items-center gap-2 group">
+            <div key={p.month} className="flex flex-col items-center gap-3 group">
               <div
-                className="w-full transition-all"
+                className="w-full rounded-sm transition-all"
                 style={{
                   height: `${Math.max(2, height)}%`,
                   background: isLast ? 'var(--ceo-gold)' : 'rgba(232,184,74,0.35)',
@@ -662,7 +789,7 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
                 title={`$${p.revenue_collected.toLocaleString()}`}
               />
               <span
-                className="font-mono-ceo text-[9px] uppercase tracking-wider text-white/65 capitalize"
+                className="font-mono-ceo text-[11px] uppercase tracking-wider text-white/65 capitalize"
                 style={{ color: isLast ? 'var(--ceo-text)' : undefined }}
               >
                 {p.label}
@@ -671,7 +798,7 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
           )
         })}
       </div>
-      <div className="grid grid-cols-2 gap-3 pt-5 border-t border-white/[0.06]">
+      <div className="grid grid-cols-2 gap-4 pt-6 border-t border-white/[0.06]">
         <Stat
           label="Firmados (últ. 6m)"
           value={points.reduce((s, p) => s + p.contracts_signed, 0).toString()}
@@ -685,192 +812,22 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
   )
 }
 
-/**
- * Ranking de servicios — qué se demanda más. Tabla minimal estilo Apple:
- * rank tipográfico + nombre del servicio + clientes + contratos firmados +
- * ingreso firmado + barra horizontal de share %.
- */
-function ServicesRanking({ items }: { items: NonNullable<CeoDashboardData['services_ranking']> }) {
-  if (!items.length) {
-    return (
-      <div className="px-7 py-10 text-center text-xs text-white/65">
-        Sin actividad por servicio todavía.
-      </div>
-    )
-  }
-  const maxClients = Math.max(...items.map((s) => s.unique_clients), 1)
-  return (
-    <div className="px-7 lg:px-8">
-      {/* Header */}
-      <div className="grid grid-cols-12 gap-4 border-b border-white/[0.06] py-3.5 font-mono-ceo text-[10px] uppercase tracking-[0.18em] text-white/55 font-medium">
-        <div className="col-span-1">#</div>
-        <div className="col-span-5">Servicio</div>
-        <div className="col-span-2 text-right">Clientes</div>
-        <div className="col-span-2 text-right">Firmados</div>
-        <div className="col-span-2 text-right">Ingreso</div>
-      </div>
-      {/* Rows */}
-      {items.map((s, idx) => {
-        const widthPct = (s.unique_clients / maxClients) * 100
-        return (
-          <div
-            key={s.slug}
-            className="group grid grid-cols-12 gap-4 border-b border-white/[0.04] py-4 items-center transition-colors hover:bg-white/[0.012] relative"
-          >
-            {/* Barra de fondo (% de clientes vs el top) */}
-            <span
-              className="pointer-events-none absolute inset-y-0 left-0 transition-opacity"
-              style={{
-                width: `${widthPct}%`,
-                background:
-                  'linear-gradient(90deg, rgba(232,184,74,0.07) 0%, rgba(232,184,74,0.01) 100%)',
-              }}
-            />
-            <div className="col-span-1 relative font-mono-ceo text-xs text-white/65 tabular-nums">
-              {String(idx + 1).padStart(2, '0')}
-            </div>
-            <div className="col-span-5 relative">
-              <p className="text-sm text-white font-medium leading-tight truncate">{s.name}</p>
-              <p className="mt-0.5 font-mono-ceo text-[10px] uppercase tracking-wider text-white/55">
-                {s.share_pct}% de la demanda
-              </p>
-            </div>
-            <div className="col-span-2 relative text-right font-display text-lg text-white tabular-nums font-light">
-              {s.unique_clients}
-            </div>
-            <div className="col-span-2 relative text-right font-display text-lg text-white tabular-nums font-light">
-              {s.contracts_signed}
-            </div>
-            <div className="col-span-2 relative text-right font-display text-lg text-white tabular-nums font-light">
-              ${s.revenue_signed.toLocaleString()}
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-/**
- * Pipeline de contratos — stack horizontal proporcional + breakdown
- * numérico debajo (cards minimalistas, una por estado).
- *
- * Cada estado tiene su color (borrador=blanco apagado, pendiente=dorado,
- * firmado=verde, activo=cyan, completado=blanco fuerte, cancelado=rojo).
- */
-function ContractStatusBar({
-  items,
-}: {
-  items: NonNullable<CeoDashboardData['contracts_by_status']>
-}) {
-  if (!items.length) {
-    return <p className="text-xs text-white/65">Sin contratos en el pipeline.</p>
-  }
-  const totalCount = items.reduce((s, x) => s + x.count, 0) || 1
-  const totalValue = items.reduce((s, x) => s + x.total_value, 0)
-
-  const colorFor = (status: string): string => {
-    switch (status) {
-      case 'borrador': return 'rgba(255, 255, 255, 0.30)'
-      case 'pendiente_firma': return '#E8B84A'
-      case 'firmado': return '#4ADE80'
-      case 'activo': return '#7DD3FC'
-      case 'completado': return '#FFFFFF'
-      case 'cancelado': return '#F87171'
-      default: return 'rgba(255, 255, 255, 0.45)'
-    }
-  }
-
-  return (
-    <div>
-      {/* Stack horizontal proporcional */}
-      <div className="mb-6">
-        <div className="flex items-baseline justify-between mb-3">
-          <p className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/65 font-medium">
-            {totalCount} contratos · ${totalValue.toLocaleString()} valor total
-          </p>
-          <p className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/55">
-            distribución del pipeline
-          </p>
-        </div>
-        <div className="flex h-2.5 w-full overflow-hidden rounded-sm bg-white/[0.04]">
-          {items.map((s) => {
-            const pct = (s.count / totalCount) * 100
-            if (pct < 0.5) return null
-            return (
-              <div
-                key={s.status}
-                style={{
-                  width: `${pct}%`,
-                  background: colorFor(s.status),
-                  opacity: 0.85,
-                }}
-                title={`${s.label}: ${s.count} (${pct.toFixed(1)}%)`}
-              />
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Breakdown numérico por estado — cards en grid */}
-      <div
-        className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 border-y border-white/[0.06]"
-        style={{ gap: '1px', background: 'rgba(255,255,255,0.06)' }}
-      >
-        {items.map((s) => {
-          const color = colorFor(s.status)
-          const pct = (s.count / totalCount) * 100
-          return (
-            <div
-              key={s.status}
-              className="px-4 py-5"
-              style={{ background: 'var(--ceo-bg)' }}
-            >
-              <div className="flex items-center gap-2 mb-3">
-                <span
-                  className="h-1.5 w-1.5 rounded-full flex-shrink-0"
-                  style={{ background: color }}
-                />
-                <p className="font-mono-ceo text-[10px] uppercase tracking-[0.18em] text-white/65 font-medium truncate">
-                  {s.label}
-                </p>
-              </div>
-              <p
-                className="font-display text-3xl font-light tabular-nums leading-none tracking-tight"
-                style={{ color: s.status === 'borrador' ? 'var(--ceo-text)' : color }}
-              >
-                {s.count}
-              </p>
-              <p className="mt-2.5 font-mono-ceo text-[10px] uppercase tracking-wider text-white/55 tabular-nums">
-                ${s.total_value.toLocaleString()}
-              </p>
-              <p className="mt-0.5 font-mono-ceo text-[10px] uppercase tracking-wider text-white/40 tabular-nums">
-                {pct.toFixed(1)}% del total
-              </p>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
 function FunnelChart({ stages }: { stages: CeoDashboardData['funnel'] }) {
   const max = Math.max(...stages.map((s) => s.count), 1)
   return (
-    <div className="space-y-3.5 px-7 lg:px-8">
+    <div className="space-y-4">
       {stages.map((stage, i) => {
         const pct = (stage.count / max) * 100
         const prev = i > 0 ? stages[i - 1] : null
         const conversion = prev && prev.count > 0 ? (stage.count / prev.count) * 100 : null
         return (
           <div key={stage.key}>
-            <div className="flex items-center justify-between mb-1.5 text-xs">
-              <span className="text-white font-medium">{stage.label}</span>
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-base text-white font-medium">{stage.label}</span>
+              <div className="flex items-center gap-4">
                 {conversion !== null && (
                   <span
-                    className="font-mono-ceo text-[10px] uppercase tracking-wider"
+                    className="font-mono-ceo text-[11px] uppercase tracking-wider"
                     style={{
                       color:
                         conversion >= 50
@@ -883,12 +840,12 @@ function FunnelChart({ stages }: { stages: CeoDashboardData['funnel'] }) {
                     {conversion.toFixed(0)}%
                   </span>
                 )}
-                <span className="font-display text-base text-white tabular-nums w-12 text-right">
+                <span className="font-display text-2xl text-white tabular-nums w-16 text-right font-light">
                   {stage.count}
                 </span>
               </div>
             </div>
-            <div className="h-1.5 bg-white/[0.04] overflow-hidden">
+            <div className="h-2 bg-white/[0.04] overflow-hidden rounded-sm">
               <div
                 className="h-full transition-all"
                 style={{
@@ -908,19 +865,21 @@ function FunnelChart({ stages }: { stages: CeoDashboardData['funnel'] }) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <p className="font-mono-ceo text-[10px] uppercase tracking-wider text-white/75 font-medium">
+      <p className="font-mono-ceo text-[11px] uppercase tracking-wider text-white/65 font-medium">
         {label}
       </p>
-      <p className="font-display text-lg text-white mt-1 tabular-nums font-light">{value}</p>
+      <p className="font-display text-2xl lg:text-3xl text-white mt-2 tabular-nums font-light tracking-tight">
+        {value}
+      </p>
     </div>
   )
 }
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-14 text-center">
-      <CheckCircle2 className="w-8 h-8 text-emerald-400/40 mb-3" />
-      <p className="text-xs text-white/70">{text}</p>
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <CheckCircle2 className="w-10 h-10 text-emerald-400/55 mb-4" />
+      <p className="text-base text-white/75">{text}</p>
     </div>
   )
 }
