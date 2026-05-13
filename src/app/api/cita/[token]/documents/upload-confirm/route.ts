@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
 
 /**
  * POST /api/cita/[token]/documents/upload-confirm
@@ -148,6 +149,24 @@ export async function POST(
   if (insertErr) {
     return NextResponse.json({ error: 'Error al registrar documento' }, { status: 500 })
   }
+
+  await logActivity({
+    caseId: tokenData.case_id,
+    category: 'document',
+    subcategory: SUBCATEGORIES.DOC_UPLOADED_CLIENT,
+    description: `El cliente subió "${file_name}"`,
+    metadata: {
+      document_id: insertedDoc.id,
+      document_key: docType.code,
+      document_type_id,
+      slot_label: normalizedSlot,
+      minor_label,
+      file_name,
+    },
+    visibleToClient: true,
+    actor: { kind: 'token', tokenType: 'cita', clientId: tokenData.client_id },
+    client: supabase,
+  })
 
   return NextResponse.json({ document: insertedDoc })
 }

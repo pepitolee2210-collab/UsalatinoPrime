@@ -10,6 +10,7 @@ import { fillAcroForm } from '@/lib/legal/acroform-service'
 import { fillDocxTemplate, DOCX_CONTENT_TYPE } from '@/lib/legal/docx-template-service'
 import { AUTOMATED_FORMS } from '@/lib/legal/automated-forms-registry'
 import { createLogger } from '@/lib/logger'
+import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import crypto from 'node:crypto'
@@ -219,10 +220,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       .eq('packet_type', def.packetType)
       .eq('form_name', def.formName)
 
-    await auth.service.from('case_activity').insert({
-      case_id: caseRow.id,
-      actor_id: auth.userId,
-      action: `${slug}_pdf_generated`,
+    await logActivity({
+      caseId: caseRow.id,
+      category: 'form',
+      subcategory: SUBCATEGORIES.FORM_PDF_GENERATED,
       description: `Generó ${isDocx ? 'DOCX' : 'PDF'} ${def.formName} rellenado (${filename})`,
       metadata: {
         slug,
@@ -232,7 +233,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
         schema_version: def.schemaVersion,
         pdf_sha256: def.pdfSha256,
       },
-      visible_to_client: false,
+      visibleToClient: false,
+      actor: { kind: 'session', supabase: await createClient() },
+      client: auth.service,
     })
   }
 

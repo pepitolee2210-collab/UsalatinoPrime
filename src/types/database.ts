@@ -146,15 +146,31 @@ export interface Document {
   created_at: string
 }
 
+export type CaseActivityCategory =
+  | 'case'
+  | 'contract'
+  | 'appointment'
+  | 'document'
+  | 'form'
+  | 'payment'
+  | 'system'
+  | 'communication'
+
+export type CaseActivityActorRole = 'admin' | 'employee' | 'client' | 'system'
+
 export interface CaseActivity {
   id: string
   case_id: string
-  actor_id?: string
+  actor_id?: string | null
   action: string
   description: string
   metadata: Record<string, unknown>
   visible_to_client: boolean
   created_at: string
+  event_category?: CaseActivityCategory | null
+  event_subcategory?: string | null
+  actor_role?: CaseActivityActorRole | null
+  actor_label?: string | null
   actor?: Profile
 }
 

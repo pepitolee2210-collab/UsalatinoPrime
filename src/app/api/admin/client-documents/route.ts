@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
 
 const ALLOWED_DIRECTIONS = ['client_to_admin', 'admin_to_client', 'firm_internal'] as const
 type Direction = (typeof ALLOWED_DIRECTIONS)[number]
@@ -112,6 +113,27 @@ export async function PATCH(req: NextRequest) {
   if (error) {
     return NextResponse.json({ error: 'Failed to save document record' }, { status: 500 })
   }
+
+  // Bitácora según dirección: staff subió en nombre del cliente, entregó al
+  // cliente, o archivó internamente.
+  const subcategory =
+    dir === 'client_to_admin' ? SUBCATEGORIES.DOC_UPLOADED_STAFF
+    : dir === 'admin_to_client' ? SUBCATEGORIES.DOC_DELIVERED_CLIENT
+    : SUBCATEGORIES.DOC_ARCHIVED
+  const description =
+    dir === 'client_to_admin' ? `Staff subió documento del cliente: "${file_name}"`
+    : dir === 'admin_to_client' ? `Staff entregó documento al cliente: "${file_name}"`
+    : `Staff archivó documento interno: "${file_name}"`
+  await logActivity({
+    caseId: case_id,
+    category: 'document',
+    subcategory,
+    description,
+    metadata: { document_id: doc.id, file_name, direction: dir, document_key: document_key || defaultKey },
+    visibleToClient: dir === 'admin_to_client',
+    actor: { kind: 'session', supabase },
+    client: service,
+  })
 
   return NextResponse.json({ id: doc.id })
 }

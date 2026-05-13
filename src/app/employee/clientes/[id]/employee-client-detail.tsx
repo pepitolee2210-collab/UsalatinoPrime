@@ -10,6 +10,7 @@ import { PhaseStatusPanel } from '@/app/admin/cases/[id]/phase-status-panel'
 import { CasePipeline } from '@/components/case-pipeline'
 import { CaseTabsByPhase } from '@/app/employee/_shared/case-tabs-by-phase'
 import { useCaseOverview } from '@/app/employee/_shared/use-case-overview'
+import { BitacoraTab } from '@/app/employee/_shared/bitacora-tab'
 import type { CasePhase } from '@/types/database'
 
 interface Client {
@@ -183,6 +184,13 @@ export function EmployeeClientDetail({
           loading={loading}
           formSubmissions={caseForms}
           henryNotes={activeCase.henry_notes ?? ''}
+          extraTabs={[
+            {
+              id: 'bitacora',
+              label: 'Bitácora',
+              content: <BitacoraTab caseId={activeCase.id} />,
+            },
+          ]}
           onRefresh={() => {
             refresh()
             router.refresh()

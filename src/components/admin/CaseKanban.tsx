@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client'
 import { kanbanColumns, kanbanTransitions, statusLabels } from '@/lib/case-status'
 import { CaseCard } from './CaseCard'
 import { toast } from 'sonner'
+import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
 
 interface CaseKanbanProps {
   cases: any[]
@@ -62,12 +63,16 @@ export function CaseKanban({ cases: initialCases }: CaseKanbanProps) {
       return
     }
 
-    // Log activity
-    await supabase.from('case_activity').insert({
-      case_id: draggableId,
-      action: 'status_change',
+    // Bitácora
+    await logActivity({
+      caseId: draggableId,
+      category: 'case',
+      subcategory: SUBCATEGORIES.CASE_STATUS_CHANGED,
       description: `Estado cambiado de ${statusLabels[fromStatus]?.label} a ${statusLabels[toStatus]?.label} (Kanban)`,
-      visible_to_client: true,
+      metadata: { from_status: fromStatus, to_status: toStatus, source: 'kanban' },
+      visibleToClient: true,
+      actor: { kind: 'session', supabase },
+      client: supabase,
     })
 
     toast.success(`Caso movido a "${statusLabels[toStatus]?.label}"`)

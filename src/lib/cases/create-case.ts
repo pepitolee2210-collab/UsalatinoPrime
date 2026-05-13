@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase/service'
+import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
 import type { CasePhase } from '@/types/database'
 
 /**
@@ -87,6 +88,23 @@ export async function createCaseForContract(
   if (linkErr) {
     throw new Error(`createCaseForContract link failed: ${linkErr.message}`)
   }
+
+  // Bitácora: caso creado. Actor 'system' porque este helper se llama
+  // desde varios entrypoints (register-client, voice-agent, scripts).
+  await logActivity({
+    caseId: data.id,
+    category: 'case',
+    subcategory: SUBCATEGORIES.CASE_CREATED,
+    description: `Caso ${data.case_number} creado a partir del contrato`,
+    metadata: {
+      contract_id: input.contractId,
+      starting_phase: input.startingPhase ?? null,
+      total_cost: input.totalCost,
+    },
+    visibleToClient: false,
+    actor: { kind: 'system', label: 'Registro de contrato' },
+    client,
+  })
 
   return { id: data.id, case_number: data.case_number }
 }

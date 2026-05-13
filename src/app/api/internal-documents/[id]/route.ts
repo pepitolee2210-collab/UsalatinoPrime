@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
 
 async function ensureAdminOrEmployee() {
   const supabase = await createClient()
@@ -12,7 +13,7 @@ async function ensureAdminOrEmployee() {
     .eq('id', user.id)
     .single()
   if (profile?.role !== 'admin' && profile?.role !== 'employee') return null
-  return { userId: user.id, role: profile.role, service: createServiceClient() }
+  return { userId: user.id, role: profile.role, service: createServiceClient(), supabase }
 }
 
 /**
@@ -104,6 +105,26 @@ export async function PATCH(
       .eq('id', id)
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    if (doc.case_id) {
+      await logActivity({
+        caseId: doc.case_id,
+        category: 'document',
+        subcategory: action === 'approve' ? SUBCATEGORIES.DOC_APPROVED : SUBCATEGORIES.DOC_REJECTED,
+        description: action === 'approve'
+          ? `Documento interno aprobado: "${doc.file_name}"`
+          : `Documento interno rechazado: "${doc.file_name}"`,
+        metadata: {
+          internal_document_id: id,
+          file_name: doc.file_name,
+          category: doc.category,
+          comment: comment || null,
+        },
+        visibleToClient: false,
+        actor: { kind: 'session', supabase: ctx.supabase },
+        client: ctx.service,
+      })
+    }
     return NextResponse.json({ success: true })
   }
 
@@ -167,6 +188,19 @@ export async function PATCH(
         published_document_id: pubDoc.id,
       })
       .eq('id', id)
+
+    if (doc.case_id) {
+      await logActivity({
+        caseId: doc.case_id,
+        category: 'document',
+        subcategory: SUBCATEGORIES.DOC_DELIVERED_CLIENT,
+        description: `Documento entregado al cliente: "${doc.file_name}"`,
+        metadata: { internal_document_id: id, document_id: pubDoc.id, file_name: doc.file_name, category: doc.category },
+        visibleToClient: true,
+        actor: { kind: 'session', supabase: ctx.supabase },
+        client: ctx.service,
+      })
+    }
 
     return NextResponse.json({ success: true, document_id: pubDoc.id })
   }

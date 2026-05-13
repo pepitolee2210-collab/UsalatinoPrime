@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
 import type { CasePhase } from '@/types/database'
 
 const VALID_PHASES: CasePhase[] = ['custodia', 'i360', 'i485', 'completado']
@@ -110,6 +111,20 @@ export async function POST(
   if (upErr) {
     return NextResponse.json({ error: 'Error al actualizar fase' }, { status: 500 })
   }
+
+  // Bitácora: espejo de case_phase_history para feed único.
+  await logActivity({
+    caseId: id,
+    category: 'case',
+    subcategory: SUBCATEGORIES.CASE_PHASE_CHANGED,
+    description: fromPhase
+      ? `Cambio de fase: ${fromPhase} → ${toPhase}`
+      : `Asignación inicial de fase: ${toPhase}`,
+    metadata: { from_phase: fromPhase, to_phase: toPhase, reason },
+    visibleToClient: false,
+    actor: { kind: 'session', supabase },
+    client: service,
+  })
 
   return NextResponse.json({
     ok: true,

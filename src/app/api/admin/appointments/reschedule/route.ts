@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -28,7 +29,7 @@ export async function POST(request: NextRequest) {
   // Verificar que la cita existe y está scheduled
   const { data: appointment } = await supabase
     .from('appointments')
-    .select('id, status')
+    .select('id, status, case_id, scheduled_at')
     .eq('id', appointment_id)
     .single()
 
@@ -66,6 +67,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Este horario ya fue tomado' }, { status: 409 })
     }
     return NextResponse.json({ error: 'Error al reprogramar' }, { status: 500 })
+  }
+
+  if (appointment.case_id) {
+    await logActivity({
+      caseId: appointment.case_id,
+      category: 'appointment',
+      subcategory: SUBCATEGORIES.APPT_RESCHEDULED,
+      description: `Cita reagendada de ${new Date(appointment.scheduled_at).toLocaleString('es-MX')} a ${new Date(scheduled_at).toLocaleString('es-MX')}`,
+      metadata: { appointment_id, old_at: appointment.scheduled_at, new_at: scheduled_at },
+      visibleToClient: true,
+      actor: { kind: 'session', supabase },
+    })
   }
 
   return NextResponse.json({ success: true })

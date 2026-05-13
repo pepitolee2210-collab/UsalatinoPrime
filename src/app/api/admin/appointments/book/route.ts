@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -123,6 +124,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Este horario ya fue tomado' }, { status: 409 })
     }
     return NextResponse.json({ error: 'Error al agendar la cita' }, { status: 500 })
+  }
+
+  // Bitácora: solo si la cita tiene case (las guest bookings no tienen caso).
+  if (!isGuest && case_id) {
+    await logActivity({
+      caseId: case_id,
+      category: 'appointment',
+      subcategory: SUBCATEGORIES.APPT_SCHEDULED,
+      description: `Cita agendada para ${new Date(scheduled_at).toLocaleString('es-MX')}`,
+      metadata: { appointment_id: appointment?.id, scheduled_at },
+      visibleToClient: true,
+      actor: { kind: 'session', supabase },
+      client: service,
+    })
   }
 
   return NextResponse.json({ appointment })

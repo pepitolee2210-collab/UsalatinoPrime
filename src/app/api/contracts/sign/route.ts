@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
 
 export async function POST(request: Request) {
   try {
@@ -24,7 +25,7 @@ export async function POST(request: Request) {
     // Find contract by signing token
     const { data: contract, error: findError } = await supabase
       .from('contracts')
-      .select('id, status')
+      .select('id, status, case_id, client_id, client_full_name')
       .eq('signing_token', token)
       .single()
 
@@ -42,13 +43,15 @@ export async function POST(request: Request) {
       )
     }
 
+    const signedAt = new Date().toISOString()
+
     // Update contract with signature
     const { error: updateError } = await supabase
       .from('contracts')
       .update({
         client_signature_image: signature_image,
         status: 'firmado',
-        signed_at: new Date().toISOString(),
+        signed_at: signedAt,
         signing_token: null, // Invalidate token after use
       })
       .eq('id', contract.id)
@@ -59,6 +62,21 @@ export async function POST(request: Request) {
         { error: 'Error al firmar el contrato' },
         { status: 500 }
       )
+    }
+
+    // Bitácora: registrar firma del cliente. Solo si tenemos case vinculado
+    // (contratos legacy puede tener case_id NULL).
+    if (contract.case_id) {
+      await logActivity({
+        caseId: contract.case_id,
+        category: 'contract',
+        subcategory: SUBCATEGORIES.CONTRACT_SIGNED,
+        description: `${contract.client_full_name ?? 'El cliente'} firmó el contrato`,
+        metadata: { contract_id: contract.id, signed_at: signedAt },
+        visibleToClient: true,
+        actor: { kind: 'token', tokenType: 'contract', clientId: contract.client_id ?? undefined },
+        client: supabase,
+      })
     }
 
     return NextResponse.json({ success: true }, { status: 200 })

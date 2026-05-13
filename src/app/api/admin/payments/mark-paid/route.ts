@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -55,6 +56,24 @@ export async function POST(request: NextRequest) {
       title: 'Pago Registrado',
       message: `Su pago de cuota ${payment.installment_number}/${payment.total_installments} por $${payment.amount} ha sido registrado.`,
       type: 'payment',
+    })
+  }
+
+  if (payment.case_id) {
+    await logActivity({
+      caseId: payment.case_id,
+      category: 'payment',
+      subcategory: SUBCATEGORIES.PAYMENT_MARKED_PAID,
+      description: `Pago marcado como recibido — cuota ${payment.installment_number}/${payment.total_installments} ($${payment.amount})`,
+      metadata: {
+        payment_id: payment.id,
+        amount: payment.amount,
+        installment_number: payment.installment_number,
+        total_installments: payment.total_installments,
+        payment_method: payment.payment_method,
+      },
+      visibleToClient: true,
+      actor: { kind: 'session', supabase },
     })
   }
 

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -108,11 +109,15 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
 
       await supabase.from('cases').update(updateData).eq('id', caseData.id)
 
-      await supabase.from('case_activity').insert({
-        case_id: caseData.id,
-        action: 'status_change',
+      await logActivity({
+        caseId: caseData.id,
+        category: 'case',
+        subcategory: SUBCATEGORIES.CASE_STATUS_CHANGED,
         description: `Estado cambiado a ${newStatus}${notes ? ': ' + notes : ''}`,
-        visible_to_client: true,
+        metadata: { new_status: newStatus, notes: notes ?? null },
+        visibleToClient: true,
+        actor: { kind: 'session', supabase },
+        client: supabase,
       })
 
       // Create notification for client
@@ -231,13 +236,17 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
         .update({ access_granted: newValue })
         .eq('id', caseData.id)
 
-      await supabase.from('case_activity').insert({
-        case_id: caseData.id,
-        action: 'access_change',
+      await logActivity({
+        caseId: caseData.id,
+        category: 'system',
+        subcategory: SUBCATEGORIES.SYSTEM_ACCESS_TOGGLED,
         description: newValue
           ? 'Acceso otorgado al cliente para completar formularios'
           : 'Acceso revocado al cliente',
-        visible_to_client: true,
+        metadata: { access_granted: newValue },
+        visibleToClient: true,
+        actor: { kind: 'session', supabase },
+        client: supabase,
       })
 
       await supabase.from('notifications').insert({

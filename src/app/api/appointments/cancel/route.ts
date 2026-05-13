@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { MIN_CANCEL_HOURS } from '@/lib/appointments/constants'
+import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
 
 export async function POST(request: NextRequest) {
   const { token, appointment_id, reason } = await request.json()
@@ -54,6 +55,26 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     return NextResponse.json({ error: 'Error al cancelar la cita' }, { status: 500 })
+  }
+
+  if (tokenData.case_id) {
+    await logActivity({
+      caseId: tokenData.case_id,
+      category: 'appointment',
+      subcategory: SUBCATEGORIES.APPT_CANCELLED,
+      description: isLateCancellation
+        ? 'El cliente canceló su cita (cancelación tardía)'
+        : 'El cliente canceló su cita',
+      metadata: {
+        appointment_id,
+        cancelled_at: now.toISOString(),
+        reason: reason || null,
+        is_late_cancellation: isLateCancellation,
+      },
+      visibleToClient: true,
+      actor: { kind: 'token', tokenType: 'cita', clientId: tokenData.client_id },
+      client: supabase,
+    })
   }
 
   return NextResponse.json({

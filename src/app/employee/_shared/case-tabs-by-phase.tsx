@@ -36,6 +36,7 @@ export type TabId =
   | 'mi-trabajo'
   | 'i360'
   | 'i485'
+  | 'bitacora'
 
 interface FormSub {
   form_type: string

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
 
 export async function POST(request: Request) {
   try {
@@ -47,6 +48,25 @@ export async function POST(request: Request) {
 
     const origin = new URL(request.url).origin
     const url = `${origin}/contrato/${token}`
+
+    // Bitácora: link de firma creado. Buscamos el case vinculado (puede no existir aún).
+    const { data: contract } = await service
+      .from('contracts')
+      .select('case_id, client_full_name')
+      .eq('id', contract_id)
+      .single()
+    if (contract?.case_id) {
+      await logActivity({
+        caseId: contract.case_id,
+        category: 'contract',
+        subcategory: SUBCATEGORIES.CONTRACT_LINK_CREATED,
+        description: `Se generó el link de firma del contrato para ${contract.client_full_name ?? 'el cliente'}`,
+        metadata: { contract_id },
+        visibleToClient: false,
+        actor: { kind: 'session', supabase },
+        client: service,
+      })
+    }
 
     return NextResponse.json({ token, url }, { status: 200 })
   } catch {
