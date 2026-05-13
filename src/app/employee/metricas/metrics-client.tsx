@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { BarChart3, TrendingUp, AlertTriangle, Clock, Users, DollarSign } from 'lucide-react'
+import { BarChart3, TrendingUp, AlertTriangle, Clock, Users, DollarSign, Timer, Target, Trophy } from 'lucide-react'
 
 interface Payment {
   id: string
@@ -87,6 +87,77 @@ export function MetricsClient({ payments, contracts }: Props) {
   const activeContracts = contracts.filter(c => ['firmado', 'activo'].includes(c.status)).length
   const contractsRevenue = contracts.filter(c => ['firmado', 'activo', 'completado'].includes(c.status)).reduce((s, c) => s + Number(c.total_price), 0)
 
+  // ────────────────── Métricas personales (PR5) ──────────────────
+  // 1. Tiempo promedio creación → firma
+  const signedContracts = useMemo(
+    () => contracts.filter(c => c.signed_at != null),
+    [contracts]
+  )
+  const avgDaysToSign = useMemo(() => {
+    if (signedContracts.length === 0) return null
+    const totalDays = signedContracts.reduce((sum, c) => {
+      const created = new Date(c.created_at).getTime()
+      const signed = new Date(c.signed_at!).getTime()
+      return sum + Math.max(0, (signed - created) / 86400_000)
+    }, 0)
+    return totalDays / signedContracts.length
+  }, [signedContracts])
+
+  // 2. Closing rate (% contratos enviados que se firmaron)
+  const sentContracts = contracts.filter(
+    c => c.status !== 'borrador' || c.signed_at != null
+  )
+  const closingRate = sentContracts.length === 0
+    ? null
+    : (signedContracts.length / sentContracts.length) * 100
+
+  // 3. Contratos firmados este mes
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const signedThisMonth = signedContracts.filter(
+    c => new Date(c.signed_at!) >= monthStart
+  ).length
+  // Mes anterior para comparar
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+  const signedPrevMonth = signedContracts.filter(c => {
+    const d = new Date(c.signed_at!)
+    return d >= prevMonthStart && d < monthStart
+  }).length
+  const monthDelta = signedThisMonth - signedPrevMonth
+
+  // 4. Top 5 clientes morosos
+  interface MoroseEntry {
+    clientId: string
+    name: string
+    overdueAmount: number
+    overdueCount: number
+    daysOldest: number
+  }
+  const topMorose = useMemo<MoroseEntry[]>(() => {
+    const map = new Map<string, MoroseEntry>()
+    for (const p of payments) {
+      if (p.status !== 'pending' || !p.due_date || p.due_date >= todayStr) continue
+      const days = Math.floor((now.getTime() - new Date(p.due_date).getTime()) / 86400_000)
+      const name = p.client ? `${p.client.first_name} ${p.client.last_name}`.trim() : 'Cliente'
+      const existing = map.get(p.client_id)
+      if (existing) {
+        existing.overdueAmount += Number(p.amount)
+        existing.overdueCount += 1
+        if (days > existing.daysOldest) existing.daysOldest = days
+      } else {
+        map.set(p.client_id, {
+          clientId: p.client_id,
+          name,
+          overdueAmount: Number(p.amount),
+          overdueCount: 1,
+          daysOldest: days,
+        })
+      }
+    }
+    return Array.from(map.values())
+      .sort((a, b) => b.overdueAmount - a.overdueAmount)
+      .slice(0, 5)
+  }, [payments, todayStr, now])
+
   return (
     <div className="space-y-6 max-w-6xl">
       <div>
@@ -99,7 +170,7 @@ export function MetricsClient({ payments, contracts }: Props) {
         </p>
       </div>
 
-      {/* KPIs */}
+      {/* KPIs financieros */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         <KPI icon={<TrendingUp className="w-5 h-5 text-emerald-600" />} label="Cobrado total" value={`$${totalPaid.toLocaleString()}`} accent="emerald" />
         <KPI icon={<Clock className="w-5 h-5 text-amber-600" />} label="Pendiente" value={`$${totalPending.toLocaleString()}`} accent="amber" />
@@ -107,6 +178,106 @@ export function MetricsClient({ payments, contracts }: Props) {
         <KPI icon={<DollarSign className="w-5 h-5 text-blue-600" />} label="Facturación contratos" value={`$${contractsRevenue.toLocaleString()}`} accent="blue" />
         <KPI icon={<Users className="w-5 h-5 text-purple-600" />} label="Contratos activos" value={String(activeContracts)} accent="purple" />
       </div>
+
+      {/* Métricas personales de productividad */}
+      <Card>
+        <CardContent className="p-5">
+          <div className="flex items-baseline justify-between flex-wrap gap-2 mb-4">
+            <h2 className="text-base font-bold text-gray-900">Tu productividad</h2>
+            <p className="text-[11px] text-gray-500">
+              Cómo vas cerrando contratos y cobrando este mes
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {/* Tiempo promedio creación → firma */}
+            <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Timer className="w-4 h-4 text-blue-600" />
+                <p className="text-xs text-gray-600 font-medium">Tiempo creación → firma</p>
+              </div>
+              <p className="text-2xl font-bold text-blue-900">
+                {avgDaysToSign != null ? `${avgDaysToSign.toFixed(1)} días` : '—'}
+              </p>
+              <p className="text-[11px] text-gray-500 mt-1">
+                {signedContracts.length > 0
+                  ? `Promedio sobre ${signedContracts.length} contratos firmados`
+                  : 'Aún no hay contratos firmados'}
+              </p>
+            </div>
+
+            {/* Closing rate */}
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Target className="w-4 h-4 text-emerald-600" />
+                <p className="text-xs text-gray-600 font-medium">Tasa de cierre</p>
+              </div>
+              <p className="text-2xl font-bold text-emerald-900">
+                {closingRate != null ? `${closingRate.toFixed(0)}%` : '—'}
+              </p>
+              <p className="text-[11px] text-gray-500 mt-1">
+                {signedContracts.length} firmados de {sentContracts.length} enviados
+              </p>
+            </div>
+
+            {/* Contratos firmados este mes */}
+            <div className="rounded-xl border border-amber-100 bg-amber-50/40 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Trophy className="w-4 h-4 text-amber-600" />
+                <p className="text-xs text-gray-600 font-medium">Firmados este mes</p>
+              </div>
+              <p className="text-2xl font-bold text-amber-900">{signedThisMonth}</p>
+              <p className="text-[11px] text-gray-500 mt-1">
+                {monthDelta === 0 ? (
+                  'Igual que el mes pasado'
+                ) : monthDelta > 0 ? (
+                  <span className="text-emerald-700">↑ {monthDelta} vs. mes pasado</span>
+                ) : (
+                  <span className="text-red-600">↓ {Math.abs(monthDelta)} vs. mes pasado</span>
+                )}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Top 5 clientes morosos */}
+      {topMorose.length > 0 && (
+        <Card className="border-red-100">
+          <CardContent className="p-5">
+            <div className="flex items-baseline justify-between flex-wrap gap-2 mb-4">
+              <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-red-600" />
+                Top 5 deudas pendientes
+              </h2>
+              <p className="text-[11px] text-gray-500">
+                Prioriza el contacto de mayor a menor
+              </p>
+            </div>
+            <div className="space-y-2">
+              {topMorose.map((m, idx) => (
+                <a
+                  key={m.clientId}
+                  href={`/employee/clientes/${m.clientId}`}
+                  className="flex items-center gap-3 rounded-lg border border-red-100 bg-white hover:bg-red-50/40 hover:border-red-200 transition-colors px-3 py-2.5"
+                >
+                  <span className="flex-shrink-0 h-7 w-7 rounded-full bg-red-100 text-red-700 inline-flex items-center justify-center text-xs font-bold">
+                    {idx + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{m.name}</p>
+                    <p className="text-[11px] text-gray-500">
+                      {m.overdueCount} cuota{m.overdueCount !== 1 ? 's' : ''} vencida{m.overdueCount !== 1 ? 's' : ''} · más vieja: {m.daysOldest}d
+                    </p>
+                  </div>
+                  <p className="text-sm font-bold text-red-700 flex-shrink-0">
+                    ${m.overdueAmount.toLocaleString()}
+                  </p>
+                </a>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Gráfico mensual */}
       <Card>
