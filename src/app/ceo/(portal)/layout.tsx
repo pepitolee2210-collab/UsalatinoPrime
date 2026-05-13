@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { LayoutGrid, LogOut } from 'lucide-react'
 import { ErrorBoundary } from '@/components/error-boundary'
+import { ChatWidgetAutoMount } from '@/components/employee/chat-widget-mount'
 
 /**
  * Layout del portal ejecutivo de Henry. Minimalismo total — fondo carbón
@@ -71,6 +72,7 @@ export default function CeoLayout({ children }: { children: React.ReactNode }) {
       <main className="pb-[max(2rem,env(safe-area-inset-bottom))]">
         <ErrorBoundary>{children}</ErrorBoundary>
       </main>
+      <ChatWidgetAutoMount />
     </div>
   )
 }

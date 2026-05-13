@@ -16,7 +16,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { CommandK } from '@/components/employee/command-k'
-import { ChatWidget } from '@/components/employee/chat-widget'
+import { ChatWidgetAutoMount } from '@/components/employee/chat-widget-mount'
 
 type EmployeeType = 'paralegal' | 'senior_consultant' | 'contracts_manager' | null
 
@@ -180,9 +180,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
       </div>
       <main className="md:ml-64 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">{children}</main>
       {/* Widget flotante de chat — oculto en la página dedicada para evitar duplicidad */}
-      {userId && !pathname.startsWith('/employee/chat') && (
-        <ChatWidget currentUserId={userId} />
-      )}
+      {!pathname.startsWith('/employee/chat') && <ChatWidgetAutoMount />}
     </div>
   )
 }

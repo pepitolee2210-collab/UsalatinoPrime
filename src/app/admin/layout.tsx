@@ -16,6 +16,7 @@ import {
 import { cn } from '@/lib/utils'
 import { ClientSearch } from '@/components/admin/ClientSearch'
 import { ErrorBoundary } from '@/components/error-boundary'
+import { ChatWidgetAutoMount } from '@/components/employee/chat-widget-mount'
 
 const navItems = [
   { href: '/ceo', label: 'Vista CEO', icon: Crown, badgeKey: null },
@@ -125,6 +126,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <main className="md:ml-64 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <ErrorBoundary>{children}</ErrorBoundary>
       </main>
+      <ChatWidgetAutoMount />
     </div>
   )
 }
