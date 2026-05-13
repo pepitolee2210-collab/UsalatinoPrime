@@ -7,9 +7,10 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { QuickContractGenerator } from '@/components/admin/QuickContractGenerator'
-import { FileText, Plus, Pencil, Download, Trash2, ChevronLeft, Send, Link2, CheckCircle, Search, Users } from 'lucide-react'
+import { FileText, Plus, Pencil, Download, Trash2, ChevronLeft, Send, Link2, CheckCircle, Search, Users, List, LayoutGrid } from 'lucide-react'
 import { toast } from 'sonner'
 import { MinorEditorModal } from './minor-editor-modal'
+import { ContractsKanban } from './contracts-kanban'
 
 interface ContractRow {
   id: string
@@ -78,6 +79,7 @@ function ContratosInner({ basePath }: Props) {
   const [showGenerator, setShowGenerator] = useState(false)
   const [search, setSearch] = useState('')
   const [editingMinorsOf, setEditingMinorsOf] = useState<ContractRow | null>(null)
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list')
   const supabase = createClient()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -97,6 +99,20 @@ function ContratosInner({ basePath }: Props) {
   useEffect(() => {
     if (prefillFromVoice) setShowGenerator(true)
   }, [prefillFromVoice])
+
+  // Sincroniza viewMode con la URL (?view=kanban) para que el modo persista al recargar
+  useEffect(() => {
+    const v = searchParams.get('view')
+    if (v === 'kanban' || v === 'list') setViewMode(v)
+  }, [searchParams])
+
+  function changeViewMode(mode: 'list' | 'kanban') {
+    setViewMode(mode)
+    const url = new URL(window.location.href)
+    if (mode === 'kanban') url.searchParams.set('view', 'kanban')
+    else url.searchParams.delete('view')
+    router.replace(url.pathname + url.search)
+  }
 
   const filteredContracts = contracts.filter(c => {
     if (!search.trim()) return true
@@ -259,12 +275,43 @@ function ContratosInner({ basePath }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Contratos</h1>
-        <Button onClick={handleNewContract} className="bg-[#F2A900] hover:bg-[#D4940A] text-white">
-          <Plus className="w-4 h-4 mr-1.5" />
-          Nuevo Contrato
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Toggle vista lista / kanban */}
+          <div className="inline-flex items-center rounded-lg border border-gray-200 bg-white p-0.5">
+            <button
+              type="button"
+              onClick={() => changeViewMode('list')}
+              title="Vista lista"
+              className={`inline-flex items-center gap-1 text-xs font-medium h-8 px-2.5 rounded-md transition-colors ${
+                viewMode === 'list'
+                  ? 'bg-[#002855] text-white'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              Lista
+            </button>
+            <button
+              type="button"
+              onClick={() => changeViewMode('kanban')}
+              title="Vista kanban"
+              className={`inline-flex items-center gap-1 text-xs font-medium h-8 px-2.5 rounded-md transition-colors ${
+                viewMode === 'kanban'
+                  ? 'bg-[#002855] text-white'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              Kanban
+            </button>
+          </div>
+          <Button onClick={handleNewContract} className="bg-[#F2A900] hover:bg-[#D4940A] text-white">
+            <Plus className="w-4 h-4 mr-1.5" />
+            Nuevo Contrato
+          </Button>
+        </div>
       </div>
 
       {contracts.length > 0 && (
@@ -313,7 +360,43 @@ function ContratosInner({ basePath }: Props) {
         />
       )}
 
-      {filteredContracts.length > 0 && contracts.length > 0 && (
+      {filteredContracts.length > 0 && contracts.length > 0 && viewMode === 'kanban' && (
+        <ContractsKanban
+          contracts={filteredContracts.map((c) => ({
+            id: c.id,
+            client_full_name: c.client_full_name,
+            service_name: c.service_name,
+            total_price: Number(c.total_price),
+            status: c.status,
+            signing_token: c.signing_token,
+            signed_at: c.signed_at,
+            created_at: c.created_at,
+            has_installments: c.has_installments,
+            installment_count: c.installment_count,
+            client_phone: c.client_phone,
+          }))}
+          onEdit={(id) => {
+            const c = contracts.find((x) => x.id === id)
+            if (c) handleEdit(c)
+          }}
+          onSendToClient={(id) => {
+            const c = contracts.find((x) => x.id === id)
+            if (c) handleSendToClient(c)
+          }}
+          onCopyLink={handleCopyLink}
+          onWhatsApp={(id) => {
+            const c = contracts.find((x) => x.id === id)
+            if (c) handleWhatsApp(c)
+          }}
+          onDownloadPDF={(id) => {
+            const c = contracts.find((x) => x.id === id)
+            if (c) handleDownloadPDF(c)
+          }}
+          onDelete={handleDelete}
+        />
+      )}
+
+      {filteredContracts.length > 0 && contracts.length > 0 && viewMode === 'list' && (
         <div className="space-y-3">
           {filteredContracts.map((c) => (
             <Card key={c.id} className="hover:shadow-sm transition-shadow">
