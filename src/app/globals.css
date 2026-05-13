@@ -994,3 +994,15 @@
   0% { background-position: -200% 50%; }
   100% { background-position: 200% 50%; }
 }
+
+/* ═══ CEO Dashboard — font utilities ═══ */
+.font-display {
+  font-family: var(--font-fraunces), Georgia, 'Times New Roman', serif;
+  font-feature-settings: 'ss01' on, 'ss02' on, 'ss03' on;
+}
+.font-sora {
+  font-family: var(--font-sora), 'Helvetica Neue', sans-serif;
+}
+.font-mono-ceo {
+  font-family: var(--font-mono-ceo), 'SF Mono', Menlo, monospace;
+}

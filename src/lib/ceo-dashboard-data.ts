@@ -45,6 +45,32 @@ export interface OverdueClient {
   oldest_due_date: string
 }
 
+export interface SignedThisMonthItem {
+  id: string
+  client_name: string
+  service_name: string
+  total_price: number
+  signed_at: string
+}
+
+export interface PaidThisMonthItem {
+  payment_id: string | null
+  client_id: string | null
+  client_name: string
+  amount: number
+  paid_at: string
+}
+
+export interface NewContractItem {
+  id: string
+  client_name: string
+  service_name: string
+  total_price: number
+  created_at: string
+  days_old: number
+  status: string
+}
+
 export interface CeoDashboardData {
   kpi: {
     total_clients: number
@@ -54,6 +80,23 @@ export interface CeoDashboardData {
     revenue_last_month: number
     revenue_overdue: number
     active_cases: number
+    // ── KPIs nuevos enfocados en evaluar la operación (Andrium) ──
+    /** Contratos firmados ESTE mes (no acumulado). */
+    contracts_signed_this_month?: number
+    /** Contratos firmados el mes pasado (para delta). */
+    contracts_signed_last_month?: number
+    /** Contratos creados este mes (volumen entrada). */
+    contracts_new_this_month?: number
+    /** Cuántos contratos esperan firma del cliente. */
+    contracts_pending_signature_count?: number
+    /** Cuántos clientes únicos pagaron este mes. */
+    payments_clients_this_month?: number
+    /** Cuántos clientes únicos tienen pagos vencidos. */
+    payments_clients_overdue?: number
+    /** Tiempo promedio entre creación y firma (en días, calc sobre los firmados últimos 90 días). */
+    avg_days_create_to_sign?: number | null
+    /** % cumplimiento del mes: cobrado / esperado este mes. */
+    collection_rate_this_month?: number | null
   }
   funnel: FunnelStage[]
   services: ServiceBreakdown[]
@@ -65,6 +108,12 @@ export interface CeoDashboardData {
     upcoming_payments_7d_count: number
     upcoming_payments_7d_amount: number
     stuck_cases: number
+  }
+  /** Listas detalladas para drill-down desde los KPI cards. */
+  lists?: {
+    signed_this_month: SignedThisMonthItem[]
+    new_contracts_this_month: NewContractItem[]
+    paid_this_month: PaidThisMonthItem[]
   }
   autopilot: {
     auto_contracts_this_month: number
@@ -301,6 +350,107 @@ export async function getCeoDashboardData(
     .lt('updated_at', fourteenDaysAgoStr)
     .in('intake_status', ['in_progress', 'submitted', 'needs_correction'])
 
+  // ── KPIs nuevos: foco en evaluar la operación de Andrium ──────────
+  const contractsSignedThisMonth = allContracts.filter(
+    (c) => c.signed_at && new Date(c.signed_at) >= monthStart,
+  ).length
+
+  const contractsSignedLastMonth = allContracts.filter(
+    (c) => c.signed_at &&
+      new Date(c.signed_at) >= lastMonthStart &&
+      new Date(c.signed_at) < lastMonthEnd,
+  ).length
+
+  const contractsNewThisMonth = allContracts.filter(
+    (c) => new Date(c.created_at) >= monthStart,
+  ).length
+
+  const paymentsClientsThisMonth = new Set(
+    (await service
+      .from('payments')
+      .select('client_id, paid_at, status')
+      .eq('status', 'completed')
+      .gte('paid_at', monthStart.toISOString())
+    ).data?.map((p) => p.client_id).filter(Boolean) || [],
+  ).size
+
+  // Tiempo promedio creación → firma (sobre últimos 90 días para que sea relevante).
+  const ninetyDaysAgo = new Date(now.getTime() - 90 * 86400_000)
+  const recentSigned = allContracts.filter(
+    (c) => c.signed_at && new Date(c.signed_at) >= ninetyDaysAgo,
+  )
+  const avgDaysCreateToSign = recentSigned.length > 0
+    ? Math.round(
+        recentSigned.reduce((sum, c) => {
+          const created = new Date(c.created_at).getTime()
+          const signed = new Date(c.signed_at!).getTime()
+          return sum + (signed - created) / 86400_000
+        }, 0) / recentSigned.length,
+      )
+    : null
+
+  // Tasa de cobranza del mes: cobrado / esperado.
+  const monthEndForRate = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  const expectedThisMonth = allPayments
+    .filter((p) => p.due_date && p.due_date >= todayStr.slice(0, 8) + '01' &&
+      p.due_date < `${monthEndForRate.getFullYear()}-${String(monthEndForRate.getMonth() + 1).padStart(2, '0')}-01`)
+    .reduce((s, p) => s + Number(p.amount), 0)
+  const collectionRateThisMonth = expectedThisMonth > 0
+    ? Math.round((revenueThisMonth / expectedThisMonth) * 100)
+    : null
+
+  // ── Listas detalladas para drill-down ─────────────────────────────
+  const signedThisMonthList: SignedThisMonthItem[] = allContracts
+    .filter((c) => c.signed_at && new Date(c.signed_at) >= monthStart)
+    .map((c) => ({
+      id: c.id,
+      client_name: c.client_full_name || 'Sin nombre',
+      service_name: c.service_slug || '',
+      total_price: Number(c.total_price || 0),
+      signed_at: c.signed_at!,
+    }))
+    .sort((a, b) => new Date(b.signed_at).getTime() - new Date(a.signed_at).getTime())
+
+  const newContractsList: NewContractItem[] = allContracts
+    .filter((c) => new Date(c.created_at) >= monthStart)
+    .map((c) => {
+      const days = Math.floor(
+        (Date.now() - new Date(c.created_at).getTime()) / 86400_000,
+      )
+      return {
+        id: c.id,
+        client_name: c.client_full_name || 'Sin nombre',
+        service_name: c.service_slug || '',
+        total_price: Number(c.total_price || 0),
+        created_at: c.created_at,
+        days_old: days,
+        status: c.status,
+      }
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+  const { data: paidThisMonthRaw } = await service
+    .from('payments')
+    .select('id, client_id, amount, paid_at, client:profiles!payments_client_id_fkey(first_name, last_name)')
+    .eq('status', 'completed')
+    .gte('paid_at', monthStart.toISOString())
+    .order('paid_at', { ascending: false })
+    .limit(60)
+
+  const paidThisMonthList: PaidThisMonthItem[] = (paidThisMonthRaw || []).map((p) => {
+    const cli = Array.isArray(p.client) ? p.client[0] : p.client
+    const fullName = cli
+      ? `${cli.first_name ?? ''} ${cli.last_name ?? ''}`.trim() || 'Sin nombre'
+      : 'Sin nombre'
+    return {
+      payment_id: p.id as string,
+      client_id: (p.client_id as string | null) ?? null,
+      client_name: fullName,
+      amount: Number(p.amount || 0),
+      paid_at: (p.paid_at as string) ?? '',
+    }
+  })
+
   return {
     kpi: {
       total_clients: clientsRes.count || 0,
@@ -310,6 +460,14 @@ export async function getCeoDashboardData(
       revenue_last_month: revenueLastMonth,
       revenue_overdue: revenueOverdue,
       active_cases: activeCasesRes.count || 0,
+      contracts_signed_this_month: contractsSignedThisMonth,
+      contracts_signed_last_month: contractsSignedLastMonth,
+      contracts_new_this_month: contractsNewThisMonth,
+      contracts_pending_signature_count: contractsPendingSignature,
+      payments_clients_this_month: paymentsClientsThisMonth,
+      payments_clients_overdue: overdueMap.size,
+      avg_days_create_to_sign: avgDaysCreateToSign,
+      collection_rate_this_month: collectionRateThisMonth,
     },
     funnel,
     services,
@@ -321,6 +479,11 @@ export async function getCeoDashboardData(
       upcoming_payments_7d_count: upcomingPayments.length,
       upcoming_payments_7d_amount: upcomingPaymentsAmount,
       stuck_cases: stuckCasesCount || 0,
+    },
+    lists: {
+      signed_this_month: signedThisMonthList,
+      new_contracts_this_month: newContractsList,
+      paid_this_month: paidThisMonthList,
     },
     autopilot: {
       auto_contracts_this_month: 0,

@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
-import { CeoDashboard } from '@/app/admin/dashboard/ceo-dashboard'
+import { CeoDashboardV2 } from './ceo-dashboard-v2'
 import { getCeoDashboardData } from '@/lib/ceo-dashboard-data'
 
 export const dynamic = 'force-dynamic'
@@ -25,44 +25,17 @@ export default async function CeoPortalPage() {
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Error desconocido'
     return (
-      <div className="rounded-2xl bg-white text-gray-900 p-8 shadow-2xl">
-        <h1 className="text-xl font-bold mb-2">Vista CEO</h1>
-        <p className="text-sm text-red-700">No se pudo cargar el dashboard.</p>
-        <pre className="mt-3 text-[11px] text-gray-600 bg-gray-100 p-3 rounded overflow-x-auto">{msg}</pre>
+      <div className="rounded-2xl border border-red-500/30 bg-red-950/30 p-8">
+        <h1 className="font-display text-xl text-white mb-2">Vista CEO</h1>
+        <p className="text-sm text-red-300">No se pudo cargar el dashboard.</p>
+        <pre className="mt-3 text-[11px] text-white/60 bg-black/40 p-3 rounded overflow-x-auto">
+          {msg}
+        </pre>
       </div>
     )
   }
 
-  const greeting = profile?.first_name ? `Hola, ${profile.first_name}` : 'Hola, Henry'
+  const firstName = profile?.first_name?.trim() || 'Henry'
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-end justify-between flex-wrap gap-3">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.2em] text-amber-300/80 font-semibold">
-            Centro de mando · Vista CEO
-          </p>
-          <h1 className="text-3xl lg:text-4xl font-bold text-white mt-1">{greeting}</h1>
-          <p className="text-sm text-white/70 mt-1">
-            Vista global de UsaLatino Prime — clientes, contratos, ingresos y operaciones en tiempo real.
-          </p>
-        </div>
-        <div className="text-right">
-          <p className="text-[11px] uppercase tracking-wider text-white/50">Hoy</p>
-          <p className="text-sm font-semibold text-white">
-            {new Date().toLocaleDateString('es-US', {
-              weekday: 'long',
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
-            })}
-          </p>
-        </div>
-      </div>
-
-      <div className="rounded-2xl bg-gray-50 text-gray-900 p-5 lg:p-6 shadow-2xl shadow-black/30 ring-1 ring-white/10">
-        <CeoDashboard data={data} />
-      </div>
-    </div>
-  )
+  return <CeoDashboardV2 data={data} firstName={firstName} />
 }
