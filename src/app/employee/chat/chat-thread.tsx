@@ -1,8 +1,16 @@
 'use client'
 
 import { useEffect, useRef, useState, useLayoutEffect } from 'react'
-import { Users, Send, Loader2 } from 'lucide-react'
+import { Users, Send, Loader2, Paperclip, X } from 'lucide-react'
 import type { ConversationListItem, ChatMessage, StaffProfile } from './types'
+import { MessageAttachment } from './message-attachment'
+
+export interface PendingAttachment {
+  path: string
+  attachment_type: 'image' | 'document'
+  attachment_name: string
+  attachment_size: number
+}
 
 interface Props {
   conversation: ConversationListItem
@@ -11,7 +19,7 @@ interface Props {
   currentUserId: string
   loading: boolean
   hasMore: boolean
-  onSendMessage: (body: string) => Promise<void>
+  onSendMessage: (body: string, attachment?: PendingAttachment) => Promise<void>
   onLoadOlder: () => Promise<void>
 }
 
@@ -21,7 +29,10 @@ export function ChatThread({
 }: Props) {
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const lastMsgIdRef = useRef<string | null>(null)
 
   // Auto-scroll cuando llega un mensaje nuevo (no cuando se cargan viejos)
@@ -44,11 +55,42 @@ export function ChatThread({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!draft.trim() || sending) return
+    if (sending || uploading) return
+    if (!draft.trim() && !pendingFile) return
+
     setSending(true)
     try {
-      await onSendMessage(draft)
+      let attachment: PendingAttachment | undefined
+      if (pendingFile) {
+        setUploading(true)
+        const form = new FormData()
+        form.append('file', pendingFile)
+        form.append('conversation_id', conversation.id)
+        const res = await fetch('/api/chat/upload-attachment', {
+          method: 'POST',
+          credentials: 'same-origin',
+          body: form,
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          alert(err.error || 'Error subiendo el archivo')
+          setUploading(false)
+          setSending(false)
+          return
+        }
+        const data = await res.json()
+        attachment = {
+          path: data.path,
+          attachment_type: data.attachment_type,
+          attachment_name: data.attachment_name,
+          attachment_size: data.attachment_size,
+        }
+        setUploading(false)
+      }
+      await onSendMessage(draft, attachment)
       setDraft('')
+      setPendingFile(null)
+      if (fileInputRef.current) fileInputRef.current.value = ''
     } finally {
       setSending(false)
     }
@@ -59,6 +101,17 @@ export function ChatThread({
       e.preventDefault()
       handleSubmit(e as unknown as React.FormEvent)
     }
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    if (f.size > 10 * 1024 * 1024) {
+      alert('El archivo excede el límite de 10 MB')
+      e.target.value = ''
+      return
+    }
+    setPendingFile(f)
   }
 
   const isGroup = conversation.type === 'group'
@@ -138,7 +191,45 @@ export function ChatThread({
 
       {/* Input */}
       <form onSubmit={handleSubmit} className="px-4 py-3 border-t border-gray-200 bg-white">
+        {pendingFile && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+            <Paperclip className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+            <p className="text-xs text-gray-700 truncate flex-1">
+              {pendingFile.name}{' '}
+              <span className="text-gray-400">
+                ({Math.round(pendingFile.size / 1024)} KB)
+              </span>
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setPendingFile(null)
+                if (fileInputRef.current) fileInputRef.current.value = ''
+              }}
+              className="h-6 w-6 inline-flex items-center justify-center rounded text-gray-400 hover:bg-gray-200"
+              aria-label="Quitar archivo"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
         <div className="flex items-end gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/jpg,image/webp,image/gif,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={sending || uploading}
+            className="h-10 w-10 inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 text-gray-500 transition-colors"
+            title="Adjuntar archivo"
+          >
+            <Paperclip className="w-4 h-4" />
+          </button>
           <textarea
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -151,15 +242,15 @@ export function ChatThread({
           />
           <button
             type="submit"
-            disabled={!draft.trim() || sending}
+            disabled={(!draft.trim() && !pendingFile) || sending || uploading}
             className="h-10 w-10 inline-flex items-center justify-center rounded-xl bg-[#F2A900] hover:bg-[#D4940A] disabled:bg-gray-200 disabled:text-gray-400 text-white transition-colors"
             aria-label="Enviar"
           >
-            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {sending || uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>
         <p className="text-[10px] text-gray-400 mt-1.5 px-1">
-          Enter para enviar · Shift+Enter para nueva línea
+          Enter para enviar · Shift+Enter para nueva línea · Adjuntos hasta 10 MB
         </p>
       </form>
     </>
@@ -201,11 +292,14 @@ function MessageBubble({
               {message.body}
             </p>
           )}
-          {message.attachment_url && (
-            <p className={`text-[11px] mt-1 ${isMe ? 'text-white/80' : 'text-gray-500'}`}>
-              {/* Placeholder — F4 implementa la preview/descarga */}
-              📎 {message.attachment_name || 'Adjunto'}
-            </p>
+          {message.attachment_url && message.attachment_type && (
+            <MessageAttachment
+              path={message.attachment_url}
+              type={message.attachment_type}
+              name={message.attachment_name}
+              size={message.attachment_size}
+              isMe={isMe}
+            />
           )}
         </div>
         <p className={`text-[10px] text-gray-400 mt-0.5 px-2 ${isMe ? 'text-right' : 'text-left'}`}>

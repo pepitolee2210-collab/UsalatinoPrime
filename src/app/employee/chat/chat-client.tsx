@@ -156,15 +156,28 @@ export function ChatClient({ currentUserId, currentUserName }: Props) {
     }
   }, [activeConvId, currentUserId, markAsRead, sendersById, supabase])
 
-  async function handleSendMessage(body: string) {
-    if (!activeConvId || !body.trim()) return
+  async function handleSendMessage(
+    body: string,
+    attachment?: {
+      path: string
+      attachment_type: 'image' | 'document'
+      attachment_name: string
+      attachment_size: number
+    }
+  ) {
+    if (!activeConvId) return
+    if (!body.trim() && !attachment) return
     const res = await fetch('/api/chat/messages', {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         conversation_id: activeConvId,
-        body: body.trim(),
+        body: body.trim() || null,
+        attachment_url: attachment?.path,
+        attachment_type: attachment?.attachment_type,
+        attachment_name: attachment?.attachment_name,
+        attachment_size: attachment?.attachment_size,
       }),
     })
     if (!res.ok) {
