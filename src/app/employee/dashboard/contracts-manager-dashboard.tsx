@@ -10,6 +10,7 @@ import {
   Briefcase,
 } from 'lucide-react'
 import { MarkPaidModal, type OverduePayment } from '@/components/payments/mark-paid-modal'
+import { WhatsAppTemplates } from '@/components/communication/whatsapp-templates'
 
 interface Contract {
   id: string
@@ -328,9 +329,10 @@ export function ContractsManagerDashboard({
                 .sort((a, b) => b[1].total - a[1].total)
                 .slice(0, 6)
                 .map(([clientId, info]) => {
-                  const waHref = info.phone
-                    ? `https://wa.me/${info.phone.replace(/\D/g, '').replace(/^(\d{10})$/, '1$1')}`
-                    : null
+                  // El pago más viejo (para el template "vencida")
+                  const oldestPayment = info.payments
+                    .slice()
+                    .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))[0]
                   return (
                     <div key={clientId} className="bg-white rounded-lg border border-red-100 p-3 flex items-center justify-between gap-3 flex-wrap">
                       <div className="min-w-0 flex-1">
@@ -352,17 +354,15 @@ export function ContractsManagerDashboard({
                           <CheckCircle className="w-3 h-3" />
                           Pagado
                         </button>
-                        {waHref && (
-                          <a
-                            href={waHref}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 rounded-md bg-white border border-green-200 hover:bg-green-50 text-green-700 text-[11px] font-semibold px-2.5 py-1.5 transition-colors"
-                            title="Enviar WhatsApp"
-                          >
-                            WhatsApp
-                          </a>
-                        )}
+                        <WhatsAppTemplates
+                          context={{
+                            client_name: info.name,
+                            client_first_name: info.name.split(' ')[0],
+                            client_phone: info.phone,
+                            amount: info.total,
+                            due_date: oldestPayment?.due_date ?? undefined,
+                          }}
+                        />
                       </div>
                     </div>
                   )
