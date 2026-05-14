@@ -17,8 +17,8 @@ interface Assignment {
   case: {
     id: string
     case_number: string
-    client: { first_name: string; last_name: string }
-    service: { name: string }
+    client: { first_name: string; last_name: string } | null
+    service: { name: string } | null
   } | null
 }
 
@@ -82,10 +82,11 @@ function AssignmentCard({ assignment: a }: { assignment: Assignment }) {
   const StatusIcon = config.icon
 
   const href = a.case ? `/employee/cases/${a.case.id}` : `/employee/tasks/${a.id}`
-  const clientLabel = a.case
+  const clientLabel = a.case?.client
     ? `${a.case.client.first_name} ${a.case.client.last_name}`
     : a.client_name || 'Sin cliente'
-  const serviceLabel = a.case ? a.case.service.name : a.service_type || 'Sin servicio'
+  const serviceLabel =
+    a.case?.service?.name ?? a.service_type ?? 'Sin servicio'
   const caseNum = a.case?.case_number
 
   return (
