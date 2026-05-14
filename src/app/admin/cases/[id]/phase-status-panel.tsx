@@ -10,6 +10,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Loader2, ArrowRight, AlertTriangle } from 'lucide-react'
 import type { CasePhase } from '@/types/database'
+import {
+  getServiceRegistry,
+  getPhaseDef,
+  getNextPhase,
+  getPhaseOrder,
+  isPhasedService,
+} from '@/lib/services/registry'
 
 interface PhaseStatusPanelProps {
   caseId: string
@@ -23,41 +30,12 @@ interface PhaseStatusPanelProps {
     has_criminal_history: boolean
     minor_close_to_21: boolean
   }
-  isVisaJuvenil: boolean
-}
-
-const PHASE_META: Record<CasePhase, { label: string; bg: string; text: string; description: string }> = {
-  custodia: {
-    label: 'Fase 1 — Custodia',
-    bg: 'bg-purple-100',
-    text: 'text-purple-800',
-    description: 'Obtener orden de custodia con hallazgos SIJS de la corte estatal',
-  },
-  i360: {
-    label: 'Fase 2 — I-360',
-    bg: 'bg-blue-100',
-    text: 'text-blue-800',
-    description: 'Petición SIJS ante USCIS',
-  },
-  i485: {
-    label: 'Fase 3 — I-485',
-    bg: 'bg-emerald-100',
-    text: 'text-emerald-800',
-    description: 'Ajuste de estatus / Green Card',
-  },
-  completado: {
-    label: 'Completado',
-    bg: 'bg-amber-100',
-    text: 'text-amber-800',
-    description: 'Proceso SIJS completado',
-  },
-}
-
-const NEXT_PHASE: Record<CasePhase, CasePhase | null> = {
-  custodia: 'i360',
-  i360: 'i485',
-  i485: 'completado',
-  completado: null,
+  /**
+   * Slug del servicio del caso. Para SIJS: 'visa-juvenil'. Para Asilo Político:
+   * 'asilo-politico'. Si el servicio no tiene fases configuradas, el panel se
+   * oculta entero.
+   */
+  serviceSlug: string | null
 }
 
 export function PhaseStatusPanel({
@@ -66,19 +44,26 @@ export function PhaseStatusPanel({
   currentPhase,
   stateUs,
   flags,
-  isVisaJuvenil,
+  serviceSlug,
 }: PhaseStatusPanelProps) {
   const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [toPhase, setToPhase] = useState<CasePhase | ''>(currentPhase ? NEXT_PHASE[currentPhase] ?? '' : '')
+  const nextDefault = getNextPhase(serviceSlug, currentPhase)
+  const [toPhase, setToPhase] = useState<CasePhase | ''>(nextDefault ?? '')
 
-  if (!isVisaJuvenil) return null
+  if (!isPhasedService(serviceSlug)) return null
 
-  const meta = currentPhase ? PHASE_META[currentPhase] : null
-  const nextPhase = currentPhase ? NEXT_PHASE[currentPhase] : null
-  const isRetreat = currentPhase && toPhase && PHASE_ORDER[toPhase] < PHASE_ORDER[currentPhase]
+  const registry = getServiceRegistry(serviceSlug)
+  if (!registry) return null
+
+  const currentDef = currentPhase ? getPhaseDef(serviceSlug, currentPhase) : null
+  const targetDef = toPhase ? getPhaseDef(serviceSlug, toPhase) : null
+  const isRetreat =
+    currentPhase && toPhase
+      ? getPhaseOrder(serviceSlug, toPhase) < getPhaseOrder(serviceSlug, currentPhase)
+      : false
 
   async function handleAdvance() {
     if (!toPhase || !reason.trim() || reason.trim().length < 5) {
@@ -100,7 +85,8 @@ export function PhaseStatusPanel({
         const err = await res.json().catch(() => ({}))
         throw new Error(err.error || 'Error al cambiar fase')
       }
-      toast.success(`Caso avanzado a ${PHASE_META[toPhase as CasePhase]?.label}`)
+      const advancedDef = getPhaseDef(serviceSlug, toPhase as CasePhase)
+      toast.success(`Caso avanzado a ${advancedDef?.label ?? toPhase}`)
       setDialogOpen(false)
       setReason('')
       router.refresh()
@@ -117,10 +103,14 @@ export function PhaseStatusPanel({
     <div className="rounded-2xl border border-gray-200 bg-white p-5 mb-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Estado del caso SIJS</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+            Estado del caso — {registry.name}
+          </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            {meta ? (
-              <Badge className={`${meta.bg} ${meta.text} px-3 py-1 text-sm font-bold`}>{meta.label}</Badge>
+            {currentDef ? (
+              <Badge className={`${currentDef.bgClass} ${currentDef.textClass} px-3 py-1 text-sm font-bold`}>
+                {currentDef.label}
+              </Badge>
             ) : (
               <Badge variant="outline" className="text-gray-500">Sin fase asignada</Badge>
             )}
@@ -133,17 +123,17 @@ export function PhaseStatusPanel({
               </Badge>
             ))}
           </div>
-          {meta && (
-            <p className="text-xs text-gray-500 mt-2 max-w-xl">{meta.description}</p>
+          {currentDef && (
+            <p className="text-xs text-gray-500 mt-2 max-w-xl">{currentDef.description}</p>
           )}
         </div>
-        {nextPhase && (
+        {nextDefault && (
           <Button
             variant="default"
-            onClick={() => { setToPhase(nextPhase); setDialogOpen(true) }}
+            onClick={() => { setToPhase(nextDefault); setDialogOpen(true) }}
             className="bg-[#002855] hover:bg-[#001a3a]"
           >
-            Avanzar a {PHASE_META[nextPhase].label.split(' — ')[1]}
+            Avanzar a {getPhaseDef(serviceSlug, nextDefault)?.number ?? nextDefault}
             <ArrowRight className="w-4 h-4 ml-1.5" />
           </Button>
         )}
@@ -162,10 +152,9 @@ export function PhaseStatusPanel({
                   <SelectValue placeholder="Selecciona fase destino" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="custodia">Fase 1 — Custodia</SelectItem>
-                  <SelectItem value="i360">Fase 2 — I-360</SelectItem>
-                  <SelectItem value="i485">Fase 3 — I-485</SelectItem>
-                  <SelectItem value="completado">Completado</SelectItem>
+                  {registry.phases.map((p) => (
+                    <SelectItem key={p.code} value={p.code}>{p.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -192,7 +181,7 @@ export function PhaseStatusPanel({
             </div>
 
             <div className="text-xs text-gray-500 p-3 rounded-lg bg-gray-50 border border-gray-200">
-              ✦ Esto archivará automáticamente los documentos y formularios de la fase actual y le mostrará al cliente los nuevos requeridos para <strong>{toPhase ? PHASE_META[toPhase as CasePhase]?.label.split(' — ')[1] : '...'}</strong>.
+              ✦ Esto archivará automáticamente los documentos y formularios de la fase actual y le mostrará al cliente los nuevos requeridos para <strong>{targetDef?.number ?? '...'}</strong>.
             </div>
 
             <div className="flex justify-end gap-2">
@@ -213,13 +202,6 @@ export function PhaseStatusPanel({
       </Dialog>
     </div>
   )
-}
-
-const PHASE_ORDER: Record<CasePhase, number> = {
-  custodia: 0,
-  i360: 1,
-  i485: 2,
-  completado: 3,
 }
 
 function humanizeFlag(flag: string): string {

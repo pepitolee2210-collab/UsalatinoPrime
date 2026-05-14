@@ -22,6 +22,9 @@ const PHASE_LABEL: Record<CasePhase, string> = {
   i360: 'I-360',
   i485: 'I-485',
   completado: 'fase anterior',
+  asilo_sustentos: 'Sustentos',
+  asilo_reforzar: 'Reforzar Asilo',
+  asilo_completado: 'fase anterior',
 }
 
 export function DocumentosScreen({ token }: DocumentosScreenProps) {

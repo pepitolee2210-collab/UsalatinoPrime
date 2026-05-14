@@ -21,8 +21,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
 const SERVICE_OPTIONS = [
-  { slug: 'asilo-afirmativo', label: 'Asilo Afirmativo' },
-  { slug: 'asilo-defensivo', label: 'Asilo Defensivo' },
+  { slug: 'asilo-politico', label: 'Asilo Político' },
   { slug: 'ajuste-de-estatus', label: 'Ajuste de Estatus' },
   { slug: 'visa-juvenil', label: 'Visa Juvenil (SIJS)' },
   { slug: 'cambio-de-estatus', label: 'Cambio de Estatus' },

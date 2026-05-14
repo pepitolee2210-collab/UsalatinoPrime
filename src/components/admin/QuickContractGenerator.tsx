@@ -43,8 +43,7 @@ interface ContractForm {
 type ZipLookupState = 'idle' | 'loading' | 'found' | 'not-found'
 
 const SERVICE_OPTIONS = [
-  { slug: 'asilo-afirmativo', label: 'Asilo Afirmativo' },
-  { slug: 'asilo-defensivo', label: 'Asilo Defensivo' },
+  { slug: 'asilo-politico', label: 'Asilo Pol\u00edtico' },
   { slug: 'ajuste-de-estatus', label: 'Ajuste de Estatus (I-485)' },
   { slug: 'visa-juvenil', label: 'Visa Juvenil (SIJS)' },
   { slug: 'cambio-de-estatus', label: 'Cambio de Estatus' },
@@ -74,6 +73,11 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
   const [selectedSlug, setSelectedSlug] = useState('')
   const [selectedSubserviceSlug, setSelectedSubserviceSlug] = useState<string>('')
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0)
+  // Reglas Familiar para Asilo Político — define qué documento de soporte
+  // queda obligatorio en Fase 1 (acta de matrimonio vs. partidas con ambos
+  // apellidos). 'novios' bloquea variante Familiar (se procesa individual).
+  type AsylumFamilyType = 'married' | 'cohabiting_with_kids' | 'novios'
+  const [asylumFamilyType, setAsylumFamilyType] = useState<AsylumFamilyType | ''>('')
   const [contractForm, setContractForm] = useState<ContractForm>({
     clientFullName: '',
     clientPassport: '',
@@ -795,6 +799,42 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                 </button>
               ))}
             </div>
+
+            {/* Reglas Familiar específicas para Asilo Político */}
+            {selectedSlug === 'asilo-politico'
+              && getActiveVariants()[selectedVariantIndex]?.label === 'Familiar' && (
+              <div className="mt-2 p-3 rounded-lg bg-purple-50 border border-purple-200 space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-purple-900">
+                  Tipo de familia (Asilo Político)
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: 'married' as const, label: 'Casados', sub: 'Requiere acta de matrimonio' },
+                    { value: 'cohabiting_with_kids' as const, label: 'Convivientes con hijos', sub: 'Requiere partida con ambos apellidos' },
+                    { value: 'novios' as const, label: 'Novios sin hijos', sub: 'Procesar como casos individuales' },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setAsylumFamilyType(opt.value)}
+                      className={`flex-1 min-w-[140px] text-left px-3 py-2 rounded-lg border text-xs transition-colors ${
+                        asylumFamilyType === opt.value
+                          ? 'border-purple-700 bg-purple-700 text-white'
+                          : 'border-purple-200 bg-white text-purple-900 hover:bg-purple-100'
+                      }`}
+                    >
+                      <p className="font-bold">{opt.label}</p>
+                      <p className="text-[10px] opacity-80 mt-0.5">{opt.sub}</p>
+                    </button>
+                  ))}
+                </div>
+                {asylumFamilyType === 'novios' && (
+                  <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 px-2 py-1.5 rounded">
+                    ⚠ Recomendado: crear contratos individuales separados, uno por aplicante.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
 

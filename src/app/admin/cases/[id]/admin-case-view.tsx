@@ -26,6 +26,7 @@ import { APPOINTMENT_DOCUMENT_KEYS, DOCUMENT_CATEGORIES } from '@/lib/appointmen
 import { CaseChat } from './case-chat'
 import { ClientStoryReview } from './client-story-review'
 import { I589Review } from './i589-review'
+import { CredibleFearGenerator } from './credible-fear-generator'
 import { DeclarationGenerator } from './declaration-generator'
 import { ParentalConsentGenerator } from './parental-consent-generator'
 import { LegalReviewer } from './legal-reviewer'
@@ -97,7 +98,7 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
   const supabase = createClient()
 
   const serviceSlug = caseData.service?.slug || ''
-  const isAsylumService = serviceSlug === 'asilo-afirmativo' || serviceSlug === 'asilo-defensivo'
+  const isAsylumService = serviceSlug === 'asilo-politico'
   const isVisaJuvenil = serviceSlug === 'visa-juvenil'
 
   async function updateStatus(newStatus: string, notes?: string) {
@@ -435,7 +436,7 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
           has_criminal_history: !!caseData.has_criminal_history,
           minor_close_to_21: !!caseData.minor_close_to_21,
         }}
-        isVisaJuvenil={isVisaJuvenil}
+        serviceSlug={serviceSlug}
       />
 
       {/* Pipeline Tracker */}
@@ -487,6 +488,12 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               {(aiSubmissions || []).some((s: { form_type: string; status: string }) => s.form_type === 'i589_part_b1' && s.status === 'submitted') && (
                 <span className="w-2 h-2 rounded-full bg-yellow-500" />
               )}
+            </TabsTrigger>
+          )}
+          {isAsylumService && (
+            <TabsTrigger value="credible-fear" className="flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 text-purple-600" />
+              Miedo Creíble
             </TabsTrigger>
           )}
           {isVisaJuvenil && (
@@ -1039,6 +1046,12 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
                 ['i589_part_b1', 'i589_part_b2', 'i589_part_c1', 'i589_part_c2'].includes(s.form_type)
               )}
             />
+          </TabsContent>
+        )}
+
+        {isAsylumService && (
+          <TabsContent value="credible-fear" className="mt-4">
+            <CredibleFearGenerator caseId={caseData.id} caseNumber={caseData.case_number} />
           </TabsContent>
         )}
 

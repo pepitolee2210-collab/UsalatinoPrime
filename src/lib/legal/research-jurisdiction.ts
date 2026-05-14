@@ -6,6 +6,7 @@ import type { ClientLocation } from './resolve-client-location'
 import { getStateCourtHint, getSijRulesForRoute } from './state-court-registry'
 import { getRegisteredSlugCatalogMarkdown } from './automated-forms-registry'
 import { verifyFormsBatch } from './verify-pdf-acroform'
+import { filterReachableForms, checkUrlReachable } from './verify-url-reachability'
 import {
   validateSIJCorePackage,
   buildTargetedQueries,
@@ -835,6 +836,41 @@ async function callClaudeForResearch(
     }
   }
 
+  // Validación de alcanzabilidad: descartar URLs hallucinated/bloqueadas/muertas.
+  // La IA pasa el filtro .gov/.us de arriba pero puede inventar subdominios
+  // (caso real KS: kjc.ks.gov no resuelve, el canonical es kansasjudicialcouncil.org)
+  // o citar páginas-directorio bloqueadas por WAF agresivo. Si una familia SIJ
+  // core queda vacía tras este filter, el retry de validateSIJCorePackage la
+  // volverá a pedir con suggestedQueries dirigidas.
+  let meritsDroppedUnreachable = 0
+  let intakeDroppedUnreachable = 0
+  const meritsReach = await filterReachableForms(parsed.required_forms)
+  parsed.required_forms = meritsReach.kept
+  meritsDroppedUnreachable = meritsReach.dropped.length
+  for (const d of meritsReach.dropped) {
+    log.warn('required_form dropped — URL no responde', d)
+  }
+
+  if (parsed.intake_packet?.required_forms?.length) {
+    const intakeReach = await filterReachableForms(parsed.intake_packet.required_forms)
+    parsed.intake_packet = { ...parsed.intake_packet, required_forms: intakeReach.kept }
+    intakeDroppedUnreachable = intakeReach.dropped.length
+    for (const d of intakeReach.dropped) {
+      log.warn('intake_form dropped — URL no responde', d)
+    }
+  }
+
+  if (parsed.fees?.waiver_form_url) {
+    const fee = await checkUrlReachable(parsed.fees.waiver_form_url)
+    if (!fee.reachable) {
+      log.warn('fees.waiver_form_url dropped — URL no responde', {
+        url: parsed.fees.waiver_form_url,
+        reason: fee.reason,
+      })
+      parsed.fees = { ...parsed.fees, waiver_form_url: null }
+    }
+  }
+
   // Verificación REAL de AcroForm: la IA suele marcar pdf_format=acroform por
   // conocimiento previo aunque el PDF concreto sea static (caso real reportado
   // con NY GF-17). Descargamos cada URL y la inspeccionamos con pdf-lib para
@@ -874,6 +910,8 @@ async function callClaudeForResearch(
     sources: parsed.sources.length,
     meritsForms: parsed.required_forms.length,
     intakeForms: parsed.intake_packet?.required_forms?.length ?? 0,
+    meritsDroppedUnreachable,
+    intakeDroppedUnreachable,
     webSearchRequests: usage.server_tool_use?.web_search_requests,
     inputTokens: usage.input_tokens,
     outputTokens: usage.output_tokens,

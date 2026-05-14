@@ -2,16 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
+import { getServiceRegistry, getPhaseOrder, getPhaseDef } from '@/lib/services/registry'
 import type { CasePhase } from '@/types/database'
-
-const VALID_PHASES: CasePhase[] = ['custodia', 'i360', 'i485', 'completado']
-
-const PHASE_ORDER: Record<CasePhase, number> = {
-  custodia: 0,
-  i360: 1,
-  i485: 2,
-  completado: 3,
-}
 
 /**
  * POST /api/admin/cases/[id]/advance-phase
@@ -58,31 +50,55 @@ export async function POST(
   const reason = (body.reason ?? '').trim()
   const force = body.force === true
 
-  if (!toPhase || !VALID_PHASES.includes(toPhase)) {
+  if (!toPhase) {
     return NextResponse.json({ error: 'toPhase inválido' }, { status: 400 })
   }
   if (!reason || reason.length < 5) {
     return NextResponse.json({ error: 'Razón obligatoria (mínimo 5 caracteres)' }, { status: 400 })
   }
 
-  // Validar caso existe + fase actual
+  // Validar caso existe + fase actual + servicio
   const { data: caseRow } = await service
     .from('cases')
-    .select('id, case_number, current_phase')
+    .select('id, case_number, current_phase, service:service_catalog(slug)')
     .eq('id', id)
-    .single()
+    .single<{
+      id: string
+      case_number: string
+      current_phase: CasePhase | null
+      service: { slug: string } | { slug: string }[] | null
+    }>()
   if (!caseRow) {
     return NextResponse.json({ error: 'Caso no encontrado' }, { status: 404 })
   }
 
   const fromPhase = (caseRow.current_phase as CasePhase | null) ?? null
+  const serviceSlug = Array.isArray(caseRow.service)
+    ? caseRow.service[0]?.slug ?? null
+    : caseRow.service?.slug ?? null
+
+  const registry = getServiceRegistry(serviceSlug)
+  if (!registry) {
+    return NextResponse.json(
+      { error: `El servicio "${serviceSlug}" no tiene fases configuradas` },
+      { status: 400 },
+    )
+  }
+
+  // toPhase debe ser válida para ESTE servicio (no para cualquier servicio fasado).
+  if (!getPhaseDef(serviceSlug, toPhase)) {
+    return NextResponse.json(
+      { error: `toPhase "${toPhase}" no aplica al servicio ${serviceSlug}` },
+      { status: 400 },
+    )
+  }
 
   if (fromPhase === toPhase) {
     return NextResponse.json({ error: 'El caso ya está en esa fase' }, { status: 400 })
   }
 
   // Por defecto bloquear retrocesos accidentales
-  if (fromPhase && PHASE_ORDER[toPhase] < PHASE_ORDER[fromPhase] && !force) {
+  if (fromPhase && getPhaseOrder(serviceSlug, toPhase) < getPhaseOrder(serviceSlug, fromPhase) && !force) {
     return NextResponse.json(
       { error: `Estás retrocediendo de ${fromPhase} a ${toPhase}. Reenvía con force=true si es intencional.` },
       { status: 400 },

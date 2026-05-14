@@ -31,8 +31,8 @@ export interface ServiceInfo {
 }
 
 const serviceInfoMap: Record<string, ServiceInfo> = {
-  'asilo-afirmativo': {
-    slug: 'asilo-afirmativo',
+  'asilo-politico': {
+    slug: 'asilo-politico',
     totalTimeline: '1 a 3+ años (depende del backlog de USCIS)',
     stages: [
       {
@@ -95,69 +95,9 @@ const serviceInfoMap: Record<string, ServiceInfo> = {
     ],
   },
 
-  'asilo-defensivo': {
-    slug: 'asilo-defensivo',
-    totalTimeline: '1 a 3+ años (depende del calendario de la corte)',
-    stages: [
-      {
-        step: 1,
-        title: 'Evaluación del caso y comparecencia inicial',
-        description: 'Revisión de su Notice to Appear (NTA) y planificación de la estrategia de defensa ante la Corte de Inmigración.',
-        timeline: '1-2 semanas',
-      },
-      {
-        step: 2,
-        title: 'Preparación de declaración jurada',
-        description: 'Redacción completa de su declaración personal con detalles de persecución y temor de regreso.',
-        timeline: '2-4 semanas',
-      },
-      {
-        step: 3,
-        title: 'Recopilación de evidencia de país',
-        description: 'Obtener informes del Departamento de Estado, reportes de derechos humanos y evidencia de condiciones en su país.',
-        timeline: '2-4 semanas',
-      },
-      {
-        step: 4,
-        title: 'Presentación del I-589 ante la Corte',
-        description: 'Presentar la solicitud de asilo como defensa ante el procedimiento de deportación.',
-        timeline: 'Antes de la fecha límite del juez',
-        formNumber: 'I-589',
-        filingFee: '$0 (gratis)',
-        filingFeeNote: 'No hay filing fee para el I-589 ante la Corte de Inmigración. El cargo de $100 por H.R. 1 aplica a solicitudes ante USCIS.',
-      },
-      {
-        step: 5,
-        title: 'Audiencia Master (preliminar)',
-        description: 'Comparecer ante el Juez de Inmigración para establecer fechas y confirmar la solicitud de asilo.',
-        timeline: 'Según calendario de la corte',
-      },
-      {
-        step: 6,
-        title: 'Preparación para audiencia individual',
-        description: 'Ensayo intensivo de testimonio, preparación de testigos y organización final de evidencia.',
-        timeline: '2-4 semanas antes de la audiencia',
-      },
-      {
-        step: 7,
-        title: 'Audiencia Individual (Merits Hearing)',
-        description: 'Representación completa ante el Juez de Inmigración donde se presenta todo el caso de asilo.',
-        timeline: '6 meses a 3+ años después de la primera audiencia',
-      },
-      {
-        step: 8,
-        title: 'Decisión y apelación si es necesario',
-        description: 'El juez emite decisión oral o escrita. Si es denegado, se evalúa apelación ante la BIA.',
-        timeline: 'Inmediato a 30 días',
-        filingFeeNote: 'Si necesita apelar ante la BIA (Board of Immigration Appeals), el filing fee es de $1,010.',
-      },
-    ],
-    importantNotes: [
-      'Debe presentarse a TODAS las audiencias programadas. No asistir puede resultar en una orden de deportación en ausencia.',
-      'Puede solicitar permiso de trabajo (EAD) 180 días después de presentar el I-589.',
-      'La Corte de Inmigración es parte del DOJ (EOIR), no de USCIS.',
-    ],
-  },
+  // 'asilo-defensivo' eliminado del catálogo: fusionado bajo el slug único
+  // 'asilo-politico'. Si en el futuro necesitamos diferenciar afirmativo vs
+  // defensivo, se modela vía subservicio en `lib/contracts/index.ts`.
 
   'visa-juvenil': {
     slug: 'visa-juvenil',

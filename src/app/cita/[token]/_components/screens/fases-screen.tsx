@@ -42,6 +42,21 @@ const PHASE_HEADERS: Record<CasePhase, { number: string; title: string; descript
     title: 'Proceso completado',
     description: 'Ya no quedan formularios por llenar.',
   },
+  asilo_sustentos: {
+    number: 'Fase 01',
+    title: 'Sustentos',
+    description: 'Formularios I-589 (partes 1-5) y documentos de identidad.',
+  },
+  asilo_reforzar: {
+    number: 'Fase 02',
+    title: 'Reforzar Asilo',
+    description: 'Declaración jurada, evidencias y Miedo Creíble.',
+  },
+  asilo_completado: {
+    number: 'Completado',
+    title: 'Proceso completado',
+    description: 'Expediente presentado ante USCIS.',
+  },
 }
 
 export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProps) {

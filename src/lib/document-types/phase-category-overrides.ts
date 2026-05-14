@@ -123,6 +123,13 @@ export const PHASE_CATEGORY_OVERRIDES: Record<CasePhase, Record<string, PhaseCat
   },
 
   completado: {},
+
+  // Asilo Político no usa overrides legacy (categorías se resuelven vía
+  // M2M `document_type_phases` en PR-4). Entries vacías para mantener
+  // exhaustividad del Record sobre CasePhase.
+  asilo_sustentos: {},
+  asilo_reforzar: {},
+  asilo_completado: {},
 }
 
 export interface ResolvedPhaseCategory {

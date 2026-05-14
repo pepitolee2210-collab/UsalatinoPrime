@@ -34,6 +34,25 @@ export const PHASE_FORM_POLICY: Record<CasePhase, PhasePolicy> = {
     packetTypes: [],
     slugMatches: () => false,
   },
+  // Asilo Político — Fase 1: cliente llena I-589 partes 1-5.
+  // El I-589 se registra como un único form acroform con secciones segmentadas
+  // por el FormRunner (parametrizado por subSlug); este mapping permite que
+  // aparezca en la pestaña Formularios del cliente cuando current_phase
+  // === asilo_sustentos.
+  asilo_sustentos: {
+    packetTypes: ['merits'],
+    slugMatches: (def) => /i-?589|asilo|asylum/i.test(def.slug),
+  },
+  // Fase 2 — Diana llena partes 6-14 (IA + edición manual). El cliente no
+  // edita formularios en esta fase; solo sube affidavit y URLs.
+  asilo_reforzar: {
+    packetTypes: [],
+    slugMatches: () => false,
+  },
+  asilo_completado: {
+    packetTypes: [],
+    slugMatches: () => false,
+  },
 }
 
 /**

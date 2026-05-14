@@ -297,7 +297,14 @@ export interface BlockedDate {
 // SIJS phases + dynamic document catalog (migration 20260429)
 // ──────────────────────────────────────────────────────────────────
 
-export type CasePhase = 'custodia' | 'i360' | 'i485' | 'completado'
+export type CasePhase =
+  | 'custodia'
+  | 'i360'
+  | 'i485'
+  | 'completado'
+  | 'asilo_sustentos'
+  | 'asilo_reforzar'
+  | 'asilo_completado'
 
 export type DocumentSlotKind = 'single' | 'dual_es_en' | 'multiple_named'
 

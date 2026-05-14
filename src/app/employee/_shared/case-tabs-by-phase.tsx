@@ -21,6 +21,7 @@ import { PhaseTimelineStrip } from './phase-timeline-strip'
 import { I360Section } from './i360-section'
 import type { CaseOverview, PhaseGroup, UploadFile } from './phase-types'
 import type { CasePhase } from '@/types/database'
+import { isPhasedService } from '@/lib/services/registry'
 
 type UploadDirection = 'client_to_admin' | 'admin_to_client' | 'firm_internal'
 
@@ -39,6 +40,7 @@ export type TabId =
   | 'i485'
   | 'bitacora'
   | 'cobranza'
+  | 'credible-fear'
 
 interface FormSub {
   form_type: string
@@ -61,7 +63,6 @@ interface CaseTabsByPhaseProps {
   clientId: string
   clientName: string
   serviceSlug: string
-  isVisaJuvenil: boolean
   overview: CaseOverview | null
   loading: boolean
   formSubmissions: FormSub[]
@@ -78,7 +79,7 @@ export function CaseTabsByPhase({
   caseNumber,
   clientId,
   clientName,
-  isVisaJuvenil,
+  serviceSlug,
   overview,
   loading,
   formSubmissions,
@@ -93,6 +94,8 @@ export function CaseTabsByPhase({
   const [uploading, setUploading] = useState<UploadDirection | null>(null)
 
   const currentPhase = overview?.case.current_phase ?? null
+  const isPhased = isPhasedService(serviceSlug)
+  const isVisaJuvenil = serviceSlug === 'visa-juvenil'
 
   const tabs: { id: TabId; label: string; count?: number }[] = useMemo(() => {
     const baseTabs: { id: TabId; label: string; count?: number }[] = [
@@ -100,7 +103,7 @@ export function CaseTabsByPhase({
       { id: 'client-docs', label: 'Para el Cliente', count: countTotalUploads(overview, 'firm_documents') },
       { id: 'archivados', label: 'Documentos archivados', count: overview?.archived_documents.length ?? 0 },
     ]
-    if (isVisaJuvenil) {
+    if (isPhased) {
       baseTabs.push({ id: 'forms', label: 'Formularios', count: countTotalForms(overview) })
     }
     baseTabs.push(
@@ -118,7 +121,7 @@ export function CaseTabsByPhase({
       baseTabs.push({ id: t.id, label: t.label, count: t.count })
     }
     return baseTabs
-  }, [overview, isVisaJuvenil, extraTabs])
+  }, [overview, isPhased, isVisaJuvenil, extraTabs])
 
   const handleScrollToPhase = (phase: CasePhase) => {
     const el = document.getElementById(`phase-section-${phase}`)
@@ -194,7 +197,7 @@ export function CaseTabsByPhase({
     <div className="space-y-4">
       {previewDoc && <PreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />}
 
-      {isVisaJuvenil && overview && currentPhase && (
+      {isPhased && overview && currentPhase && (
         <PhaseTimelineStrip overview={overview} onPhaseClick={handleScrollToPhase} />
       )}
 
@@ -226,7 +229,7 @@ export function CaseTabsByPhase({
       {/* === DOCUMENTOS (cliente sube; Diana también puede subir) === */}
       {tab === 'docs' && !loading && overview && (
         <div className="space-y-3">
-          {isVisaJuvenil ? (
+          {isPhased ? (
             renderPhaseAccordions({
               phases: overview.phases,
               currentPhase,
@@ -256,7 +259,7 @@ export function CaseTabsByPhase({
       {/* === PARA EL CLIENTE (Diana entrega documentos al cliente) === */}
       {tab === 'client-docs' && !loading && overview && (
         <div className="space-y-3">
-          {isVisaJuvenil ? (
+          {isPhased ? (
             renderPhaseAccordions({
               phases: overview.phases,
               currentPhase,

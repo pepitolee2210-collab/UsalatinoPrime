@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import type { ConditionalLogic, DocumentType, CasePhase, DocumentSlotKind } from '@/types/database'
 import { getPhaseCategory } from '@/lib/document-types/phase-category-overrides'
+import { resolvePhaseCategory, type DocumentTypePhaseRow } from '@/lib/document-types/phase-overrides-registry'
+import { isPhasedService } from '@/lib/services/registry'
 
 /**
  * GET /api/cita/[token]/required-documents
@@ -81,7 +83,11 @@ interface ResponseShape {
   categories: CategoryGroup[]
 }
 
-const PHASE_FLAG: Record<CasePhase, keyof DocumentType> = {
+// Mapeo fase → columna boolean en `document_types`.
+// Solo cubre SIJS. Servicios Asilo Político leen documentos vía la tabla M2M
+// `document_type_phases` (introducida en migración 20260515), no por columnas
+// `shown_in_*`. El endpoint detecta el caso y enruta por servicio.
+const PHASE_FLAG: Partial<Record<CasePhase, keyof DocumentType>> = {
   custodia:   'shown_in_custodia',
   i360:       'shown_in_i360',
   i485:       'shown_in_i485',
@@ -159,12 +165,26 @@ export async function GET(
     return NextResponse.json({ error: 'Token inválido' }, { status: 403 })
   }
 
-  // 2. Cargar caso + flags
+  // 2. Cargar caso + flags + servicio
   const { data: caseRow } = await supabase
     .from('cases')
-    .select('id, current_phase, parent_deceased, in_orr_custody, has_criminal_history, minor_close_to_21, living_parent_consents, requires_foreign_service')
+    .select('id, current_phase, parent_deceased, in_orr_custody, has_criminal_history, minor_close_to_21, living_parent_consents, requires_foreign_service, service:service_catalog(slug)')
     .eq('id', tokenData.case_id)
-    .single()
+    .single<{
+      id: string
+      current_phase: CasePhase | null
+      parent_deceased: boolean | null
+      in_orr_custody: boolean | null
+      has_criminal_history: boolean | null
+      minor_close_to_21: boolean | null
+      living_parent_consents: boolean | null
+      requires_foreign_service: boolean | null
+      service: { slug: string } | { slug: string }[] | null
+    }>()
+
+  const serviceSlug = Array.isArray(caseRow?.service)
+    ? caseRow.service[0]?.slug ?? null
+    : caseRow?.service?.slug ?? null
 
   const currentPhase = (caseRow?.current_phase as CasePhase | null) ?? null
 
@@ -190,14 +210,54 @@ export async function GET(
     requires_foreign_service: caseRow.requires_foreign_service ?? false,
   }
 
-  // 3. Cargar catálogo activo
-  const phaseColumn = PHASE_FLAG[currentPhase]
-  const { data: docTypes } = await supabase
-    .from('document_types')
-    .select('*')
-    .eq('is_active', true)
-    .eq(phaseColumn, true)
-    .order('sort_order', { ascending: true })
+  // 3. Cargar catálogo activo:
+  //    - Para servicios fasados con M2M poblada (asilo-politico siempre, SIJS
+  //      desde 20260515): JOIN entre document_type_phases y document_types.
+  //    - Fallback SIJS si la M2M está vacía: usar columnas legacy shown_in_*.
+  let docTypes: DocumentType[] | null = null
+  let phaseRowsById: Map<number, DocumentTypePhaseRow> = new Map()
+
+  if (serviceSlug && isPhasedService(serviceSlug)) {
+    const { data: phaseRows } = await supabase
+      .from('document_type_phases')
+      .select('document_type_id, service_slug, phase_code, sort_order, category_code_override, category_name_es_override, category_icon_override, is_required_override, conditional_logic_override')
+      .eq('service_slug', serviceSlug)
+      .eq('phase_code', currentPhase)
+
+    if (phaseRows && phaseRows.length > 0) {
+      phaseRowsById = new Map(phaseRows.map((r) => [r.document_type_id, r as DocumentTypePhaseRow]))
+      const { data } = await supabase
+        .from('document_types')
+        .select('*')
+        .in('id', phaseRows.map((r) => r.document_type_id))
+        .eq('is_active', true)
+        .order('sort_order', { ascending: true })
+      docTypes = data
+    }
+  }
+
+  // Fallback SIJS legacy (sin M2M): columnas booleanas. Mantiene compat.
+  if (!docTypes) {
+    const phaseColumn = PHASE_FLAG[currentPhase]
+    if (!phaseColumn) {
+      const empty: ResponseShape = {
+        case_id: tokenData.case_id,
+        current_phase: currentPhase,
+        total_required: 0,
+        total_completed: 0,
+        progress_pct: 0,
+        categories: [],
+      }
+      return NextResponse.json(empty)
+    }
+    const { data } = await supabase
+      .from('document_types')
+      .select('*')
+      .eq('is_active', true)
+      .eq(phaseColumn, true)
+      .order('sort_order', { ascending: true })
+    docTypes = data
+  }
 
   if (!docTypes || docTypes.length === 0) {
     const empty: ResponseShape = {
@@ -280,17 +340,22 @@ export async function GET(
     }
   }
 
-  // 6. Construir DocItems agrupados por categoría
+  // 6. Construir DocItems agrupados por categoría.
   //
-  // Resolver categoría y sort_order específicos por fase. Algunos docs
-  // (acta, pasaporte, I-94, ORR consent, etc.) pertenecen a categorías
-  // distintas en Custodia / I-360 / I-485. El override en
-  // lib/document-types/phase-category-overrides.ts define el mapping;
-  // si no hay override, se usa lo del catálogo `document_types`.
-  const typesWithCategory = visibleTypes.map((dt) => ({
-    dt,
-    phaseCategory: getPhaseCategory(dt, currentPhase),
-  }))
+  // La resolución de categoría visible viene de DOS fuentes (en orden):
+  //   1. Fila M2M `document_type_phases` (migración 20260515) — si existe
+  //      override `category_*_override`, gana. Esta es la fuente nueva,
+  //      compartida por SIJS y Asilo Político.
+  //   2. Helper TS legacy `phase-category-overrides.ts` — fallback SIJS para
+  //      casos cacheados antes de la M2M. Será eliminado en una PR posterior
+  //      cuando todos los consumidores migren.
+  const typesWithCategory = visibleTypes.map((dt) => {
+    const m2mRow = phaseRowsById.get(dt.id) ?? null
+    const phaseCategory = m2mRow
+      ? resolvePhaseCategory(dt, m2mRow)
+      : getPhaseCategory(dt, currentPhase)
+    return { dt, phaseCategory }
+  })
   typesWithCategory.sort((a, b) => a.phaseCategory.sort_order - b.phaseCategory.sort_order)
 
   const categoryMap = new Map<string, CategoryGroup>()

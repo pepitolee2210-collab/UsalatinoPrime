@@ -1,5 +1,5 @@
 import { VISA_JUVENIL_PLAYBOOK } from './visa-juvenil'
-import { ASILO_PLAYBOOK } from './asilo'
+import { ASILO_POLITICO_PLAYBOOK } from './asilo-politico'
 import { RENUNCIA_PLAYBOOK } from './renuncia'
 
 /**
@@ -51,7 +51,7 @@ export function getPlaybookForService(serviceSlug: string | null | undefined): s
     return VISA_JUVENIL_PLAYBOOK
   }
   if (slug.includes('asilo') || slug.includes('asylum')) {
-    return ASILO_PLAYBOOK
+    return ASILO_POLITICO_PLAYBOOK
   }
   if (slug.includes('renuncia') || slug.includes('relinquish')) {
     return RENUNCIA_PLAYBOOK
@@ -67,7 +67,7 @@ export function getPlaybookForService(serviceSlug: string | null | undefined): s
 export function getPlaybookName(serviceSlug: string | null | undefined): string {
   const slug = (serviceSlug || '').toLowerCase().trim()
   if (slug.includes('juvenil') || slug.includes('sijs')) return 'Visa Juvenil (SIJS)'
-  if (slug.includes('asilo') || slug.includes('asylum')) return 'Asilo'
+  if (slug.includes('asilo') || slug.includes('asylum')) return 'Asilo Político'
   if (slug.includes('renuncia') || slug.includes('relinquish')) return 'Renuncia de Patria Potestad'
   return 'Revisión general'
 }

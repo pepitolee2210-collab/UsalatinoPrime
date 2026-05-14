@@ -10,6 +10,7 @@ import { CaseTabsByPhase } from '@/app/employee/_shared/case-tabs-by-phase'
 import { useCaseOverview } from '@/app/employee/_shared/use-case-overview'
 import { I485FormSection } from '@/components/legal/i485-form-section'
 import { I360FormSection } from '@/components/legal/i360-form-section'
+import { CredibleFearGenerator } from '@/app/admin/cases/[id]/credible-fear-generator'
 import type { CasePhase } from '@/types/database'
 
 interface CaseData {
@@ -85,6 +86,7 @@ export function EmployeeCaseView({
   const hasAssignment = Boolean(assignment)
   const clientName = `${caseData.client?.first_name || ''} ${caseData.client?.last_name || ''}`.trim()
   const isVisaJuvenil = caseData.service?.slug === 'visa-juvenil'
+  const isAsiloPolitico = caseData.service?.slug === 'asilo-politico'
 
   const { overview, loading, refresh } = useCaseOverview(caseData.id)
 
@@ -112,6 +114,17 @@ export function EmployeeCaseView({
         id: 'i485' as const,
         label: 'I-485',
         content: <I485FormSection caseId={caseData.id} />,
+      }]
+    : []
+
+  // Tab "Miedo Creíble" — solo Asilo Político. Diana genera, revisa y descarga.
+  const credibleFearTab = isAsiloPolitico
+    ? [{
+        id: 'credible-fear' as const,
+        label: 'Miedo Creíble',
+        content: (
+          <CredibleFearGenerator caseId={caseData.id} caseNumber={caseData.case_number} />
+        ),
       }]
     : []
 
@@ -192,7 +205,7 @@ export function EmployeeCaseView({
           has_criminal_history: caseData.has_criminal_history,
           minor_close_to_21: caseData.minor_close_to_21,
         }}
-        isVisaJuvenil={isVisaJuvenil}
+        serviceSlug={caseData.service?.slug ?? null}
       />
 
       {/* Tabs por fase */}
@@ -202,14 +215,13 @@ export function EmployeeCaseView({
         clientId={caseData.client_id}
         clientName={clientName}
         serviceSlug={caseData.service?.slug ?? ''}
-        isVisaJuvenil={isVisaJuvenil}
         overview={overview}
         loading={loading}
         formSubmissions={formSubmissions}
         henryNotes={henryNotes}
         currentUserId={currentUserId}
         isAdmin={false}
-        extraTabs={[...i360Tab, ...i485Tab, ...miTrabajoTab]}
+        extraTabs={[...i360Tab, ...i485Tab, ...credibleFearTab, ...miTrabajoTab]}
         onRefresh={() => {
           refresh()
           router.refresh()

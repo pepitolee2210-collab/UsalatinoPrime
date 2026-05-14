@@ -3,9 +3,16 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import type { CasePhase } from '@/types/database'
 
+/**
+ * Orden + metadata de fases SIJS visible en el case-overview de Diana.
+ * Otros servicios fasados (ej. asilo-politico) tienen su propia ruta de
+ * overview en PR-4; este endpoint sigue dedicado a Visa Juvenil.
+ */
 const PHASE_ORDER: CasePhase[] = ['custodia', 'i360', 'i485', 'completado']
 
-const PHASE_META: Record<CasePhase, { label: string; color: string; icon: string; description: string }> = {
+type PhaseMeta = { label: string; color: string; icon: string; description: string }
+
+const PHASE_META: Record<CasePhase, PhaseMeta> = {
   custodia: {
     label: 'Fase 1 — Custodia',
     color: 'purple',
@@ -29,6 +36,26 @@ const PHASE_META: Record<CasePhase, { label: string; color: string; icon: string
     color: 'amber',
     icon: 'flag',
     description: 'Proceso SIJS completado.',
+  },
+  // Entries de Asilo Político — no se usan en este endpoint (SIJS-only) pero
+  // requeridos para que el Record satisfaga el tipo CasePhase completo.
+  asilo_sustentos: {
+    label: 'Fase 1 — Sustentos',
+    color: 'purple',
+    icon: 'folder_managed',
+    description: 'Recopilación de identidad y estatus de ingreso.',
+  },
+  asilo_reforzar: {
+    label: 'Fase 2 — Reforzar Asilo',
+    color: 'blue',
+    icon: 'shield_person',
+    description: 'Declaración jurada, evidencias y Miedo Creíble.',
+  },
+  asilo_completado: {
+    label: 'Completado',
+    color: 'amber',
+    icon: 'flag',
+    description: 'Expediente presentado ante USCIS.',
   },
 }
 

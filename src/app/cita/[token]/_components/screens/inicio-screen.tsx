@@ -48,6 +48,21 @@ const PHASE_LABELS: Record<CasePhase, { number: string; title: string; descripti
     title: 'Proceso completado',
     description: '¡Felicitaciones! Tu caso ha sido aprobado.',
   },
+  asilo_sustentos: {
+    number: 'Fase 01',
+    title: 'Sustentos',
+    description: 'Identidad, estatus de ingreso y formulario I-589 (partes 1-5).',
+  },
+  asilo_reforzar: {
+    number: 'Fase 02',
+    title: 'Reforzar Asilo',
+    description: 'Declaración jurada, evidencias y generación del Miedo Creíble.',
+  },
+  asilo_completado: {
+    number: 'Completado',
+    title: 'Proceso completado',
+    description: '¡Tu expediente fue presentado ante USCIS!',
+  },
 }
 
 const PHASE_ORDER: CasePhase[] = ['custodia', 'i360', 'i485']

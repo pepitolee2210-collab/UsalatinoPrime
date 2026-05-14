@@ -160,7 +160,7 @@ export function EmployeeClientDetail({
             has_criminal_history: !!activeCase.has_criminal_history,
             minor_close_to_21: !!activeCase.minor_close_to_21,
           }}
-          isVisaJuvenil={!!isVisaJuvenil}
+          serviceSlug={activeCase.service?.slug ?? null}
         />
       )}
 
@@ -190,7 +190,6 @@ export function EmployeeClientDetail({
           clientId={client.id}
           clientName={clientName}
           serviceSlug={activeCase.service?.slug ?? ''}
-          isVisaJuvenil={!!isVisaJuvenil}
           overview={overview}
           loading={loading}
           formSubmissions={caseForms}

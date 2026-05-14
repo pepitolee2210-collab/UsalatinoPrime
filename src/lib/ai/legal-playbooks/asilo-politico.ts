@@ -1,7 +1,7 @@
-export const ASILO_PLAYBOOK = `
-# PLAYBOOK: ASILO (Afirmativo y Defensivo)
+export const ASILO_POLITICO_PLAYBOOK = `
+# PLAYBOOK: ASILO POLÍTICO
 
-Este playbook cubre ambas modalidades. El asilo requiere demostrar que el solicitante sufrió persecución — o tiene miedo razonable de sufrirla — en su país de origen, por uno de los cinco protected grounds.
+Este playbook aplica al servicio "Asilo Político" del portal henryflow. Cubre el formulario I-589 (afirmativo o defensivo, según contexto del caso) y el relato de Miedo Creíble que el sistema genera con IA en Fase 2. El asilo requiere demostrar que el solicitante sufrió persecución — o tiene miedo razonable de sufrirla — en su país de origen, por uno de los cinco protected grounds.
 
 ## REQUISITOS LEGALES ESENCIALES (INA § 208)
 

@@ -9,6 +9,7 @@ import { InicioScreen, type QuickContact, type PhaseAsset } from './_components/
 import { CitasScreen } from './_components/screens/citas-screen'
 import { DocumentosScreen } from './_components/screens/documentos-screen'
 import { FasesScreen } from './_components/screens/fases-screen'
+import { ReforzarScreen } from './_components/screens/reforzar-screen'
 import { MasScreen } from './_components/screens/mas-screen'
 import type { Appointment, CasePhase } from '@/types/database'
 
@@ -165,7 +166,11 @@ export function ClientPortal(props: ClientPortalProps) {
         <DocumentosScreen token={token} serviceSlug={serviceSlug} />
       )}
       {activeScreen === 'fases' && (
-        <FasesScreen token={token} clientName={clientName} currentPhase={currentPhase} />
+        serviceSlug === 'asilo-politico' && currentPhase === 'asilo_reforzar' ? (
+          <ReforzarScreen token={token} clientName={clientName} />
+        ) : (
+          <FasesScreen token={token} clientName={clientName} currentPhase={currentPhase} />
+        )
       )}
       {activeScreen === 'mas' && (
         <MasScreen

@@ -45,24 +45,73 @@ export interface ContractTemplate {
 }
 
 const contracts: Record<string, ContractTemplate> = {
-  'asilo-defensivo': {
+  // Asilo Pol\u00edtico \u2014 reemplaza los legacy `asilo-afirmativo` y `asilo-defensivo`.
+  // El servicio convive con 2 subservicios:
+  //   - 'completo' \u2192 Fase 1 (Sustentos) + Fase 2 (Reforzar). `startingPhase = asilo_sustentos`.
+  //   - 'solo-reforzar' \u2192 cliente ya tiene I-589 presentado, solo viene a reforzarlo.
+  //     `startingPhase = asilo_reforzar`.
+  // El template padre sin subservicio cae al flujo completo por compatibilidad.
+  'asilo-politico': {
     installments: true,
     requiresMinor: false,
+    startingPhase: 'asilo_sustentos',
     variants: [
       { label: 'Individual', totalPrice: 1500 },
       { label: 'Familiar', totalPrice: 2200 },
     ],
     objetoDelContrato:
-      'El CONSULTOR se compromete a brindar asesor\u00eda y representaci\u00f3n legal en el proceso de Asilo Defensivo ante la Corte de Inmigraci\u00f3n de los Estados Unidos, incluyendo la preparaci\u00f3n y presentaci\u00f3n de la solicitud de asilo como defensa ante procedimientos de deportaci\u00f3n.',
+      'El CONSULTOR se compromete a brindar asesor\u00eda y asistencia en el proceso de Asilo Pol\u00edtico ante el Servicio de Ciudadan\u00eda e Inmigraci\u00f3n de los Estados Unidos (USCIS), incluyendo la preparaci\u00f3n y presentaci\u00f3n del Formulario I-589 y la elaboraci\u00f3n del relato de Miedo Cre\u00edble.',
     etapas: [
-      'Evaluaci\u00f3n inicial del caso y revisi\u00f3n de documentaci\u00f3n existente',
-      'Preparaci\u00f3n y redacci\u00f3n de la declaraci\u00f3n jurada del solicitante',
-      'Recopilaci\u00f3n y organizaci\u00f3n de evidencia de persecuci\u00f3n o temor fundado',
-      'Preparaci\u00f3n del Formulario I-589 y documentos de soporte',
-      'Presentaci\u00f3n de la solicitud ante la Corte de Inmigraci\u00f3n',
-      'Preparaci\u00f3n del cliente para la audiencia individual ante el Juez de Inmigraci\u00f3n',
-      'Representaci\u00f3n en audiencias ante la Corte de Inmigraci\u00f3n',
-      'Seguimiento post-audiencia y tr\u00e1mites adicionales si corresponde',
+      'Recopilaci\u00f3n de documentaci\u00f3n de identidad y estatus de ingreso',
+      'Llenado guiado del Formulario I-589 (partes 1-5) con asistencia de IA',
+      'Recopilaci\u00f3n de declaraci\u00f3n jurada y URLs de evidencias',
+      'Generaci\u00f3n asistida por IA del relato de Miedo Cre\u00edble',
+      'Llenado del Formulario I-589 (partes 6-14)',
+      'Armado del expediente final ante USCIS',
+      'Presentaci\u00f3n de la solicitud',
+      'Preparaci\u00f3n y acompa\u00f1amiento a la entrevista',
+    ],
+    subservices: [
+      {
+        slug: 'completo',
+        label: 'Proceso completo (Fase 1 + Fase 2)',
+        description: 'Para clientes que inician el proceso desde cero. Cubre identidad, I-589 partes 1-5, declaraci\u00f3n jurada, Miedo Cre\u00edble y presentaci\u00f3n.',
+        startingPhase: 'asilo_sustentos',
+        variants: [
+          { label: 'Individual', totalPrice: 1500 },
+          { label: 'Familiar', totalPrice: 2200 },
+        ],
+        objetoDelContrato:
+          'El CONSULTOR se compromete a brindar asesor\u00eda y asistencia en el proceso completo de Asilo Pol\u00edtico ante USCIS, desde la recopilaci\u00f3n de documentos de identidad hasta la presentaci\u00f3n del expediente final con el relato de Miedo Cre\u00edble.',
+        etapas: [
+          'Recopilaci\u00f3n de documentaci\u00f3n de identidad y estatus de ingreso',
+          'Llenado guiado del Formulario I-589 (partes 1-5) con asistencia de IA',
+          'Recopilaci\u00f3n de declaraci\u00f3n jurada y URLs de evidencias',
+          'Generaci\u00f3n asistida por IA del relato de Miedo Cre\u00edble',
+          'Llenado del Formulario I-589 (partes 6-14)',
+          'Armado del expediente final ante USCIS',
+          'Presentaci\u00f3n de la solicitud',
+          'Preparaci\u00f3n y acompa\u00f1amiento a la entrevista',
+        ],
+      },
+      {
+        slug: 'solo-reforzar',
+        label: 'Solo Reforzar Asilo (cliente ya present\u00f3 I-589)',
+        description: 'Para clientes que ya presentaron su asilo y vienen a reforzar el caso con declaraci\u00f3n jurada, evidencias y Miedo Cre\u00edble generado por IA.',
+        startingPhase: 'asilo_reforzar',
+        variants: [
+          { label: 'Individual', totalPrice: 900 },
+          { label: 'Familiar', totalPrice: 1300 },
+        ],
+        objetoDelContrato:
+          'El CONSULTOR se compromete a brindar asesor\u00eda y asistencia en el refuerzo del caso de Asilo Pol\u00edtico de un cliente con I-589 ya presentado, mediante la recopilaci\u00f3n de declaraci\u00f3n jurada, evidencias, y la generaci\u00f3n asistida por IA del relato de Miedo Cre\u00edble.',
+        etapas: [
+          'Recopilaci\u00f3n de declaraci\u00f3n jurada y URLs de evidencias',
+          'Generaci\u00f3n asistida por IA del relato de Miedo Cre\u00edble',
+          'Llenado del Formulario I-589 (partes 6-14)',
+          'Acompa\u00f1amiento a la entrevista',
+        ],
+      },
     ],
   },
   'ajuste-de-estatus': {
@@ -87,26 +136,6 @@ const contracts: Record<string, ContractTemplate> = {
       'Presentaci\u00f3n de la solicitud ante USCIS',
       'Preparaci\u00f3n del cliente para la cita biom\u00e9trica y entrevista',
       'Seguimiento del caso y respuesta a solicitudes de evidencia adicional (RFE)',
-    ],
-  },
-  'asilo-afirmativo': {
-    installments: true,
-    requiresMinor: false,
-    variants: [
-      { label: 'Individual', totalPrice: 1500 },
-      { label: 'Familiar', totalPrice: 2200 },
-    ],
-    objetoDelContrato:
-      'El CONSULTOR se compromete a brindar asesor\u00eda y asistencia en el proceso de Asilo Afirmativo ante el Servicio de Ciudadan\u00eda e Inmigraci\u00f3n de los Estados Unidos (USCIS), incluyendo la preparaci\u00f3n y presentaci\u00f3n de la solicitud de asilo.',
-    etapas: [
-      'Evaluaci\u00f3n inicial del caso y determinaci\u00f3n de elegibilidad',
-      'Preparaci\u00f3n y redacci\u00f3n de la declaraci\u00f3n jurada del solicitante',
-      'Recopilaci\u00f3n y organizaci\u00f3n de evidencia de pa\u00eds y persecuci\u00f3n',
-      'Preparaci\u00f3n del Formulario I-589 y documentos de soporte',
-      'Revisi\u00f3n final y presentaci\u00f3n de la solicitud ante USCIS',
-      'Preparaci\u00f3n del cliente para la entrevista con el Oficial de Asilo',
-      'Acompa\u00f1amiento y representaci\u00f3n en la entrevista de asilo',
-      'Seguimiento post-entrevista y tr\u00e1mites adicionales si corresponde',
     ],
   },
   'visa-juvenil': {

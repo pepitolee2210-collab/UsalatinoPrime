@@ -1,5 +1,4 @@
-import { asiloAfirmativoWorkflow } from './asilo-afirmativo'
-import { asiloDefensivoWorkflow } from './asilo-defensivo'
+import { asiloPoliticoWorkflow } from './asilo-politico'
 import { visaJuvenilWorkflow } from './visa-juvenil'
 import { cambioDeCorteWorkflow } from './cambio-de-corte'
 import { taxesWorkflow } from './taxes'
@@ -11,8 +10,7 @@ import { cambioDeEstatusWorkflow } from './cambio-de-estatus'
 import type { ServiceWorkflow } from '@/types/wizard'
 
 const workflows: Record<string, ServiceWorkflow> = {
-  'asilo-afirmativo': asiloAfirmativoWorkflow,
-  'asilo-defensivo': asiloDefensivoWorkflow,
+  'asilo-politico': asiloPoliticoWorkflow,
   'visa-juvenil': visaJuvenilWorkflow,
   'cambio-de-corte': cambioDeCorteWorkflow,
   'taxes': taxesWorkflow,
@@ -36,8 +34,7 @@ export function getWorkflowSlugs(): string[] {
 }
 
 export {
-  asiloAfirmativoWorkflow,
-  asiloDefensivoWorkflow,
+  asiloPoliticoWorkflow,
   visaJuvenilWorkflow,
   cambioDeCorteWorkflow,
   taxesWorkflow,

@@ -1,10 +1,24 @@
 import type { ServiceWorkflow, WorkflowStep } from '@/types/wizard'
 
-export const asiloAfirmativoSteps: WorkflowStep[] = [
+/**
+ * Workflow del servicio "Asilo Político" con 2 fases operativas:
+ *
+ * - Fase 1 (asilo_sustentos): cliente sube documentos de identidad y entrada,
+ *   y llena las partes 1-5 del I-589 (steps 1-5 abajo).
+ * - Fase 2 (asilo_reforzar): cliente sube affidavit personal + URLs de
+ *   evidencias; Diana + IA generan el Miedo Creíble y completan partes 6-14
+ *   del I-589. Eso pasa fuera del wizard tradicional — vive en
+ *   `/cita/[token]` screen "Reforzar Asilo" y panel Diana.
+ *
+ * Reemplaza los workflows legacy `asilo-afirmativo` y `asilo-defensivo`
+ * (eliminados en el mismo PR-3 que introduce este archivo).
+ */
+
+export const asiloPoliticoSteps: WorkflowStep[] = [
   {
     step: 1,
     title: 'Información Personal',
-    description: 'Parte A.I del formulario I-589 — Datos personales del solicitante',
+    description: 'Parte 1 del I-589 — Datos personales del solicitante',
     type: 'form',
     fields: [
       { key: 'legal_last_name', label: 'Apellido legal', type: 'text', required: true },
@@ -62,7 +76,7 @@ export const asiloAfirmativoSteps: WorkflowStep[] = [
   {
     step: 2,
     title: 'Información de Inmigración',
-    description: 'Parte A.I (continuación) — Historial migratorio y documentos de viaje',
+    description: 'Parte 2 del I-589 — Historial migratorio y documentos de viaje',
     type: 'form',
     fields: [
       {
@@ -88,6 +102,7 @@ export const asiloAfirmativoSteps: WorkflowStep[] = [
           'Visa de estudiante (F-1)',
           'Visa de trabajo',
           'Parole',
+          'NTA (Notice to Appear)',
           'Sin inspección (cruzó la frontera)',
           'TPS',
           'Otro',
@@ -125,7 +140,7 @@ export const asiloAfirmativoSteps: WorkflowStep[] = [
   {
     step: 3,
     title: 'Cónyuge e Hijos',
-    description: 'Partes A.II y A.III — Información de familiares',
+    description: 'Parte 3 del I-589 — Información de familiares',
     type: 'form',
     fields: [
       { key: 'has_spouse', label: '¿Tiene cónyuge?', type: 'boolean', required: true },
@@ -198,7 +213,7 @@ export const asiloAfirmativoSteps: WorkflowStep[] = [
   {
     step: 4,
     title: 'Historial de Residencia y Empleo',
-    description: 'Parte A.IV — Direcciones, empleos, educación y familiares',
+    description: 'Parte 4 del I-589 — Direcciones, empleos, educación y familiares (últimos 5 años)',
     type: 'form',
     fields: [
       {
@@ -253,17 +268,14 @@ export const asiloAfirmativoSteps: WorkflowStep[] = [
           { key: 'edu_to', label: 'Hasta', type: 'month_year_or_present' },
         ],
       },
-      // Mother
       { key: 'mother_name', label: 'Nombre completo de la madre (Apellido Nombre)', type: 'text' },
       { key: 'mother_country_of_birth', label: 'País de nacimiento de la madre', type: 'country_select' },
       { key: 'mother_deceased', label: '¿La madre ha fallecido?', type: 'boolean' },
       { key: 'mother_current_location', label: 'Ubicación actual de la madre', type: 'text', conditional: 'mother_deceased === false' },
-      // Father
       { key: 'father_name', label: 'Nombre completo del padre (Apellido Nombre)', type: 'text' },
       { key: 'father_country_of_birth', label: 'País de nacimiento del padre', type: 'country_select' },
       { key: 'father_deceased', label: '¿El padre ha fallecido?', type: 'boolean' },
       { key: 'father_current_location', label: 'Ubicación actual del padre', type: 'text', conditional: 'father_deceased === false' },
-      // Siblings
       {
         key: 'siblings',
         label: 'Hermanos/as',
@@ -280,8 +292,8 @@ export const asiloAfirmativoSteps: WorkflowStep[] = [
   },
   {
     step: 5,
-    title: 'Historia de Persecución',
-    description: 'Parte B — La sección más importante. Describa las razones por las que solicita asilo.',
+    title: 'Información Preliminar de Persecución',
+    description: 'Parte 5 del I-589 — Bases preliminares (el detalle completo viene en Fase 2)',
     type: 'form',
     fields: [
       {
@@ -304,34 +316,10 @@ export const asiloAfirmativoSteps: WorkflowStep[] = [
         required: true,
       },
       {
-        key: 'past_harm_description',
-        label: 'Descripción del daño sufrido',
-        type: 'long_text',
-        conditional: 'past_harm === true',
-        required: true,
-        helper: 'Incluya: QUIÉN le hizo daño, QUÉ le hicieron, CUÁNDO ocurrió, DÓNDE ocurrió, POR QUÉ cree que le persiguieron',
-        min_length: 200,
-      },
-      {
         key: 'fear_of_return',
         label: '¿Tiene miedo de regresar a su país?',
         type: 'boolean',
         required: true,
-      },
-      {
-        key: 'fear_description',
-        label: 'Descripción del miedo de regresar',
-        type: 'long_text',
-        conditional: 'fear_of_return === true',
-        required: true,
-        min_length: 150,
-      },
-      {
-        key: 'harm_perpetrators',
-        label: '¿Quién le causó daño o amenazó?',
-        type: 'long_text',
-        required: true,
-        helper: 'Identifique personas u organizaciones responsables',
       },
       {
         key: 'reported_to_authorities',
@@ -340,47 +328,10 @@ export const asiloAfirmativoSteps: WorkflowStep[] = [
         required: true,
       },
       {
-        key: 'authority_response',
-        label: '¿Qué hicieron las autoridades?',
-        type: 'long_text',
-        conditional: 'reported_to_authorities === true',
-      },
-      {
-        key: 'why_not_reported',
-        label: '¿Por qué no reportó a las autoridades?',
-        type: 'long_text',
-        conditional: 'reported_to_authorities === false',
-      },
-      {
-        key: 'organization_membership',
-        label: 'Membresía en organizaciones',
-        type: 'long_text',
-        helper: 'Liste cada organización con fechas de membresía',
-      },
-      {
-        key: 'continued_membership',
-        label: '¿Continúa siendo miembro de alguna organización?',
-        type: 'boolean',
-      },
-    ],
-  },
-  {
-    step: 6,
-    title: 'Información Adicional',
-    description: 'Parte C — Preguntas adicionales sobre su caso y antecedentes',
-    type: 'form',
-    fields: [
-      {
         key: 'prior_asylum_application',
         label: '¿Ha solicitado asilo anteriormente en EE.UU.?',
         type: 'boolean',
         required: true,
-      },
-      {
-        key: 'prior_asylum_details',
-        label: 'Detalles de la solicitud anterior',
-        type: 'long_text',
-        conditional: 'prior_asylum_application === true',
       },
       {
         key: 'arrested_detained',
@@ -388,183 +339,66 @@ export const asiloAfirmativoSteps: WorkflowStep[] = [
         type: 'boolean',
         required: true,
       },
-      {
-        key: 'arrested_details',
-        label: 'Detalles del arresto o detención',
-        type: 'long_text',
-        conditional: 'arrested_detained === true',
-      },
-      {
-        key: 'caused_harm',
-        label: '¿Ha causado daño a otra persona?',
-        type: 'boolean',
-        required: true,
-      },
-      {
-        key: 'caused_harm_details',
-        label: 'Detalles del daño causado',
-        type: 'long_text',
-        conditional: 'caused_harm === true',
-      },
-      {
-        key: 'return_other_country',
-        label: '¿Podría regresar a otro país además de su país de origen?',
-        type: 'boolean',
-        required: true,
-      },
-      {
-        key: 'return_other_country_explanation',
-        label: 'Explique la posibilidad de regresar a otro país',
-        type: 'long_text',
-      },
-      {
-        key: 'convention_against_torture',
-        label: '¿Solicita protección bajo la Convención Contra la Tortura (CAT)?',
-        type: 'boolean',
-        required: true,
-        helper: 'Protección adicional si teme ser torturado. Henry le explicará los detalles.',
-      },
-      {
-        key: 'us_government_affiliation',
-        label: '¿Ha tenido alguna afiliación con el gobierno de EE.UU.?',
-        type: 'boolean',
-        required: true,
-      },
-      {
-        key: 'us_government_details',
-        label: 'Detalles de la afiliación gubernamental',
-        type: 'long_text',
-        conditional: 'us_government_affiliation === true',
-      },
     ],
   },
   {
-    step: 7,
-    title: 'Historial de Viajes',
-    description: 'Información sobre su viaje a EE.UU. y otros países visitados',
-    type: 'form',
-    fields: [
-      {
-        key: 'travel_to_us',
-        label: 'Describa su viaje a EE.UU.',
-        type: 'long_text',
-        required: true,
-        helper: '¿Desde qué país salió? ¿Por qué países pasó? ¿Cómo viajó?',
-      },
-      {
-        key: 'countries_visited',
-        label: 'Países visitados antes de llegar a EE.UU.',
-        type: 'repeatable_group',
-        subfields: [
-          { key: 'country', label: 'País', type: 'country_select' },
-          { key: 'duration', label: 'Duración de la estancia', type: 'text' },
-          { key: 'purpose', label: 'Propósito de la visita', type: 'text' },
-        ],
-      },
-      {
-        key: 'applied_asylum_other_country',
-        label: '¿Solicitó asilo en otro país?',
-        type: 'boolean',
-      },
-      {
-        key: 'other_country_asylum_details',
-        label: 'Detalles de solicitud de asilo en otro país',
-        type: 'long_text',
-        conditional: 'applied_asylum_other_country === true',
-      },
-    ],
-  },
-  {
-    step: 8,
+    step: 6,
     title: 'Documentos de Soporte',
-    description: 'Suba los documentos necesarios para respaldar su solicitud de asilo',
+    description: 'Suba los documentos de Fase 1: identidad, estatus de ingreso y (si aplica) acta matrimonial',
     type: 'documents',
-  },
-  {
-    step: 9,
-    title: 'Revisión y Firma',
-    description: 'Revise toda la información proporcionada antes de enviar su solicitud',
-    type: 'review',
   },
 ]
 
-export const asiloAfirmativoWorkflow: ServiceWorkflow = {
-  slug: 'asilo-afirmativo',
-  name: 'Asilo Afirmativo',
-  steps: asiloAfirmativoSteps,
+export const asiloPoliticoWorkflow: ServiceWorkflow = {
+  slug: 'asilo-politico',
+  name: 'Asilo Político',
+  steps: asiloPoliticoSteps,
   required_documents: [
     { key: 'passport', label: 'Pasaporte', required: true, category: 'identidad' },
-    { key: 'photo_id', label: 'Identificación con foto', required: true, category: 'identidad' },
+    { key: 'photo_id', label: 'Cédula o identificación con foto', required: true, category: 'identidad' },
+    { key: 'i94', label: 'Registro I-94 (si entró por avión)', required: false, category: 'inmigración' },
     {
-      key: 'passport_photos',
-      label: 'Fotos tipo pasaporte',
-      required: true,
-      category: 'identidad',
-      helper: '2 fotos tamaño pasaporte recientes',
-    },
-    {
-      key: 'birth_certificate',
-      label: 'Acta de nacimiento',
-      required: true,
-      category: 'identidad',
-    },
-    { key: 'i94', label: 'Registro I-94', required: false, category: 'inmigración' },
-    {
-      key: 'entry_documents',
-      label: 'Documentos de entrada a EE.UU.',
+      key: 'parole_nta',
+      label: 'Parole / NTA (Notice to Appear)',
       required: false,
       category: 'inmigración',
-    },
-    {
-      key: 'personal_declaration',
-      label: 'Declaración personal',
-      required: true,
-      category: 'caso',
-      helper:
-        'Su historia detallada de persecución. Henry le ayudará a redactarla.',
-    },
-    {
-      key: 'evidence_persecution',
-      label: 'Evidencia de persecución',
-      required: false,
-      category: 'caso',
-      multiple: true,
-      helper: 'Fotos, reportes policiales, amenazas, artículos de prensa, etc.',
-    },
-    {
-      key: 'country_conditions',
-      label: 'Condiciones del país de origen',
-      required: false,
-      category: 'caso',
-      multiple: true,
-      helper: 'Reportes de derechos humanos, noticias, informes de organizaciones',
-    },
-    {
-      key: 'support_letters',
-      label: 'Cartas de apoyo',
-      required: false,
-      category: 'caso',
-      multiple: true,
-      helper: 'De familiares, amigos, organizaciones, o expertos',
-    },
-    {
-      key: 'medical_records',
-      label: 'Registros médicos',
-      required: false,
-      category: 'caso',
-      helper: 'Si tiene lesiones o trauma relacionados con la persecución',
+      helper: 'Documento oficial de entrada o aviso a corte',
     },
     {
       key: 'marriage_certificate',
       label: 'Acta de matrimonio',
       required: false,
       category: 'familia',
+      helper: 'Obligatorio si aplica como Familiar Casados',
     },
     {
       key: 'children_birth_certificates',
       label: 'Actas de nacimiento de hijos',
       required: false,
       category: 'familia',
+      multiple: true,
+      helper: 'Con ambos apellidos para convivientes con hijos en común',
+    },
+    {
+      key: 'personal_affidavit',
+      label: 'Declaración jurada personal (DOCX o PDF)',
+      required: false,
+      category: 'caso',
+      helper: 'Se sube en Fase 2 — alimenta el generador de Miedo Creíble',
+    },
+    {
+      key: 'evidence_persecution',
+      label: 'Evidencias de persecución',
+      required: false,
+      category: 'caso',
+      multiple: true,
+      helper: 'Fotos, reportes policiales, amenazas, etc.',
+    },
+    {
+      key: 'country_conditions',
+      label: 'Condiciones del país de origen',
+      required: false,
+      category: 'caso',
       multiple: true,
     },
   ],
@@ -574,8 +408,7 @@ export const asiloAfirmativoWorkflow: ServiceWorkflow = {
       question: '¿Se encuentra actualmente en Estados Unidos?',
       type: 'boolean',
       required_answer: true,
-      fail_message:
-        'Debe encontrarse físicamente en EE.UU. para solicitar asilo afirmativo.',
+      fail_message: 'Debe encontrarse físicamente en EE.UU. para solicitar asilo.',
     },
     {
       id: 'arrival_within_year',
@@ -584,14 +417,6 @@ export const asiloAfirmativoWorkflow: ServiceWorkflow = {
       required_answer: true,
       fail_message:
         'Generalmente debe solicitar asilo dentro de 1 año de su llegada. Existen excepciones — Henry puede evaluar su caso.',
-    },
-    {
-      id: 'in_removal',
-      question: '¿Está actualmente en proceso de deportación (removal proceedings)?',
-      type: 'boolean',
-      required_answer: false,
-      fail_message:
-        'Si está en proceso de deportación, necesita asilo defensivo, no afirmativo.',
     },
     {
       id: 'persecution_basis',
@@ -605,8 +430,7 @@ export const asiloAfirmativoWorkflow: ServiceWorkflow = {
         'Pertenencia a un grupo social particular',
       ],
       min_selections: 1,
-      fail_message:
-        'El asilo requiere al menos una base protegida de persecución.',
+      fail_message: 'El asilo requiere al menos una base protegida de persecución.',
     },
   ],
 }
