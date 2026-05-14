@@ -234,7 +234,7 @@ export interface Appointment {
   case?: Case
 }
 
-export type CaseNoteCategory = 'general' | 'session' | 'followup' | 'internal' | 'legacy'
+export type CaseNoteCategory = 'general' | 'session' | 'legacy'
 export type CaseNoteAuthorRole = 'admin' | 'employee' | 'system'
 
 export interface CaseNote {
@@ -246,6 +246,7 @@ export interface CaseNote {
   author_label: string
   category: CaseNoteCategory
   body: string
+  is_pinned: boolean
   visible_to_client: boolean
   created_at: string
   updated_at: string

@@ -1,13 +1,10 @@
 'use client'
 
-// NotesTab v2 — UX profesional:
-//   - Header sticky con acción primaria prominente
-//   - Avatares con iniciales por autor
-//   - Agrupación cronológica (Hoy / Ayer / Esta semana / Mes pasado…)
-//   - Tarjetas con strip de color por categoría
-//   - Empty state ilustrado con CTA
-//   - Filtros como chips removibles
-//   - Modal de editor con preview de carácter
+// NotesTab v3 — 2 categorías (general/session derivadas) + flag is_pinned:
+//   - El usuario NO elige categoría manualmente — se deriva del appointment_id
+//   - Botón Pin/Desfijar en cada tarjeta (visible en hover)
+//   - Sección "Fijadas" sticky arriba del feed (ignora filtros)
+//   - Resto agrupado por fecha (Hoy/Ayer/Esta semana/mes anterior)
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { format, formatDistanceToNow } from 'date-fns'
@@ -25,6 +22,8 @@ import {
   AlertCircle,
   Sparkles,
   Search,
+  Pin,
+  PinOff,
 } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
@@ -44,6 +43,7 @@ interface NoteItem {
   author_label: string
   category: CaseNoteCategory
   body: string
+  is_pinned: boolean
   visible_to_client: boolean
   created_at: string
   updated_at: string
@@ -57,6 +57,7 @@ interface AppointmentLite {
 }
 
 interface ApiResponse {
+  pinned: NoteItem[]
   items: NoteItem[]
   nextCursor: string | null
 }
@@ -70,29 +71,22 @@ interface NotesTabProps {
 const CATEGORY_LABELS: Record<CaseNoteCategory, string> = {
   general: 'General',
   session: 'Sesión',
-  followup: 'Seguimiento',
-  internal: 'Interna',
   legacy: 'Histórica',
 }
 
-// Strip color (left edge) por categoría
 const CATEGORY_STRIP: Record<CaseNoteCategory, string> = {
   general: 'bg-slate-400',
   session: 'bg-emerald-500',
-  followup: 'bg-amber-500',
-  internal: 'bg-violet-500',
   legacy: 'bg-gray-300',
 }
 
 const CATEGORY_PILL: Record<CaseNoteCategory, string> = {
   general: 'bg-slate-50 text-slate-700 ring-1 ring-slate-200',
   session: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
-  followup: 'bg-amber-50 text-amber-800 ring-1 ring-amber-200',
-  internal: 'bg-violet-50 text-violet-700 ring-1 ring-violet-200',
   legacy: 'bg-gray-50 text-gray-500 ring-1 ring-gray-200',
 }
 
-const ALL_CATEGORIES: CaseNoteCategory[] = ['general', 'session', 'followup', 'internal', 'legacy']
+const ALL_CATEGORIES: CaseNoteCategory[] = ['general', 'session', 'legacy']
 
 const DATE_PRESETS: { id: string; label: string; days: number | null }[] = [
   { id: 'all', label: 'Todo el tiempo', days: null },
@@ -103,6 +97,7 @@ const DATE_PRESETS: { id: string; label: string; days: number | null }[] = [
 
 export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
   const [items, setItems] = useState<NoteItem[]>([])
+  const [pinned, setPinned] = useState<NoteItem[]>([])
   const [cursor, setCursor] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(false)
   const [loadingInitial, setLoadingInitial] = useState(true)
@@ -121,7 +116,6 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
   const [editorOpen, setEditorOpen] = useState(false)
   const [editingNote, setEditingNote] = useState<NoteItem | null>(null)
   const [draftBody, setDraftBody] = useState('')
-  const [draftCategory, setDraftCategory] = useState<CaseNoteCategory>('general')
   const [draftAppointmentId, setDraftAppointmentId] = useState<string>('')
   const [saving, setSaving] = useState(false)
 
@@ -165,6 +159,7 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
       }
       const data = (await res.json()) as ApiResponse
       setItems((prev) => (opts.reset ? data.items : [...prev, ...data.items]))
+      if (opts.reset) setPinned(data.pinned ?? [])
       setCursor(data.nextCursor)
       setHasMore(!!data.nextCursor)
     },
@@ -208,7 +203,7 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
     return () => observer.disconnect()
   }, [cursor, hasMore, loadingInitial, loadingMore, fetchPage])
 
-  // Búsqueda en cliente (sobre el set ya cargado)
+  // Búsqueda en cliente (aplica a items NO fijadas; las fijadas siempre se muestran)
   const visibleItems = useMemo(() => {
     if (!searchText.trim()) return items
     const q = searchText.toLowerCase()
@@ -226,11 +221,11 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
 
   const authorOptions = useMemo(() => {
     const map = new Map<string, string>()
-    for (const it of items) {
+    for (const it of [...items, ...pinned]) {
       if (it.author_id && it.author_label) map.set(it.author_id, it.author_label)
     }
     return Array.from(map.entries()).map(([id, label]) => ({ id, label }))
-  }, [items])
+  }, [items, pinned])
 
   const activeFilterCount =
     selectedCategories.length +
@@ -253,7 +248,6 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
   function openNewNote(prefillApptId?: string) {
     setEditingNote(null)
     setDraftBody('')
-    setDraftCategory(prefillApptId ? 'session' : 'general')
     setDraftAppointmentId(prefillApptId ?? '')
     setEditorOpen(true)
   }
@@ -261,7 +255,6 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
   function openEdit(note: NoteItem) {
     setEditingNote(note)
     setDraftBody(note.body)
-    setDraftCategory(note.category)
     setDraftAppointmentId(note.appointment_id ?? '')
     setEditorOpen(true)
   }
@@ -294,7 +287,7 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
           {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ body, category: draftCategory }),
+            body: JSON.stringify({ body }),
           },
         )
         if (!res.ok) {
@@ -302,7 +295,9 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
           throw new Error(j.error || 'Error al actualizar')
         }
         const j = await res.json()
+        // Actualizar en items o pinned según corresponda
         setItems((prev) => prev.map((n) => (n.id === editingNote.id ? j.note : n)))
+        setPinned((prev) => prev.map((n) => (n.id === editingNote.id ? j.note : n)))
         toast.success('Nota actualizada')
       } else {
         const res = await fetch(`/api/admin/cases/${caseId}/notes`, {
@@ -310,7 +305,6 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             body,
-            category: draftCategory,
             appointment_id: draftAppointmentId || undefined,
           }),
         })
@@ -344,9 +338,46 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
         throw new Error(j.error || 'Error al eliminar')
       }
       setItems((prev) => prev.filter((n) => n.id !== note.id))
+      setPinned((prev) => prev.filter((n) => n.id !== note.id))
       toast.success('Nota eliminada')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al eliminar')
+    }
+  }
+
+  async function handleTogglePin(note: NoteItem) {
+    const newValue = !note.is_pinned
+    // Optimistic update: mover entre items y pinned
+    if (newValue) {
+      setPinned((prev) => [{ ...note, is_pinned: true }, ...prev])
+      setItems((prev) => prev.filter((n) => n.id !== note.id))
+    } else {
+      setItems((prev) => [{ ...note, is_pinned: false }, ...prev].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      ))
+      setPinned((prev) => prev.filter((n) => n.id !== note.id))
+    }
+    try {
+      const res = await fetch(`/api/admin/cases/${caseId}/notes/${note.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_pinned: newValue }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        throw new Error(j.error || 'Error al actualizar el pin')
+      }
+      toast.success(newValue ? 'Nota fijada' : 'Nota desfijada')
+    } catch (err) {
+      // Revertir optimistic update
+      if (newValue) {
+        setItems((prev) => [{ ...note, is_pinned: false }, ...prev])
+        setPinned((prev) => prev.filter((n) => n.id !== note.id))
+      } else {
+        setPinned((prev) => [{ ...note, is_pinned: true }, ...prev])
+        setItems((prev) => prev.filter((n) => n.id !== note.id))
+      }
+      toast.error(err instanceof Error ? err.message : 'Error al actualizar el pin')
     }
   }
 
@@ -363,7 +394,7 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
 
   return (
     <div className="space-y-4">
-      {/* HEADER — sticky con acción primaria + búsqueda + filtros */}
+      {/* HEADER */}
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm -mx-1 px-1 py-2 border-b border-gray-100">
         <div className="flex items-center gap-2 flex-wrap">
           <Button
@@ -401,7 +432,6 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
           </button>
         </div>
 
-        {/* Chips de filtros activos */}
         {activeFilterCount > 0 && (
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
             {selectedCategories.map((c) => (
@@ -509,8 +539,35 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
         </div>
       )}
 
-      {/* CONTENIDO */}
-      {visibleItems.length === 0 ? (
+      {/* SECCIÓN FIJADAS — siempre arriba, ignora filtros */}
+      {pinned.length > 0 && (
+        <section className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Pin className="w-3.5 h-3.5 text-amber-600 fill-current" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700">
+              Fijadas · {pinned.length}
+            </span>
+            <div className="flex-1 h-px bg-amber-100" />
+          </div>
+          <ul className="space-y-2">
+            {pinned.map((it) => (
+              <NoteCard
+                key={it.id}
+                note={it}
+                appointments={appointments}
+                currentUserId={currentUserId}
+                isAdmin={isAdmin}
+                onEdit={() => openEdit(it)}
+                onDelete={() => handleDelete(it)}
+                onTogglePin={() => handleTogglePin(it)}
+              />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* RESTO — agrupado cronológicamente */}
+      {visibleItems.length === 0 && pinned.length === 0 ? (
         items.length === 0 ? (
           <EmptyState onCreate={() => openNewNote()} />
         ) : (
@@ -522,7 +579,7 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
             </button>
           </div>
         )
-      ) : (
+      ) : visibleItems.length > 0 ? (
         <div className="space-y-6">
           {grouped.map((group) => (
             <section key={group.key} className="space-y-2">
@@ -545,13 +602,14 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
                     isAdmin={isAdmin}
                     onEdit={() => openEdit(it)}
                     onDelete={() => handleDelete(it)}
+                    onTogglePin={() => handleTogglePin(it)}
                   />
                 ))}
               </ul>
             </section>
           ))}
         </div>
-      )}
+      ) : null}
 
       {hasMore && (
         <div ref={sentinelRef} className="flex items-center justify-center py-4 text-gray-400 text-xs">
@@ -565,14 +623,11 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
         </div>
       )}
 
-      {/* Editor modal */}
       {editorOpen && (
         <EditorModal
           editingNote={editingNote}
           draftBody={draftBody}
           setDraftBody={setDraftBody}
-          draftCategory={draftCategory}
-          setDraftCategory={setDraftCategory}
           draftAppointmentId={draftAppointmentId}
           setDraftAppointmentId={setDraftAppointmentId}
           appointments={appointments}
@@ -594,6 +649,7 @@ function NoteCard({
   isAdmin,
   onEdit,
   onDelete,
+  onTogglePin,
 }: {
   note: NoteItem
   appointments: AppointmentLite[]
@@ -601,6 +657,7 @@ function NoteCard({
   isAdmin: boolean
   onEdit: () => void
   onDelete: () => void
+  onTogglePin: () => void
 }) {
   const created = new Date(note.created_at)
   const updated = new Date(note.updated_at)
@@ -609,10 +666,12 @@ function NoteCard({
     ? appointments.find((a) => a.id === note.appointment_id)
     : null
   const canEdit = (note.author_id === currentUserId || isAdmin) && note.category !== 'legacy'
+  const canPin = note.category !== 'legacy'
 
   return (
-    <li className="group relative flex gap-3 rounded-xl border border-gray-200 bg-white overflow-hidden transition-shadow hover:shadow-sm">
-      {/* Strip de color por categoría */}
+    <li className={`group relative flex gap-3 rounded-xl border bg-white overflow-hidden transition-shadow hover:shadow-sm ${
+      note.is_pinned ? 'border-amber-300 ring-1 ring-amber-200' : 'border-gray-200'
+    }`}>
       <div className={`flex-shrink-0 w-1 ${CATEGORY_STRIP[note.category]}`} />
       <div className="flex-1 min-w-0 py-3 pr-3">
         <div className="flex items-start gap-3">
@@ -624,6 +683,11 @@ function NoteCard({
                 <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${CATEGORY_PILL[note.category]}`}>
                   {CATEGORY_LABELS[note.category]}
                 </span>
+                {note.is_pinned && (
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 ring-1 ring-amber-300 inline-flex items-center gap-1">
+                    <Pin className="w-2.5 h-2.5 fill-current" /> Fijada
+                  </span>
+                )}
                 {linkedAppt && (
                   <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 ring-1 ring-blue-200 inline-flex items-center gap-1">
                     <Calendar className="w-2.5 h-2.5" />
@@ -646,26 +710,43 @@ function NoteCard({
               <span className="text-[10px] text-gray-400">
                 hace {formatDistanceToNow(created, { locale: es })}
               </span>
-              {canEdit && (
-                <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {canPin && (
                   <button
                     type="button"
-                    onClick={onEdit}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-gray-600 hover:bg-gray-100"
-                    aria-label="Editar nota"
+                    onClick={onTogglePin}
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] ${
+                      note.is_pinned
+                        ? 'text-amber-700 hover:bg-amber-50'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                    aria-label={note.is_pinned ? 'Desfijar nota' : 'Fijar nota'}
                   >
-                    <Edit3 className="w-3 h-3" /> Editar
+                    {note.is_pinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
+                    {note.is_pinned ? 'Desfijar' : 'Fijar'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={onDelete}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-red-500 hover:bg-red-50"
-                    aria-label="Eliminar nota"
-                  >
-                    <Trash2 className="w-3 h-3" /> Eliminar
-                  </button>
-                </div>
-              )}
+                )}
+                {canEdit && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={onEdit}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-gray-600 hover:bg-gray-100"
+                      aria-label="Editar nota"
+                    >
+                      <Edit3 className="w-3 h-3" /> Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onDelete}
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-red-500 hover:bg-red-50"
+                      aria-label="Eliminar nota"
+                    >
+                      <Trash2 className="w-3 h-3" /> Eliminar
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -702,8 +783,6 @@ function EditorModal({
   editingNote,
   draftBody,
   setDraftBody,
-  draftCategory,
-  setDraftCategory,
   draftAppointmentId,
   setDraftAppointmentId,
   appointments,
@@ -714,8 +793,6 @@ function EditorModal({
   editingNote: NoteItem | null
   draftBody: string
   setDraftBody: (v: string) => void
-  draftCategory: CaseNoteCategory
-  setDraftCategory: (v: CaseNoteCategory) => void
   draftAppointmentId: string
   setDraftAppointmentId: (v: string) => void
   appointments: AppointmentLite[]
@@ -728,6 +805,10 @@ function EditorModal({
     len > 7500 ? 'text-red-600 font-semibold' :
     len > 5000 ? 'text-amber-600' :
     'text-gray-400'
+
+  // Cuando está editando, no se permite cambiar el appointment_id (eso cambia la categoría)
+  const isEditMode = !!editingNote
+  const willBeSession = !!draftAppointmentId
 
   return (
     <div
@@ -756,33 +837,7 @@ function EditorModal({
           </button>
         </div>
         <div className="p-5 space-y-4">
-          <div>
-            <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1.5 tracking-wider">
-              Tipo de nota
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {(['general', 'session', 'followup', 'internal'] as CaseNoteCategory[]).map((c) => {
-                const active = draftCategory === c
-                return (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setDraftCategory(c)}
-                    disabled={!!editingNote && editingNote.category === 'legacy'}
-                    className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg border text-[11px] font-medium transition-colors ${
-                      active
-                        ? 'border-[#002855] bg-[#002855]/5 text-[#002855]'
-                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <span className={`inline-block w-2 h-2 rounded-full ${CATEGORY_STRIP[c]}`} />
-                    {CATEGORY_LABELS[c]}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-          {!editingNote && (
+          {!isEditMode && (
             <div>
               <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1.5 tracking-wider">
                 Asociar a una cita (opcional)
@@ -799,6 +854,21 @@ function EditorModal({
                   </option>
                 ))}
               </select>
+              <p className={`text-[11px] mt-1.5 inline-flex items-center gap-1 ${
+                willBeSession ? 'text-emerald-700' : 'text-slate-600'
+              }`}>
+                {willBeSession ? (
+                  <>
+                    <Calendar className="w-3 h-3" />
+                    Se guardará como <strong className="mx-0.5">nota de sesión</strong> vinculada a la cita.
+                  </>
+                ) : (
+                  <>
+                    <StickyNote className="w-3 h-3" />
+                    Se guardará como <strong className="mx-0.5">nota general</strong> del caso.
+                  </>
+                )}
+              </p>
             </div>
           )}
           <div>

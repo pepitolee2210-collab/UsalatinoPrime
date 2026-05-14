@@ -22,6 +22,7 @@ interface NoteItem {
   author_label: string
   category: CaseNoteCategory
   body: string
+  is_pinned: boolean
   visible_to_client: boolean
   created_at: string
   updated_at: string
@@ -30,13 +31,7 @@ interface NoteItem {
 const DEFAULT_LIMIT = 50
 const MAX_LIMIT = 200
 
-const VALID_CATEGORIES: CaseNoteCategory[] = [
-  'general',
-  'session',
-  'followup',
-  'internal',
-  'legacy',
-]
+const NOTE_SELECT = 'id, case_id, appointment_id, author_id, author_role, author_label, category, body, is_pinned, visible_to_client, created_at, updated_at'
 
 function decodeCursor(raw: string | null): { ts: string; id: string } | null {
   if (!raw) return null
@@ -88,12 +83,29 @@ export async function GET(
     : DEFAULT_LIMIT
   const cursor = decodeCursor(sp.get('cursor'))
 
+  // Notas FIJADAS: siempre todas, sin filtros, sin paginación. Aparecen en
+  // sección sticky arriba del feed independientemente de búsqueda / categoría.
+  const { data: pinnedData, error: pinnedErr } = await service
+    .from('case_notes')
+    .select(NOTE_SELECT)
+    .eq('case_id', caseId)
+    .eq('is_pinned', true)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+
+  if (pinnedErr) {
+    return NextResponse.json(
+      { error: 'Error al cargar las notas fijadas', details: pinnedErr.message },
+      { status: 500 },
+    )
+  }
+
+  // Notas NO fijadas: paginadas + respetan filtros
   let query = service
     .from('case_notes')
-    .select(
-      'id, case_id, appointment_id, author_id, author_role, author_label, category, body, visible_to_client, created_at, updated_at',
-    )
+    .select(NOTE_SELECT)
     .eq('case_id', caseId)
+    .eq('is_pinned', false)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
@@ -127,13 +139,20 @@ export async function GET(
   const last = items[items.length - 1]
   const nextCursor = hasMore && last ? encodeCursor(last.created_at, last.id) : null
 
-  return NextResponse.json({ items, nextCursor })
+  return NextResponse.json({
+    pinned: (pinnedData ?? []) as NoteItem[],
+    items,
+    nextCursor,
+  })
 }
 
 interface CreateBody {
   body: string
   appointment_id?: string
-  category?: CaseNoteCategory
+  // category ya NO se acepta del cliente — se deriva automáticamente:
+  // - con appointment_id → 'session'
+  // - sin appointment_id → 'general'
+  is_pinned?: boolean
   visible_to_client?: boolean
 }
 
@@ -170,10 +189,6 @@ export async function POST(
     return NextResponse.json({ error: 'El cuerpo debe tener entre 1 y 8000 caracteres' }, { status: 400 })
   }
 
-  const category: CaseNoteCategory = VALID_CATEGORIES.includes(payload.category as CaseNoteCategory)
-    ? (payload.category as CaseNoteCategory)
-    : 'general'
-
   // Si appointment_id, verificar pertenezca al case
   if (payload.appointment_id) {
     const { data: appt } = await service
@@ -189,6 +204,9 @@ export async function POST(
     }
   }
 
+  // Categoría derivada (no la elige el usuario)
+  const category: CaseNoteCategory = payload.appointment_id ? 'session' : 'general'
+
   const authorLabel = `${profile.first_name ?? ''} ${profile.last_name ?? ''}`.trim() || user.email || 'Staff'
 
   const insertRow = {
@@ -199,15 +217,14 @@ export async function POST(
     author_label: authorLabel,
     category,
     body,
+    is_pinned: payload.is_pinned === true,
     visible_to_client: payload.visible_to_client === true,
   }
 
   const { data: inserted, error } = await service
     .from('case_notes')
     .insert(insertRow)
-    .select(
-      'id, case_id, appointment_id, author_id, author_role, author_label, category, body, visible_to_client, created_at, updated_at',
-    )
+    .select(NOTE_SELECT)
     .single()
 
   if (error || !inserted) {

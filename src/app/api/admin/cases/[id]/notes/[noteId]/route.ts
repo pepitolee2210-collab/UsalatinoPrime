@@ -7,19 +7,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
-import type { CaseNoteCategory } from '@/types/database'
-
-const VALID_CATEGORIES: CaseNoteCategory[] = [
-  'general',
-  'session',
-  'followup',
-  'internal',
-  'legacy',
-]
 
 interface UpdateBody {
   body?: string
-  category?: CaseNoteCategory
+  // category ya NO se cambia manualmente — deriva del appointment_id en POST
+  is_pinned?: boolean
   visible_to_client?: boolean
 }
 
@@ -51,7 +43,7 @@ export async function PATCH(
   // Cargar nota y verificar permisos
   const { data: note } = await auth.service
     .from('case_notes')
-    .select('id, case_id, author_id, deleted_at')
+    .select('id, case_id, author_id, deleted_at, is_pinned')
     .eq('id', noteId)
     .single()
   if (!note || note.case_id !== caseId) {
@@ -74,6 +66,8 @@ export async function PATCH(
   }
 
   const update: Record<string, unknown> = {}
+  let pinChanged: boolean | null = null
+
   if (payload.body !== undefined) {
     const trimmed = (payload.body ?? '').trim()
     if (!trimmed || trimmed.length > 8000) {
@@ -81,11 +75,9 @@ export async function PATCH(
     }
     update.body = trimmed
   }
-  if (payload.category !== undefined) {
-    if (!VALID_CATEGORIES.includes(payload.category)) {
-      return NextResponse.json({ error: 'Categoría inválida' }, { status: 400 })
-    }
-    update.category = payload.category
+  if (payload.is_pinned !== undefined && payload.is_pinned !== note.is_pinned) {
+    update.is_pinned = payload.is_pinned === true
+    pinChanged = payload.is_pinned === true
   }
   if (payload.visible_to_client !== undefined) {
     update.visible_to_client = payload.visible_to_client === true
@@ -99,7 +91,7 @@ export async function PATCH(
     .update(update)
     .eq('id', noteId)
     .select(
-      'id, case_id, appointment_id, author_id, author_role, author_label, category, body, visible_to_client, created_at, updated_at',
+      'id, case_id, appointment_id, author_id, author_role, author_label, category, body, is_pinned, visible_to_client, created_at, updated_at',
     )
     .single()
 
@@ -107,16 +99,34 @@ export async function PATCH(
     return NextResponse.json({ error: 'Error al actualizar', details: error?.message }, { status: 500 })
   }
 
-  await logActivity({
-    caseId,
-    category: 'communication',
-    subcategory: SUBCATEGORIES.NOTE_UPDATED,
-    description: `Nota editada`,
-    metadata: { note_id: noteId, fields: Object.keys(update) },
-    visibleToClient: false,
-    actor: { kind: 'session', supabase: auth.supabase },
-    client: auth.service,
-  })
+  // Log diferenciado: pin vs edición de body
+  if (pinChanged !== null) {
+    await logActivity({
+      caseId,
+      category: 'communication',
+      subcategory: pinChanged ? SUBCATEGORIES.NOTE_PINNED : SUBCATEGORIES.NOTE_UNPINNED,
+      description: pinChanged ? 'Nota fijada al tope del feed' : 'Nota desfijada',
+      metadata: { note_id: noteId },
+      visibleToClient: false,
+      actor: { kind: 'session', supabase: auth.supabase },
+      client: auth.service,
+    })
+  }
+  // Si además del pin se editó body, también loguear NOTE_UPDATED.
+  // Si SOLO se cambió is_pinned, no duplicamos el log.
+  const fieldsChanged = Object.keys(update).filter((k) => k !== 'is_pinned')
+  if (fieldsChanged.length > 0) {
+    await logActivity({
+      caseId,
+      category: 'communication',
+      subcategory: SUBCATEGORIES.NOTE_UPDATED,
+      description: 'Nota editada',
+      metadata: { note_id: noteId, fields: fieldsChanged },
+      visibleToClient: false,
+      actor: { kind: 'session', supabase: auth.supabase },
+      client: auth.service,
+    })
+  }
 
   return NextResponse.json({ note: updated })
 }

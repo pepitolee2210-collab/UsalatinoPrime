@@ -36,6 +36,7 @@ import {
   StickyNote,
   Edit3,
   Trash2,
+  Pin,
   X,
   Search,
   AlertCircle,
@@ -128,6 +129,8 @@ const SUBCATEGORY_LABELS_ES: Record<string, string> = {
   'communication.note_created': 'Nota agregada',
   'communication.note_updated': 'Nota editada',
   'communication.note_deleted': 'Nota eliminada',
+  'communication.note_pinned': 'Nota fijada',
+  'communication.note_unpinned': 'Nota desfijada',
   'document.uploaded_by_client': 'Documento subido por el cliente',
   'document.uploaded_by_staff': 'Documento subido por staff',
   'document.approved': 'Documento aprobado',
@@ -160,6 +163,8 @@ function iconForSubcategory(sub: string | null) {
     case 'communication.note_created': return StickyNote
     case 'communication.note_updated': return Edit3
     case 'communication.note_deleted': return Trash2
+    case 'communication.note_pinned':
+    case 'communication.note_unpinned': return Pin
     case 'document.uploaded_by_client':
     case 'document.uploaded_by_staff': return Upload
     case 'document.approved': return FileCheck2

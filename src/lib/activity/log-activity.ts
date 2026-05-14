@@ -56,6 +56,8 @@ export const SUBCATEGORIES = {
   NOTE_CREATED: 'communication.note_created',
   NOTE_UPDATED: 'communication.note_updated',
   NOTE_DELETED: 'communication.note_deleted',
+  NOTE_PINNED: 'communication.note_pinned',
+  NOTE_UNPINNED: 'communication.note_unpinned',
   // document
   DOC_UPLOADED_CLIENT: 'document.uploaded_by_client',
   DOC_UPLOADED_STAFF: 'document.uploaded_by_staff',
