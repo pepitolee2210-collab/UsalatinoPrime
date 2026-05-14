@@ -34,6 +34,9 @@ export async function POST(
   let body: {
     document_type_id?: number
     slot_label?: string | null
+    member_role?: string | null
+    member_index?: number | null
+    member_label?: string | null
     minor_index?: number | null
     minor_label?: string | null
     file_path?: string
@@ -50,13 +53,29 @@ export async function POST(
 
   const { document_type_id, file_path, file_name, file_size, file_type } = body
   const slot_label = body.slot_label ?? null
-  const minor_index =
-    body.minor_index === undefined || body.minor_index === null
-      ? null
-      : Number.isInteger(body.minor_index) && body.minor_index >= 0
-        ? body.minor_index
-        : null
-  const minor_label = body.minor_label?.toString().trim().slice(0, 200) || null
+
+  // Resolver miembro (priorizar member_*; fallback a minor_* legacy).
+  const ALLOWED_ROLES = new Set(['applicant', 'spouse', 'minor'])
+  let member_role: string | null = body.member_role ?? null
+  if (member_role && !ALLOWED_ROLES.has(member_role)) {
+    return NextResponse.json({ error: `member_role inválido: ${member_role}` }, { status: 400 })
+  }
+  // Si solo viene minor_index legacy, asumimos role='minor'.
+  if (!member_role && body.minor_index != null) member_role = 'minor'
+
+  const rawIndex = body.member_index ?? body.minor_index ?? null
+  const member_index =
+    member_role === 'minor' && rawIndex != null && Number.isInteger(rawIndex) && rawIndex >= 0
+      ? rawIndex
+      : null
+
+  const labelRaw = body.member_label ?? body.minor_label ?? null
+  const member_label_str = labelRaw?.toString().trim().slice(0, 200) || null
+
+  // `documents.minor_label` y `minor_index` se siguen llenando solo cuando
+  // member_role='minor' (compat con código admin que aún lee esas columnas).
+  const minor_index = member_role === 'minor' ? member_index : null
+  const minor_label = member_role === 'minor' ? member_label_str : null
 
   if (!document_type_id || !file_path || !file_name) {
     return NextResponse.json({ error: 'document_type_id, file_path y file_name requeridos' }, { status: 400 })
@@ -125,6 +144,14 @@ export async function POST(
     normalizedSlot = normalizedSlot.trim().slice(0, 120)
   }
 
+  // Para applicant/spouse, persistimos el nombre del miembro en `minor_label`
+  // (denormalización ya existente) y dejamos `minor_index` NULL. Esto permite
+  // que el panel admin de Diana muestre "Pasaporte — Cónyuge (María)" sin
+  // requerir re-join contra contracts en cada query.
+  const persistedLabel = member_role && member_role !== 'minor'
+    ? member_label_str
+    : minor_label
+
   const { data: insertedDoc, error: insertErr } = await supabase
     .from('documents')
     .insert({
@@ -134,7 +161,8 @@ export async function POST(
       document_type_id: document_type_id,
       slot_label: normalizedSlot,
       minor_index,
-      minor_label,
+      minor_label: persistedLabel,
+      member_role,
       phase_when_uploaded: caseRow?.current_phase ?? null,
       direction: 'client_to_admin',
       name: file_name,
@@ -143,7 +171,7 @@ export async function POST(
       file_size: file_size ?? 0,
       status: 'uploaded',
     })
-    .select('id, document_type_id, slot_label, minor_index, minor_label, name, file_type, file_size, status, rejection_reason, phase_when_uploaded, created_at')
+    .select('id, document_type_id, slot_label, minor_index, minor_label, member_role, name, file_type, file_size, status, rejection_reason, phase_when_uploaded, created_at')
     .single()
 
   if (insertErr) {

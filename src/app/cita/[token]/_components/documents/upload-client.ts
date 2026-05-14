@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import type { MemberRole } from '@/lib/contracts/family-members'
 
 export interface UploadResult {
   document: {
@@ -20,9 +21,17 @@ export interface UploadParams {
   file: File
   documentTypeId: number
   slotLabel?: string | null
-  /** Índice del menor (0-based) al que pertenece el doc, o null si es general. */
+  /** Rol del miembro al que pertenece el doc ('applicant'|'spouse'|'minor'). */
+  memberRole?: MemberRole | null
+  /** Índice del menor (0-based) — solo aplica si memberRole='minor'. */
+  memberIndex?: number | null
+  /** Snapshot del nombre del miembro (solicitante / cónyuge / hijo). */
+  memberLabel?: string | null
+  /**
+   * @deprecated — usar `memberIndex` con `memberRole='minor'`. Shim para callers viejos.
+   */
   minorIndex?: number | null
-  /** Snapshot del nombre del menor para denormalizar. */
+  /** @deprecated — usar `memberLabel`. */
   minorLabel?: string | null
 }
 
@@ -46,7 +55,19 @@ export const MAX_SIZE_BYTES = 40 * 1024 * 1024
  *   2. Sube directo al Storage de Supabase (bypass del límite Vercel).
  *   3. Confirma con el endpoint que registra en BD.
  */
-export async function uploadClientDocument({ token, file, documentTypeId, slotLabel, minorIndex, minorLabel }: UploadParams): Promise<UploadResult> {
+export async function uploadClientDocument({
+  token, file, documentTypeId, slotLabel,
+  memberRole, memberIndex, memberLabel,
+  minorIndex, minorLabel,
+}: UploadParams): Promise<UploadResult> {
+  // Resolver miembro: priorizar campos nuevos; caer a los legacy `minorIndex`
+  // (asumiendo role='minor' por compat) si solo vienen los viejos.
+  const effectiveRole: MemberRole | null =
+    memberRole ?? (minorIndex != null ? 'minor' : null)
+  const effectiveIndex =
+    effectiveRole === 'minor' ? (memberIndex ?? minorIndex ?? null) : null
+  const effectiveLabel = memberLabel ?? minorLabel ?? null
+
   if (file.size > MAX_SIZE_BYTES) {
     throw new Error('El archivo excede el límite de 40MB')
   }
@@ -93,8 +114,13 @@ export async function uploadClientDocument({ token, file, documentTypeId, slotLa
     body: JSON.stringify({
       document_type_id: documentTypeId,
       slot_label: slotLabel ?? null,
-      minor_index: minorIndex ?? null,
-      minor_label: minorLabel ?? null,
+      member_role: effectiveRole,
+      // member_index y minor_index llevan el mismo valor por compat:
+      // el endpoint sabe enrutar correctamente según member_role.
+      member_index: effectiveIndex,
+      member_label: effectiveLabel,
+      minor_index: effectiveRole === 'minor' ? effectiveIndex : null,
+      minor_label: effectiveRole === 'minor' ? effectiveLabel : null,
       file_path: filePath,
       file_name: file.name,
       file_size: file.size,

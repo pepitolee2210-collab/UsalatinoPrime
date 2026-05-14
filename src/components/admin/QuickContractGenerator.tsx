@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getInstallmentCount } from '@/lib/contracts'
 import {
   FileText, PenLine, Download, Plus, X, ChevronDown,
-  User, Stamp, Calendar, Baby, PackagePlus, DollarSign, Hash, CalendarClock, Save, Phone,
+  User, Users, Stamp, Calendar, Baby, PackagePlus, DollarSign, Hash, CalendarClock, Save, Phone,
   MapPin, Building2, Hash as HashIcon, Loader2, CheckCircle2,
 } from 'lucide-react'
 
@@ -20,6 +20,12 @@ interface MinorData {
   birthplace: string
   passport: string
 }
+
+// SpouseData usa exactamente el mismo shape que MinorData para que la UI
+// pueda reusar inputs y la persistencia sea simétrica con `contracts.spouse`.
+type SpouseData = MinorData
+
+const emptySpouse = (): SpouseData => ({ fullName: '', dob: '', birthplace: '', passport: '' })
 
 interface AddonItem {
   slug: string
@@ -92,6 +98,11 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
   })
   const [zipLookup, setZipLookup] = useState<ZipLookupState>('idle')
   const [minors, setMinors] = useState<MinorData[]>([emptyMinor()])
+  // Cónyuge para Asilo Político Familiar (Casados/Convivientes). NULL para
+  // otros servicios o variantes Individual/Novios. Se persiste en
+  // `contracts.spouse JSONB` y alimenta la expansión per-member del endpoint
+  // /api/cita/[token]/required-documents.
+  const [spouse, setSpouse] = useState<SpouseData>(emptySpouse())
   const [generating, setGenerating] = useState(false)
   const [template, setTemplate] = useState<any>(null)
 
@@ -266,6 +277,24 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
             }))
           : [emptyMinor()]
       )
+      // Hidratar cónyuge + tipo de familia (Asilo Político).
+      setSpouse(
+        editData.spouse
+          ? {
+              fullName: editData.spouse.fullName || '',
+              dob: editData.spouse.dob || '',
+              birthplace: editData.spouse.birthplace || '',
+              passport: editData.spouse.passport || '',
+            }
+          : emptySpouse(),
+      )
+      if (
+        editData.asylum_family_type === 'married' ||
+        editData.asylum_family_type === 'cohabiting_with_kids' ||
+        editData.asylum_family_type === 'novios'
+      ) {
+        setAsylumFamilyType(editData.asylum_family_type)
+      }
       setAddons(
         editData.addon_services?.length > 0
           ? editData.addon_services.map((a: any) => ({
@@ -552,14 +581,38 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
         client_city: contractForm.clientCity.trim(),
         client_state: contractForm.clientState.trim().toUpperCase(),
         client_zip: contractForm.clientZip.trim(),
-        minors: template.requiresMinor
-          ? minors.map(m => ({
+        minors: (() => {
+          // Persistimos minors cuando:
+          //   - El template lo exige (SIJS — requiresMinor=true)
+          //   - O es Asilo Político Familiar (Casados con hijos / Convivientes
+          //     con hijos en común). Novios sin hijos NO persiste minors.
+          const asiloFamilyHasChildren =
+            selectedSlug === 'asilo-politico' &&
+            (asylumFamilyType === 'married' || asylumFamilyType === 'cohabiting_with_kids')
+          if (!template.requiresMinor && !asiloFamilyHasChildren) return []
+          return minors
+            .filter(m => m.fullName.trim()) // descartar items vacíos
+            .map(m => ({
               fullName: m.fullName.trim(),
               dob: m.dob,
               birthplace: m.birthplace.trim(),
               passport: m.passport.trim(),
             }))
-          : [],
+        })(),
+        spouse: (() => {
+          if (selectedSlug !== 'asilo-politico') return null
+          const includeSpouse =
+            asylumFamilyType === 'married' || asylumFamilyType === 'cohabiting_with_kids'
+          if (!includeSpouse || !spouse.fullName.trim()) return null
+          return {
+            fullName: spouse.fullName.trim(),
+            dob: spouse.dob,
+            birthplace: spouse.birthplace.trim(),
+            passport: spouse.passport.trim(),
+          }
+        })(),
+        asylum_family_type:
+          selectedSlug === 'asilo-politico' && asylumFamilyType ? asylumFamilyType : null,
         total_price: finalPrice,
         initial_payment: getInitialPayment(),
         installment_count: getFinalInstallments(),
@@ -1367,12 +1420,64 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
               </div>
             </div>
 
-            {/* Minors section */}
-            {template.requiresMinor && (
+            {/* Spouse section — Asilo Político Familiar (Casados o Convivientes).
+                El cónyuge se persiste en `contracts.spouse JSONB` y alimenta
+                la expansión per-member del portal cliente (sale como
+                "Pasaporte — Cónyuge (María)" en la pestaña Documentos). */}
+            {selectedSlug === 'asilo-politico'
+              && (asylumFamilyType === 'married' || asylumFamilyType === 'cohabiting_with_kids') && (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-purple-700" />
+                  <span className="text-sm font-semibold text-[#002855]/70">
+                    {asylumFamilyType === 'married' ? 'Cónyuge' : 'Conviviente'}
+                  </span>
+                </div>
+                <div className="rounded-lg border border-purple-200 bg-purple-50/50 p-3 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <Input
+                      placeholder={`Nombre completo del ${asylumFamilyType === 'married' ? 'cónyuge' : 'conviviente'} *`}
+                      value={spouse.fullName}
+                      onChange={(e) => setSpouse(s => ({ ...s, fullName: e.target.value }))}
+                      className="h-9 rounded-lg text-sm bg-white"
+                    />
+                    <Input
+                      type="date"
+                      placeholder="Fecha de nacimiento"
+                      value={spouse.dob}
+                      onChange={(e) => setSpouse(s => ({ ...s, dob: e.target.value }))}
+                      className="h-9 rounded-lg text-sm bg-white"
+                    />
+                    <Input
+                      placeholder="Lugar de nacimiento"
+                      value={spouse.birthplace}
+                      onChange={(e) => setSpouse(s => ({ ...s, birthplace: e.target.value }))}
+                      className="h-9 rounded-lg text-sm bg-white"
+                    />
+                    <Input
+                      placeholder="Pasaporte"
+                      value={spouse.passport}
+                      onChange={(e) => setSpouse(s => ({ ...s, passport: e.target.value }))}
+                      className="h-9 rounded-lg text-sm bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Minors section — visible cuando:
+                - El template lo requiere (SIJS), o
+                - Es Asilo Político Familiar Casados/Convivientes (con hijos opcionales) */}
+            {(template.requiresMinor
+              || (selectedSlug === 'asilo-politico'
+                  && (asylumFamilyType === 'married' || asylumFamilyType === 'cohabiting_with_kids'))
+            ) && (
               <div className="space-y-3 pt-2">
                 <div className="flex items-center gap-2">
                   <Baby className="w-4 h-4 text-[#002855]/50" />
-                  <span className="text-sm font-semibold text-[#002855]/70">Menores Beneficiarios</span>
+                  <span className="text-sm font-semibold text-[#002855]/70">
+                    {selectedSlug === 'asilo-politico' ? 'Hijos beneficiarios' : 'Menores Beneficiarios'}
+                  </span>
                   <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#002855] text-white text-[10px] font-bold">
                     {minors.length}
                   </span>

@@ -1,4 +1,5 @@
 import type { CasePhase, DocumentSlotKind } from '@/types/database'
+import type { MemberRole } from '@/lib/contracts/family-members'
 
 export type DocStatus =
   | 'pending'
@@ -33,9 +34,15 @@ export interface DocItem {
   status: DocStatus
   uploads: Record<string, UploadFile[]>
   from_previous_phase: boolean
-  /** Índice del menor al que pertenece (0-based) o null si es general. */
+  /** Rol del miembro al que pertenece este item. NULL para items globales. */
+  member_role: MemberRole | null
+  /** Índice 0-based en contracts.minors[] solo cuando member_role='minor'. */
+  member_index: number | null
+  /** Snapshot del nombre del miembro (solicitante / cónyuge / hijo). */
+  member_label: string | null
+  /** @deprecated — usar `member_index` con member_role='minor'. */
   minor_index: number | null
-  /** Snapshot del nombre del menor para mostrar "Acta de María". */
+  /** @deprecated — usar `member_label`. */
   minor_label: string | null
 }
 

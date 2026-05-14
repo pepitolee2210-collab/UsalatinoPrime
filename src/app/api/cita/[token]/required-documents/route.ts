@@ -4,6 +4,7 @@ import type { ConditionalLogic, DocumentType, CasePhase, DocumentSlotKind } from
 import { getPhaseCategory } from '@/lib/document-types/phase-category-overrides'
 import { resolvePhaseCategory, type DocumentTypePhaseRow } from '@/lib/document-types/phase-overrides-registry'
 import { isPhasedService } from '@/lib/services/registry'
+import { getFamilyMembers, memberSuffix, type FamilyMember, type MemberRole } from '@/lib/contracts/family-members'
 
 /**
  * GET /api/cita/[token]/required-documents
@@ -53,16 +54,19 @@ interface DocItem {
   status: DocStatus
   uploads: Record<string, UploadFile[]>  // indexado por slot label ('default' | 'es' | 'en' | nombre custom)
   from_previous_phase: boolean
-  /** Índice del menor (0-based) al que pertenece este item, o null si es general. */
+  /** Rol del miembro al que pertenece este item ('applicant' | 'spouse' | 'minor'). NULL para items globales. */
+  member_role: MemberRole | null
+  /** Índice 0-based en `contracts.minors[]` solo cuando member_role='minor'. NULL en otro caso. */
+  member_index: number | null
+  /** Nombre completo del miembro al que pertenece (snapshot). NULL si es global. */
+  member_label: string | null
+  /**
+   * @deprecated — usar `member_index` con member_role='minor'. Shim por una release
+   * para que la UI cliente vieja siga funcionando.
+   */
   minor_index: number | null
-  /** Nombre del menor para mostrar "Acta de María". */
+  /** @deprecated — usar `member_label`. */
   minor_label: string | null
-}
-
-interface MinorDescriptor {
-  fullName: string
-  dob?: string
-  passport?: string
 }
 
 interface CategoryGroup {
@@ -280,23 +284,30 @@ export async function GET(
   // 5. Cargar uploads del caso (incluye todos los direction=client_to_admin con document_type_id)
   const { data: uploads } = await supabase
     .from('documents')
-    .select('id, document_type_id, slot_label, minor_index, minor_label, name, file_type, file_size, status, rejection_reason, phase_when_uploaded, created_at')
+    .select('id, document_type_id, slot_label, minor_index, minor_label, member_role, name, file_type, file_size, status, rejection_reason, phase_when_uploaded, created_at')
     .eq('case_id', tokenData.case_id)
     .or('direction.eq.client_to_admin,direction.is.null')
     .not('document_type_id', 'is', null)
     .order('created_at', { ascending: false })
 
-  // 5.b Cargar contrato del case (para obtener los minors). Visa Juvenil
-  // soporta múltiples menores; otros servicios devuelven array vacío.
+  // 5.b Cargar contrato del case para reconstruir los miembros de familia.
+  // SIJS: solo `minors[]` cuenta (helper retorna SOLO minors).
+  // Asilo Político: `client_full_name` + `spouse` + `minors[]` + `asylum_family_type`.
   const { data: contractRow } = await supabase
     .from('contracts')
-    .select('minors')
+    .select('minors, spouse, asylum_family_type, client_full_name')
     .eq('case_id', tokenData.case_id)
     .maybeSingle()
 
-  const minors: MinorDescriptor[] = Array.isArray(contractRow?.minors)
-    ? (contractRow!.minors as MinorDescriptor[])
-    : []
+  const familyMembers: FamilyMember[] = getFamilyMembers(
+    {
+      client_full_name: contractRow?.client_full_name ?? '',
+      spouse: contractRow?.spouse as { fullName?: string | null } | null | undefined,
+      minors: contractRow?.minors as Array<{ fullName?: string | null }> | null | undefined,
+      asylum_family_type: contractRow?.asylum_family_type as string | null | undefined,
+    },
+    { serviceSlug },
+  )
 
   type RawUpload = {
     id: string
@@ -304,6 +315,7 @@ export async function GET(
     slot_label: string | null
     minor_index: number | null
     minor_label: string | null
+    member_role: MemberRole | null
     name: string
     file_type: string | null
     file_size: number | null
@@ -314,14 +326,24 @@ export async function GET(
   }
   const rawUploads = (uploads ?? []) as unknown as RawUpload[]
 
-  // Indexar por (document_type_id, minor_index ?? -1). Para docs no-per-minor
-  // todo va a la key -1; para per-minor cada hijo tiene su propio bucket.
-  const uploadsKey = (typeId: number, minorIdx: number | null) =>
-    `${typeId}:${minorIdx ?? -1}`
+  // Indexar uploads por (document_type_id, member_role, member_index).
+  // Convención de la key:
+  //   - member_role=null → "general" (docs no per-member, ej. acta de matrimonio)
+  //   - member_role='applicant'|'spouse' → index siempre -1
+  //   - member_role='minor' → minor_index del documento (0-based)
+  // Para uploads SIJS legacy con member_role=NULL pero minor_index NOT NULL,
+  // los enrutamos como member_role='minor' (la migración M1 hace ese backfill
+  // pero algún upload posterior podría llegar antes de propagarse PR-4).
+  const uploadsKey = (typeId: number, role: MemberRole | null, idx: number | null) =>
+    `${typeId}:${role ?? 'general'}:${idx ?? -1}`
+
   const uploadsByKey = new Map<string, RawUpload[]>()
   for (const u of rawUploads) {
     if (u.document_type_id == null) continue
-    const k = uploadsKey(u.document_type_id, u.minor_index)
+    const effectiveRole: MemberRole | null =
+      u.member_role ?? (u.minor_index != null ? 'minor' : null)
+    const effectiveIndex = effectiveRole === 'minor' ? u.minor_index : null
+    const k = uploadsKey(u.document_type_id, effectiveRole, effectiveIndex)
     const list = uploadsByKey.get(k) ?? []
     list.push(u)
     uploadsByKey.set(k, list)
@@ -363,10 +385,11 @@ export async function GET(
 
   function buildDocItem(
     dt: DocumentType,
-    minorIdx: number | null,
-    minorName: string | null,
+    fm: FamilyMember | null,
   ): DocItem | null {
-    const rawFiles = uploadsByKey.get(uploadsKey(dt.id, minorIdx)) ?? []
+    const role = fm?.role ?? null
+    const memberIdx = fm?.role === 'minor' ? fm.index : null
+    const rawFiles = uploadsByKey.get(uploadsKey(dt.id, role, memberIdx)) ?? []
 
     // Docs opcionales: solo aparecen si tienen archivos.
     if (dt.is_required === false && rawFiles.length === 0) return null
@@ -402,12 +425,12 @@ export async function GET(
         (f) => f.phase_when_uploaded != null && f.phase_when_uploaded !== currentPhase,
       )
 
-    const minorSuffix = minorName ? ` — ${minorName.split(/\s+/)[0]}` : ''
+    const suffix = fm ? memberSuffix(fm) : ''
 
     return {
       type_id: dt.id,
       code: dt.code,
-      name_es: `${dt.name_es}${minorSuffix}`,
+      name_es: `${dt.name_es}${suffix}`,
       description_es: dt.description_es ?? null,
       legal_reference: dt.legal_reference ?? null,
       requires_translation: dt.requires_translation,
@@ -418,30 +441,43 @@ export async function GET(
       status,
       uploads: slots,
       from_previous_phase: fromPreviousPhase,
-      minor_index: minorIdx,
-      minor_label: minorName,
+      member_role: role,
+      member_index: memberIdx,
+      member_label: fm?.fullName ?? null,
+      // Shims legacy (deprecated)
+      minor_index: role === 'minor' ? memberIdx : null,
+      minor_label: role === 'minor' ? fm?.fullName ?? null : null,
     }
   }
 
+  /**
+   * Tipo dinámico de la columna que viene del catálogo. Hasta que la migración
+   * 20260517 propague todo el código consumidor, leemos `is_per_member` con
+   * fallback a `is_per_minor` (alias generated en BD).
+   */
+  function isPerMember(dt: DocumentType & { is_per_member?: boolean }): boolean {
+    return Boolean(dt.is_per_member ?? dt.is_per_minor)
+  }
+
   for (const { dt, phaseCategory } of typesWithCategory) {
-    // Para tipos `is_per_minor`, expandir 1 item por cada hijo del contrato.
-    // Si el contrato no tiene minors (datos legacy) caemos al item general
-    // sin minor_index para no esconder docs ya subidos.
+    // Para tipos per-member, expandir 1 item por cada miembro de la familia
+    // (applicant + spouse + minors según el servicio). Si el contrato no
+    // tiene miembros (caso legacy o servicio no-Asilo sin minors), caemos al
+    // item general sin member_role para no esconder docs ya subidos.
     const items: DocItem[] = []
-    if (dt.is_per_minor && minors.length > 0) {
-      minors.forEach((m, idx) => {
-        const item = buildDocItem(dt, idx, m.fullName)
+    if (isPerMember(dt) && familyMembers.length > 0) {
+      familyMembers.forEach((fm) => {
+        const item = buildDocItem(dt, fm)
         if (item) items.push(item)
       })
-      // Si en datos legacy hay archivos sin minor_index, mostrar también
-      // un bucket "Sin asignar" para que el cliente pueda re-clasificarlos.
-      const legacyItem = buildDocItem(dt, null, null)
+      // Bucket "Sin asignar" para uploads legacy sin member_role.
+      const legacyItem = buildDocItem(dt, null)
       if (legacyItem) {
         legacyItem.name_es = `${dt.name_es} — Sin asignar`
         items.push(legacyItem)
       }
     } else {
-      const item = buildDocItem(dt, null, null)
+      const item = buildDocItem(dt, null)
       if (item) items.push(item)
     }
 

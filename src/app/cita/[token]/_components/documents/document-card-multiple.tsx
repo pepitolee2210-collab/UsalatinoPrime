@@ -158,6 +158,9 @@ export function DocumentCardMultiple({
           token={token}
           documentTypeId={doc.type_id}
           slotName={pendingSlotName}
+          memberRole={doc.member_role}
+          memberIndex={doc.member_index}
+          memberLabel={doc.member_label}
           minorIndex={doc.minor_index}
           minorLabel={doc.minor_label}
           onDone={() => {
@@ -271,6 +274,9 @@ interface PendingUploadOverlayProps {
   token: string
   documentTypeId: number
   slotName: string
+  memberRole: DocItem['member_role']
+  memberIndex: number | null
+  memberLabel: string | null
   minorIndex: number | null
   minorLabel: string | null
   onDone: () => void
@@ -285,6 +291,9 @@ function PendingUploadOverlay({
   token,
   documentTypeId,
   slotName,
+  memberRole,
+  memberIndex,
+  memberLabel,
   minorIndex,
   minorLabel,
   onDone,
@@ -323,6 +332,9 @@ function PendingUploadOverlay({
             token={token}
             documentTypeId={documentTypeId}
             slotLabel={slotName}
+            memberRole={memberRole}
+            memberIndex={memberIndex}
+            memberLabel={memberLabel}
             minorIndex={minorIndex}
             minorLabel={minorLabel}
             label="Elegir archivo"

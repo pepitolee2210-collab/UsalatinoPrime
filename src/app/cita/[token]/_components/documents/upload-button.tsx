@@ -2,14 +2,21 @@
 
 import { useRef, useState } from 'react'
 import { ACCEPT_ATTR, uploadClientDocument } from './upload-client'
+import type { MemberRole } from '@/lib/contracts/family-members'
 
 interface UploadButtonProps {
   token: string
   documentTypeId: number
   slotLabel?: string | null
-  /** Índice del menor (0-based) si el doc es per-minor. */
+  /** Rol del miembro al que pertenece este upload. */
+  memberRole?: MemberRole | null
+  /** Índice del miembro — solo aplica cuando memberRole='minor'. */
+  memberIndex?: number | null
+  /** Snapshot del nombre del miembro (solicitante / cónyuge / hijo). */
+  memberLabel?: string | null
+  /** @deprecated — usar memberIndex con memberRole='minor'. */
   minorIndex?: number | null
-  /** Snapshot del nombre del menor para denormalizar en la BD. */
+  /** @deprecated — usar memberLabel. */
   minorLabel?: string | null
   label: string
   variant?: 'primary' | 'ghost'
@@ -25,6 +32,9 @@ export function UploadButton({
   token,
   documentTypeId,
   slotLabel,
+  memberRole,
+  memberIndex,
+  memberLabel,
   minorIndex,
   minorLabel,
   label,
@@ -40,7 +50,11 @@ export function UploadButton({
     if (!file) return
     setBusy(true)
     try {
-      await uploadClientDocument({ token, file, documentTypeId, slotLabel, minorIndex, minorLabel })
+      await uploadClientDocument({
+        token, file, documentTypeId, slotLabel,
+        memberRole, memberIndex, memberLabel,
+        minorIndex, minorLabel,
+      })
       onUploaded()
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Error al subir')

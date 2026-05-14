@@ -79,6 +79,9 @@ export function DocumentCardSingle({
             <UploadButton
               token={token}
               documentTypeId={doc.type_id}
+              memberRole={doc.member_role}
+              memberIndex={doc.member_index}
+              memberLabel={doc.member_label}
               minorIndex={doc.minor_index}
               minorLabel={doc.minor_label}
               label="Subir archivo"

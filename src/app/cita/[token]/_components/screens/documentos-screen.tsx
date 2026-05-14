@@ -166,7 +166,7 @@ export function DocumentosScreen({ token }: DocumentosScreenProps) {
             >
               {category.docs.map((doc) => (
                 <DocCardRouter
-                  key={`${doc.type_id}:${doc.minor_index ?? 'general'}`}
+                  key={`${doc.type_id}:${doc.member_role ?? 'general'}:${doc.member_index ?? 'na'}`}
                   doc={doc}
                   token={token}
                   phaseLabel={phaseLabel}
