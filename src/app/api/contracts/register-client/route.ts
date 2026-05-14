@@ -4,27 +4,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import { triggerJurisdictionResearchAsync } from '@/lib/legal/trigger-research-async'
 import { normalizePhone, isValidPhoneLength, syntheticClientEmail } from '@/lib/phone'
 import { createCaseForContract } from '@/lib/cases/create-case'
-import type { CasePhase } from '@/types/database'
-
-/**
- * Mapea servicio + subservicio a la fase inicial del caso.
- * Solo Visa Juvenil (SIJS) usa fases. El resto: null.
- */
-function resolveStartingPhase(
-  serviceSlug: string,
-  subserviceSlug: string | null,
-): CasePhase | null {
-  if (serviceSlug !== 'visa-juvenil') return null
-  switch (subserviceSlug) {
-    case 'i485':
-      return 'i485'
-    case 'i360':
-    case 'i360-i485':
-      return 'i360'
-    default:
-      return 'custodia'
-  }
-}
+import { resolveStartingPhase } from '@/lib/contracts/starting-phase'
 
 function toTitleCase(str: string): string {
   return str.toLowerCase().replace(/(?:^|\s)\S/g, (c) => c.toUpperCase())

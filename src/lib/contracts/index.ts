@@ -1,3 +1,5 @@
+import type { CasePhase } from '@/types/database'
+
 export interface PriceVariant {
   label: string
   totalPrice: number
@@ -18,6 +20,12 @@ export interface ContractSubservice {
   etapas: string[]
   objetoDelContrato: string
   variants: PriceVariant[]
+  /**
+   * Fase SIJS inicial cuando se firma este subservicio. `undefined` cae al
+   * fallback del template padre. `null` explícito significa "este subservicio
+   * no usa fases" y sobrescribe al padre. Hoy solo SIJS usa fases.
+   */
+  startingPhase?: CasePhase | null
 }
 
 export interface ContractTemplate {
@@ -27,6 +35,13 @@ export interface ContractTemplate {
   installments: boolean
   variants: PriceVariant[]
   subservices?: ContractSubservice[]
+  /**
+   * Fase SIJS inicial cuando se firma el template sin elegir subservicio.
+   * `undefined` o `null` → el case nace sin fase (servicios no-SIJS).
+   * El resolver `resolveStartingPhase()` de `./starting-phase.ts` aplica
+   * primero el subservicio elegido y solo cae aquí si no hay override.
+   */
+  startingPhase?: CasePhase | null
 }
 
 const contracts: Record<string, ContractTemplate> = {
@@ -53,6 +68,11 @@ const contracts: Record<string, ContractTemplate> = {
   'ajuste-de-estatus': {
     installments: true,
     requiresMinor: false,
+    // Pol\u00edtica operativa: hoy "ajuste-de-estatus" se vende solo a clientes
+    // SIJS que ya tienen I-360 aprobado (continuaci\u00f3n fase 3). El case nace
+    // directamente en fase i485 para que el portal del cliente muestre los
+    // documentos y formularios correspondientes desde el primer login.
+    startingPhase: 'i485',
     variants: [
       { label: 'Ajuste de Estatus', totalPrice: 2500 },
     ],
@@ -92,6 +112,9 @@ const contracts: Record<string, ContractTemplate> = {
   'visa-juvenil': {
     installments: true,
     requiresMinor: true,
+    // Proceso SIJS completo arranca en la fase de Custodia (corte estatal).
+    // Subservicios individuales sobrescriben esto cuando aplica.
+    startingPhase: 'custodia',
     variants: [
       { label: 'Individual', totalPrice: 2500 },
       { label: 'Familiar', totalPrice: 3500, installmentCount: 14 },
@@ -113,6 +136,7 @@ const contracts: Record<string, ContractTemplate> = {
         slug: 'completa',
         label: 'Proceso completo (Custodia + I-360 + I-485)',
         description: 'Las 3 etapas: Corte estatal, petici\u00f3n federal y residencia.',
+        startingPhase: 'custodia',
         variants: [
           { label: 'Individual', totalPrice: 2500 },
           { label: 'Familiar', totalPrice: 3500, installmentCount: 14 },
@@ -134,6 +158,7 @@ const contracts: Record<string, ContractTemplate> = {
         slug: 'i360-i485',
         label: 'I-360 + I-485 (ya tiene custodia emitida)',
         description: 'Para clientes que ya cuentan con la Orden de Hallazgos Especiales de la corte estatal.',
+        startingPhase: 'i360',
         variants: [
           { label: 'Individual', totalPrice: 1500 },
           { label: 'Familiar', totalPrice: 2100, installmentCount: 10 },
@@ -153,6 +178,7 @@ const contracts: Record<string, ContractTemplate> = {
         slug: 'i360',
         label: 'Solo I-360 (petici\u00f3n federal)',
         description: 'Presentaci\u00f3n \u00fanica del I-360, sin incluir corte estatal ni ajuste de estatus.',
+        startingPhase: 'i360',
         variants: [
           { label: 'Individual', totalPrice: 1200 },
         ],
@@ -170,6 +196,7 @@ const contracts: Record<string, ContractTemplate> = {
         slug: 'i485',
         label: 'Solo I-485 (ajuste con I-360 ya aprobado)',
         description: 'Ajuste de estatus para clientes con I-360 aprobado y visa disponible.',
+        startingPhase: 'i485',
         variants: [
           { label: 'Individual', totalPrice: 1500 },
         ],
@@ -200,6 +227,7 @@ const contracts: Record<string, ContractTemplate> = {
         label: 'Promo D\u00eda de la Madre (Custodia + I-360)',
         description:
           'Oferta lanzada por Vanessa: las 2 primeras etapas del proceso (Corte Estatal + I-360). NO incluye Ajuste de Estatus (I-485).',
+        startingPhase: 'custodia',
         variants: [
           { label: 'Individual', totalPrice: 1800 },
           { label: 'Familiar', totalPrice: 2500, installmentCount: 10 },
