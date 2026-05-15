@@ -140,22 +140,34 @@ export function CredibleFearGenerator({ caseId, caseNumber }: CredibleFearGenera
           <ul className="space-y-2">
             {drafts.map((d) => (
               <li key={d.id} className="rounded-xl border border-gray-200 bg-white">
-                <button
-                  type="button"
-                  onClick={() => setOpenId(openId === d.id ? null : d.id)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
-                >
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${d.is_current ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-500'}`}>
-                    {d.is_current ? 'ACTUAL' : 'Histórico'}
-                  </span>
-                  <span className="text-sm font-semibold text-gray-900">Versión {d.version}</span>
-                  <span className="text-[11px] text-gray-500">
-                    {new Date(d.generated_at).toLocaleString('es-MX')}
-                  </span>
-                  <span className="ml-auto text-[10px] text-gray-400 uppercase font-bold">
-                    {d.sources.length} fuente{d.sources.length === 1 ? '' : 's'}
-                  </span>
-                </button>
+                <div className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50">
+                  <button
+                    type="button"
+                    onClick={() => setOpenId(openId === d.id ? null : d.id)}
+                    className="flex items-center gap-3 flex-1 text-left"
+                  >
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${d.is_current ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-500'}`}>
+                      {d.is_current ? 'ACTUAL' : 'Histórico'}
+                    </span>
+                    <span className="text-sm font-semibold text-gray-900">Versión {d.version}</span>
+                    <span className="text-[11px] text-gray-500">
+                      {new Date(d.generated_at).toLocaleString('es-MX')}
+                    </span>
+                    <span className="ml-auto text-[10px] text-gray-400 uppercase font-bold">
+                      {d.sources.length} fuente{d.sources.length === 1 ? '' : 's'}
+                    </span>
+                  </button>
+                  <a
+                    href={`/api/admin/cases/${caseId}/credible-fear-drafts/${d.id}/download.docx`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Button size="sm" variant="outline" className="text-xs">
+                      <Download className="w-3 h-3 mr-1" /> Word
+                    </Button>
+                  </a>
+                </div>
                 {openId === d.id && (
                   <div className="px-4 py-3 border-t border-gray-100 space-y-3">
                     <div className="bg-gray-50 rounded-lg p-3 max-h-[70vh] overflow-y-auto whitespace-pre-wrap text-xs leading-relaxed text-gray-800">

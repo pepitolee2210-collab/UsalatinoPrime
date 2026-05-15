@@ -12,6 +12,7 @@ import { CaseTabsByPhase } from '@/app/employee/_shared/case-tabs-by-phase'
 import { useCaseOverview } from '@/app/employee/_shared/use-case-overview'
 import { BitacoraTab } from '@/app/employee/_shared/bitacora-tab'
 import { CollectionTab, type CollectionContract, type CollectionPayment } from '@/components/payments/collection-tab'
+import { AsiloGeneradoresTab } from '@/app/admin/cases/[id]/asilo-generadores-tab'
 import type { CasePhase } from '@/types/database'
 
 interface Client {
@@ -87,6 +88,7 @@ export function EmployeeClientDetail({
   const activeCase = cases.find(c => c.id === selectedCaseId)
   const clientName = `${client.first_name} ${client.last_name}`.trim()
   const isVisaJuvenil = activeCase?.service?.slug === 'visa-juvenil'
+  const isAsiloPolitico = activeCase?.service?.slug === 'asilo-politico'
 
   const caseForms = formSubmissions.filter(f => f.case_id === selectedCaseId)
   const caseDocs = documents.filter(d => d.case_id === selectedCaseId)
@@ -210,6 +212,20 @@ export function EmployeeClientDetail({
                       clientPhone={client.phone}
                       contracts={contracts.filter((c) => c.case_id === activeCase.id)}
                       payments={payments.filter((p) => p.case_id === activeCase.id)}
+                    />
+                  ),
+                }]
+              : []),
+            // Tab "Generadores" — Asilo Político. Reúne descarga I-589 oficial
+            // (páginas 1-4) + vista del wizard + generador del Miedo Creíble.
+            ...(isAsiloPolitico
+              ? [{
+                  id: 'generadores' as const,
+                  label: 'Generadores',
+                  content: (
+                    <AsiloGeneradoresTab
+                      caseId={activeCase.id}
+                      caseNumber={activeCase.case_number}
                     />
                   ),
                 }]
