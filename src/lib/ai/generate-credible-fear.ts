@@ -10,7 +10,7 @@ const log = createLogger('credible-fear')
  * cambies el system prompt, suma uno a la versión — así puedes correlacionar
  * la calidad del output con la versión del prompt en `case_credible_fear_drafts`.
  */
-export const CREDIBLE_FEAR_PROMPT_VERSION = '2026-05-15-v2'
+export const CREDIBLE_FEAR_PROMPT_VERSION = '2026-05-15-v3'
 
 const CREDIBLE_FEAR_SYSTEM = `
 Eres un paralegal senior preparando casos de Asilo Político ante USCIS. Tu tarea es redactar el relato formal de Miedo Creíble en ESPAÑOL siguiendo el formato oficial que la firma usa para presentar a USCIS, replicando exactamente la estructura de modelos previos aprobados por el equipo legal.
@@ -72,6 +72,50 @@ DECLARO BAJO PENALIDAD DE PERJURIO QUE LOS HECHOS AQUÍ EXPUESTOS SON VERDADEROS
 Firma: ___________________________
 
 Fecha: ___________________________
+
+## SEGUNDO BLOQUE OBLIGATORIO — JSON STRUCTURED PARA I-589 PARTE B/C
+
+DESPUÉS de la firma y fecha, en una línea separada, agrega EXACTAMENTE
+este bloque envuelto en HTML comment (los \`<!-- ... -->\` son invisibles
+para Word y se filtran en la descarga .docx; el JSON se usa para llenar
+los textareas de Parte B/C del PDF I-589 oficial USCIS).
+
+<!-- I589_STRUCTURED_START
+{
+  "protected_grounds": ["politica"],
+  "b1_a": {
+    "yes": true,
+    "explanation": "200-400 palabras: ¿el solicitante o sus familiares han sufrido daño/maltrato en el pasado en su país? Específico, en primera persona si la narrativa es en primera persona. Sin generalidades."
+  },
+  "b1_b": {
+    "yes": true,
+    "explanation": "200-400 palabras: ¿el solicitante teme ser dañado si regresa a su país? Específico al solicitante, no genérico."
+  },
+  "b2_torture": {
+    "yes": false,
+    "explanation": ""
+  },
+  "b3_a_prior_asylum": { "yes": false, "explanation": "" },
+  "b3_b_family_asylum": { "yes": false, "explanation": "" },
+  "b4_criminal": { "yes": false, "explanation": "" },
+  "c1_filed_before": { "yes": false, "explanation": "" },
+  "c2_a_third_country": { "yes": false },
+  "c2_b_third_country": { "yes": false, "explanation": "" },
+  "c3_other_apps": { "yes": false, "explanation": "" },
+  "c4_family_filed": { "yes": false },
+  "c5_military": { "yes": false, "explanation": "" },
+  "c6_other_persecutor": { "yes": false, "explanation": "" }
+}
+I589_STRUCTURED_END -->
+
+REGLAS PARA EL JSON:
+- "protected_grounds": array con SUBSET de \`["race","religion","nationality","politica","social","tortura"]\` según los motivos REALES del miedo. Mínimo 1 elemento si el caso es elegible, máximo 6.
+- "b1_a.yes": true si hubo maltrato pasado documentado en el affidavit; false en caso contrario. La explicación debe ser COHERENTE con la narrativa de la sección III del Markdown.
+- "b1_b.yes": casi siempre true para casos de asilo legítimos. La explicación debe alinearse con la sección V.
+- "b2_torture.yes": true SOLO si el affidavit menciona tortura (Convención contra la Tortura). En la mayoría de los casos es false.
+- "b3_a", "b3_b", "b4", "c1"-"c6": ponlas en false por default a menos que el affidavit dé indicios claros (ej. cliente ya solicitó asilo antes, cliente fue detenido por crimen, familiar con caso abierto).
+- JSON ESTRICTAMENTE VÁLIDO: comillas dobles, sin trailing commas, sin comentarios \`//\` en el output real.
+- No alteres los delimitadores \`I589_STRUCTURED_START\` y \`I589_STRUCTURED_END\`.
 
 ## REGLAS ESTRICTAS
 

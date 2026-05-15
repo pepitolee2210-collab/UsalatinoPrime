@@ -33,8 +33,22 @@ export async function buildCredibleFearDocx(opts: BuildOpts): Promise<Uint8Array
   const children: Paragraph[] = []
 
   const lines = opts.bodyMarkdown.split('\n')
+  // Estado: si estamos dentro de un bloque HTML comment (<!-- ... -->)
+  // skipear líneas. El prompt v3 embebe un JSON estructurado para la
+  // Parte B/C del I-589 dentro de un comment; no debe aparecer en Word.
+  let insideComment = false
   for (const raw of lines) {
     const line = raw.replace(/\r$/, '')
+    if (insideComment) {
+      if (line.includes('-->')) insideComment = false
+      continue
+    }
+    if (line.includes('<!--')) {
+      // Si el comment cierra en la misma línea, no cambia el estado;
+      // si no, queda abierto hasta encontrar `-->`.
+      if (!line.includes('-->')) insideComment = true
+      continue
+    }
     if (!line.trim()) {
       // Línea vacía → párrafo en blanco para separar bloques visualmente
       children.push(new Paragraph({ children: [new TextRun('')] }))
