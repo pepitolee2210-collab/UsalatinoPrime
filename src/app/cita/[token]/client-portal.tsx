@@ -167,11 +167,13 @@ export function ClientPortal(props: ClientPortalProps) {
         <DocumentosScreen token={token} serviceSlug={serviceSlug} />
       )}
       {activeScreen === 'fases' && (
-        serviceSlug === 'asilo-politico' && currentPhase === 'asilo_reforzar' ? (
-          <ReforzarScreen token={token} clientName={clientName} />
-        ) : (
-          <FasesScreen token={token} clientName={clientName} currentPhase={currentPhase} />
-        )
+        // FasesScreen es la fuente única de verdad para la pestaña Formularios.
+        // Para Asilo Político Fase 2 inyecta el FormCard `__evidence_urls__`
+        // (handler abre EvidenceUrlsManager en modal). El antiguo
+        // ReforzarScreen se mantuvo accidentalmente como redirect — eliminarlo
+        // hace que la pestaña Formularios funcione coherentemente en todas las
+        // fases del Asilo Político.
+        <FasesScreen token={token} clientName={clientName} currentPhase={currentPhase} />
       )}
       {activeScreen === 'mas' && (
         <MasScreen

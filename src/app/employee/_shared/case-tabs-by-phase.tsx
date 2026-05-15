@@ -41,6 +41,7 @@ export type TabId =
   | 'bitacora'
   | 'cobranza'
   | 'credible-fear'
+  | 'i589-part-a'
 
 interface FormSub {
   form_type: string

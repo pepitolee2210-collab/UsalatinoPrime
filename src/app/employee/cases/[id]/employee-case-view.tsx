@@ -11,6 +11,7 @@ import { useCaseOverview } from '@/app/employee/_shared/use-case-overview'
 import { I485FormSection } from '@/components/legal/i485-form-section'
 import { I360FormSection } from '@/components/legal/i360-form-section'
 import { CredibleFearGenerator } from '@/app/admin/cases/[id]/credible-fear-generator'
+import { I589PartAReview } from '@/app/admin/cases/[id]/i589-part-a-review'
 import type { CasePhase } from '@/types/database'
 
 interface CaseData {
@@ -114,6 +115,19 @@ export function EmployeeCaseView({
         id: 'i485' as const,
         label: 'I-485',
         content: <I485FormSection caseId={caseData.id} />,
+      }]
+    : []
+
+  // Tab "I-589 Parte A" — solo Asilo Político. Diana ve los datos que el
+  // cliente capturó vía el wizard del portal. Mientras se implementa el
+  // AcroForm I-589 oficial, Diana descarga JSON o copia los valores manual.
+  const i589PartATab = isAsiloPolitico
+    ? [{
+        id: 'i589-part-a' as const,
+        label: 'I-589 Parte A',
+        content: (
+          <I589PartAReview caseId={caseData.id} caseNumber={caseData.case_number} />
+        ),
       }]
     : []
 
@@ -221,7 +235,7 @@ export function EmployeeCaseView({
         henryNotes={henryNotes}
         currentUserId={currentUserId}
         isAdmin={false}
-        extraTabs={[...i360Tab, ...i485Tab, ...credibleFearTab, ...miTrabajoTab]}
+        extraTabs={[...i360Tab, ...i485Tab, ...i589PartATab, ...credibleFearTab, ...miTrabajoTab]}
         onRefresh={() => {
           refresh()
           router.refresh()
