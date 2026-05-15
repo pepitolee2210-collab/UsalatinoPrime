@@ -6,6 +6,8 @@ import { FormCard } from '../forms/form-card'
 import { FormRunner } from '../forms/form-runner'
 import { ClientStoryWizard } from '../../client-story-wizard'
 import { I360WizardCore, type I360FormData } from '@/components/i360/I360WizardCore'
+import { I589PartAWizardCore } from '@/components/i589/I589PartAWizardCore'
+import { EvidenceUrlsManager } from '../evidence-urls-manager'
 import type { CasePhase } from '@/types/database'
 import type { RequiredFormsResponse, FormSummary } from '../forms/types'
 
@@ -13,6 +15,23 @@ interface I360DataResponse {
   form_data: I360FormData
   status: string | null
   prefill_sources: Record<string, Record<string, unknown>>
+}
+
+// Shape del response del endpoint /api/cita/[token]/i589-data.
+// (No exportamos por separado; vive solo en este screen.)
+interface I589DataResponse {
+  case_id: string
+  parts: Record<'a1' | 'a2' | 'a3' | 'a4', {
+    form_data: Record<string, unknown>
+    status: string | null
+    updated_at: string | null
+    submitted_at: string | null
+    admin_notes: string | null
+  }>
+  prefill_sources: {
+    profile: Record<string, unknown> | null
+    contract: Record<string, unknown> | null
+  }
 }
 
 interface FasesScreenProps {
@@ -67,6 +86,10 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
   const [i360Open, setI360Open] = useState(false)
   const [i360Data, setI360Data] = useState<I360DataResponse | null>(null)
   const [i360Loading, setI360Loading] = useState(false)
+  const [i589Open, setI589Open] = useState(false)
+  const [i589Data, setI589Data] = useState<I589DataResponse | null>(null)
+  const [i589Loading, setI589Loading] = useState(false)
+  const [urlsOpen, setUrlsOpen] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
@@ -149,13 +172,26 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
       return
     }
     if (form.is_special_i589) {
-      // Placeholder mientras el AcroForm I-589 no está registrado.
-      // El equipo legal arma el I-589 a partir de los documentos del cliente
-      // (pasaporte, I-94, etc.) que sube en la pestaña Documentos.
-      toast.info(
-        'Tu equipo legal armará tu I-589 a partir de los documentos que subas. Asegúrate de tener pasaporte, I-94, NTA o parole, acta de matrimonio (si aplica) y partidas de nacimiento de los hijos en la pestaña Documentos.',
-        { duration: 8000 },
-      )
+      // Wizard I-589 Parte A — abre fullscreen con 4 steps.
+      setI589Loading(true)
+      try {
+        const res = await fetch(`/api/cita/${encodeURIComponent(token)}/i589-data`, {
+          cache: 'no-store',
+        })
+        if (!res.ok) throw new Error('No se pudo cargar el formulario I-589')
+        const json: I589DataResponse = await res.json()
+        setI589Data(json)
+        setI589Open(true)
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Error al abrir el formulario')
+      } finally {
+        setI589Loading(false)
+      }
+      return
+    }
+    if (form.is_special_evidence_urls) {
+      // Manager de URLs de evidencia (Fase 2 Asilo Político).
+      setUrlsOpen(true)
       return
     }
     setOpenSlug(form.slug)
@@ -250,6 +286,44 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
             <span className="text-sm font-medium text-gray-700">Cargando tu formulario…</span>
           </div>
         </div>
+      )}
+
+      {i589Open && i589Data && (
+        <Fullscreen
+          title="Formulario I-589 — Páginas 1 a 4"
+          onClose={() => { setI589Open(false); fetchData() }}
+        >
+          <I589PartAWizardCore
+            token={token}
+            initialData={i589Data}
+            onSuccess={() => { setI589Open(false); fetchData() }}
+            onClose={() => { setI589Open(false); fetchData() }}
+          />
+        </Fullscreen>
+      )}
+
+      {i589Loading && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
+          <div className="rounded-2xl bg-white px-6 py-4 shadow-xl flex items-center gap-3">
+            <span className="material-symbols-outlined animate-spin" style={{ fontSize: 22 }}>progress_activity</span>
+            <span className="text-sm font-medium text-gray-700">Cargando tu formulario I-589…</span>
+          </div>
+        </div>
+      )}
+
+      {urlsOpen && (
+        <Fullscreen
+          title="Enlaces de noticias y evidencia"
+          onClose={() => { setUrlsOpen(false); fetchData() }}
+        >
+          <div className="px-6 py-6 max-w-2xl mx-auto">
+            <p className="text-sm text-gray-600 mb-4">
+              Pega URLs de noticias, reportes de DD.HH., o publicaciones que respalden tu caso.
+              La IA legal usará estas fuentes al generar tu relato de Miedo Creíble.
+            </p>
+            <EvidenceUrlsManager token={token} />
+          </div>
+        </Fullscreen>
       )}
     </div>
   )

@@ -154,31 +154,69 @@ export function DocumentosScreen({ token }: DocumentosScreenProps) {
       </section>
 
       <div className="space-y-3">
-        {data.categories.map((category, idx) => {
-          // Abre por defecto la primera categoría con docs pendientes
-          const hasPending = category.docs.some((d) => d.status === 'pending' || d.status === 'rejected')
-          const defaultOpen = idx === 0 && hasPending
-          return (
-            <DocumentSectionAccordion
-              key={category.code}
-              category={category}
-              defaultOpen={defaultOpen}
-            >
-              {category.docs.map((doc) => (
-                <DocCardRouter
-                  key={`${doc.type_id}:${doc.member_role ?? 'general'}:${doc.member_index ?? 'na'}`}
-                  doc={doc}
-                  token={token}
-                  phaseLabel={phaseLabel}
-                  onPreview={setPreviewDoc}
-                  onDelete={handleDelete}
-                  onChange={handleChange}
-                  onError={handleError}
-                />
-              ))}
-            </DocumentSectionAccordion>
-          )
-        })}
+        {data.member_groups && data.member_groups.length > 0 ? (
+          // Asilo Político: agrupar por miembro de familia.
+          data.member_groups.map((mg, idx) => {
+            const hasPending = mg.docs.some((d) => d.status === 'pending' || d.status === 'rejected')
+            const defaultOpen = idx === 0 && hasPending
+            // Adaptamos MemberGroup → CategoryGroup para reusar DocumentSectionAccordion
+            // sin tener que crear un componente nuevo idéntico.
+            const adaptedCategory = {
+              code: `mg_${mg.role}_${mg.member_index ?? 'na'}`,
+              name_es: mg.label,
+              icon: mg.icon,
+              total_required: mg.total_required,
+              total_completed: mg.total_completed,
+              docs: mg.docs,
+            }
+            return (
+              <DocumentSectionAccordion
+                key={adaptedCategory.code}
+                category={adaptedCategory}
+                defaultOpen={defaultOpen}
+              >
+                {mg.docs.map((doc) => (
+                  <DocCardRouter
+                    key={`${doc.type_id}:${doc.member_role ?? 'general'}:${doc.member_index ?? 'na'}`}
+                    doc={doc}
+                    token={token}
+                    phaseLabel={phaseLabel}
+                    onPreview={setPreviewDoc}
+                    onDelete={handleDelete}
+                    onChange={handleChange}
+                    onError={handleError}
+                  />
+                ))}
+              </DocumentSectionAccordion>
+            )
+          })
+        ) : (
+          // SIJS y servicios sin agrupamiento por miembro: categorías legales tradicionales.
+          data.categories.map((category, idx) => {
+            const hasPending = category.docs.some((d) => d.status === 'pending' || d.status === 'rejected')
+            const defaultOpen = idx === 0 && hasPending
+            return (
+              <DocumentSectionAccordion
+                key={category.code}
+                category={category}
+                defaultOpen={defaultOpen}
+              >
+                {category.docs.map((doc) => (
+                  <DocCardRouter
+                    key={`${doc.type_id}:${doc.member_role ?? 'general'}:${doc.member_index ?? 'na'}`}
+                    doc={doc}
+                    token={token}
+                    phaseLabel={phaseLabel}
+                    onPreview={setPreviewDoc}
+                    onDelete={handleDelete}
+                    onChange={handleChange}
+                    onError={handleError}
+                  />
+                ))}
+              </DocumentSectionAccordion>
+            )
+          })
+        )}
       </div>
 
       <PreviewModal token={token} doc={previewDoc} onClose={() => setPreviewDoc(null)} />

@@ -4,6 +4,7 @@ import { AUTOMATED_FORMS } from '@/lib/legal/automated-forms-registry'
 import { isFieldEditableByClient, hasResolvedValue } from '@/lib/legal/field-policy'
 import { formApplies } from '@/lib/legal/phase-form-mapping'
 import { TOTAL_I360_FIELDS, countI360FilledFields } from '@/components/i360/i360-questions'
+import { TOTAL_I589_PART_A_FIELDS, countI589PartAFilledFields } from '@/components/i589/i589-part-a-questions'
 import type { CasePhase } from '@/types/database'
 
 /**
@@ -37,13 +38,10 @@ interface FormSummary {
   locked_for_client: boolean
   is_special_story?: boolean
   is_special_i360?: boolean
-  /**
-   * Marca el card como el placeholder del I-589 (Asilo Político). El
-   * registro completo del PDF AcroForm se hará en otra iteración; por ahora
-   * el cliente ve el card informativo y al hacer click recibe un modal
-   * "Próximamente — Diana cargará tu I-589 a partir de tus documentos".
-   */
+  /** Wizard I-589 Parte A (Asilo Político Fase 1) — abre I589PartAWizardCore. */
   is_special_i589?: boolean
+  /** Form de URLs de noticias/evidencia (Asilo Político Fase 2). */
+  is_special_evidence_urls?: boolean
   client_last_edit_at: string | null
   client_submitted_at: string | null
 }
@@ -227,28 +225,104 @@ export async function GET(
     })
   }
 
-  // Asilo Político — Fase 1 (Sustentos): placeholder del I-589.
-  // El registro AcroForm completo del I-589 (14 secciones, 200+ fields,
-  // schema + prefill) llega en otra iteración. Por ahora el cliente ve un
-  // card informativo para que entienda que el formulario lo arma su equipo
-  // legal a partir de los documentos que sube.
+  // Asilo Político — Fase 1 (Sustentos): wizard I-589 Parte A real.
+  // 4 sub-formularios (a1, a2, a3, a4) que cubren páginas 1-4 del I-589.
+  // El cliente responde, autosaves a `case_form_submissions` con
+  // `form_type='i589_part_aN'`. Diana imprime el PDF AcroForm con esos datos.
   const isAsiloPolitico = serviceSlug === 'asilo-politico'
   if (isAsiloPolitico && currentPhase === 'asilo_sustentos') {
+    type I589Sub = {
+      form_type: string
+      form_data: Record<string, unknown> | null
+      status: string | null
+      updated_at: string | null
+      submitted_at: string | null
+    }
+
+    const { data: i589Subs } = await supabase
+      .from('case_form_submissions')
+      .select('form_type, form_data, status, updated_at, submitted_at')
+      .eq('case_id', tokenData.case_id)
+      .in('form_type', ['i589_part_a1', 'i589_part_a2', 'i589_part_a3', 'i589_part_a4'])
+      .eq('minor_index', 0)
+      .returns<I589Sub[]>()
+
+    const partsByType = new Map<string, I589Sub>()
+    for (const s of i589Subs ?? []) partsByType.set(s.form_type, s)
+
+    const filledFields = countI589PartAFilledFields({
+      a1: partsByType.get('i589_part_a1')?.form_data ?? null,
+      a2: partsByType.get('i589_part_a2')?.form_data ?? null,
+      a3: partsByType.get('i589_part_a3')?.form_data ?? null,
+      a4: partsByType.get('i589_part_a4')?.form_data ?? null,
+    })
+
+    const allSubmitted = (['i589_part_a1','i589_part_a2','i589_part_a3','i589_part_a4'] as const).every(
+      (t) => partsByType.get(t)?.status === 'submitted',
+    )
+
+    const lastEdit = (i589Subs ?? []).reduce<string | null>((max, s) => {
+      const u = s.updated_at
+      if (!u) return max
+      if (!max || u > max) return u
+      return max
+    }, null)
+    const lastSubmit = (i589Subs ?? []).reduce<string | null>((max, s) => {
+      const u = s.submitted_at
+      if (!u) return max
+      if (!max || u > max) return u
+      return max
+    }, null)
+
     summaries.unshift({
       slug: '__i589_wizard__',
-      form_name: 'Formulario I-589 — Solicitud de Asilo',
+      form_name: 'Formulario I-589 — Páginas 1 a 4',
       description_es:
-        'Tu equipo legal armará el I-589 a partir de los documentos que subas en la pestaña Documentos. Mientras tanto, asegúrate de tener: pasaporte de cada miembro, I-94, NTA o parole, acta de matrimonio (si aplica) y partidas de nacimiento de los hijos.',
+        'Datos personales, inmigración, cónyuge e hijos, e historial. Esta es la Parte A del I-589 que tu equipo legal usará para presentar tu caso.',
       state: null,
       packet_type: 'merits',
       template_type: 'special',
       icon: 'description',
-      total_user_fields: 0,
-      completed_user_fields: 0,
-      pct: 0,
-      instance_status: 'pending',
-      locked_for_client: true,
+      total_user_fields: TOTAL_I589_PART_A_FIELDS,
+      completed_user_fields: Math.min(TOTAL_I589_PART_A_FIELDS, filledFields),
+      pct: TOTAL_I589_PART_A_FIELDS === 0
+        ? 0
+        : Math.min(100, Math.round((filledFields / TOTAL_I589_PART_A_FIELDS) * 100)),
+      instance_status: allSubmitted ? 'submitted' : 'draft',
+      locked_for_client: false,
       is_special_i589: true,
+      client_last_edit_at: lastEdit,
+      client_submitted_at: lastSubmit,
+    })
+  }
+
+  // Asilo Político — Fase 2 (Reforzar): formulario para que el cliente pegue
+  // URLs de noticias / reportes que respalden su caso. La tabla
+  // `case_evidence_urls` ya guarda los links; este card abre el manager.
+  if (isAsiloPolitico && currentPhase === 'asilo_reforzar') {
+    const { count: urlsCount } = await supabase
+      .from('case_evidence_urls')
+      .select('id', { count: 'exact', head: true })
+      .eq('case_id', tokenData.case_id)
+
+    const TARGET_URLS = 3 // sugerencia mínima para 100% de la barra
+    const filled = Math.min(urlsCount ?? 0, TARGET_URLS)
+
+    summaries.unshift({
+      slug: '__evidence_urls__',
+      form_name: 'Enlaces de noticias y evidencia',
+      description_es:
+        'Pega URLs de reportes, noticias o publicaciones que respalden tu caso. Sugerencia: al menos 3 fuentes confiables.',
+      state: null,
+      packet_type: 'merits',
+      template_type: 'special',
+      icon: 'link',
+      total_user_fields: TARGET_URLS,
+      completed_user_fields: filled,
+      pct: Math.min(100, Math.round((filled / TARGET_URLS) * 100)),
+      instance_status: filled >= TARGET_URLS ? 'submitted' : 'draft',
+      locked_for_client: false,
+      is_special_evidence_urls: true,
       client_last_edit_at: null,
       client_submitted_at: null,
     })

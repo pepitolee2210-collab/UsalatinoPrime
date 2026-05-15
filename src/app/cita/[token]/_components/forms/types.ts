@@ -54,8 +54,10 @@ export interface FormSummary {
   locked_for_client: boolean
   is_special_story?: boolean
   is_special_i360?: boolean
-  /** Placeholder del I-589 (Asilo Político Fase 1) — abre modal informativo. */
+  /** Wizard I-589 Parte A (Asilo Político Fase 1) — abre I589PartAWizardCore. */
   is_special_i589?: boolean
+  /** Form URLs de noticias/evidencia (Asilo Político Fase 2). */
+  is_special_evidence_urls?: boolean
   client_last_edit_at: string | null
   client_submitted_at: string | null
 }

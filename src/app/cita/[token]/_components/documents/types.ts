@@ -55,6 +55,22 @@ export interface CategoryGroup {
   docs: DocItem[]
 }
 
+export type MemberGroupRole = 'applicant' | 'spouse' | 'minor' | 'family'
+
+/**
+ * Agrupamiento por miembro de familia. Solo presente para Asilo Político.
+ * La UI prefiere `member_groups` sobre `categories[]` cuando existe.
+ */
+export interface MemberGroup {
+  role: MemberGroupRole
+  member_index: number | null
+  label: string
+  icon: string
+  total_required: number
+  total_completed: number
+  docs: DocItem[]
+}
+
 export interface RequiredDocsResponse {
   case_id: string
   current_phase: CasePhase | null
@@ -62,6 +78,8 @@ export interface RequiredDocsResponse {
   total_completed: number
   progress_pct: number
   categories: CategoryGroup[]
+  /** Solo presente para Asilo Político — UI prefiere este sobre categories. */
+  member_groups?: MemberGroup[]
 }
 
 // ──────────────────────────────────────────────────────────────────

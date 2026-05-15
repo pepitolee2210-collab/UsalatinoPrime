@@ -78,6 +78,27 @@ interface CategoryGroup {
   docs: DocItem[]
 }
 
+/**
+ * Agrupamiento opcional por miembro de familia (Asilo Político). Cuando se
+ * incluye en la respuesta, la UI cliente lo prefiere sobre `categories[]`
+ * para mostrar acordeones tipo "Documentos del Solicitante (Mauricio)",
+ * "Documentos del Cónyuge (Angela)", "Documentos del Hijo (Pepe)", etc.
+ *
+ * Para SIJS NO se emite (UI sigue usando categories[] como antes).
+ */
+export type MemberGroupRole = 'applicant' | 'spouse' | 'minor' | 'family'
+
+interface MemberGroup {
+  role: MemberGroupRole
+  member_index: number | null
+  /** Etiqueta visible en el acordeón */
+  label: string
+  icon: string
+  total_required: number
+  total_completed: number
+  docs: DocItem[]
+}
+
 interface ResponseShape {
   case_id: string
   current_phase: CasePhase | null
@@ -85,6 +106,8 @@ interface ResponseShape {
   total_completed: number
   progress_pct: number
   categories: CategoryGroup[]
+  /** Solo presente para servicios fasados que agrupan por miembro (Asilo Político). */
+  member_groups?: MemberGroup[]
 }
 
 // Mapeo fase → columna boolean en `document_types`.
@@ -466,20 +489,29 @@ export async function GET(
 
   for (const { dt, phaseCategory } of typesWithCategory) {
     // Para tipos per-member, expandir 1 item por cada miembro de la familia
-    // (applicant + spouse + minors según el servicio). Si el contrato no
-    // tiene miembros (caso legacy o servicio no-Asilo sin minors), caemos al
-    // item general sin member_role para no esconder docs ya subidos.
+    // (applicant + spouse + minors según el servicio). Si el doc tiene
+    // applies_to_roles, restringir solo a esos roles (ej. asylum_birth_cert_child
+    // solo aplica a hijos, no a applicant ni spouse).
     const items: DocItem[] = []
-    if (isPerMember(dt) && familyMembers.length > 0) {
-      familyMembers.forEach((fm) => {
+    const dtWithRoles = dt as DocumentType & { applies_to_roles?: string[] | null }
+    const allowedRoles = dtWithRoles.applies_to_roles ?? null
+    const eligibleMembers = allowedRoles
+      ? familyMembers.filter((fm) => allowedRoles.includes(fm.role))
+      : familyMembers
+
+    if (isPerMember(dt) && eligibleMembers.length > 0) {
+      eligibleMembers.forEach((fm) => {
         const item = buildDocItem(dt, fm)
         if (item) items.push(item)
       })
       // Bucket "Sin asignar" para uploads legacy sin member_role.
-      const legacyItem = buildDocItem(dt, null)
-      if (legacyItem) {
-        legacyItem.name_es = `${dt.name_es} — Sin asignar`
-        items.push(legacyItem)
+      // Solo lo añadimos para SIJS — Asilo arranca limpio sin uploads sin role.
+      if (serviceSlug === 'visa-juvenil') {
+        const legacyItem = buildDocItem(dt, null)
+        if (legacyItem) {
+          legacyItem.name_es = `${dt.name_es} — Sin asignar`
+          items.push(legacyItem)
+        }
       }
     } else {
       const item = buildDocItem(dt, null)
@@ -522,6 +554,64 @@ export async function GET(
     totalCompleted += done
   }
 
+  // 8. Agrupar por miembro de familia (Asilo Político).
+  //
+  // Para Asilo Político en Fase 1, el cliente debe ver "Documentos del
+  // Solicitante (Mauricio)", "Documentos del Cónyuge (Angela)", "Documentos
+  // del Hijo (Pepe)", etc. en lugar de categorías legales. La estructura
+  // `member_groups[]` se emite SOLO para asilo-politico — SIJS sigue usando
+  // `categories[]`. La UI prefiere `member_groups` cuando existe.
+  let memberGroups: MemberGroup[] | null = null
+  if (serviceSlug === 'asilo-politico' && familyMembers.length > 0) {
+    const groupsMap = new Map<string, MemberGroup>()
+
+    function memberKey(role: MemberGroupRole, idx: number | null): string {
+      return `${role}:${idx ?? 'na'}`
+    }
+
+    function ensureGroup(role: MemberGroupRole, idx: number | null, label: string, icon: string): MemberGroup {
+      const k = memberKey(role, idx)
+      let g = groupsMap.get(k)
+      if (!g) {
+        g = { role, member_index: idx, label, icon, total_required: 0, total_completed: 0, docs: [] }
+        groupsMap.set(k, g)
+      }
+      return g
+    }
+
+    // Pre-crear el orden esperado: applicant → spouse → minors → family
+    for (const fm of familyMembers) {
+      const label =
+        fm.role === 'applicant' ? `Documentos del Solicitante (${fm.shortLabel})` :
+        fm.role === 'spouse'    ? `Documentos del Cónyuge (${fm.shortLabel})` :
+                                  `Documentos del Hijo/a (${fm.shortLabel})`
+      const icon =
+        fm.role === 'applicant' ? 'person' :
+        fm.role === 'spouse'    ? 'people' :
+                                  'child_care'
+      ensureGroup(fm.role as MemberGroupRole, fm.role === 'minor' ? fm.index : null, label, icon)
+    }
+    ensureGroup('family', null, 'Documentos de la Familia', 'family_restroom')
+
+    // Reasignar cada DocItem ya construido al grupo del miembro al que pertenece.
+    for (const cat of categoryMap.values()) {
+      for (const doc of cat.docs) {
+        const role: MemberGroupRole = (doc.member_role ?? 'family') as MemberGroupRole
+        const idx = role === 'minor' ? doc.member_index : null
+        const k = memberKey(role, idx)
+        const g = groupsMap.get(k)
+        if (g) g.docs.push(doc)
+      }
+    }
+
+    memberGroups = Array.from(groupsMap.values())
+      .filter((g) => g.docs.length > 0)
+      .map((g) => {
+        const { req, done } = categoryProgressCount(g.docs)
+        return { ...g, total_required: req, total_completed: done }
+      })
+  }
+
   const response: ResponseShape = {
     case_id: tokenData.case_id,
     current_phase: currentPhase,
@@ -529,6 +619,7 @@ export async function GET(
     total_completed: totalCompleted,
     progress_pct: totalRequired === 0 ? 0 : Math.round((totalCompleted / totalRequired) * 100),
     categories,
+    ...(memberGroups ? { member_groups: memberGroups } : {}),
   }
 
   return NextResponse.json(response, {

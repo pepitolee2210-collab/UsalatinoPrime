@@ -330,6 +330,14 @@ export interface DocumentType {
   is_active: boolean
   is_required: boolean
   is_per_minor: boolean
+  /** Alias semántico de is_per_minor — generated column tras migración 20260517. */
+  is_per_member?: boolean
+  /**
+   * Cuando is_per_member=true, restringe a qué roles aplica la expansión.
+   * NULL = todos los roles (applicant, spouse, minor). Setear ['minor'] para
+   * docs que solo aplican a hijos (ej. asylum_birth_cert_child).
+   */
+  applies_to_roles?: string[] | null
 }
 
 export type ConditionalLogic = {
