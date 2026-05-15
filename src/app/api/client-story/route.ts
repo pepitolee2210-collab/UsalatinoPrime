@@ -110,6 +110,7 @@ export async function POST(request: NextRequest) {
 
   const validTypes = [
     'client_story', 'client_witnesses', 'client_absent_parent', 'tutor_guardian',
+    'i589_part_a1', 'i589_part_a2', 'i589_part_a3', 'i589_part_a4',  // Asilo Político Parte A
     'i589_part_b1', 'i589_part_b2', 'i589_part_c1', 'i589_part_c2',
     'i360_sijs',
   ]
