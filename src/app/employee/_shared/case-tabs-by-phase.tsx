@@ -198,7 +198,11 @@ export function CaseTabsByPhase({
       {previewDoc && <PreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />}
 
       {isPhased && overview && currentPhase && (
-        <PhaseTimelineStrip overview={overview} onPhaseClick={handleScrollToPhase} />
+        <PhaseTimelineStrip
+          overview={overview}
+          serviceSlug={serviceSlug}
+          onPhaseClick={handleScrollToPhase}
+        />
       )}
 
       <div className="flex gap-1 overflow-x-auto pb-1 border-b border-gray-100">

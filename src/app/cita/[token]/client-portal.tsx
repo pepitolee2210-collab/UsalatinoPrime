@@ -155,6 +155,7 @@ export function ClientPortal(props: ClientPortalProps) {
           clientName={clientName}
           currentPhase={currentPhase}
           serviceName={serviceName}
+          serviceSlug={serviceSlug}
           phaseAsset={phaseAsset}
           quickContacts={quickContacts.filter((c) => c.is_online !== false)}
         />

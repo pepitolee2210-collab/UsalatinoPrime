@@ -148,6 +148,16 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
       }
       return
     }
+    if (form.is_special_i589) {
+      // Placeholder mientras el AcroForm I-589 no está registrado.
+      // El equipo legal arma el I-589 a partir de los documentos del cliente
+      // (pasaporte, I-94, etc.) que sube en la pestaña Documentos.
+      toast.info(
+        'Tu equipo legal armará tu I-589 a partir de los documentos que subas. Asegúrate de tener pasaporte, I-94, NTA o parole, acta de matrimonio (si aplica) y partidas de nacimiento de los hijos en la pestaña Documentos.',
+        { duration: 8000 },
+      )
+      return
+    }
     setOpenSlug(form.slug)
   }
 

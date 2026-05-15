@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import type { CasePhase } from '@/types/database'
+import { getServicePhases } from '@/lib/services/registry'
 
 /**
- * Orden + metadata de fases SIJS visible en el case-overview de Diana.
- * Otros servicios fasados (ej. asilo-politico) tienen su propia ruta de
- * overview en PR-4; este endpoint sigue dedicado a Visa Juvenil.
+ * Orden de fases SIJS — fallback usado solo cuando no se puede resolver el
+ * service_slug del caso (ej. service_id NULL). Para casos normales el
+ * endpoint deriva el orden dinámicamente desde el registry según el servicio.
  */
 const PHASE_ORDER: CasePhase[] = ['custodia', 'i360', 'i485', 'completado']
 
@@ -223,13 +224,34 @@ export async function GET(
     .eq('case_id', id)
     .order('client_submitted_at', { ascending: false, nullsFirst: false })
 
-  // 6. Agrupar por fase
+  // 6. Agrupar por fase. El orden y conjunto de fases viene del registry
+  // según el servicio (visa-juvenil → custodia/i360/i485, asilo-politico →
+  // asilo_sustentos/asilo_reforzar). Excluimos las fases marcadas isCompletion
+  // para mantener paridad con el comportamiento previo SIJS (mostraba 3 fases
+  // activas, no 4).
   const currentPhase = (caseRow.current_phase as CasePhase | null) ?? null
-  const currentPhaseIdx = currentPhase ? PHASE_ORDER.indexOf(currentPhase) : -1
+  const serviceSlug = serviceRow?.slug ?? null
 
-  const phases: PhaseGroup[] = (['custodia', 'i360', 'i485'] as const).map((p) => {
+  const orderedPhases: CasePhase[] = (() => {
+    const fromRegistry = getServicePhases(serviceSlug)
+    if (fromRegistry.length === 0) return PHASE_ORDER
+    return fromRegistry.map((p) => p.code)
+  })()
+  const activePhases = orderedPhases.filter((p) => {
+    const def = getServicePhases(serviceSlug).find((d) => d.code === p)
+    return !def?.isCompletion
+  })
+  // Fallback: si el registry no tiene el servicio, asumimos las 3 fases SIJS
+  // activas (mantiene comportamiento legacy).
+  const phasesToRender: CasePhase[] = activePhases.length > 0
+    ? activePhases
+    : (['custodia', 'i360', 'i485'] as const) as unknown as CasePhase[]
+
+  const currentPhaseIdx = currentPhase ? orderedPhases.indexOf(currentPhase) : -1
+
+  const phases: PhaseGroup[] = phasesToRender.map((p) => {
     const meta = PHASE_META[p]
-    const idx = PHASE_ORDER.indexOf(p)
+    const idx = orderedPhases.indexOf(p)
 
     // Status calculation
     let status: PhaseGroup['status'] = 'blocked'
@@ -237,7 +259,11 @@ export async function GET(
     else if (idx < currentPhaseIdx) status = 'completed'
     else if (idx === currentPhaseIdx) status = 'active'
     else status = 'blocked'
-    if (currentPhase === 'completado') status = 'archived'
+    // Si el caso ya está en la fase de cierre del servicio, todas las fases
+    // activas anteriores se marcan como archivadas. Para SIJS la completion
+    // es 'completado'; para Asilo es 'asilo_completado'.
+    const completionDef = getServicePhases(serviceSlug).find((d) => d.isCompletion)
+    if (completionDef && currentPhase === completionDef.code) status = 'archived'
 
     const completed = completedByPhase.get(p)
 

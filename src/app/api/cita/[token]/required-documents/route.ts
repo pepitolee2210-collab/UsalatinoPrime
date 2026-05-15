@@ -391,8 +391,13 @@ export async function GET(
     const memberIdx = fm?.role === 'minor' ? fm.index : null
     const rawFiles = uploadsByKey.get(uploadsKey(dt.id, role, memberIdx)) ?? []
 
-    // Docs opcionales: solo aparecen si tienen archivos.
-    if (dt.is_required === false && rawFiles.length === 0) return null
+    // Docs opcionales: en SIJS se ocultan cuando no hay archivos para no
+    // saturar al cliente con cards vacías. En Asilo Político (y futuros
+    // servicios fasados ≠ SIJS) los mostramos SIEMPRE — el cliente debe ver
+    // todos los slots disponibles para entender qué puede subir (ej. cédula,
+    // I-94, parole/NTA, etc. son opcionales pero el cliente necesita saberlo).
+    const hideOptionalEmpty = serviceSlug === 'visa-juvenil'
+    if (dt.is_required === false && rawFiles.length === 0 && hideOptionalEmpty) return null
 
     const slots: Record<string, UploadFile[]> = {}
     if (dt.slot_kind === 'single') {

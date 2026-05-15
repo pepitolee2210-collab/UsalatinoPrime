@@ -1,6 +1,7 @@
 'use client'
 
 import type { CasePhase } from '@/types/database'
+import { getServicePhases, getCompletionPhase } from '@/lib/services/registry'
 
 export interface QuickContact {
   id: number
@@ -23,6 +24,8 @@ interface InicioScreenProps {
   clientName: string
   currentPhase: CasePhase | null
   serviceName: string
+  /** Slug del servicio del caso — define qué fases mostrar en "Tu progreso". */
+  serviceSlug: string | null
   phaseAsset: PhaseAsset | null
   quickContacts: QuickContact[]
 }
@@ -65,17 +68,24 @@ const PHASE_LABELS: Record<CasePhase, { number: string; title: string; descripti
   },
 }
 
-const PHASE_ORDER: CasePhase[] = ['custodia', 'i360', 'i485']
-
 export function InicioScreen({
   clientName,
   currentPhase,
   serviceName,
+  serviceSlug,
   phaseAsset,
   quickContacts,
 }: InicioScreenProps) {
   const firstName = clientName.split(' ')[0] || 'Cliente'
-  const currentIdx = currentPhase ? PHASE_ORDER.indexOf(currentPhase) : -1
+  // Excluir la fase de cierre del timeline visible (paridad con SIJS, donde
+  // el progreso mostraba 3 fases activas, no la 4ta "completado"). Para Asilo
+  // Político mostramos las 2 fases activas (sustentos, reforzar) y ocultamos
+  // 'asilo_completado'.
+  const phaseOrder = getServicePhases(serviceSlug)
+    .filter((p) => !p.isCompletion)
+    .map((p) => p.code)
+  const currentIdx = currentPhase ? phaseOrder.indexOf(currentPhase) : -1
+  const completionPhase = getCompletionPhase(serviceSlug)
 
   return (
     <div className="ulp-screen px-6 py-6 space-y-8 max-w-2xl mx-auto">
@@ -98,8 +108,8 @@ export function InicioScreen({
         <VideoCard asset={phaseAsset} phaseTitle={currentPhase ? PHASE_LABELS[currentPhase].title : 'Tu caso'} />
       </section>
 
-      {/* ─── Timeline 3 fases ─── */}
-      {currentPhase && currentPhase !== 'completado' && (
+      {/* ─── Timeline de fases (data-driven por servicio) ─── */}
+      {currentPhase && currentPhase !== completionPhase && phaseOrder.length > 0 && (
         <section aria-labelledby="progress-title">
           <h2
             id="progress-title"
@@ -108,7 +118,7 @@ export function InicioScreen({
           >
             Tu progreso
           </h2>
-          <PhaseTimeline currentIdx={currentIdx} />
+          <PhaseTimeline currentIdx={currentIdx} phaseOrder={phaseOrder} />
         </section>
       )}
 
@@ -174,7 +184,7 @@ function VideoCard({ asset, phaseTitle }: { asset: PhaseAsset | null; phaseTitle
   )
 }
 
-function PhaseTimeline({ currentIdx }: { currentIdx: number }) {
+function PhaseTimeline({ currentIdx, phaseOrder }: { currentIdx: number; phaseOrder: CasePhase[] }) {
   return (
     <ol className="relative space-y-4 pl-8">
       <span
@@ -182,7 +192,7 @@ function PhaseTimeline({ currentIdx }: { currentIdx: number }) {
         className="absolute left-[15px] top-2 bottom-2 w-px"
         style={{ background: 'var(--color-ulp-outline-variant)' }}
       />
-      {PHASE_ORDER.map((p, idx) => {
+      {phaseOrder.map((p, idx) => {
         const def = PHASE_LABELS[p]
         const isActive = idx === currentIdx
         const isPast = idx < currentIdx

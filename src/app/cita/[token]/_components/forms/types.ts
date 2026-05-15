@@ -54,6 +54,8 @@ export interface FormSummary {
   locked_for_client: boolean
   is_special_story?: boolean
   is_special_i360?: boolean
+  /** Placeholder del I-589 (Asilo Político Fase 1) — abre modal informativo. */
+  is_special_i589?: boolean
   client_last_edit_at: string | null
   client_submitted_at: string | null
 }

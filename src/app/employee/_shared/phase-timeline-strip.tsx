@@ -3,25 +3,33 @@
 import { PHASE_TOKENS, formatCompletedAt } from './phase-tokens'
 import type { CaseOverview } from './phase-types'
 import type { CasePhase } from '@/types/database'
+import { getServicePhases } from '@/lib/services/registry'
 
 interface PhaseTimelineStripProps {
   overview: CaseOverview
+  /**
+   * Slug del servicio del caso. Se usa para resolver las fases visibles via
+   * getServicePhases (registry). Default a 'visa-juvenil' por si algún caller
+   * legacy lo omite — preserva el comportamiento SIJS.
+   */
+  serviceSlug?: string | null
   onPhaseClick?: (phase: CasePhase) => void
 }
 
-const TIMELINE_PHASES: CasePhase[] = ['custodia', 'i360', 'i485', 'completado']
-
-export function PhaseTimelineStrip({ overview, onPhaseClick }: PhaseTimelineStripProps) {
+export function PhaseTimelineStrip({ overview, serviceSlug = 'visa-juvenil', onPhaseClick }: PhaseTimelineStripProps) {
   const current = overview.case.current_phase
   if (!current) return null
 
-  const currentIdx = TIMELINE_PHASES.indexOf(current)
+  const timelinePhases = getServicePhases(serviceSlug).map((p) => p.code)
+  if (timelinePhases.length === 0) return null
+
+  const currentIdx = timelinePhases.indexOf(current)
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-4">
       <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-3">Recorrido del caso</p>
       <ol className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-1">
-        {TIMELINE_PHASES.map((phase, idx) => {
+        {timelinePhases.map((phase, idx) => {
           const tokens = PHASE_TOKENS[phase]
           const phaseGroup = overview.phases.find(p => p.phase === phase)
           const isCompleted = idx < currentIdx
@@ -58,7 +66,7 @@ export function PhaseTimelineStrip({ overview, onPhaseClick }: PhaseTimelineStri
                     : ''}
                 </span>
               </button>
-              {idx < TIMELINE_PHASES.length - 1 && (
+              {idx < timelinePhases.length - 1 && (
                 <span
                   className={`flex-1 h-0.5 mx-1 sm:mx-2 ${isCompleted ? 'bg-emerald-300' : 'bg-gray-200'}`}
                   aria-hidden

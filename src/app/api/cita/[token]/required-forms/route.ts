@@ -37,6 +37,13 @@ interface FormSummary {
   locked_for_client: boolean
   is_special_story?: boolean
   is_special_i360?: boolean
+  /**
+   * Marca el card como el placeholder del I-589 (Asilo Político). El
+   * registro completo del PDF AcroForm se hará en otra iteración; por ahora
+   * el cliente ve el card informativo y al hacer click recibe un modal
+   * "Próximamente — Diana cargará tu I-589 a partir de tus documentos".
+   */
+  is_special_i589?: boolean
   client_last_edit_at: string | null
   client_submitted_at: string | null
 }
@@ -217,6 +224,33 @@ export async function GET(
       is_special_story: true,
       client_last_edit_at: (storyRes.data?.updated_at as string | undefined) ?? null,
       client_submitted_at: (storyRes.data?.submitted_at as string | undefined) ?? null,
+    })
+  }
+
+  // Asilo Político — Fase 1 (Sustentos): placeholder del I-589.
+  // El registro AcroForm completo del I-589 (14 secciones, 200+ fields,
+  // schema + prefill) llega en otra iteración. Por ahora el cliente ve un
+  // card informativo para que entienda que el formulario lo arma su equipo
+  // legal a partir de los documentos que sube.
+  const isAsiloPolitico = serviceSlug === 'asilo-politico'
+  if (isAsiloPolitico && currentPhase === 'asilo_sustentos') {
+    summaries.unshift({
+      slug: '__i589_wizard__',
+      form_name: 'Formulario I-589 — Solicitud de Asilo',
+      description_es:
+        'Tu equipo legal armará el I-589 a partir de los documentos que subas en la pestaña Documentos. Mientras tanto, asegúrate de tener: pasaporte de cada miembro, I-94, NTA o parole, acta de matrimonio (si aplica) y partidas de nacimiento de los hijos.',
+      state: null,
+      packet_type: 'merits',
+      template_type: 'special',
+      icon: 'description',
+      total_user_fields: 0,
+      completed_user_fields: 0,
+      pct: 0,
+      instance_status: 'pending',
+      locked_for_client: true,
+      is_special_i589: true,
+      client_last_edit_at: null,
+      client_submitted_at: null,
     })
   }
 

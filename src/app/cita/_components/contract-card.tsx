@@ -26,6 +26,9 @@ const PHASE_LABELS: Record<string, string> = {
   custodia: 'En custodia',
   i360: 'I-360',
   i485: 'I-485 (ajuste de estatus)',
+  asilo_sustentos: 'Sustentos',
+  asilo_reforzar: 'Reforzar Asilo',
+  asilo_completado: 'Completado',
 }
 
 const SUBSERVICE_BADGES: Record<string, string> = {
@@ -33,6 +36,9 @@ const SUBSERVICE_BADGES: Record<string, string> = {
   i360: 'I-360',
   i485: 'I-485',
   'i360-i485': 'I-360 + I-485',
+  // Asilo Político
+  completo: 'Proceso completo',
+  'solo-reforzar': 'Solo Reforzar',
 }
 
 function formatMinors(minors: ContractMinor[]): string {
@@ -74,7 +80,7 @@ export function ContractCard({ data, href }: { data: ContractCardData; href: str
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#002855]/10 text-[#002855]">
               <FileText className="w-3.5 h-3.5" />
-              Visa Juvenil
+              {data.service_name || 'Caso'}
             </span>
             {subserviceBadge && (
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
