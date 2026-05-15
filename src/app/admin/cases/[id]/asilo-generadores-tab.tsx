@@ -2,7 +2,7 @@
 
 import { I589PartAReview } from './i589-part-a-review'
 import { CredibleFearGenerator } from './credible-fear-generator'
-import { I589PartADownloadCard } from './i589-part-a-download-card'
+import { I589DownloadCard } from './i589-download-card'
 import { Sparkles } from 'lucide-react'
 
 /**
@@ -34,7 +34,7 @@ export function AsiloGeneradoresTab({ caseId, caseNumber }: { caseId: string; ca
         </div>
       </header>
 
-      <I589PartADownloadCard caseId={caseId} caseNumber={caseNumber} />
+      <I589DownloadCard caseId={caseId} caseNumber={caseNumber} />
       <I589PartAReview caseId={caseId} caseNumber={caseNumber} />
       <CredibleFearGenerator caseId={caseId} caseNumber={caseNumber} />
     </div>
