@@ -71,24 +71,154 @@ export const I589_TEXT_FIELD_MAP: Record<string, string> = {
   marriage_date: 'form1[0].#subform[1].NotMarried[0].DateTimeField7[0]',
   marriage_place: 'form1[0].#subform[1].NotMarried[0].TextField10[3]',
 
-  // ── Página 4 — Parte A.III: Última dirección antes de EE.UU. ─────────
-  // La tabla "Residences during past 5 years" tiene 4 filas; fila 1 es
-  // la dirección anterior a EE.UU. (la fila 0 es la actual de EE.UU.).
-  // Cada fila = 4 TextField13 (street/city/state/country) + 2 dates (from/to).
-  last_address_before_us_street: 'form1[0].#subform[4].TextField13[4]',
-  last_address_before_us_city: 'form1[0].#subform[4].TextField13[5]',
-  last_address_before_us_state: 'form1[0].#subform[4].TextField13[6]',
-  last_address_before_us_country: 'form1[0].#subform[4].TextField13[7]',
-  last_address_before_us_from: 'form1[0].#subform[4].DateTimeField22[0]',
-  last_address_before_us_to: 'form1[0].#subform[4].DateTimeField23[0]',
+  // ── Página 4 — Parte A.III: Sección 1 — Última dirección antes de EE.UU.
+  // El PDF dice "List your last address where you lived before coming
+  // to the United States". Es UNA fila exclusiva, NO parte de la tabla
+  // de residencias 5-años. Mapeada a TextField13[0..3] + DateTimeField21/20.
+  last_address_before_us_street: 'form1[0].#subform[4].TextField13[0]',
+  last_address_before_us_city: 'form1[0].#subform[4].TextField13[1]',
+  last_address_before_us_state: 'form1[0].#subform[4].TextField13[2]',
+  last_address_before_us_country: 'form1[0].#subform[4].TextField13[3]',
+  last_address_before_us_from: 'form1[0].#subform[4].DateTimeField21[0]',
+  last_address_before_us_to: 'form1[0].#subform[4].DateTimeField20[0]',
 
-  // ── Padres (Parte A.III, Line 5) ──────────────────────────────────────
-  mother_name: 'form1[0].#subform[4].TextField35[0]',
-  mother_country_of_birth: 'form1[0].#subform[4].TextField35[1]',
-  mother_current_location: 'form1[0].#subform[4].TextField35[2]',
-  father_name: 'form1[0].#subform[4].TextField35[3]',
-  father_country_of_birth: 'form1[0].#subform[4].TextField35[4]',
-  father_current_location: 'form1[0].#subform[4].TextField35[5]',
+  // ── Página 4 — Sección 2: Residencias últimos 5 años ──────────────────
+  // 5 filas (slot 0 = actual EE.UU., slots 1-4 = anteriores). Cada fila:
+  // street/city/state/country + from/to.
+  residence_1_street: 'form1[0].#subform[4].TextField13[4]',
+  residence_1_city: 'form1[0].#subform[4].TextField13[5]',
+  residence_1_state: 'form1[0].#subform[4].TextField13[6]',
+  residence_1_country: 'form1[0].#subform[4].TextField13[7]',
+  residence_1_from: 'form1[0].#subform[4].DateTimeField22[0]',
+  residence_1_to: 'form1[0].#subform[4].DateTimeField23[0]',
+  residence_2_street: 'form1[0].#subform[4].TextField13[8]',
+  residence_2_city: 'form1[0].#subform[4].TextField13[9]',
+  residence_2_state: 'form1[0].#subform[4].TextField13[10]',
+  residence_2_country: 'form1[0].#subform[4].TextField13[11]',
+  residence_2_from: 'form1[0].#subform[4].DateTimeField24[0]',
+  residence_2_to: 'form1[0].#subform[4].DateTimeField25[0]',
+  residence_3_street: 'form1[0].#subform[4].TextField13[12]',
+  residence_3_city: 'form1[0].#subform[4].TextField13[13]',
+  residence_3_state: 'form1[0].#subform[4].TextField13[14]',
+  residence_3_country: 'form1[0].#subform[4].TextField13[15]',
+  residence_3_from: 'form1[0].#subform[4].DateTimeField26[0]',
+  residence_3_to: 'form1[0].#subform[4].DateTimeField27[0]',
+  residence_4_street: 'form1[0].#subform[4].TextField13[16]',
+  residence_4_city: 'form1[0].#subform[4].TextField13[17]',
+  residence_4_state: 'form1[0].#subform[4].TextField13[18]',
+  residence_4_country: 'form1[0].#subform[4].TextField13[19]',
+  residence_4_from: 'form1[0].#subform[4].DateTimeField28[0]',
+  residence_4_to: 'form1[0].#subform[4].DateTimeField29[0]',
+  residence_5_street: 'form1[0].#subform[4].TextField13[20]',
+  residence_5_city: 'form1[0].#subform[4].TextField13[21]',
+  residence_5_state: 'form1[0].#subform[4].TextField13[22]',
+  residence_5_country: 'form1[0].#subform[4].TextField13[23]',
+  residence_5_from: 'form1[0].#subform[4].DateTimeField30[0]',
+  residence_5_to: 'form1[0].#subform[4].DateTimeField31[0]',
+
+  // ── Página 4 — Sección 3: Educación últimos 5 años ────────────────────
+  // 5 filas: name_of_school / type_of_school / location / from / to.
+  // Cada fila usa 3 TextField13 + 2 DateTimeField. Índices estimados
+  // empíricamente del orden visual del PDF debug.
+  education_1_school: 'form1[0].#subform[4].TextField13[24]',
+  education_1_type: 'form1[0].#subform[4].TextField13[25]',
+  education_1_location: 'form1[0].#subform[4].TextField13[26]',
+  education_1_from: 'form1[0].#subform[4].DateTimeField32[0]',
+  education_1_to: 'form1[0].#subform[4].DateTimeField33[0]',
+  education_2_school: 'form1[0].#subform[4].TextField13[27]',
+  education_2_type: 'form1[0].#subform[4].TextField13[28]',
+  education_2_location: 'form1[0].#subform[4].TextField13[29]',
+  education_2_from: 'form1[0].#subform[4].DateTimeField34[0]',
+  education_2_to: 'form1[0].#subform[4].DateTimeField35[0]',
+  education_3_school: 'form1[0].#subform[4].TextField13[30]',
+  education_3_type: 'form1[0].#subform[4].TextField13[31]',
+  education_3_location: 'form1[0].#subform[4].TextField13[32]',
+  education_3_from: 'form1[0].#subform[4].DateTimeField36[0]',
+  education_3_to: 'form1[0].#subform[4].DateTimeField37[0]',
+  education_4_school: 'form1[0].#subform[4].TextField13[33]',
+  education_4_type: 'form1[0].#subform[4].TextField13[34]',
+  education_4_location: 'form1[0].#subform[4].TextField13[35]',
+  education_4_from: 'form1[0].#subform[4].DateTimeField38[0]',
+  education_4_to: 'form1[0].#subform[4].DateTimeField39[0]',
+  education_5_school: 'form1[0].#subform[4].TextField13[36]',
+  education_5_type: 'form1[0].#subform[4].TextField13[37]',
+  education_5_location: 'form1[0].#subform[4].TextField13[38]',
+  education_5_from: 'form1[0].#subform[4].DateTimeField40[0]',
+  education_5_to: 'form1[0].#subform[4].DateTimeField41[0]',
+
+  // ── Página 4 — Sección 4: Empleos últimos 5 años ──────────────────────
+  // 5 filas: employer (name+address) / occupation / from / to.
+  // El employer en USCIS oficial es UN solo bloque (name+address combined).
+  employment_1_employer: 'form1[0].#subform[4].TextField13[39]',
+  employment_1_occupation: 'form1[0].#subform[4].TextField13[40]',
+  employment_1_from: 'form1[0].#subform[4].DateTimeField42[0]',
+  employment_1_to: 'form1[0].#subform[4].DateTimeField43[0]',
+  employment_2_employer: 'form1[0].#subform[4].TextField13[41]',
+  employment_2_occupation: 'form1[0].#subform[4].TextField13[42]',
+  employment_2_from: 'form1[0].#subform[4].DateTimeField44[0]',
+  employment_2_to: 'form1[0].#subform[4].DateTimeField45[0]',
+  employment_3_employer: 'form1[0].#subform[4].TextField13[43]',
+  employment_3_occupation: 'form1[0].#subform[4].TextField13[44]',
+  employment_3_from: 'form1[0].#subform[4].DateTimeField46[0]',
+  employment_3_to: 'form1[0].#subform[4].DateTimeField47[0]',
+  // Filas 4 y 5: el PDF parece tener solo 3 filas visibles de employment;
+  // si hay más, USCIS pide Supplement B. Skip por ahora.
+
+  // ── Página 4 — Sección 5: Padres (Line 5) ─────────────────────────────
+  // TextField35[0..5] = Current Location de las 6 filas (mother, father,
+  // 4 siblings). Full Name + City of Birth tendrían que mapearse a otros
+  // TextField; por ahora solo current_location queda mapeado.
+  mother_current_location: 'form1[0].#subform[4].TextField35[0]',
+  father_current_location: 'form1[0].#subform[4].TextField35[1]',
+  // mother_name, mother_country_of_birth, father_name, father_country_of_birth:
+  // requieren mapeo visual adicional (TODO).
+
+  // ── Página 3 — Hijo 1 (subform[1]) ────────────────────────────────────
+  child_1_alien_number: 'form1[0].#subform[1].ChildAlien1[0]',
+  child_1_passport: 'form1[0].#subform[1].ChildPassport1[0]',
+  child_1_marital_status: 'form1[0].#subform[1].ChildMarital1[0]',
+  child_1_ssn: 'form1[0].#subform[1].ChildSSN1[0]',
+  child_1_last_name: 'form1[0].#subform[1].ChildLast1[0]',
+  child_1_first_name: 'form1[0].#subform[1].ChildFirst1[0]',
+  child_1_middle_name: 'form1[0].#subform[1].ChildMiddle1[0]',
+  child_1_dob: 'form1[0].#subform[1].ChildDOB1[0]',
+  child_1_city_of_birth: 'form1[0].#subform[1].ChildCity1[0]',
+  child_1_nationality: 'form1[0].#subform[1].ChildNat1[0]',
+  child_1_race: 'form1[0].#subform[1].ChildRace1[0]',
+
+  // ── Página 3 — Hijos 2, 3, 4 (subform[3]) ─────────────────────────────
+  child_2_alien_number: 'form1[0].#subform[3].ChildAlien2[0]',
+  child_2_passport: 'form1[0].#subform[3].ChildPassport2[0]',
+  child_2_marital_status: 'form1[0].#subform[3].ChildMarital2[0]',
+  child_2_ssn: 'form1[0].#subform[3].ChildSSN2[0]',
+  child_2_last_name: 'form1[0].#subform[3].ChildLast2[0]',
+  child_2_first_name: 'form1[0].#subform[3].ChildFirst2[0]',
+  child_2_middle_name: 'form1[0].#subform[3].ChildMiddle2[0]',
+  child_2_dob: 'form1[0].#subform[3].ChildDOB2[0]',
+  child_2_city_of_birth: 'form1[0].#subform[3].ChildCity2[0]',
+  child_2_nationality: 'form1[0].#subform[3].ChildNat2[0]',
+  child_3_alien_number: 'form1[0].#subform[3].ChildAlien3[0]',
+  child_3_passport: 'form1[0].#subform[3].ChildPassport3[0]',
+  child_3_marital_status: 'form1[0].#subform[3].ChildMarital3[0]',
+  child_3_ssn: 'form1[0].#subform[3].ChildSSN3[0]',
+  child_3_last_name: 'form1[0].#subform[3].ChildLast3[0]',
+  child_3_first_name: 'form1[0].#subform[3].ChildFirst3[0]',
+  child_3_middle_name: 'form1[0].#subform[3].ChildMiddle3[0]',
+  child_3_dob: 'form1[0].#subform[3].ChildDOB3[0]',
+  child_3_city_of_birth: 'form1[0].#subform[3].ChildCity3[0]',
+  child_3_nationality: 'form1[0].#subform[3].ChildNat3[0]',
+  child_3_race: 'form1[0].#subform[3].ChildRace3[0]',
+  child_4_alien_number: 'form1[0].#subform[3].ChildAlien4[0]',
+  child_4_passport: 'form1[0].#subform[3].ChildPassport4[0]',
+  child_4_marital_status: 'form1[0].#subform[3].ChildMarital4[0]',
+  child_4_ssn: 'form1[0].#subform[3].ChildSSN4[0]',
+  child_4_last_name: 'form1[0].#subform[3].ChildLast4[0]',
+  child_4_first_name: 'form1[0].#subform[3].ChildFirst4[0]',
+  child_4_middle_name: 'form1[0].#subform[3].ChildMiddle4[0]',
+  child_4_dob: 'form1[0].#subform[3].ChildDOB4[0]',
+  child_4_city_of_birth: 'form1[0].#subform[3].ChildCity4[0]',
+  child_4_nationality: 'form1[0].#subform[3].ChildNat4[0]',
+  child_4_race: 'form1[0].#subform[3].ChildRace4[0]',
 }
 
 /**
@@ -106,7 +236,31 @@ export const I589_RADIO_FIELD_MAP: Record<string, Record<string, string>> = {
     'Divorciado/a': 'form1[0].#subform[0].Marital[2]',
     'Viudo/a': 'form1[0].#subform[0].Marital[3]',
   },
+  // Sexo de cada hijo (CheckBox12_Sex[2/3] para hijo 1, CheckBox26/36/46 para hijos 2/3/4)
+  child_1_gender: {
+    Masculino: 'form1[0].#subform[1].CheckBox12_Sex[0]',
+    Femenino: 'form1[0].#subform[1].CheckBox12_Sex[1]',
+  },
+  child_2_gender: {
+    Masculino: 'form1[0].#subform[3].CheckBox26_Sex[0]',
+    Femenino: 'form1[0].#subform[3].CheckBox26_Sex[1]',
+  },
+  child_3_gender: {
+    Masculino: 'form1[0].#subform[3].CheckBox36_Sex[0]',
+    Femenino: 'form1[0].#subform[3].CheckBox36_Sex[1]',
+  },
+  child_4_gender: {
+    Masculino: 'form1[0].#subform[3].CheckBox46_Sex[0]',
+    Femenino: 'form1[0].#subform[3].CheckBox46_Sex[1]',
+  },
 }
+
+/**
+ * Father/Mother deceased checkbox: si vienen como 'yes', necesitamos
+ * marcar el deceased checkbox. Las posiciones específicas en el PDF
+ * USCIS requieren mapeo adicional — por ahora skip (los campos
+ * mother_deceased/father_deceased no llegan al PDF, info queda en wizard).
+ */
 
 /**
  * Map para checkboxes booleanas Yes/No. El generador marca el Yes-field

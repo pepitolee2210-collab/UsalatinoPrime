@@ -82,6 +82,217 @@ const ENTRY_STATUS_OPTIONS = [
   { value: 'Otro', label: 'Otro' },
 ]
 
+const ROWS_COUNT_OPTIONS = [
+  { value: '1', label: '1' },
+  { value: '2', label: '2' },
+  { value: '3', label: '3' },
+  { value: '4', label: '4' },
+  { value: '5', label: '5' },
+]
+
+/**
+ * Construye una sección por hijo (1..4), visible si `children_count` >= N.
+ * Cada sección agrupa los datos USCIS que el PDF I-589 espera por hijo:
+ * nombre, fecha de nacimiento, ciudad/país, nacionalidad, A-Number,
+ * pasaporte, SSN, estado civil, sexo.
+ *
+ * showIf usa `equals: [...]` con todos los valores ≥ N: el wizard ya
+ * soporta arrays en `equals`, así no necesitamos extender el engine.
+ */
+function buildChildSections(): I589Section[] {
+  const out: I589Section[] = []
+  for (let n = 1; n <= 4; n++) {
+    const valuesGte = ['5+'] as string[]
+    for (let v = n; v <= 4; v++) valuesGte.push(String(v))
+    const showIf = { key: 'children_count', equals: valuesGte }
+
+    out.push({
+      title: `Hijo ${n}`,
+      description:
+        n === 1
+          ? 'Datos del primer hijo. Todos los campos van directo al PDF oficial.'
+          : `Datos del hijo ${n}. Se muestran porque indicaste tener ${n} o más hijos.`,
+      fields: [
+        { key: `child_${n}_last_name`, label: 'Apellido', type: 'text', showIf },
+        { key: `child_${n}_first_name`, label: 'Nombre', type: 'text', showIf },
+        { key: `child_${n}_middle_name`, label: 'Segundo nombre', type: 'text', showIf },
+        { key: `child_${n}_dob`, label: 'Fecha de nacimiento', type: 'date', showIf },
+        { key: `child_${n}_city_of_birth`, label: 'Ciudad de nacimiento', type: 'text', showIf },
+        { key: `child_${n}_nationality`, label: 'Nacionalidad', type: 'country', showIf },
+        { key: `child_${n}_alien_number`, label: 'Número A (si tiene)', type: 'a_number', showIf },
+        { key: `child_${n}_passport`, label: 'Número de pasaporte (si tiene)', type: 'text', showIf },
+        { key: `child_${n}_ssn`, label: 'SSN (si tiene)', type: 'ssn', showIf },
+        {
+          key: `child_${n}_marital_status`,
+          label: 'Estado civil',
+          type: 'select',
+          options: MARITAL_OPTIONS,
+          showIf,
+        },
+        {
+          key: `child_${n}_gender`,
+          label: 'Sexo',
+          type: 'select',
+          options: SEX_OPTIONS,
+          showIf,
+        },
+      ],
+    })
+  }
+  return out
+}
+
+/**
+ * Construye 5 secciones de residencias (residence_1..5). La primera
+ * (residence_1) es siempre visible cuando el usuario indica ≥ 1 fila.
+ * El usuario selecciona cuántas filas con `residence_count` (1-5).
+ */
+function buildResidenceSections(): I589Section[] {
+  const out: I589Section[] = []
+  for (let n = 1; n <= 5; n++) {
+    const valuesGte: string[] = []
+    for (let v = n; v <= 5; v++) valuesGte.push(String(v))
+    const showIf = { key: 'residence_count', equals: valuesGte }
+
+    out.push({
+      title: `Residencia ${n}`,
+      description: n === 1
+        ? 'Tu residencia actual en EE.UU. (más reciente).'
+        : `Residencia anterior ${n - 1}. Lista desde la más reciente.`,
+      fields: [
+        { key: `residence_${n}_street`, label: 'Calle y número', type: 'text', showIf },
+        { key: `residence_${n}_city`, label: 'Ciudad', type: 'text', showIf },
+        {
+          key: `residence_${n}_state`,
+          label: 'Estado / Departamento / Provincia',
+          type: 'text',
+          showIf,
+        },
+        { key: `residence_${n}_country`, label: 'País', type: 'country', showIf },
+        {
+          key: `residence_${n}_from`,
+          label: 'Desde (mes/año)',
+          type: 'text',
+          placeholder: '03/2018',
+          showIf,
+        },
+        {
+          key: `residence_${n}_to`,
+          label: 'Hasta (mes/año)',
+          type: 'text',
+          placeholder: '01/2024',
+          showIf,
+        },
+      ],
+    })
+  }
+  return out
+}
+
+/**
+ * Construye 5 secciones de empleos (employment_1..5).
+ */
+function buildEmploymentSections(): I589Section[] {
+  const out: I589Section[] = []
+  for (let n = 1; n <= 5; n++) {
+    const valuesGte: string[] = []
+    for (let v = n; v <= 5; v++) valuesGte.push(String(v))
+    const showIf = { key: 'employment_count', equals: valuesGte }
+
+    out.push({
+      title: `Empleo ${n}`,
+      description: n === 1
+        ? 'Tu empleo más reciente (o actual).'
+        : `Empleo anterior ${n - 1}.`,
+      fields: [
+        {
+          key: `employment_${n}_employer`,
+          label: 'Nombre y dirección del empleador',
+          help: 'Ej: Restaurant ABC, 123 Main St, Houston TX',
+          type: 'textarea',
+          showIf,
+        },
+        {
+          key: `employment_${n}_occupation`,
+          label: 'Tu ocupación / cargo',
+          type: 'text',
+          showIf,
+        },
+        {
+          key: `employment_${n}_from`,
+          label: 'Desde (mes/año)',
+          type: 'text',
+          placeholder: '03/2020',
+          showIf,
+        },
+        {
+          key: `employment_${n}_to`,
+          label: 'Hasta (mes/año)',
+          type: 'text',
+          placeholder: 'Presente o 01/2024',
+          showIf,
+        },
+      ],
+    })
+  }
+  return out
+}
+
+/**
+ * Construye 5 secciones de educación (education_1..5).
+ */
+function buildEducationSections(): I589Section[] {
+  const out: I589Section[] = []
+  for (let n = 1; n <= 5; n++) {
+    const valuesGte: string[] = []
+    for (let v = n; v <= 5; v++) valuesGte.push(String(v))
+    const showIf = { key: 'education_count', equals: valuesGte }
+
+    out.push({
+      title: `Educación ${n}`,
+      description: n === 1
+        ? 'La escuela/institución más reciente a la que asististe.'
+        : `Educación anterior ${n - 1}.`,
+      fields: [
+        {
+          key: `education_${n}_school`,
+          label: 'Nombre de la escuela / institución',
+          type: 'text',
+          showIf,
+        },
+        {
+          key: `education_${n}_type`,
+          label: 'Tipo de escuela',
+          help: 'Ej: Primaria, Secundaria, Universidad, Curso técnico',
+          type: 'text',
+          showIf,
+        },
+        {
+          key: `education_${n}_location`,
+          label: 'Ubicación (ciudad, país)',
+          type: 'text',
+          showIf,
+        },
+        {
+          key: `education_${n}_from`,
+          label: 'Desde (mes/año)',
+          type: 'text',
+          placeholder: '03/2010',
+          showIf,
+        },
+        {
+          key: `education_${n}_to`,
+          label: 'Hasta (mes/año)',
+          type: 'text',
+          placeholder: '11/2015',
+          showIf,
+        },
+      ],
+    })
+  }
+  return out
+}
+
 export const I589_PART_A_STEPS: I589Step[] = [
   {
     id: 'a1',
@@ -306,7 +517,7 @@ export const I589_PART_A_STEPS: I589Step[] = [
       {
         title: 'Hijos',
         description:
-          'Cuéntanos cuántos hijos tienes. En este formulario solo necesitamos resumen — los datos detallados de cada hijo ya los capturamos en tu contrato.',
+          'Cuéntanos cuántos hijos tienes. Si tienes hasta 4, te pediremos los datos de cada uno (USCIS los requiere).',
         fields: [
           {
             key: 'has_children',
@@ -318,9 +529,15 @@ export const I589_PART_A_STEPS: I589Step[] = [
             key: 'children_count',
             label: '¿Cuántos hijos tienes en total?',
             help:
-              'Incluye hijos en cualquier país, biológicos o adoptados.',
-            type: 'text',
-            placeholder: 'Ej: 3',
+              'Incluye hijos en cualquier país, biológicos o adoptados. Si tienes más de 4, los datos extra los completará Diana en una sesión guiada.',
+            type: 'select',
+            options: [
+              { value: '1', label: '1' },
+              { value: '2', label: '2' },
+              { value: '3', label: '3' },
+              { value: '4', label: '4' },
+              { value: '5+', label: '5 o más' },
+            ],
             showIf: { key: 'has_children', equals: 'yes' },
           },
           {
@@ -340,6 +557,7 @@ export const I589_PART_A_STEPS: I589Step[] = [
           },
         ],
       },
+      ...buildChildSections(),
     ],
   },
   {
@@ -385,30 +603,50 @@ export const I589_PART_A_STEPS: I589Step[] = [
         ],
       },
       {
-        title: 'Resumen de últimos 5 años',
+        title: 'Residencias últimos 5 años',
         description:
-          'Aquí pedimos solo un resumen — Diana llenará los detalles contigo en una sesión guiada.',
+          '¿En cuántos lugares has vivido en los últimos 5 años? Empieza por el más reciente. Cada uno va a una fila del PDF oficial.',
         fields: [
           {
-            key: 'residences_summary',
-            label: 'Resumen de las direcciones donde viviste en los últimos 5 años',
-            help: 'Lista cada lugar con ciudad, país y fechas aproximadas.',
-            type: 'textarea',
-          },
-          {
-            key: 'employment_summary',
-            label: 'Resumen de tus empleos en los últimos 5 años',
-            help: 'Empleador, cargo, ciudad/país, fechas aproximadas.',
-            type: 'textarea',
-          },
-          {
-            key: 'education_summary',
-            label: 'Resumen de tu educación',
-            help: 'Escuelas, institutos, universidades. Tipo de estudio y fechas.',
-            type: 'textarea',
+            key: 'residence_count',
+            label: '¿Cuántas residencias quieres listar?',
+            type: 'select',
+            options: ROWS_COUNT_OPTIONS,
+            required: true,
           },
         ],
       },
+      ...buildResidenceSections(),
+      {
+        title: 'Empleos últimos 5 años',
+        description:
+          '¿En cuántos lugares has trabajado en los últimos 5 años? Empieza por el más reciente.',
+        fields: [
+          {
+            key: 'employment_count',
+            label: '¿Cuántos empleos quieres listar?',
+            type: 'select',
+            options: ROWS_COUNT_OPTIONS,
+            required: true,
+          },
+        ],
+      },
+      ...buildEmploymentSections(),
+      {
+        title: 'Educación',
+        description:
+          '¿En cuántas escuelas/instituciones estudiaste? Empieza por la más reciente.',
+        fields: [
+          {
+            key: 'education_count',
+            label: '¿Cuántas escuelas quieres listar?',
+            type: 'select',
+            options: ROWS_COUNT_OPTIONS,
+            required: true,
+          },
+        ],
+      },
+      ...buildEducationSections(),
       {
         title: 'Tus padres',
         fields: [
