@@ -10,7 +10,7 @@ const log = createLogger('credible-fear')
  * cambies el system prompt, suma uno a la versión — así puedes correlacionar
  * la calidad del output con la versión del prompt en `case_credible_fear_drafts`.
  */
-export const CREDIBLE_FEAR_PROMPT_VERSION = '2026-05-15-v3'
+export const CREDIBLE_FEAR_PROMPT_VERSION = '2026-05-15-v4'
 
 const CREDIBLE_FEAR_SYSTEM = `
 Eres un paralegal senior preparando casos de Asilo Político ante USCIS. Tu tarea es redactar el relato formal de Miedo Creíble en ESPAÑOL siguiendo el formato oficial que la firma usa para presentar a USCIS, replicando exactamente la estructura de modelos previos aprobados por el equipo legal.

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { generateCredibleFear } from '@/lib/ai/generate-credible-fear'
 import { extractDocumentsForCase } from '@/lib/ai/extract-documents'
+import { loadI589WizardData } from '@/lib/ai/load-i589-wizard'
 import { logActivity } from '@/lib/activity/log-activity'
 import { createLogger } from '@/lib/logger'
 
@@ -101,12 +102,21 @@ export async function POST(request: NextRequest) {
     log.warn('extract docs falló (continuando sin OCR)', { caseId, err: String(err) })
   })
 
-  const { data: affidavitDocs } = await service
+  // Cargar SOLO el affidavit personal del cliente. Si no hay match por
+  // code, fallback a todos los docs (compatibilidad con casos viejos sin
+  // tipo asignado).
+  const { data: allDocs } = await service
     .from('documents')
-    .select('id, extracted_text, name')
+    .select('id, extracted_text, name, document_type:document_types(code)')
     .eq('case_id', caseId)
     .order('created_at', { ascending: false })
-  const affidavitText = (affidavitDocs ?? [])
+
+  const affidavitOnly = (allDocs ?? []).filter((d) => {
+    const dt = Array.isArray(d.document_type) ? d.document_type[0] : d.document_type
+    return dt?.code === 'asylum_personal_affidavit'
+  })
+  const affidavitDocs = affidavitOnly.length > 0 ? affidavitOnly : (allDocs ?? [])
+  const affidavitText = affidavitDocs
     .map((d) => d.extracted_text)
     .filter(Boolean)
     .join('\n\n---\n\n')
@@ -130,8 +140,18 @@ export async function POST(request: NextRequest) {
     .filter((u) => u.reachable !== false)
     .map((u) => ({ url: u.url, title: u.title, description: u.description }))
 
-  // I-589 parts 1-5 ya capturadas en form_data o case_form_submissions
-  const i589Data: Record<string, unknown> = { ...(caseRow.form_data ?? {}) }
+  // Wizard del cliente vive en `case_form_submissions` (los 4 sub-forms
+  // i589_part_a1..a4). Lo mergeamos con `cases.form_data` legacy como
+  // fallback no destructivo: si un caso viejo tiene data en form_data
+  // pero no en submissions, igual llega al prompt.
+  const wizardData = await loadI589WizardData(caseId)
+  const i589Data: Record<string, unknown> = {
+    ...(caseRow.form_data ?? {}),
+    ...wizardData, // wizard gana en colisión
+    profile_first_name: profileData?.first_name,
+    profile_last_name: profileData?.last_name,
+    profile_country: country,
+  }
 
   // Generar (puede tomar 5-15s)
   const result = await generateCredibleFear({
