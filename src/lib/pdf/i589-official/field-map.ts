@@ -72,47 +72,50 @@ export const I589_TEXT_FIELD_MAP: Record<string, string> = {
   marriage_place: 'form1[0].#subform[1].NotMarried[0].TextField10[3]',
 
   // ── Página 4 — Parte A.III: Sección 1 — Última dirección antes de EE.UU.
-  // El PDF dice "List your last address where you lived before coming
-  // to the United States". Es UNA fila exclusiva, NO parte de la tabla
-  // de residencias 5-años. Mapeada a TextField13[0..3] + DateTimeField21/20.
+  // Patrón XFA: dentro de un grupo de 2 filas en una misma tabla, los
+  // índices PARES van a la fila 1, IMPARES a la fila 2 (NOT secuencial).
+  // Sección 1 tiene 2 filas en USCIS (1: last address general, 2: last
+  // address en el país de persecución si distinto). Usamos solo la fila 1.
   last_address_before_us_street: 'form1[0].#subform[4].TextField13[0]',
-  last_address_before_us_city: 'form1[0].#subform[4].TextField13[1]',
-  last_address_before_us_state: 'form1[0].#subform[4].TextField13[2]',
-  last_address_before_us_country: 'form1[0].#subform[4].TextField13[3]',
+  last_address_before_us_city: 'form1[0].#subform[4].TextField13[2]',
+  last_address_before_us_state: 'form1[0].#subform[4].TextField13[4]',
+  last_address_before_us_country: 'form1[0].#subform[4].TextField13[6]',
   last_address_before_us_from: 'form1[0].#subform[4].DateTimeField21[0]',
   last_address_before_us_to: 'form1[0].#subform[4].DateTimeField20[0]',
 
-  // ── Página 4 — Sección 2: Residencias últimos 5 años ──────────────────
-  // 5 filas (slot 0 = actual EE.UU., slots 1-4 = anteriores). Cada fila:
-  // street/city/state/country + from/to.
-  residence_1_street: 'form1[0].#subform[4].TextField13[4]',
-  residence_1_city: 'form1[0].#subform[4].TextField13[5]',
-  residence_1_state: 'form1[0].#subform[4].TextField13[6]',
-  residence_1_country: 'form1[0].#subform[4].TextField13[7]',
+  // ── Página 4 — Sección 2: Residencias últimos 5 años (5 filas) ────────
+  // Mismo patrón par/impar dentro de bloques de 2 filas:
+  //   Fila 1 = pares [8,10,12,14], Fila 2 = impares [9,11,13,15]
+  //   Fila 3 = pares [16,18,20,22], Fila 4 = impares [17,19,21,23]
+  //   Fila 5 = pares [24,26,28,30]
+  residence_1_street: 'form1[0].#subform[4].TextField13[8]',
+  residence_1_city: 'form1[0].#subform[4].TextField13[10]',
+  residence_1_state: 'form1[0].#subform[4].TextField13[12]',
+  residence_1_country: 'form1[0].#subform[4].TextField13[14]',
   residence_1_from: 'form1[0].#subform[4].DateTimeField22[0]',
   residence_1_to: 'form1[0].#subform[4].DateTimeField23[0]',
-  residence_2_street: 'form1[0].#subform[4].TextField13[8]',
-  residence_2_city: 'form1[0].#subform[4].TextField13[9]',
-  residence_2_state: 'form1[0].#subform[4].TextField13[10]',
-  residence_2_country: 'form1[0].#subform[4].TextField13[11]',
+  residence_2_street: 'form1[0].#subform[4].TextField13[9]',
+  residence_2_city: 'form1[0].#subform[4].TextField13[11]',
+  residence_2_state: 'form1[0].#subform[4].TextField13[13]',
+  residence_2_country: 'form1[0].#subform[4].TextField13[15]',
   residence_2_from: 'form1[0].#subform[4].DateTimeField24[0]',
   residence_2_to: 'form1[0].#subform[4].DateTimeField25[0]',
-  residence_3_street: 'form1[0].#subform[4].TextField13[12]',
-  residence_3_city: 'form1[0].#subform[4].TextField13[13]',
-  residence_3_state: 'form1[0].#subform[4].TextField13[14]',
-  residence_3_country: 'form1[0].#subform[4].TextField13[15]',
+  residence_3_street: 'form1[0].#subform[4].TextField13[16]',
+  residence_3_city: 'form1[0].#subform[4].TextField13[18]',
+  residence_3_state: 'form1[0].#subform[4].TextField13[20]',
+  residence_3_country: 'form1[0].#subform[4].TextField13[22]',
   residence_3_from: 'form1[0].#subform[4].DateTimeField26[0]',
   residence_3_to: 'form1[0].#subform[4].DateTimeField27[0]',
-  residence_4_street: 'form1[0].#subform[4].TextField13[16]',
-  residence_4_city: 'form1[0].#subform[4].TextField13[17]',
-  residence_4_state: 'form1[0].#subform[4].TextField13[18]',
-  residence_4_country: 'form1[0].#subform[4].TextField13[19]',
+  residence_4_street: 'form1[0].#subform[4].TextField13[17]',
+  residence_4_city: 'form1[0].#subform[4].TextField13[19]',
+  residence_4_state: 'form1[0].#subform[4].TextField13[21]',
+  residence_4_country: 'form1[0].#subform[4].TextField13[23]',
   residence_4_from: 'form1[0].#subform[4].DateTimeField28[0]',
   residence_4_to: 'form1[0].#subform[4].DateTimeField29[0]',
-  residence_5_street: 'form1[0].#subform[4].TextField13[20]',
-  residence_5_city: 'form1[0].#subform[4].TextField13[21]',
-  residence_5_state: 'form1[0].#subform[4].TextField13[22]',
-  residence_5_country: 'form1[0].#subform[4].TextField13[23]',
+  residence_5_street: 'form1[0].#subform[4].TextField13[24]',
+  residence_5_city: 'form1[0].#subform[4].TextField13[26]',
+  residence_5_state: 'form1[0].#subform[4].TextField13[28]',
+  residence_5_country: 'form1[0].#subform[4].TextField13[30]',
   residence_5_from: 'form1[0].#subform[4].DateTimeField30[0]',
   residence_5_to: 'form1[0].#subform[4].DateTimeField31[0]',
 
