@@ -141,13 +141,17 @@ export async function POST(request: NextRequest) {
       deduplicationId: `appeal-letter:${inserted.id}`,
     })
   } catch (err) {
-    log.error('enqueue QStash falló', { caseId, err })
-    // Marcar el draft como fallido para que el UI lo refleje
+    const msg = err instanceof Error ? err.message : String(err)
+    log.error('enqueue QStash falló', { caseId, workerUrl, err: msg })
+    // Marcar el draft como fallido para que el UI lo refleje (incluye detalle).
     await service
       .from('case_appeal_letter_drafts')
-      .update({ status: 'failed', error_message: 'No se pudo encolar el job' })
+      .update({ status: 'failed', error_message: `Encolar QStash: ${msg.slice(0, 500)}` })
       .eq('id', inserted.id)
-    return NextResponse.json({ error: 'Error al encolar el job' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Error al encolar el job', detail: msg, workerUrl },
+      { status: 500 },
+    )
   }
 
   await logActivity({
