@@ -372,6 +372,26 @@ export interface ServicePhaseAsset {
   description_es?: string | null
 }
 
+export interface AppealLetterDraft {
+  id: string
+  case_id: string
+  version: number
+  body_md: string
+  sources?: Array<{ url: string; title?: string; snippet?: string }> | null
+  model_used?: string | null
+  prompt_version?: string | null
+  generated_at: string
+  generated_by?: string | null
+  is_current: boolean
+  edited_by_diana: boolean
+  edited_at?: string | null
+  input_tokens?: number | null
+  output_tokens?: number | null
+  cache_read_tokens?: number | null
+  cache_creation_tokens?: number | null
+  generation_seconds?: number | null
+}
+
 export interface QuickContactRow {
   id: number
   name: string

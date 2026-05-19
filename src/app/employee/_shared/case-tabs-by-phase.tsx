@@ -11,6 +11,7 @@ import { ParentalConsentGenerator } from '@/app/admin/cases/[id]/parental-consen
 import { SupplementaryDataForm } from '@/app/admin/cases/[id]/supplementary-data-form'
 import { JurisdictionPanel } from '@/app/admin/cases/[id]/jurisdiction-panel'
 import { PhaseHistoryTab } from '@/app/admin/cases/[id]/phase-history-tab'
+import { AppealLetterGenerator } from '@/app/admin/cases/[id]/appeal-letter-generator'
 import { NotesTab } from './notes-tab'
 import { PhaseAccordion } from './phase-accordion'
 import { PhaseDocumentList } from './phase-document-list'
@@ -43,6 +44,7 @@ export type TabId =
   | 'cobranza'
   | 'credible-fear'
   | 'i589-part-a'
+  | 'carta-apelacion'
 
 interface FormSub {
   form_type: string
@@ -98,6 +100,7 @@ export function CaseTabsByPhase({
   const currentPhase = overview?.case.current_phase ?? null
   const isPhased = isPhasedService(serviceSlug)
   const isVisaJuvenil = serviceSlug === 'visa-juvenil'
+  const isApelacion = serviceSlug === 'apelacion'
 
   const tabs: { id: TabId; label: string; count?: number }[] = useMemo(() => {
     const baseTabs: { id: TabId; label: string; count?: number }[] = [
@@ -120,11 +123,14 @@ export function CaseTabsByPhase({
         { id: 'generadores', label: 'Generadores' },
       )
     }
+    if (isApelacion) {
+      baseTabs.push({ id: 'carta-apelacion', label: 'Carta de Apelación (IA)' })
+    }
     for (const t of extraTabs) {
       baseTabs.push({ id: t.id, label: t.label, count: t.count })
     }
     return baseTabs
-  }, [overview, isPhased, isVisaJuvenil, extraTabs])
+  }, [overview, isPhased, isVisaJuvenil, isApelacion, extraTabs])
 
   const handleScrollToPhase = (phase: CasePhase) => {
     const el = document.getElementById(`phase-section-${phase}`)
@@ -436,6 +442,11 @@ export function CaseTabsByPhase({
           formSubmissions={formSubmissions}
           currentPhase={currentPhase}
         />
+      )}
+
+      {/* === CARTA DE APELACIÓN (solo apelación) === */}
+      {tab === 'carta-apelacion' && isApelacion && (
+        <AppealLetterGenerator caseId={caseId} caseNumber={caseNumber} />
       )}
 
       {/* === Tabs extra (Mi Trabajo) === */}

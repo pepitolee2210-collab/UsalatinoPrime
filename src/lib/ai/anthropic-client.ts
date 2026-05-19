@@ -121,6 +121,126 @@ export async function generateText(params: GenerateTextParams): Promise<string> 
   return text
 }
 
+/**
+ * Documento PDF a enviar como content block nativo a Claude.
+ * Claude "ve" el PDF (texto + layout + firmas) — útil para documentos legales
+ * donde el formato visual importa. Más caro que solo-texto, mitigable con
+ * `cacheable: true` para templates estáticos.
+ */
+export interface DocumentInput {
+  /** Bytes crudos del PDF (cualquier ArrayBufferLike). */
+  pdfBytes: Uint8Array | Buffer
+  /** Título descriptivo. Aparece en logs y el modelo lo usa para referenciarlo. */
+  title: string
+  /**
+   * Si true, marca este documento con `cache_control: ephemeral`. Úsalo solo
+   * para PDFs que NO cambian entre llamadas (templates de referencia). PDFs
+   * variables (datos del cliente) NO deben cachearse — desperdicia el budget.
+   */
+  cacheable?: boolean
+}
+
+export interface GenerateWithDocumentsParams {
+  system: string
+  extraSystem?: string
+  /** PDFs adjuntos al user message. Se envían como content blocks `type: document`. */
+  documents: DocumentInput[]
+  /** Texto del user message que acompaña a los PDFs (prompt + metadata). */
+  userText: string
+  maxTokens?: number
+  signal?: AbortSignal
+  logLabel?: string
+}
+
+export interface UsageStats {
+  inputTokens: number
+  outputTokens: number
+  cacheReadTokens: number
+  cacheCreationTokens: number
+}
+
+/**
+ * Variante de `generateText` que adjunta PDFs nativos al user message.
+ * Soporta Claude 3.5 Sonnet+ y Opus 4.x (que es nuestro modelo por defecto).
+ *
+ * Devuelve tanto el texto como las estadísticas de uso, porque los callers
+ * (apelación, futuros) querrán persistirlas para auditar costos por draft.
+ */
+export async function generateTextWithDocuments(
+  params: GenerateWithDocumentsParams
+): Promise<{ text: string; usage: UsageStats; stopReason: string | null }> {
+  const client = getAnthropic()
+
+  const systemBlocks: Anthropic.TextBlockParam[] = [
+    { type: 'text', text: params.system, cache_control: { type: 'ephemeral' } },
+  ]
+  if (params.extraSystem) {
+    systemBlocks.push({
+      type: 'text',
+      text: params.extraSystem,
+      cache_control: { type: 'ephemeral' },
+    })
+  }
+
+  // Construir content blocks: documentos primero (Anthropic recomienda PDFs
+  // ANTES del texto del prompt), luego el texto.
+  const userContent: Anthropic.ContentBlockParam[] = []
+  for (const doc of params.documents) {
+    const bytes = doc.pdfBytes instanceof Buffer ? doc.pdfBytes : Buffer.from(doc.pdfBytes)
+    const block: Anthropic.DocumentBlockParam = {
+      type: 'document',
+      source: {
+        type: 'base64',
+        media_type: 'application/pdf',
+        data: bytes.toString('base64'),
+      },
+      title: doc.title,
+      ...(doc.cacheable ? { cache_control: { type: 'ephemeral' } } : {}),
+    }
+    userContent.push(block)
+  }
+  userContent.push({ type: 'text', text: params.userText })
+
+  const stream = client.messages.stream(
+    {
+      model: CLAUDE_MODEL,
+      max_tokens: params.maxTokens ?? 8192,
+      thinking: { type: 'adaptive' },
+      system: systemBlocks,
+      messages: [{ role: 'user', content: userContent }],
+    },
+    { signal: params.signal },
+  )
+
+  const message = await stream.finalMessage()
+
+  const text = message.content
+    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+    .map(b => b.text)
+    .join('')
+    .trim()
+
+  if (!text) {
+    throw new Error('Claude devolvió respuesta vacía')
+  }
+
+  const usage = message.usage
+  const stats: UsageStats = {
+    inputTokens: usage?.input_tokens ?? 0,
+    outputTokens: usage?.output_tokens ?? 0,
+    cacheReadTokens: usage?.cache_read_input_tokens ?? 0,
+    cacheCreationTokens: usage?.cache_creation_input_tokens ?? 0,
+  }
+  log.info(params.logLabel || 'generateTextWithDocuments', {
+    documents: params.documents.length,
+    cacheableDocs: params.documents.filter(d => d.cacheable).length,
+    ...stats,
+    stopReason: message.stop_reason,
+  })
+
+  return { text, usage: stats, stopReason: message.stop_reason ?? null }
+}
+
 export interface StreamTextParams extends Omit<GenerateTextParams, 'logLabel'> {
   /** Mensajes previos del chat (opcional). El último user va en `user`. */
   history?: Array<{ role: 'user' | 'assistant'; content: string }>
