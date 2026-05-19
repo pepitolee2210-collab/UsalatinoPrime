@@ -128,15 +128,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Error al iniciar la generación' }, { status: 500 })
   }
 
-  // Encolar QStash → worker
-  const baseUrl =
-    process.env.NEXT_PUBLIC_APP_URL ||
-    process.env.VERCEL_URL?.startsWith('http')
-      ? process.env.VERCEL_URL
-      : process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : 'https://app.usalatinoprime.com'
-  const workerUrl = `${baseUrl}/api/workers/generate-appeal-letter`
+  // Encolar QStash → worker.
+  // Usamos el origin del request actual — QStash necesita una URL HTTPS pública
+  // y siempre debe llegar al MISMO deploy que recibió el POST inicial (para
+  // que `verifyQStashSignature` use la misma signing key).
+  const workerUrl = `${request.nextUrl.origin}/api/workers/generate-appeal-letter`
 
   try {
     await enqueueJob({
