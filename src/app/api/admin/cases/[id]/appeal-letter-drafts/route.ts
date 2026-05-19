@@ -35,7 +35,7 @@ export async function GET(
   const { data, error } = await service
     .from('case_appeal_letter_drafts')
     .select(
-      'id, version, body_md, model_used, prompt_version, generated_at, is_current, edited_by_diana, input_tokens, output_tokens, cache_read_tokens, generation_seconds',
+      'id, version, body_md, model_used, prompt_version, generated_at, is_current, edited_by_diana, input_tokens, output_tokens, cache_read_tokens, generation_seconds, status, error_message, job_started_at, job_finished_at',
     )
     .eq('case_id', id)
     .order('version', { ascending: false })
