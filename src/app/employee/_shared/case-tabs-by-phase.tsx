@@ -19,7 +19,7 @@ import { PhaseFormsList } from './phase-forms-list'
 import { PhaseEmptyState } from './phase-empty-state'
 import { ReopenPhaseButton } from './reopen-phase-button'
 import { PhaseTimelineStrip } from './phase-timeline-strip'
-import { I360Section } from './i360-section'
+import { I360FormSection } from '@/components/legal/i360-form-section'
 import type { CaseOverview, PhaseGroup, UploadFile } from './phase-types'
 import type { CasePhase } from '@/types/database'
 import { isPhasedService } from '@/lib/services/registry'
@@ -381,7 +381,12 @@ export function CaseTabsByPhase({
             >
               <div className="space-y-4">
                 {group.phase === 'i360' && (
-                  <I360Section submission={formSubmissions.find(s => s.form_type === 'i360_sijs')} />
+                  <I360FormSection
+                    caseId={caseId}
+                    caseNumber={caseNumber}
+                    clientName={clientName}
+                    submission={formSubmissions.find(s => s.form_type === 'i360_sijs')}
+                  />
                 )}
                 <PhaseFormsList forms={group.forms} caseId={caseId} onPdfGenerated={onRefresh} />
                 {group.phase === 'custodia' && group.forms.length > 0 && (

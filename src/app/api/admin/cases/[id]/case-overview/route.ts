@@ -4,6 +4,7 @@ import { createServiceClient } from '@/lib/supabase/service'
 import type { CasePhase } from '@/types/database'
 import { getServicePhases } from '@/lib/services/registry'
 import { AUTOMATED_FORMS } from '@/lib/legal/automated-forms-registry'
+import { formApplies } from '@/lib/legal/phase-form-mapping'
 
 /**
  * Orden de fases SIJS — fallback usado solo cuando no se puede resolver el
@@ -271,6 +272,24 @@ export async function GET(
   const currentPhase = (caseRow.current_phase as CasePhase | null) ?? null
   const serviceSlug = serviceRow?.slug ?? null
 
+  // I-360 (SIJS) vive en case_form_submissions, NO en case_form_instances —
+  // es un wizard especial separado del registry. Para que la pestaña
+  // Formularios refleje su existencia en el contador, lo detectamos aparte.
+  let i360HardcodedExists = false
+  let i360HardcodedSubmitted = false
+  if (serviceSlug === 'visa-juvenil') {
+    const { data: i360Sub } = await service
+      .from('case_form_submissions')
+      .select('status')
+      .eq('case_id', id)
+      .eq('form_type', 'i360_sijs')
+      .maybeSingle()
+    if (i360Sub) {
+      i360HardcodedExists = true
+      i360HardcodedSubmitted = i360Sub.status === 'submitted' || i360Sub.status === 'approved'
+    }
+  }
+
   const orderedPhases: CasePhase[] = (() => {
     const fromRegistry = getServicePhases(serviceSlug)
     if (fromRegistry.length === 0) return PHASE_ORDER
@@ -294,6 +313,20 @@ export async function GET(
         : ((['custodia', 'i360', 'i485'] as const) as unknown as CasePhase[])
 
   const currentPhaseIdx = currentPhase ? orderedPhases.indexOf(currentPhase) : -1
+
+  // Deriva la fase semántica de un form basándose en el registry cuando
+  // phase_when_submitted está NULL (forms creados/descargados antes de que
+  // el cliente los envíe, como un I-485 generado por Diana pre-submit).
+  // Esto evita el bloque "Sin fase asignada" en casos comunes.
+  const caseStateUs: string | null = caseRow.state_us ?? null
+  function effectivePhase(formName: string): CasePhase | null {
+    const def = Object.values(AUTOMATED_FORMS).find(d => d.formName === formName)
+    if (!def) return null
+    for (const ph of phasesToRender) {
+      if (formApplies(def, ph, caseStateUs)) return ph
+    }
+    return null
+  }
 
   const phases: PhaseGroup[] = phasesToRender.map((p) => {
     const meta = PHASE_META[p]
@@ -336,8 +369,15 @@ export async function GET(
       .map(d => mapUpload(d))
 
     const phaseForms = (forms ?? [])
-      .filter(f => f.phase_when_submitted === p)
+      .filter(f => (f.phase_when_submitted ?? effectivePhase(f.form_name)) === p)
       .map(mapForm)
+
+    // Sumar el wizard I-360 (case_form_submissions) al contador de Fase 2.
+    // No lo agregamos al array `forms` porque se renderiza vía I360FormSection
+    // como bloque dedicado — sólo afecta el badge visual.
+    const isI360Phase = p === 'i360'
+    const i360CountBoost = isI360Phase && i360HardcodedExists ? 1 : 0
+    const i360SubmittedBoost = isI360Phase && i360HardcodedSubmitted ? 1 : 0
 
     return {
       phase: p,
@@ -353,8 +393,8 @@ export async function GET(
         client_uploads_approved: clientUploads.filter(u => u.status === 'approved').length,
         firm_documents: firmDocuments.length,
         system_generated: systemGeneratedDocuments.length,
-        forms_total: phaseForms.length,
-        forms_submitted: phaseForms.filter(f => f.client_submitted_at != null).length,
+        forms_total: phaseForms.length + i360CountBoost,
+        forms_submitted: phaseForms.filter(f => f.client_submitted_at != null).length + i360SubmittedBoost,
       },
       documents: {
         client_uploads: clientUploads,
@@ -377,7 +417,12 @@ export async function GET(
   const legacyFirmDocuments = legacyFirmAll
     .filter(d => !isSystemGenerated(d.document_key))
     .map(mapUpload)
-  const legacyForms = (forms ?? []).filter(f => f.phase_when_submitted == null).map(mapForm)
+  // Sólo forms genuinamente huérfanos — sin phase_when_submitted Y sin fase
+  // derivable desde el registry. Antes caían acá forms como un I-485 generado
+  // pre-submit, ensuciando el panel.
+  const legacyForms = (forms ?? [])
+    .filter(f => f.phase_when_submitted == null && effectivePhase(f.form_name) == null)
+    .map(mapForm)
 
   if (
     legacyClientUploads.length > 0 ||
