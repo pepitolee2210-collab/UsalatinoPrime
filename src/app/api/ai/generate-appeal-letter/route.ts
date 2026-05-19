@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
     await enqueueJob({
       endpoint: workerUrl,
       body: { draftId: inserted.id, caseId, userId: user.id },
-      deduplicationId: `appeal-letter:${inserted.id}`,
+      deduplicationId: `appeal-letter-${inserted.id}`,
     })
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
