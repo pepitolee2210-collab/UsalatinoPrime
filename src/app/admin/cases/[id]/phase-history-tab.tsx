@@ -49,6 +49,7 @@ const PHASE_LABEL: Record<CasePhase, string> = {
   asilo_sustentos: 'Sustentos',
   asilo_reforzar: 'Reforzar Asilo',
   asilo_completado: 'Completado',
+  apelacion: 'Apelación',
 }
 
 const PHASE_COLOR: Record<CasePhase, string> = {
@@ -59,6 +60,7 @@ const PHASE_COLOR: Record<CasePhase, string> = {
   asilo_sustentos: 'bg-purple-100 text-purple-800',
   asilo_reforzar: 'bg-blue-100 text-blue-800',
   asilo_completado: 'bg-amber-100 text-amber-800',
+  apelacion: 'bg-rose-100 text-rose-800',
 }
 
 export function PhaseHistoryTab({ caseId }: PhaseHistoryTabProps) {

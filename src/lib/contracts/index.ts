@@ -275,6 +275,27 @@ const contracts: Record<string, ContractTemplate> = {
       },
     ],
   },
+  // Apelación — proceso de apelación ante la BIA (Junta de Apelaciones de
+  // Inmigración) contra una decisión adversa de un Juez de Inmigración.
+  // Servicio de UNA sola fase (`apelacion`), pago en cuotas opcional, sin
+  // minor asociado (el apelante es el adulto cuya solicitud fue denegada).
+  'apelacion': {
+    installments: true,
+    requiresMinor: false,
+    startingPhase: 'apelacion',
+    variants: [
+      { label: 'Apelación', totalPrice: 500, installmentCount: 5 },
+    ],
+    objetoDelContrato:
+      'El CONSULTOR se compromete a brindar asesoría y asistencia en la preparación y presentación de la Apelación ante la Junta de Apelaciones de Inmigración (BIA) mediante el Formulario EOIR-26 (Notice of Appeal) y, cuando aplique, el Formulario EOIR-26A (Fee Waiver Request), contra la decisión adversa emitida por el Juez de Inmigración.',
+    etapas: [
+      'Recopilación de documentación: pasaporte, solicitud de asilo completa y auto de denegación del juez',
+      'Llenado guiado del Formulario EOIR-26 (Notice of Appeal)',
+      'Llenado opcional del Formulario EOIR-26A (Fee Waiver Request) si el apelante solicita exención de tarifa',
+      'Revisión legal y firma del paquete de apelación',
+      'Presentación de la apelación ante la BIA dentro del plazo de 30 días desde la decisión',
+    ],
+  },
   'mociones': {
     installments: false,
     requiresMinor: false,

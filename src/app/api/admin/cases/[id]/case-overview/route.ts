@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import type { CasePhase } from '@/types/database'
 import { getServicePhases } from '@/lib/services/registry'
+import { AUTOMATED_FORMS } from '@/lib/legal/automated-forms-registry'
 
 /**
  * Orden de fases SIJS — fallback usado solo cuando no se puede resolver el
@@ -58,6 +59,14 @@ const PHASE_META: Record<CasePhase, PhaseMeta> = {
     icon: 'flag',
     description: 'Expediente presentado ante USCIS.',
   },
+  // Apelación — servicio de 1 sola fase (BIA). Entry requerido por tipo
+  // pero este endpoint es SIJS-only en práctica.
+  apelacion: {
+    label: 'Apelación',
+    color: 'rose',
+    icon: 'gavel',
+    description: 'Apelación ante la BIA contra la decisión adversa del Juez de Inmigración.',
+  },
 }
 
 interface UploadFile {
@@ -73,10 +82,26 @@ interface UploadFile {
   rejection_reason: string | null
   uploaded_at: string
   phase_when_uploaded: CasePhase | null
+  /** Identificador semántico (ej. `eoir-26_filled`). NULL para uploads genéricos. */
+  document_key: string | null
+  /** Path en el bucket `case-documents` de Storage. */
+  file_path: string | null
+}
+
+/**
+ * Devuelve true si el documento fue generado automáticamente por el endpoint
+ * /api/admin/case-forms/[slug]/print. Esos documentos se guardan con
+ * `document_key='<slug>_filled'` y NO deben mezclarse con archivos subidos
+ * manualmente por la firma en la pestaña "Para el Cliente".
+ */
+function isSystemGenerated(documentKey: string | null | undefined): boolean {
+  return !!documentKey && /_filled$/.test(documentKey)
 }
 
 interface FormInstance {
   id: string
+  /** Slug del AUTOMATED_FORMS registry, derivado de form_name. NULL si no es automatizado. */
+  slug: string | null
   form_name: string
   packet_type: string | null
   status: string
@@ -87,6 +112,15 @@ interface FormInstance {
   phase_when_submitted: CasePhase | null
   total_filled_keys: number
 }
+
+/**
+ * Resuelve el slug del AUTOMATED_FORMS registry por nombre del formulario.
+ * El nombre es UNIQUE en case_form_instances (constraint case_id+packet_type+form_name),
+ * y cada def del registry expone su formName.
+ */
+const FORM_NAME_TO_SLUG: Map<string, string> = new Map(
+  Object.values(AUTOMATED_FORMS).map((def) => [def.formName, def.slug]),
+)
 
 interface PhaseGroup {
   phase: CasePhase | 'sin_fase'
@@ -101,12 +135,16 @@ interface PhaseGroup {
     client_uploads: number
     client_uploads_approved: number
     firm_documents: number
+    /** PDFs/DOCX auto-generados por el endpoint /print (EOIR-26 rellenado, etc.). */
+    system_generated: number
     forms_total: number
     forms_submitted: number
   }
   documents: {
     client_uploads: UploadFile[]
     firm_documents: UploadFile[]
+    /** Bucket separado para formularios oficiales rellenados por el sistema. */
+    system_generated_documents: UploadFile[]
   }
   forms: FormInstance[]
 }
@@ -212,6 +250,7 @@ export async function GET(
     .select(`
       id, document_type_id, slot_label, name, file_type, file_size, status,
       rejection_reason, direction, phase_when_uploaded, created_at,
+      document_key, file_path,
       document_types ( name_es, category_name_es )
     `)
     .eq('case_id', id)
@@ -237,15 +276,22 @@ export async function GET(
     if (fromRegistry.length === 0) return PHASE_ORDER
     return fromRegistry.map((p) => p.code)
   })()
-  const activePhases = orderedPhases.filter((p) => {
+  const nonCompletionPhases = orderedPhases.filter((p) => {
     const def = getServicePhases(serviceSlug).find((d) => d.code === p)
     return !def?.isCompletion
   })
-  // Fallback: si el registry no tiene el servicio, asumimos las 3 fases SIJS
-  // activas (mantiene comportamiento legacy).
-  const phasesToRender: CasePhase[] = activePhases.length > 0
-    ? activePhases
-    : (['custodia', 'i360', 'i485'] as const) as unknown as CasePhase[]
+  // Para servicios de UNA sola fase marcada como isCompletion (ej. Apelación),
+  // nonCompletionPhases queda vacío — pero la fase única SÍ debe renderizarse
+  // (es la fase activa, no un "completado" archivable). Si no hay fases no-
+  // completion, mostramos las del registry tal cual.
+  // Fallback final: si el registry no tiene el servicio en absoluto, asumimos
+  // las 3 fases SIJS activas (mantiene comportamiento legacy).
+  const phasesToRender: CasePhase[] =
+    nonCompletionPhases.length > 0
+      ? nonCompletionPhases
+      : orderedPhases.length > 0
+        ? orderedPhases
+        : ((['custodia', 'i360', 'i485'] as const) as unknown as CasePhase[])
 
   const currentPhaseIdx = currentPhase ? orderedPhases.indexOf(currentPhase) : -1
 
@@ -262,18 +308,31 @@ export async function GET(
     // Si el caso ya está en la fase de cierre del servicio, todas las fases
     // activas anteriores se marcan como archivadas. Para SIJS la completion
     // es 'completado'; para Asilo es 'asilo_completado'.
+    // Excepción: si el servicio tiene UNA sola fase y ESA fase es isCompletion
+    // (ej. Apelación), no archivar — la fase es la fase activa del proceso.
     const completionDef = getServicePhases(serviceSlug).find((d) => d.isCompletion)
-    if (completionDef && currentPhase === completionDef.code) status = 'archived'
+    const onlyHasCompletionPhase = orderedPhases.length === 1 && completionDef != null
+    if (completionDef && currentPhase === completionDef.code && !onlyHasCompletionPhase) {
+      status = 'archived'
+    }
 
     const completed = completedByPhase.get(p)
 
-    // Filtrar uploads + forms
+    // Filtrar uploads + forms.
+    // Los PDFs/DOCX rellenados por el endpoint /print se guardan con
+    // document_key='{slug}_filled' y direction='admin_to_client'. Los aislamos
+    // en un bucket propio (system_generated_documents) para no contaminar la
+    // pestaña "Para el Cliente" (que debería listar solo entregables manuales).
     const phaseUploads = (documents ?? []).filter(d => d.phase_when_uploaded === p)
     const clientUploads = phaseUploads
       .filter(d => !d.direction || d.direction === 'client_to_admin')
       .map(d => mapUpload(d))
-    const firmDocuments = phaseUploads
-      .filter(d => d.direction === 'admin_to_client')
+    const firmAllUploads = phaseUploads.filter(d => d.direction === 'admin_to_client')
+    const systemGeneratedDocuments = firmAllUploads
+      .filter(d => isSystemGenerated(d.document_key))
+      .map(d => mapUpload(d))
+    const firmDocuments = firmAllUploads
+      .filter(d => !isSystemGenerated(d.document_key))
       .map(d => mapUpload(d))
 
     const phaseForms = (forms ?? [])
@@ -293,12 +352,14 @@ export async function GET(
         client_uploads: clientUploads.length,
         client_uploads_approved: clientUploads.filter(u => u.status === 'approved').length,
         firm_documents: firmDocuments.length,
+        system_generated: systemGeneratedDocuments.length,
         forms_total: phaseForms.length,
         forms_submitted: phaseForms.filter(f => f.client_submitted_at != null).length,
       },
       documents: {
         client_uploads: clientUploads,
         firm_documents: firmDocuments,
+        system_generated_documents: systemGeneratedDocuments,
       },
       forms: phaseForms,
     }
@@ -309,12 +370,21 @@ export async function GET(
   const legacyClientUploads = legacyUploads
     .filter(d => !d.direction || d.direction === 'client_to_admin')
     .map(mapUpload)
-  const legacyFirmDocuments = legacyUploads
-    .filter(d => d.direction === 'admin_to_client')
+  const legacyFirmAll = legacyUploads.filter(d => d.direction === 'admin_to_client')
+  const legacySystemGenerated = legacyFirmAll
+    .filter(d => isSystemGenerated(d.document_key))
+    .map(mapUpload)
+  const legacyFirmDocuments = legacyFirmAll
+    .filter(d => !isSystemGenerated(d.document_key))
     .map(mapUpload)
   const legacyForms = (forms ?? []).filter(f => f.phase_when_submitted == null).map(mapForm)
 
-  if (legacyClientUploads.length > 0 || legacyFirmDocuments.length > 0 || legacyForms.length > 0) {
+  if (
+    legacyClientUploads.length > 0 ||
+    legacyFirmDocuments.length > 0 ||
+    legacySystemGenerated.length > 0 ||
+    legacyForms.length > 0
+  ) {
     phases.push({
       phase: 'sin_fase',
       label: 'Sin fase asignada',
@@ -328,12 +398,14 @@ export async function GET(
         client_uploads: legacyClientUploads.length,
         client_uploads_approved: legacyClientUploads.filter(u => u.status === 'approved').length,
         firm_documents: legacyFirmDocuments.length,
+        system_generated: legacySystemGenerated.length,
         forms_total: legacyForms.length,
         forms_submitted: legacyForms.filter(f => f.client_submitted_at != null).length,
       },
       documents: {
         client_uploads: legacyClientUploads,
         firm_documents: legacyFirmDocuments,
+        system_generated_documents: legacySystemGenerated,
       },
       forms: legacyForms,
     })
@@ -376,6 +448,8 @@ type RawDocRow = {
   direction: string | null
   phase_when_uploaded: string | null
   created_at: string
+  document_key: string | null
+  file_path: string | null
   document_types: { name_es: string | null; category_name_es: string | null }
     | { name_es: string | null; category_name_es: string | null }[]
     | null
@@ -396,6 +470,8 @@ function mapUpload(d: RawDocRow): UploadFile {
     rejection_reason: d.rejection_reason,
     uploaded_at: d.created_at,
     phase_when_uploaded: (d.phase_when_uploaded as CasePhase | null) ?? null,
+    document_key: d.document_key ?? null,
+    file_path: d.file_path ?? null,
   }
 }
 
@@ -416,6 +492,7 @@ function mapForm(f: RawFormRow): FormInstance {
   const filled = f.filled_values ?? {}
   return {
     id: f.id,
+    slug: FORM_NAME_TO_SLUG.get(f.form_name) ?? null,
     form_name: f.form_name,
     packet_type: f.packet_type,
     status: f.status,

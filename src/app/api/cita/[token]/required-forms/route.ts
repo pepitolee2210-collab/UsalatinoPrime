@@ -36,6 +36,8 @@ interface FormSummary {
   pct: number
   instance_status: string | null
   locked_for_client: boolean
+  /** Si false, el formulario es opcional para el cliente (ej. EOIR-26A Fee Waiver). */
+  is_mandatory: boolean
   is_special_story?: boolean
   is_special_i360?: boolean
   /** Wizard I-589 Parte A (Asilo Político Fase 1) — abre I589PartAWizardCore. */
@@ -106,7 +108,7 @@ export async function GET(
   const [instancesRes, storyRes, i360Res] = await Promise.all([
     supabase
       .from('case_form_instances')
-      .select('form_name, filled_values, status, locked_for_client, client_last_edit_at, client_submitted_at')
+      .select('form_name, filled_values, status, locked_for_client, client_last_edit_at, client_submitted_at, is_mandatory')
       .eq('case_id', tokenData.case_id),
     supabase
       .from('case_form_submissions')
@@ -163,6 +165,11 @@ export async function GET(
       pct: total === 0 ? 100 : Math.round((completed / total) * 100),
       instance_status: instance?.status ?? null,
       locked_for_client: instance?.locked_for_client ?? false,
+      // Si ya hay instance, refleja el valor en BD; si no, hereda del registry def.
+      is_mandatory:
+        typeof instance?.is_mandatory === 'boolean'
+          ? instance.is_mandatory
+          : def.isMandatory !== false,
       client_last_edit_at: instance?.client_last_edit_at ?? null,
       client_submitted_at: instance?.client_submitted_at ?? null,
     })
@@ -194,6 +201,7 @@ export async function GET(
         : Math.min(100, Math.round((i360FieldsFilled / TOTAL_I360_FIELDS) * 100)),
       instance_status: i360Status,
       locked_for_client: false, // cliente puede seguir editando aún después de submit
+      is_mandatory: true,
       is_special_i360: true,
       client_last_edit_at: (i360Res.data?.updated_at as string | undefined) ?? null,
       client_submitted_at: (i360Res.data?.submitted_at as string | undefined) ?? null,
@@ -219,6 +227,7 @@ export async function GET(
       pct: filledKeys === 0 ? 0 : Math.min(100, Math.round((filledKeys / Math.max(totalKeys, 30)) * 100)),
       instance_status: status,
       locked_for_client: false,
+      is_mandatory: true,
       is_special_story: true,
       client_last_edit_at: (storyRes.data?.updated_at as string | undefined) ?? null,
       client_submitted_at: (storyRes.data?.submitted_at as string | undefined) ?? null,
@@ -290,6 +299,7 @@ export async function GET(
         : Math.min(100, Math.round((filledFields / TOTAL_I589_PART_A_FIELDS) * 100)),
       instance_status: allSubmitted ? 'submitted' : 'draft',
       locked_for_client: false,
+      is_mandatory: true,
       is_special_i589: true,
       client_last_edit_at: lastEdit,
       client_submitted_at: lastSubmit,
@@ -322,6 +332,7 @@ export async function GET(
       pct: Math.min(100, Math.round((filled / TARGET_URLS) * 100)),
       instance_status: filled >= TARGET_URLS ? 'submitted' : 'draft',
       locked_for_client: false,
+      is_mandatory: true,
       is_special_evidence_urls: true,
       client_last_edit_at: null,
       client_submitted_at: null,

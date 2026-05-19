@@ -80,6 +80,9 @@ const I485_PAYMENT: Pick<PhaseCategoryOverride, 'category_code' | 'category_name
 }
 
 export const PHASE_CATEGORY_OVERRIDES: Record<CasePhase, Record<string, PhaseCategoryOverride>> = {
+  // Apelación: las 3 categorías de docs vienen ya correctamente nombradas
+  // desde la BD (identidad_apelacion, expediente_apelacion). Sin overrides.
+  apelacion: {},
   custodia: {},
 
   i360: {

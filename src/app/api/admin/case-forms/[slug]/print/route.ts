@@ -55,7 +55,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
 
   const { data: caseRow, error: caseErr } = await auth.service
     .from('cases')
-    .select('id, client_id, case_number')
+    .select('id, client_id, case_number, current_phase')
     .eq('id', caseId)
     .single()
   if (caseErr || !caseRow) {
@@ -207,6 +207,10 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       status: 'uploaded',
       uploaded_by: auth.userId,
       direction: 'admin_to_client',
+      // Snapshot de la fase actual — necesario para que el documento aparezca
+      // en el acordeón correcto de la pestaña "Documentos Oficiales" (la cual
+      // agrupa por phase_when_uploaded).
+      phase_when_uploaded: caseRow.current_phase ?? null,
     })
 
     await auth.service

@@ -52,6 +52,7 @@ const SERVICE_OPTIONS = [
   { slug: 'asilo-politico', label: 'Asilo Pol\u00edtico' },
   { slug: 'ajuste-de-estatus', label: 'Ajuste de Estatus (I-485)' },
   { slug: 'visa-juvenil', label: 'Visa Juvenil (SIJS)' },
+  { slug: 'apelacion', label: 'Apelaci\u00f3n (EOIR-26 / BIA)' },
   { slug: 'cambio-de-estatus', label: 'Cambio de Estatus' },
   { slug: 'cambio-de-corte', label: 'Cambio de Corte' },
   { slug: 'mociones', label: 'Mociones' },

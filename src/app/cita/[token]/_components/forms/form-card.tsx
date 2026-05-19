@@ -11,8 +11,10 @@ export function FormCard({ form, onOpen }: FormCardProps) {
   const isComplete = form.pct === 100
   const isLocked = form.locked_for_client
   const isSubmitted = form.client_submitted_at != null
+  // Opcional explícito (default true por retro-compat con formularios existentes).
+  const isOptional = form.is_mandatory === false
 
-  let cta = 'Comenzar'
+  let cta = isOptional ? 'Comenzar (opcional)' : 'Comenzar'
   let ctaIcon = 'arrow_forward'
   let statusBadge: { label: string; bg: string; color: string } | null = null
 
@@ -32,6 +34,10 @@ export function FormCard({ form, onOpen }: FormCardProps) {
     cta = 'Bloqueado'
     ctaIcon = 'lock'
     statusBadge = { label: 'Bloqueado', bg: 'rgb(243 244 246)', color: 'rgb(107 114 128)' }
+  }
+  // Si es opcional y no hay otro badge (Enviado/Bloqueado), mostramos "Opcional".
+  if (isOptional && !statusBadge) {
+    statusBadge = { label: 'Opcional', bg: 'rgb(254 249 195)', color: 'rgb(133 77 14)' }
   }
 
   return (

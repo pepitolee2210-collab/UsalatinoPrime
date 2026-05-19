@@ -89,6 +89,21 @@ const VISA_JUVENIL_PHASES: ServicePhaseDef[] = [
   },
 ]
 
+const APELACION_PHASES: ServicePhaseDef[] = [
+  {
+    code: 'apelacion',
+    shortCode: 'apelacion',
+    label: 'Apelación',
+    number: 'Fase única',
+    description: 'Apelación ante la BIA (Junta de Apelaciones) — Notice of Appeal vía Formulario EOIR-26',
+    icon: 'gavel',
+    bgClass: 'bg-rose-100',
+    textClass: 'text-rose-800',
+    sortOrder: 0,
+    isCompletion: true,
+  },
+]
+
 const ASILO_POLITICO_PHASES: ServicePhaseDef[] = [
   {
     code: 'asilo_sustentos',
@@ -138,6 +153,12 @@ export const SERVICE_REGISTRY: Record<string, ServiceRegistryEntry> = {
     name: 'Asilo Político',
     usesPhases: true,
     phases: ASILO_POLITICO_PHASES,
+  },
+  'apelacion': {
+    slug: 'apelacion',
+    name: 'Apelación',
+    usesPhases: true,
+    phases: APELACION_PHASES,
   },
 }
 

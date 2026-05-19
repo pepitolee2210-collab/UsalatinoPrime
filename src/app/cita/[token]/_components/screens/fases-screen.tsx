@@ -76,6 +76,11 @@ const PHASE_HEADERS: Record<CasePhase, { number: string; title: string; descript
     title: 'Proceso completado',
     description: 'Expediente presentado ante USCIS.',
   },
+  apelacion: {
+    number: 'Fase única',
+    title: 'Apelación',
+    description: 'Formularios EOIR-26 y EOIR-26A (opcional) para presentar tu apelación ante la BIA.',
+  },
 }
 
 export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProps) {

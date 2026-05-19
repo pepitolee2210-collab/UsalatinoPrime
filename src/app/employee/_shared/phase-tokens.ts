@@ -114,6 +114,18 @@ export const PHASE_TOKENS: Record<PhaseKey, PhaseTokens> = {
     ring: 'ring-amber-400',
     dot: 'bg-amber-500',
   },
+  apelacion: {
+    label: 'Apelación',
+    shortLabel: 'Apelación',
+    description: 'Notice of Appeal ante la BIA (EOIR-26)',
+    icon: 'gavel',
+    bg: 'bg-rose-50',
+    bgSoft: 'bg-rose-100',
+    text: 'text-rose-800',
+    border: 'border-rose-200',
+    ring: 'ring-rose-400',
+    dot: 'bg-rose-500',
+  },
 }
 
 export const STATUS_BADGE: Record<PhaseStatus, { label: string; className: string }> = {

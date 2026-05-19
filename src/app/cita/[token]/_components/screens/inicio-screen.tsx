@@ -66,6 +66,11 @@ const PHASE_LABELS: Record<CasePhase, { number: string; title: string; descripti
     title: 'Proceso completado',
     description: '¡Tu expediente fue presentado ante USCIS!',
   },
+  apelacion: {
+    number: 'Fase única',
+    title: 'Apelación',
+    description: 'Apelación ante la BIA contra la decisión adversa del Juez de Inmigración.',
+  },
 }
 
 export function InicioScreen({

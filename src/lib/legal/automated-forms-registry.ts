@@ -175,6 +175,39 @@ import {
 } from './i485-form-schema'
 import { buildI485PrefilledValues } from './i485-prefill'
 
+import {
+  PDF_PUBLIC_PATH as EOIR_26_PDF_PUBLIC,
+  PDF_DISK_PATH as EOIR_26_PDF_DISK,
+  PDF_SHA256 as EOIR_26_SHA,
+  SCHEMA_VERSION as EOIR_26_VERSION,
+  FORM_SLUG as EOIR_26_SLUG,
+  FORM_NAME as EOIR_26_NAME,
+  FORM_DESCRIPTION_ES as EOIR_26_DESC,
+  EOIR_26_SECTIONS,
+  HARDCODED_VALUES as EOIR_26_HARDCODED,
+  REQUIRED_FOR_PRINT as EOIR_26_REQUIRED,
+  FIELD_BY_KEY as EOIR_26_FIELD_BY_KEY,
+  eoir26FormSchema as EOIR_26_ZOD_SCHEMA,
+} from './eoir-26-form-schema'
+import { buildEoir26PrefilledValues } from './eoir-26-prefill'
+
+import {
+  PDF_PUBLIC_PATH as EOIR_26A_PDF_PUBLIC,
+  PDF_DISK_PATH as EOIR_26A_PDF_DISK,
+  PDF_SHA256 as EOIR_26A_SHA,
+  SCHEMA_VERSION as EOIR_26A_VERSION,
+  FORM_SLUG as EOIR_26A_SLUG,
+  FORM_NAME as EOIR_26A_NAME,
+  FORM_DESCRIPTION_ES as EOIR_26A_DESC,
+  EOIR_26A_SECTIONS,
+  HARDCODED_VALUES as EOIR_26A_HARDCODED,
+  REQUIRED_FOR_PRINT as EOIR_26A_REQUIRED,
+  FIELD_BY_KEY as EOIR_26A_FIELD_BY_KEY,
+  eoir26aFormSchema as EOIR_26A_ZOD_SCHEMA,
+  processForPrint as eoir26aProcessForPrint,
+} from './eoir-26a-form-schema'
+import { buildEoir26aPrefilledValues } from './eoir-26a-prefill'
+
 // ──────────────────────────────────────────────────────────────────
 // Tipos públicos del registry
 // ──────────────────────────────────────────────────────────────────
@@ -248,6 +281,13 @@ export interface AutomatedFormDefinition {
    * (ej: USCIS I-485 con 728 fields y 4.8 MB). Default true.
    */
   flattenPdf?: boolean
+  /**
+   * Si false, la instancia se crea con `is_mandatory=false` en `case_form_instances`.
+   * Default true (todos los forms hasta ahora son obligatorios). Útil para
+   * formularios opcionales como EOIR-26A (Fee Waiver Request) — el cliente decide
+   * si los llena.
+   */
+  isMandatory?: boolean
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -590,6 +630,74 @@ const I485_DEFINITION: AutomatedFormDefinition = {
   flattenPdf: false,
 }
 
+// ──────────────────────────────────────────────────────────────────
+// Apelación ante la BIA — EOIR-26 (Notice of Appeal) + EOIR-26A (Fee Waiver).
+// Federales, sin estado asociado. Solo aplican a la fase 'apelacion' (ver
+// phase-form-mapping.ts). El EOIR-26A es opcional (isMandatory: false).
+// ──────────────────────────────────────────────────────────────────
+
+const EOIR_26_DEFINITION: AutomatedFormDefinition = {
+  slug: EOIR_26_SLUG,
+  formName: EOIR_26_NAME,
+  formDescriptionEs: EOIR_26_DESC,
+  states: [],                             // FEDERAL — la BIA recibe apelaciones de todo USA
+  packetType: 'merits',                   // Reusa 'merits' (sustantivo legal) — no requiere tocar CHECK constraint
+  pdfPublicPath: EOIR_26_PDF_PUBLIC,
+  pdfDiskPath: EOIR_26_PDF_DISK,
+  pdfSha256: EOIR_26_SHA,
+  schemaVersion: EOIR_26_VERSION,
+  sections: EOIR_26_SECTIONS as AutomatedFormDefinition['sections'],
+  hardcodedValues: EOIR_26_HARDCODED,
+  requiredForPrint: EOIR_26_REQUIRED,
+  fieldByKey: EOIR_26_FIELD_BY_KEY as AutomatedFormDefinition['fieldByKey'],
+  zodSchema: EOIR_26_ZOD_SCHEMA,
+  isMandatory: true,
+  buildPrefilledValues: async (caseId, service) => {
+    const raw = await buildEoir26PrefilledValues(caseId, service)
+    const out: Record<string, string | boolean | null | undefined> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      if (v === null || v === undefined || typeof v === 'string' || typeof v === 'boolean') {
+        out[k] = v
+      }
+    }
+    return out
+  },
+  detectByName: (name) => {
+    const n = name.toLowerCase()
+    return /eoir-?26(?!a)/i.test(n) || (n.includes('notice of appeal') && !n.includes('fee'))
+  },
+}
+
+const EOIR_26A_DEFINITION: AutomatedFormDefinition = {
+  slug: EOIR_26A_SLUG,
+  formName: EOIR_26A_NAME,
+  formDescriptionEs: EOIR_26A_DESC,
+  states: [],
+  packetType: 'merits',
+  pdfPublicPath: EOIR_26A_PDF_PUBLIC,
+  pdfDiskPath: EOIR_26A_PDF_DISK,
+  pdfSha256: EOIR_26A_SHA,
+  schemaVersion: EOIR_26A_VERSION,
+  sections: EOIR_26A_SECTIONS as AutomatedFormDefinition['sections'],
+  hardcodedValues: EOIR_26A_HARDCODED,
+  requiredForPrint: EOIR_26A_REQUIRED,
+  fieldByKey: EOIR_26A_FIELD_BY_KEY as AutomatedFormDefinition['fieldByKey'],
+  zodSchema: EOIR_26A_ZOD_SCHEMA,
+  isMandatory: false,                     // ← Fee waiver es opcional — solo si el cliente lo solicita
+  buildPrefilledValues: async (caseId, service) => {
+    const raw = await buildEoir26aPrefilledValues(caseId, service)
+    const out: Record<string, string | boolean | null | undefined> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      if (v === null || v === undefined || typeof v === 'string' || typeof v === 'boolean') {
+        out[k] = v
+      }
+    }
+    return out
+  },
+  detectByName: (name) => /eoir-?26a/i.test(name) || /fee waiver/i.test(name),
+  processForPrint: eoir26aProcessForPrint,
+}
+
 export const AUTOMATED_FORMS: Record<string, AutomatedFormDefinition> = {
   [SAPCR100_SLUG]: SAPCR100_DEFINITION,
   [SAPCR_AFF_100_SLUG]: SAPCR_AFF_100_DEFINITION,
@@ -600,6 +708,8 @@ export const AUTOMATED_FORMS: Record<string, AutomatedFormDefinition> = {
   [SAPCR205_SLUG]: SAPCR205_DEFINITION,
   [FL_GUARDIAN_SLUG]: FL_GUARDIAN_DEFINITION,
   [I485_SLUG]: I485_DEFINITION,
+  [EOIR_26_SLUG]: EOIR_26_DEFINITION,
+  [EOIR_26A_SLUG]: EOIR_26A_DEFINITION,
 }
 
 /** Slugs registrados (para validación en rutas dinámicas). */

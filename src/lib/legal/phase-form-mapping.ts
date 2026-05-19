@@ -53,6 +53,11 @@ export const PHASE_FORM_POLICY: Record<CasePhase, PhasePolicy> = {
     packetTypes: [],
     slugMatches: () => false,
   },
+  // Apelación ante la BIA — fase única. EOIR-26 (obligatorio) + EOIR-26A (opcional).
+  apelacion: {
+    packetTypes: ['merits'],
+    slugMatches: (def) => /^eoir-?26a?$/i.test(def.slug),
+  },
 }
 
 /**

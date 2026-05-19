@@ -14,10 +14,16 @@ export interface UploadFile {
   rejection_reason: string | null
   uploaded_at: string
   phase_when_uploaded: CasePhase | null
+  /** `<slug>_filled` para PDFs auto-generados por /api/admin/case-forms/[slug]/print. */
+  document_key?: string | null
+  /** Path en el bucket `case-documents` de Storage. */
+  file_path?: string | null
 }
 
 export interface FormInstance {
   id: string
+  /** Slug del registry de formularios automatizados (ej. `eoir-26`). NULL si el form no está registrado. */
+  slug: string | null
   form_name: string
   packet_type: string | null
   status: string
@@ -42,12 +48,16 @@ export interface PhaseGroup {
     client_uploads: number
     client_uploads_approved: number
     firm_documents: number
+    /** PDFs/DOCX auto-generados por el endpoint /print (EOIR-26 rellenado, etc.). */
+    system_generated: number
     forms_total: number
     forms_submitted: number
   }
   documents: {
     client_uploads: UploadFile[]
     firm_documents: UploadFile[]
+    /** Formularios oficiales rellenados por el sistema (separado de entregables manuales). */
+    system_generated_documents: UploadFile[]
   }
   forms: FormInstance[]
 }

@@ -1,10 +1,15 @@
 'use client'
 
-import { FileText, CheckCircle2, Clock, ExternalLink } from 'lucide-react'
+import { useState } from 'react'
+import { FileText, CheckCircle2, Clock, Download, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import type { FormInstance } from './phase-types'
 
 interface PhaseFormsListProps {
   forms: FormInstance[]
+  caseId: string
+  /** Callback opcional para refrescar la vista del padre cuando se descarga un PDF. */
+  onPdfGenerated?: () => void
   emptyMessage?: string
 }
 
@@ -17,18 +22,66 @@ function formatDate(iso: string | null): string {
   }
 }
 
-export function PhaseFormsList({ forms, emptyMessage }: PhaseFormsListProps) {
+/**
+ * Detona el endpoint /api/admin/case-forms/[slug]/print, descarga el blob
+ * resultante en el browser, y refresca la vista para que el PDF aparezca
+ * en la pestaña "Documentos Oficiales".
+ */
+async function generateAndDownloadPdf(slug: string, formName: string, caseId: string): Promise<void> {
+  const res = await fetch(`/api/admin/case-forms/${encodeURIComponent(slug)}/print`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ caseId }),
+  })
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    if (res.status === 400 && err.missingFields?.length) {
+      throw new Error(
+        `Faltan campos obligatorios en ${formName}: ${err.missingFields.slice(0, 5).join(', ')}${err.missingFields.length > 5 ? '…' : ''}`,
+      )
+    }
+    throw new Error(err.error || err.message || `Error ${res.status}`)
+  }
+  const blob = await res.blob()
+  const cd = res.headers.get('Content-Disposition') || ''
+  const m = /filename="([^"]+)"/.exec(cd)
+  const filename = m?.[1] ?? `${slug}.pdf`
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+export function PhaseFormsList({ forms, caseId, onPdfGenerated, emptyMessage }: PhaseFormsListProps) {
+  const [generatingSlug, setGeneratingSlug] = useState<string | null>(null)
+
   if (forms.length === 0) {
     return (
       <p className="text-xs text-gray-400 text-center py-4">{emptyMessage ?? 'No hay formularios oficiales en esta fase.'}</p>
     )
   }
 
+  async function handleGenerate(slug: string, formName: string) {
+    setGeneratingSlug(slug)
+    try {
+      await generateAndDownloadPdf(slug, formName, caseId)
+      toast.success(`PDF de ${formName} generado y descargado`)
+      onPdfGenerated?.()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al generar el PDF')
+    } finally {
+      setGeneratingSlug(null)
+    }
+  }
+
   return (
     <ul className="space-y-2">
       {forms.map(f => {
         const submitted = f.client_submitted_at != null
-        const hasPDF = !!f.filled_pdf_path
         const stateLabel = submitted ? 'Enviado' : f.client_last_edit_at ? 'En progreso' : 'Sin iniciar'
         const stateClass = submitted
           ? 'bg-emerald-100 text-emerald-700'
@@ -36,6 +89,8 @@ export function PhaseFormsList({ forms, emptyMessage }: PhaseFormsListProps) {
           ? 'bg-amber-100 text-amber-700'
           : 'bg-gray-100 text-gray-500'
         const StateIcon = submitted ? CheckCircle2 : Clock
+        const isAutomated = !!f.slug
+        const isGenerating = generatingSlug === f.slug
 
         return (
           <li
@@ -60,19 +115,34 @@ export function PhaseFormsList({ forms, emptyMessage }: PhaseFormsListProps) {
                     <span>{formatDate(f.client_submitted_at)}</span>
                   </>
                 )}
+                {f.filled_pdf_generated_at && (
+                  <>
+                    <span>·</span>
+                    <span className="text-emerald-700">PDF: {formatDate(f.filled_pdf_generated_at)}</span>
+                  </>
+                )}
               </div>
             </div>
-            {hasPDF && (
-              <a
-                href={`/api/admin/case-forms/${encodeURIComponent(f.form_name)}/print?caseId=&download=1`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-xs font-semibold text-blue-700 hover:text-blue-800"
-                title="Abrir PDF generado"
+            {isAutomated && f.slug && (
+              <button
+                type="button"
+                disabled={isGenerating}
+                onClick={() => handleGenerate(f.slug as string, f.form_name)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                title={`Genera el PDF oficial de ${f.form_name} con los datos del cliente y lo descarga.`}
               >
-                PDF
-                <ExternalLink className="w-3 h-3" />
-              </a>
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Generando…
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-3.5 h-3.5" />
+                    Generar PDF
+                  </>
+                )}
+              </button>
             )}
           </li>
         )

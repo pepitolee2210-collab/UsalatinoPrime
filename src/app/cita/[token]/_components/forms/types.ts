@@ -52,6 +52,8 @@ export interface FormSummary {
   pct: number
   instance_status: string | null
   locked_for_client: boolean
+  /** Si false, el form es opcional (ej. EOIR-26A Fee Waiver). Default true para retro-compat. */
+  is_mandatory?: boolean
   is_special_story?: boolean
   is_special_i360?: boolean
   /** Wizard I-589 Parte A (Asilo Político Fase 1) — abre I589PartAWizardCore. */

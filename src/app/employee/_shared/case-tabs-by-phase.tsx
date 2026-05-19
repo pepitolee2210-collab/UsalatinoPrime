@@ -28,6 +28,7 @@ type UploadDirection = 'client_to_admin' | 'admin_to_client' | 'firm_internal'
 export type TabId =
   | 'docs'
   | 'client-docs'
+  | 'oficiales'
   | 'archivados'
   | 'forms'
   | 'notas'
@@ -102,6 +103,7 @@ export function CaseTabsByPhase({
     const baseTabs: { id: TabId; label: string; count?: number }[] = [
       { id: 'docs', label: 'Documentos', count: countTotalUploads(overview, 'client_uploads') },
       { id: 'client-docs', label: 'Para el Cliente', count: countTotalUploads(overview, 'firm_documents') },
+      { id: 'oficiales', label: 'Documentos Oficiales', count: countTotalUploads(overview, 'system_generated_documents') },
       { id: 'archivados', label: 'Documentos archivados', count: overview?.archived_documents.length ?? 0 },
     ]
     if (isPhased) {
@@ -291,6 +293,43 @@ export function CaseTabsByPhase({
         </div>
       )}
 
+      {/* === DOCUMENTOS OFICIALES (PDFs/DOCX auto-generados por el sistema) === */}
+      {tab === 'oficiales' && !loading && overview && (
+        <div className="space-y-3">
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 flex items-start gap-3">
+            <FileText className="w-4 h-4 text-rose-700 mt-0.5 flex-shrink-0" />
+            <div>
+              <p className="text-xs font-bold text-rose-800 uppercase">Formularios oficiales rellenados</p>
+              <p className="text-[11px] text-rose-700">
+                PDFs y DOCX generados automáticamente con la información del cliente (EOIR-26, EOIR-26A, SAPCR-100, I-485, etc.).
+                Para regenerar el último, abre el formulario en la pestaña <strong>Formularios</strong> y presiona <em>Generar PDF</em>.
+              </p>
+            </div>
+          </div>
+          {isPhased ? (
+            renderPhaseAccordions({
+              phases: overview.phases,
+              currentPhase,
+              caseId,
+              caseNumber,
+              kind: 'system_generated_documents',
+              onPreview: setPreviewDoc,
+            })
+          ) : (
+            <FlatUploadList
+              files={collectFlat(overview, 'system_generated_documents')}
+              onPreview={setPreviewDoc}
+              uploading={false}
+              onUpload={async () => { /* no-op: estos archivos solo se generan vía /print */ }}
+              uploadLabel=""
+              emptyTitle="Aún no se ha generado ningún PDF oficial"
+              emptyDescription="Cuando completes un formulario y presiones 'Generar PDF', aparecerá aquí."
+              currentPhase={currentPhase}
+            />
+          )}
+        </div>
+      )}
+
       {/* === DOCUMENTOS ARCHIVADOS (interno de la firma, invisible al cliente) === */}
       {tab === 'archivados' && !loading && overview && (
         <div className="space-y-3">
@@ -338,7 +377,7 @@ export function CaseTabsByPhase({
                 {group.phase === 'i360' && (
                   <I360Section submission={formSubmissions.find(s => s.form_type === 'i360_sijs')} />
                 )}
-                <PhaseFormsList forms={group.forms} />
+                <PhaseFormsList forms={group.forms} caseId={caseId} onPdfGenerated={onRefresh} />
                 {group.phase === 'custodia' && group.forms.length > 0 && (
                   <p className="text-[11px] text-gray-500 mt-2">
                     Para llenar/imprimir formularios de Fase 1, ve a la pestaña <strong>Radicación</strong>.
@@ -409,14 +448,16 @@ export function CaseTabsByPhase({
 
 // ───────────────────────── Helpers internos ─────────────────────────
 
-function countTotalUploads(overview: CaseOverview | null, kind: 'client_uploads' | 'firm_documents'): number {
+type DocBucket = 'client_uploads' | 'firm_documents' | 'system_generated_documents'
+
+function countTotalUploads(overview: CaseOverview | null, kind: DocBucket): number {
   if (!overview) return 0
-  return overview.phases.reduce((acc, p) => acc + p.documents[kind].length, 0)
+  return overview.phases.reduce((acc, p) => acc + (p.documents[kind]?.length ?? 0), 0)
 }
 
-function collectFlat(overview: CaseOverview | null, kind: 'client_uploads' | 'firm_documents'): UploadFile[] {
+function collectFlat(overview: CaseOverview | null, kind: DocBucket): UploadFile[] {
   if (!overview) return []
-  return overview.phases.flatMap(p => p.documents[kind])
+  return overview.phases.flatMap(p => p.documents[kind] ?? [])
 }
 
 function countTotalForms(overview: CaseOverview | null): number {
@@ -510,7 +551,7 @@ function renderPhaseAccordions({
   currentPhase: CasePhase | null
   caseId: string
   caseNumber: string
-  kind: 'client_uploads' | 'firm_documents'
+  kind: DocBucket
   onPreview: (doc: UploadFile) => void
   uploading?: boolean
   onUpload?: (file: File) => Promise<void> | void
@@ -527,7 +568,7 @@ function renderPhaseAccordions({
   }
 
   return phases.map(group => {
-    const uploads = group.documents[kind]
+    const uploads = group.documents[kind] ?? []
     const isActive = group.phase === currentPhase
     const isCompleted = group.status === 'completed'
     const showUploadButton = isActive && Boolean(onUpload)

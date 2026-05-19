@@ -51,7 +51,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
 
   const { data: existing } = await auth.service
     .from('case_form_instances')
-    .select('id, filled_values, status, updated_at, filled_at, filled_pdf_path, filled_pdf_generated_at, acroform_schema')
+    .select('id, filled_values, status, updated_at, filled_at, filled_pdf_path, filled_pdf_generated_at, acroform_schema, is_mandatory')
     .eq('case_id', caseId)
     .eq('packet_type', def.packetType)
     .eq('form_name', def.formName)
@@ -68,13 +68,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
         form_name: def.formName,
         form_url_official: def.pdfPublicPath,
         form_description_es: def.formDescriptionEs,
-        is_mandatory: true,
+        is_mandatory: def.isMandatory !== false,
         schema_source: 'acroform',
         acroform_schema: { source: 'curated', version: def.schemaVersion, pdf_sha256: def.pdfSha256, slug: def.slug },
         filled_values: {},
         status: 'ready',
       })
-      .select('id, filled_values, status, updated_at, filled_at, filled_pdf_path, filled_pdf_generated_at, acroform_schema')
+      .select('id, filled_values, status, updated_at, filled_at, filled_pdf_path, filled_pdf_generated_at, acroform_schema, is_mandatory')
       .single()
     if (insertErr || !created) {
       return NextResponse.json({ error: 'No se pudo crear la instancia', detail: insertErr?.message }, { status: 500 })
@@ -93,6 +93,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
     formDescriptionEs: def.formDescriptionEs,
     instanceId: instance.id,
     status: instance.status,
+    isMandatory: instance.is_mandatory,
     updatedAt: instance.updated_at,
     filledAt: instance.filled_at,
     filledPdfPath: instance.filled_pdf_path,
@@ -153,6 +154,16 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ slug: strin
     }
   }
 
+  // Snapshot de la fase del caso al guardar — permite agrupar formularios por
+  // fase en el dashboard de Diana (case-overview). Si el caso no usa fases,
+  // queda null y los forms caen en el bucket "sin_fase".
+  const { data: caseForPhase } = await auth.service
+    .from('cases')
+    .select('current_phase')
+    .eq('id', caseId)
+    .maybeSingle()
+  const phaseSnapshot = (caseForPhase?.current_phase ?? null) as string | null
+
   const { data: updated, error: upsertErr } = await auth.service
     .from('case_form_instances')
     .upsert(
@@ -162,11 +173,12 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ slug: strin
         form_name: def.formName,
         form_url_official: def.pdfPublicPath,
         form_description_es: def.formDescriptionEs,
-        is_mandatory: true,
+        is_mandatory: def.isMandatory !== false,
         schema_source: 'acroform',
         acroform_schema: { source: 'curated', version: def.schemaVersion, pdf_sha256: def.pdfSha256, slug: def.slug },
         filled_values: parsed.data,
         filled_at: new Date().toISOString(),
+        phase_when_submitted: phaseSnapshot,
         status: 'ready',
       },
       { onConflict: 'case_id,packet_type,form_name' }
