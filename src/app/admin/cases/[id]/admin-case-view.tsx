@@ -75,6 +75,7 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
   const [accessLoading, setAccessLoading] = useState(false)
   const [uploadingKey, setUploadingKey] = useState<string | null>(null)
   const [uploadingForClient, setUploadingForClient] = useState(false)
+  const [uploadingClient, setUploadingClient] = useState(false)
   const [deletingDocId, setDeletingDocId] = useState<string | null>(null)
   const [renamingDoc, setRenamingDoc] = useState<{ id: string; name: string } | null>(null)
   const [renameLoading, setRenameLoading] = useState(false)
@@ -155,6 +156,64 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
       toast.error('Error al actualizar')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Sube un documento en nombre del cliente desde el panel admin.
+  // Replica el flujo de Diana (employee/_shared/case-tabs-by-phase.tsx):
+  // POST signed URL → upload Storage → PATCH register.
+  async function uploadClientDoc(file: File) {
+    if (!caseData.id || !caseData.client_id) {
+      toast.error('No se puede subir: caso no encontrado.')
+      return
+    }
+    setUploadingClient(true)
+    try {
+      const signRes = await fetch('/api/admin/client-documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          case_id: caseData.id,
+          client_id: caseData.client_id,
+          file_name: file.name,
+          file_size: file.size,
+          direction: 'client_to_admin',
+        }),
+      })
+      if (!signRes.ok) {
+        const err = await signRes.json().catch(() => ({}))
+        throw new Error(err.error || 'Error al preparar subida')
+      }
+      const { token: uploadToken, filePath } = await signRes.json()
+
+      const sbClient = createClient()
+      const { error: upErr } = await sbClient.storage
+        .from('case-documents')
+        .uploadToSignedUrl(filePath, uploadToken, file)
+      if (upErr) throw new Error('Error al subir archivo')
+
+      const confirmRes = await fetch('/api/admin/client-documents', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          case_id: caseData.id,
+          client_id: caseData.client_id,
+          file_path: filePath,
+          file_name: file.name,
+          file_size: file.size,
+          direction: 'client_to_admin',
+        }),
+      })
+      if (!confirmRes.ok) {
+        const err = await confirmRes.json().catch(() => ({}))
+        throw new Error(err.error || 'Error al registrar documento')
+      }
+      toast.success('Documento subido')
+      router.refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al subir')
+    } finally {
+      setUploadingClient(false)
     }
   }
 
@@ -721,6 +780,9 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               documents={documents}
               uploadingKey={uploadingKey}
               deletingDocId={deletingDocId}
+              uploadingClient={uploadingClient}
+              onUploadClient={uploadClientDoc}
+              uploadClientLabel="Subir Documento del Cliente"
               onSelectPreview={async (filePath) => {
                 const { data } = await supabase.storage.from('case-documents').createSignedUrl(filePath, 300)
                 if (data?.signedUrl) setPreviewUrl(data.signedUrl)
@@ -1283,6 +1345,9 @@ function PhasedDocumentsView({
   documents,
   uploadingKey,
   deletingDocId,
+  uploadingClient,
+  onUploadClient,
+  uploadClientLabel,
   onSelectPreview,
   onSelectRename,
   onDownload,
@@ -1291,6 +1356,9 @@ function PhasedDocumentsView({
   documents: any[]
   uploadingKey: string | null
   deletingDocId: string | null
+  uploadingClient?: boolean
+  onUploadClient?: (file: File) => Promise<void> | void
+  uploadClientLabel?: string
   onSelectPreview: (filePath: string) => Promise<void>
   onSelectRename: (doc: { id: string; name: string }) => void
   onDownload: (filePath: string, name: string) => Promise<void>
@@ -1321,19 +1389,36 @@ function PhasedDocumentsView({
 
   if (clientDocs.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-10 text-center">
-          <FileText className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-          <p className="text-sm text-gray-500">
-            El cliente aún no ha subido documentos en su portal.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        {onUploadClient && (
+          <UploadBox
+            uploading={!!uploadingClient}
+            onUpload={onUploadClient}
+            label={uploadClientLabel ?? 'Subir Documento del Cliente'}
+          />
+        )}
+        <Card>
+          <CardContent className="py-10 text-center">
+            <FileText className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+            <p className="text-sm text-gray-500">
+              El cliente aún no ha subido documentos en su portal.
+              {onUploadClient && ' Puedes subir uno en su nombre con el botón de arriba.'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     )
   }
 
   return (
     <div className="space-y-4">
+      {onUploadClient && (
+        <UploadBox
+          uploading={!!uploadingClient}
+          onUpload={onUploadClient}
+          label={uploadClientLabel ?? 'Subir Documento del Cliente'}
+        />
+      )}
       {categories.map((cat) => (
         <div
           key={cat.categoryCode}
@@ -1415,6 +1500,48 @@ function PhasedDocumentsView({
         </div>
       ))}
     </div>
+  )
+}
+
+/**
+ * Botón de upload para que el admin/firma suba un documento en nombre
+ * del cliente. Copia del componente que usa Diana en
+ * employee/_shared/case-tabs-by-phase.tsx — duplicado intencionalmente
+ * para no acoplar `admin/` con `employee/_shared/`.
+ */
+function UploadBox({
+  uploading,
+  onUpload,
+  label,
+}: {
+  uploading: boolean
+  onUpload: (file: File) => Promise<void> | void
+  label: string
+}) {
+  return (
+    <label
+      className={`flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed rounded-xl cursor-pointer text-sm font-medium transition-colors ${
+        uploading
+          ? 'opacity-50 cursor-not-allowed border-gray-200 text-gray-400'
+          : 'border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600'
+      }`}
+    >
+      {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+      {uploading ? 'Subiendo...' : label}
+      <input
+        type="file"
+        accept="application/pdf,.jpg,.jpeg,.png,.doc,.docx"
+        className="hidden"
+        disabled={uploading}
+        onChange={async (e) => {
+          const file = e.target.files?.[0]
+          if (file) {
+            await onUpload(file)
+            e.target.value = ''
+          }
+        }}
+      />
+    </label>
   )
 }
 
