@@ -27,6 +27,7 @@ const PHASE_LABEL: Record<CasePhase, string> = {
   asilo_reforzar: 'Reforzar Asilo',
   asilo_completado: 'fase anterior',
   apelacion: 'Apelación',
+  cambio_de_corte: 'Cambio de Corte',
 }
 
 export function DocumentosScreen({ token }: DocumentosScreenProps) {

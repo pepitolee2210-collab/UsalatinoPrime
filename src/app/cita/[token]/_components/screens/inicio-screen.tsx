@@ -71,6 +71,11 @@ const PHASE_LABELS: Record<CasePhase, { number: string; title: string; descripti
     title: 'Apelación',
     description: 'Apelación ante la BIA contra la decisión adversa del Juez de Inmigración.',
   },
+  cambio_de_corte: {
+    number: 'Fase única',
+    title: 'Cambio de Corte',
+    description: 'Moción de Cambio de Venue (EOIR-33) ante la Corte de Inmigración actual.',
+  },
 }
 
 export function InicioScreen({

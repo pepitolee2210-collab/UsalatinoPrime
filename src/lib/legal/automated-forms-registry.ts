@@ -208,6 +208,22 @@ import {
 } from './eoir-26a-form-schema'
 import { buildEoir26aPrefilledValues } from './eoir-26a-prefill'
 
+import {
+  PDF_PUBLIC_PATH as EOIR_33_PDF_PUBLIC,
+  PDF_DISK_PATH as EOIR_33_PDF_DISK,
+  PDF_SHA256 as EOIR_33_SHA,
+  SCHEMA_VERSION as EOIR_33_VERSION,
+  FORM_SLUG as EOIR_33_SLUG,
+  FORM_NAME as EOIR_33_NAME,
+  FORM_DESCRIPTION_ES as EOIR_33_DESC,
+  EOIR_33_SECTIONS,
+  HARDCODED_VALUES as EOIR_33_HARDCODED,
+  REQUIRED_FOR_PRINT as EOIR_33_REQUIRED,
+  FIELD_BY_KEY as EOIR_33_FIELD_BY_KEY,
+  eoir33FormSchema as EOIR_33_ZOD_SCHEMA,
+} from './eoir-33-form-schema'
+import { buildEoir33PrefilledValues } from './eoir-33-prefill'
+
 // ──────────────────────────────────────────────────────────────────
 // Tipos públicos del registry
 // ──────────────────────────────────────────────────────────────────
@@ -695,6 +711,45 @@ const EOIR_26A_DEFINITION: AutomatedFormDefinition = {
   processForPrint: eoir26aProcessForPrint,
 }
 
+// ──────────────────────────────────────────────────────────────────
+// Cambio de Corte — EOIR-33/IC (Change of Address / Change of Venue).
+// Federal, sin estado asociado: aplica a cualquier inmigrante en proceso de
+// remoción que cambie de domicilio o solicite transferencia de venue.
+// Solo aplica a la fase 'cambio_de_corte' (ver phase-form-mapping.ts).
+// ──────────────────────────────────────────────────────────────────
+
+const EOIR_33_DEFINITION: AutomatedFormDefinition = {
+  slug: EOIR_33_SLUG,
+  formName: EOIR_33_NAME,
+  formDescriptionEs: EOIR_33_DESC,
+  states: [],                             // FEDERAL — aplica a todos los estados
+  packetType: 'merits',
+  pdfPublicPath: EOIR_33_PDF_PUBLIC,
+  pdfDiskPath: EOIR_33_PDF_DISK,
+  pdfSha256: EOIR_33_SHA,
+  schemaVersion: EOIR_33_VERSION,
+  sections: EOIR_33_SECTIONS as AutomatedFormDefinition['sections'],
+  hardcodedValues: EOIR_33_HARDCODED,
+  requiredForPrint: EOIR_33_REQUIRED,
+  fieldByKey: EOIR_33_FIELD_BY_KEY as AutomatedFormDefinition['fieldByKey'],
+  zodSchema: EOIR_33_ZOD_SCHEMA,
+  isMandatory: true,
+  buildPrefilledValues: async (caseId, service) => {
+    const raw = await buildEoir33PrefilledValues(caseId, service)
+    const out: Record<string, string | boolean | null | undefined> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      if (v === null || v === undefined || typeof v === 'string' || typeof v === 'boolean') {
+        out[k] = v
+      }
+    }
+    return out
+  },
+  detectByName: (name) => {
+    const n = name.toLowerCase()
+    return /eoir-?33/i.test(n) || n.includes('change of venue') || n.includes('cambio de venue')
+  },
+}
+
 export const AUTOMATED_FORMS: Record<string, AutomatedFormDefinition> = {
   [SAPCR100_SLUG]: SAPCR100_DEFINITION,
   [SAPCR_AFF_100_SLUG]: SAPCR_AFF_100_DEFINITION,
@@ -707,6 +762,7 @@ export const AUTOMATED_FORMS: Record<string, AutomatedFormDefinition> = {
   [I485_SLUG]: I485_DEFINITION,
   [EOIR_26_SLUG]: EOIR_26_DEFINITION,
   [EOIR_26A_SLUG]: EOIR_26A_DEFINITION,
+  [EOIR_33_SLUG]: EOIR_33_DEFINITION,
 }
 
 /** Slugs registrados (para validación en rutas dinámicas). */

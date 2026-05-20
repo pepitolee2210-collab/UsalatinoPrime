@@ -126,6 +126,18 @@ export const PHASE_TOKENS: Record<PhaseKey, PhaseTokens> = {
     ring: 'ring-rose-400',
     dot: 'bg-rose-500',
   },
+  cambio_de_corte: {
+    label: 'Cambio de Corte',
+    shortLabel: 'Cambio Corte',
+    description: 'Notificación de cambio de domicilio / venue (EOIR-33)',
+    icon: 'location_on',
+    bg: 'bg-blue-50',
+    bgSoft: 'bg-blue-100',
+    text: 'text-blue-800',
+    border: 'border-blue-200',
+    ring: 'ring-blue-400',
+    dot: 'bg-blue-500',
+  },
 }
 
 export const STATUS_BADGE: Record<PhaseStatus, { label: string; className: string }> = {

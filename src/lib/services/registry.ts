@@ -104,6 +104,21 @@ const APELACION_PHASES: ServicePhaseDef[] = [
   },
 ]
 
+const CAMBIO_DE_CORTE_PHASES: ServicePhaseDef[] = [
+  {
+    code: 'cambio_de_corte',
+    shortCode: 'cambio_de_corte',
+    label: 'Cambio de Corte',
+    number: 'Fase única',
+    description: 'Moción de Cambio de Venue (EOIR-33) ante la Corte de Inmigración actual',
+    icon: 'location_on',
+    bgClass: 'bg-blue-100',
+    textClass: 'text-blue-800',
+    sortOrder: 0,
+    isCompletion: true,
+  },
+]
+
 const ASILO_POLITICO_PHASES: ServicePhaseDef[] = [
   {
     code: 'asilo_sustentos',
@@ -159,6 +174,12 @@ export const SERVICE_REGISTRY: Record<string, ServiceRegistryEntry> = {
     name: 'Apelación',
     usesPhases: true,
     phases: APELACION_PHASES,
+  },
+  'cambio-de-corte': {
+    slug: 'cambio-de-corte',
+    name: 'Cambio de Corte',
+    usesPhases: true,
+    phases: CAMBIO_DE_CORTE_PHASES,
   },
 }
 

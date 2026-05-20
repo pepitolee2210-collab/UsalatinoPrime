@@ -58,6 +58,11 @@ export const PHASE_FORM_POLICY: Record<CasePhase, PhasePolicy> = {
     packetTypes: ['merits'],
     slugMatches: (def) => /^eoir-?26a?$/i.test(def.slug),
   },
+  // Cambio de Corte — fase única. EOIR-33 (notificación de cambio de venue).
+  cambio_de_corte: {
+    packetTypes: ['merits'],
+    slugMatches: (def) => /^eoir-?33$/i.test(def.slug),
+  },
 }
 
 /**

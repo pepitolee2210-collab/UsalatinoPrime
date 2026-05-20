@@ -68,6 +68,14 @@ const PHASE_META: Record<CasePhase, PhaseMeta> = {
     icon: 'gavel',
     description: 'Apelación ante la BIA contra la decisión adversa del Juez de Inmigración.',
   },
+  // Cambio de Corte — servicio de 1 sola fase. Entry requerido por tipo
+  // pero este endpoint es SIJS-only en práctica.
+  cambio_de_corte: {
+    label: 'Cambio de Corte',
+    color: 'blue',
+    icon: 'location_on',
+    description: 'Moción de Cambio de Venue (EOIR-33) ante la Corte de Inmigración actual.',
+  },
 }
 
 interface UploadFile {

@@ -83,6 +83,9 @@ export const PHASE_CATEGORY_OVERRIDES: Record<CasePhase, Record<string, PhaseCat
   // Apelación: las 3 categorías de docs vienen ya correctamente nombradas
   // desde la BD (identidad_apelacion, expediente_apelacion). Sin overrides.
   apelacion: {},
+  // Cambio de Corte: aún no hay documentos requeridos por fase (vacío
+  // por ahora). Sumar entradas si se llenan document_type_phases en el futuro.
+  cambio_de_corte: {},
   custodia: {},
 
   i360: {

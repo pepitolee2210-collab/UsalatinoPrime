@@ -22,6 +22,7 @@ import type { CaseOverview } from '@/app/employee/_shared/phase-types'
 import { JurisdictionPanel } from '@/app/admin/cases/[id]/jurisdiction-panel'
 import { PhaseHistoryTab } from '@/app/admin/cases/[id]/phase-history-tab'
 import { AppealLetterGenerator } from '@/app/admin/cases/[id]/appeal-letter-generator'
+import { CartaCambioCorteGenerator } from '@/app/admin/cases/[id]/carta-cambio-corte-generator'
 import { I589Review } from '@/app/admin/cases/[id]/i589-review'
 import { I589PartAReview } from '@/app/admin/cases/[id]/i589-part-a-review'
 import { CredibleFearGenerator } from '@/app/admin/cases/[id]/credible-fear-generator'
@@ -54,6 +55,7 @@ export type DashboardTabId =
   | 'i589-review'
   | 'client-story'
   | 'carta-apelacion'
+  | 'carta-cambio-corte'
   | 'legal-review'
 
 export type RoleScope = 'any' | 'admin' | 'employee'
@@ -207,6 +209,19 @@ export const SERVICE_DASHBOARD_TABS: Record<string, DashboardTabDef[]> = {
       id: 'carta-apelacion',
       label: 'Carta de Apelación (IA)',
       render: (ctx) => <AppealLetterGenerator caseId={ctx.caseId} caseNumber={ctx.caseNumber} />,
+    },
+  ],
+  'cambio-de-corte': [
+    {
+      id: 'carta-cambio-corte',
+      label: 'Carta de Cambio de Corte',
+      render: (ctx) => (
+        <CartaCambioCorteGenerator
+          caseId={ctx.caseId}
+          caseNumber={ctx.caseNumber}
+          clientName={ctx.clientName}
+        />
+      ),
     },
   ],
   // Servicios sin entradas heredan solo los base tabs.

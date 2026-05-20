@@ -315,6 +315,7 @@ const contracts: Record<string, ContractTemplate> = {
   'cambio-de-corte': {
     installments: false,
     requiresMinor: false,
+    startingPhase: 'cambio_de_corte',
     variants: [
       { label: 'Cambio de Corte', totalPrice: 250 },
     ],

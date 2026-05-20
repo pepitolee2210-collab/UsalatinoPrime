@@ -81,6 +81,11 @@ const PHASE_HEADERS: Record<CasePhase, { number: string; title: string; descript
     title: 'Apelación',
     description: 'Formularios EOIR-26 y EOIR-26A (opcional) para presentar tu apelación ante la BIA.',
   },
+  cambio_de_corte: {
+    number: 'Fase única',
+    title: 'Cambio de Corte',
+    description: 'Formulario EOIR-33 para notificar tu cambio de domicilio o solicitar transferencia de venue.',
+  },
 }
 
 export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProps) {

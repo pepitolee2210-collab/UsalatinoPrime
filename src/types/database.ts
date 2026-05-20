@@ -306,6 +306,7 @@ export type CasePhase =
   | 'asilo_reforzar'
   | 'asilo_completado'
   | 'apelacion'
+  | 'cambio_de_corte'
 
 export type DocumentSlotKind = 'single' | 'dual_es_en' | 'multiple_named'
 
