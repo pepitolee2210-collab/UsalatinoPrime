@@ -19,7 +19,10 @@ export default async function AdminCaseDetailPage({
   if (!caseData) notFound()
 
   const [{ data: documents }, { data: activities }, { data: payments }, { data: aiSubmissions }, { data: empAssignments }, { data: employees }] = await Promise.all([
-    supabase.from('documents').select('*').eq('case_id', id),
+    supabase
+      .from('documents')
+      .select('*, document_type:document_types(code, name_es, category_code, category_name_es, category_icon)')
+      .eq('case_id', id),
     supabase
       .from('case_activity')
       .select('*, actor:profiles(first_name, last_name)')

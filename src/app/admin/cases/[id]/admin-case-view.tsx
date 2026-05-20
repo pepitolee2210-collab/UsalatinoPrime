@@ -712,6 +712,50 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
         </TabsContent>
 
         <TabsContent value="documents" className="mt-4">
+          {!isVisaJuvenil ? (
+            /* Vista genérica para servicios NO-SIJS (Apelación, Asilo, etc.):
+               agrupa los documentos del cliente por su categoría REAL del
+               catálogo (document_types.category_name_es). Refleja lo que ve
+               Diana en su dashboard sin el legacy hardcoded SIJS. */
+            <PhasedDocumentsView
+              documents={documents}
+              uploadingKey={uploadingKey}
+              deletingDocId={deletingDocId}
+              onSelectPreview={async (filePath) => {
+                const { data } = await supabase.storage.from('case-documents').createSignedUrl(filePath, 300)
+                if (data?.signedUrl) setPreviewUrl(data.signedUrl)
+                else toast.error('Error al generar preview')
+              }}
+              onSelectRename={(doc) => setRenamingDoc({ id: doc.id, name: doc.name })}
+              onDownload={async (filePath, name) => {
+                const { data } = await supabase.storage.from('case-documents').createSignedUrl(filePath, 300)
+                if (data?.signedUrl) {
+                  const l = document.createElement('a')
+                  l.href = data.signedUrl
+                  l.download = name
+                  l.click()
+                }
+              }}
+              onDelete={async (id) => {
+                if (!confirm('¿Eliminar?')) return
+                setDeletingDocId(id)
+                try {
+                  const res = await fetch('/api/admin/upload-document', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ document_id: id }),
+                  })
+                  if (!res.ok) throw new Error()
+                  toast.success('Eliminado')
+                  router.refresh()
+                } catch {
+                  toast.error('Error al eliminar')
+                } finally {
+                  setDeletingDocId(null)
+                }
+              }}
+            />
+          ) : (
           <div className="space-y-6">
             {/* Documents grouped by 3 categories */}
             {DOCUMENT_CATEGORIES.map(category => {
@@ -854,6 +898,7 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
             )}
 
           </div>
+          )}
         </TabsContent>
 
         <TabsContent value="client-docs" className="mt-4">
@@ -1223,6 +1268,154 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
     </div>
   )
 
+}
+
+/**
+ * Vista de "Documentos" agnóstica al servicio. Agrupa los documentos del
+ * cliente (direction='client_to_admin' o sin direction) por su categoría
+ * REAL del catálogo `document_types`, no por las categorías SIJS legacy.
+ *
+ * Refleja exactamente lo que ve Diana en su dashboard para los servicios
+ * de Apelación y Asilo Político: cada categoría (Identidad, Expediente,
+ * etc.) en una sección propia con sus documentos listados.
+ */
+function PhasedDocumentsView({
+  documents,
+  uploadingKey,
+  deletingDocId,
+  onSelectPreview,
+  onSelectRename,
+  onDownload,
+  onDelete,
+}: {
+  documents: any[]
+  uploadingKey: string | null
+  deletingDocId: string | null
+  onSelectPreview: (filePath: string) => Promise<void>
+  onSelectRename: (doc: { id: string; name: string }) => void
+  onDownload: (filePath: string, name: string) => Promise<void>
+  onDelete: (id: string) => Promise<void>
+}) {
+  // Filtrar solo documentos del cliente (no admin_to_client, ya en otras pestañas)
+  const clientDocs = documents.filter(
+    (d: any) => !d.direction || d.direction === 'client_to_admin',
+  )
+
+  // Agrupar por categoría del document_type. Documentos sin tipo asignado
+  // caen en "Otros documentos" — útil para uploads legacy o casos en
+  // transición.
+  const grouped = new Map<
+    string,
+    { categoryCode: string; categoryName: string; docs: any[] }
+  >()
+  for (const d of clientDocs) {
+    const dt = Array.isArray(d.document_type) ? d.document_type[0] : d.document_type
+    const code = dt?.category_code ?? 'sin_categoria'
+    const name = dt?.category_name_es ?? 'Otros documentos'
+    if (!grouped.has(code)) {
+      grouped.set(code, { categoryCode: code, categoryName: name, docs: [] })
+    }
+    grouped.get(code)!.docs.push(d)
+  }
+  const categories = Array.from(grouped.values())
+
+  if (clientDocs.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-10 text-center">
+          <FileText className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+          <p className="text-sm text-gray-500">
+            El cliente aún no ha subido documentos en su portal.
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {categories.map((cat) => (
+        <div
+          key={cat.categoryCode}
+          className="border border-gray-200 rounded-xl overflow-hidden"
+        >
+          <div className="px-4 py-3 flex items-center justify-between bg-gray-50">
+            <span className="text-sm font-bold text-gray-900">{cat.categoryName}</span>
+            <Badge variant="outline" className="text-gray-700 border-gray-300 text-[10px]">
+              {cat.docs.length} archivo{cat.docs.length === 1 ? '' : 's'}
+            </Badge>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {cat.docs.map((doc: any) => {
+              const dt = Array.isArray(doc.document_type) ? doc.document_type[0] : doc.document_type
+              const docTypeName = dt?.name_es ?? doc.document_key ?? 'Documento'
+              return (
+                <div key={doc.id} className="px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {docTypeName}
+                        </p>
+                        <p className="text-[11px] text-gray-500 truncate">
+                          {doc.name} · {Math.round((doc.file_size ?? 0) / 1024)} KB
+                          {doc.status && ` · ${doc.status}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-0.5 flex-shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        title="Ver"
+                        onClick={() => onSelectPreview(doc.file_path)}
+                      >
+                        <Eye className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        title="Renombrar"
+                        onClick={() => onSelectRename({ id: doc.id, name: doc.name })}
+                      >
+                        <Pencil className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        title="Descargar"
+                        onClick={() => onDownload(doc.file_path, doc.name)}
+                      >
+                        <Download className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-red-500 hover:text-red-700"
+                        title="Eliminar"
+                        disabled={deletingDocId === doc.id}
+                        onClick={() => onDelete(doc.id)}
+                      >
+                        {deletingDocId === doc.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3 h-3" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 function I360Review({
