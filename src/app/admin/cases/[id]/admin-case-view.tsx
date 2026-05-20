@@ -15,7 +15,7 @@ import { CaseFormViewer } from '@/components/admin/CaseFormViewer'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { CheckCircle, AlertCircle, FileText, Download, ArrowLeft, Loader2, DollarSign, CreditCard, Plus, ShieldCheck, ShieldOff, Upload, Eye, Pencil, Trash2, MessageSquare, Briefcase, Send, UserPlus, Scale } from 'lucide-react'
+import { CheckCircle, AlertCircle, FileText, Download, ArrowLeft, Loader2, DollarSign, CreditCard, Plus, ShieldCheck, ShieldOff, Upload, Eye, Pencil, Trash2, MessageSquare, Briefcase, Send, UserPlus, Scale, Gavel } from 'lucide-react'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -34,6 +34,7 @@ import { SupplementaryDataForm } from './supplementary-data-form'
 import { JurisdictionPanel } from './jurisdiction-panel'
 import { PhaseStatusPanel } from './phase-status-panel'
 import { PhaseHistoryTab } from './phase-history-tab'
+import { AppealLetterGenerator } from './appeal-letter-generator'
 import { CasePipeline } from '@/components/case-pipeline'
 import { uploadDirect } from '@/lib/upload-direct'
 import {
@@ -100,6 +101,20 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
   const serviceSlug = caseData.service?.slug || ''
   const isAsylumService = serviceSlug === 'asilo-politico'
   const isVisaJuvenil = serviceSlug === 'visa-juvenil'
+  const isApelacion = serviceSlug === 'apelacion'
+
+  // PDFs/DOCX auto-generados por /api/admin/case-forms/[slug]/print.
+  // Se guardan con direction='admin_to_client' y document_key='<slug>_filled'.
+  // Los aislamos de la pestaña "Para el Cliente" (entregables manuales) en
+  // una pestaña propia "Documentos Oficiales" para paridad con Diana.
+  const isSystemGeneratedDoc = (d: any) =>
+    d.direction === 'admin_to_client' &&
+    typeof d.document_key === 'string' &&
+    d.document_key.endsWith('_filled')
+  const systemGeneratedDocs = documents.filter(isSystemGeneratedDoc)
+  const manualClientDocs = documents.filter(
+    (d: any) => d.direction === 'admin_to_client' && !isSystemGeneratedDoc(d),
+  )
 
   async function updateStatus(newStatus: string, notes?: string) {
     setLoading(true)
@@ -463,7 +478,11 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
           <TabsTrigger value="documents">Documentos ({documents.filter((d: any) => d.direction !== 'admin_to_client').length})</TabsTrigger>
           <TabsTrigger value="client-docs" className="flex items-center gap-1.5">
             <Download className="w-3.5 h-3.5 text-blue-600" />
-            Para el Cliente
+            Para el Cliente ({manualClientDocs.length})
+          </TabsTrigger>
+          <TabsTrigger value="oficiales" className="flex items-center gap-1.5">
+            <FileText className="w-3.5 h-3.5 text-rose-600" />
+            Documentos Oficiales ({systemGeneratedDocs.length})
           </TabsTrigger>
           <TabsTrigger value="notes">Notas</TabsTrigger>
           {isVisaJuvenil && (
@@ -515,6 +534,12 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
             <TabsTrigger value="i485" className="flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-emerald-600" />
               I-485
+            </TabsTrigger>
+          )}
+          {isApelacion && (
+            <TabsTrigger value="carta-apelacion" className="flex items-center gap-1.5">
+              <Gavel className="w-3.5 h-3.5 text-rose-700" />
+              Carta de Apelación (IA)
             </TabsTrigger>
           )}
           <TabsTrigger value="legal-review" className="flex items-center gap-1.5">
@@ -838,7 +863,7 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
                   <Download className="w-5 h-5 text-blue-800" />
                   <span className="text-sm font-bold text-blue-800">Documentos para el Cliente</span>
                   <Badge variant="outline" className="text-blue-700 border-blue-300">
-                    {documents.filter(d => d.direction === 'admin_to_client').length}
+                    {manualClientDocs.length}
                   </Badge>
                 </div>
               </div>
@@ -921,6 +946,61 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
               })}
 
             </div>
+        </TabsContent>
+
+        {/* Documentos Oficiales — PDFs/DOCX auto-generados por /print */}
+        <TabsContent value="oficiales" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm flex items-center gap-2">
+                <FileText className="w-4 h-4 text-rose-700" />
+                Formularios oficiales rellenados
+              </CardTitle>
+              <p className="text-xs text-gray-500">
+                PDFs/DOCX generados automáticamente con la información del cliente
+                (EOIR-26, EOIR-26A, SAPCR-100, I-485, etc.). Para regenerar uno,
+                abre el formulario y presiona "Generar PDF" en su modal.
+              </p>
+            </CardHeader>
+            <CardContent>
+              {systemGeneratedDocs.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-6">
+                  Aún no se ha generado ningún PDF oficial para este caso.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {systemGeneratedDocs.map((d: any) => (
+                    <li
+                      key={d.id}
+                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-white"
+                    >
+                      <FileText className="w-4 h-4 text-rose-700 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{d.name}</p>
+                        <p className="text-[11px] text-gray-500">
+                          {d.phase_when_uploaded ?? 'Sin fase'}
+                          {' · '}
+                          {Math.round((d.file_size ?? 0) / 1024)} KB
+                          {' · '}
+                          {format(new Date(d.created_at), "d 'de' MMM yyyy", { locale: es })}
+                        </p>
+                      </div>
+                      <a
+                        href={`/api/employee/download-case-doc?id=${d.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Button size="sm" variant="outline">
+                          <Download className="w-3 h-3 mr-1" />
+                          Descargar
+                        </Button>
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
           {/* Rename Dialog */}
@@ -1121,6 +1201,16 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
         {isVisaJuvenil && (
           <TabsContent value="i485" className="mt-4">
             <I485FormSection caseId={caseData.id} />
+          </TabsContent>
+        )}
+
+        {/* Carta de Apelación (IA) — solo casos de servicio Apelación */}
+        {isApelacion && (
+          <TabsContent value="carta-apelacion" className="mt-4">
+            <AppealLetterGenerator
+              caseId={caseData.id}
+              caseNumber={caseData.case_number}
+            />
           </TabsContent>
         )}
 
