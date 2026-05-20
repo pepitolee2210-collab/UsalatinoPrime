@@ -1,4 +1,5 @@
 import { PDFDocument, PDFName, PDFDict, PDFBool } from 'pdf-lib'
+import bwipjs from 'bwip-js/browser'
 
 // ============================================================================
 // HELPERS
@@ -222,7 +223,14 @@ export async function generateI360PDF(
     }
   }
 
-  // --- 6. Guardar manteniendo el AcroForm editable ---
+  // --- 6. Rendear PDF417 barcodes ---
+  // El PDF oficial USCIS es XFA-híbrido — el XFA original rendea los barcodes
+  // visualmente, pero pdf-lib elimina el XFA al cargar. Sin esto, USCIS puede
+  // rechazar el formulario (el barcode codifica I-360|MM/DD/YY|page y se usa
+  // para escanear/clasificar el documento).
+  await renderBarcodes(pdfDoc, form)
+
+  // --- 7. Guardar manteniendo el AcroForm editable ---
   // No flattenear: la firma necesita poder corregir manualmente campos mal
   // autocompletados o que aún no estén mapeados al wizard. NeedAppearances=true
   // le dice al viewer que regenere appearances al abrir (los valores se ven y
@@ -232,4 +240,82 @@ export async function generateI360PDF(
     acroForm.set(PDFName.of('NeedAppearances'), PDFBool.True)
   }
   return pdfDoc.save()
+}
+
+// ============================================================================
+// PDF417 BARCODES
+// ============================================================================
+
+/**
+ * Localiza todos los widgets cuyo nombre contiene "BarCode" (PDF417 generados
+ * por el XFA original, perdido al cargar con pdf-lib) y los reemplaza por una
+ * imagen PNG del PDF417 generada con bwip-js. Sin esto USCIS puede rechazar el
+ * formulario porque el barcode contiene metadata que sus escáneres leen.
+ */
+async function renderBarcodes(
+  pdfDoc: PDFDocument,
+  form: ReturnType<PDFDocument['getForm']>,
+): Promise<void> {
+  const pages = pdfDoc.getPages()
+  const pageMap = new Map<string, number>()
+  pages.forEach((p, i) => pageMap.set(p.ref.toString(), i))
+
+  for (const field of form.getFields()) {
+    if (!field.getName().includes('BarCode')) continue
+
+    let textValue: string | null = null
+    try { textValue = (field as { getText?: () => string }).getText?.() ?? null } catch { /* not a text field */ }
+    if (!textValue) continue
+
+    const widgets = field.acroField.getWidgets()
+    for (const w of widgets) {
+      const pRef = w.P()
+      const pageIdx = pRef ? pageMap.get(pRef.toString()) ?? -1 : -1
+      if (pageIdx < 0) continue
+      const rect = w.getRectangle()
+      if (!rect) continue
+
+      try {
+        // bwip-js retorna PNG en Node (Buffer) y en browser (Uint8Array via canvas).
+        // En SSR/Edge no funciona bien, pero generate-i360.ts solo corre client-side.
+        const png = await generatePdf417Png(textValue)
+        const img = await pdfDoc.embedPng(png)
+        pages[pageIdx].drawImage(img, {
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+        })
+        // Limpiar el texto del field — el barcode visual lo cubre, pero si
+        // el viewer regenera appearances, no queremos que se vea el texto plano.
+        try { (field as { setText?: (v: string) => void }).setText?.('') } catch { /* ignore */ }
+      } catch (err) {
+        console.warn(`I-360: no se rendeó barcode "${field.getName()}":`, err instanceof Error ? err.message : err)
+      }
+    }
+  }
+}
+
+/**
+ * Genera un PNG con el barcode PDF417 codificando `text`. Funciona en browser
+ * (toCanvas + canvas.toBlob). Las opciones específicas de PDF417 (eclevel,
+ * columns) no están en la interface tipada de bwip-js, así que cast a `any`.
+ */
+async function generatePdf417Png(text: string): Promise<Uint8Array> {
+  if (typeof document === 'undefined') {
+    throw new Error('generatePdf417Png requiere un entorno browser con `document`')
+  }
+  const canvas = document.createElement('canvas')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  bwipjs.toCanvas(canvas, {
+    bcid: 'pdf417',
+    text,
+    scale: 2,
+    eclevel: 2,
+    columns: 8,
+  } as any)
+  const blob: Blob = await new Promise((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob falló'))), 'image/png')
+  })
+  return new Uint8Array(await blob.arrayBuffer())
 }
