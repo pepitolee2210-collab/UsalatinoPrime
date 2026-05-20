@@ -260,11 +260,8 @@ async function renderBarcodes(
   const pageMap = new Map<string, number>()
   pages.forEach((p, i) => pageMap.set(p.ref.toString(), i))
 
-  let barcodeCount = 0
-  let barcodeSuccess = 0
   for (const field of form.getFields()) {
     if (!field.getName().includes('BarCode')) continue
-    barcodeCount++
 
     let textValue: string | null = null
     try { textValue = (field as { getText?: () => string }).getText?.() ?? null } catch { /* not a text field */ }
@@ -291,13 +288,11 @@ async function renderBarcodes(
         // Limpiar el texto del field — el barcode visual lo cubre, pero si
         // el viewer regenera appearances, no queremos que se vea el texto plano.
         try { (field as { setText?: (v: string) => void }).setText?.('') } catch { /* ignore */ }
-        barcodeSuccess++
       } catch (err) {
         console.warn(`I-360: no se rendeó barcode "${field.getName()}":`, err instanceof Error ? err.message : err)
       }
     }
   }
-  console.log(`I-360 barcodes: ${barcodeSuccess}/${barcodeCount} rendeados`)
 }
 
 /**
