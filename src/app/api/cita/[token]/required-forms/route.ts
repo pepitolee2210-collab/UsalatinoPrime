@@ -44,6 +44,8 @@ interface FormSummary {
   is_special_i589?: boolean
   /** Form de URLs de noticias/evidencia (Asilo Político Fase 2). */
   is_special_evidence_urls?: boolean
+  /** Carta de Cambio de Corte (6 págs custom, Cambio de Corte). */
+  is_special_cc_carta?: boolean
   client_last_edit_at: string | null
   client_submitted_at: string | null
 }
@@ -303,6 +305,49 @@ export async function GET(
       is_special_i589: true,
       client_last_edit_at: lastEdit,
       client_submitted_at: lastSubmit,
+    })
+  }
+
+  // Cambio de Corte — fase única: además del EOIR-33 (que ya entra por el
+  // registry de AcroForms), inyectar la "Carta de Cambio de Corte" (6 págs,
+  // jsPDF custom) para que el cliente también la llene. La fila vive en
+  // case_form_instances con form_name = 'Carta de Cambio de Corte (6 págs)'
+  // y schema_source = 'custom'.
+  if (serviceSlug === 'cambio-de-corte' && currentPhase === 'cambio_de_corte') {
+    const cartaInstance = instances.find((i) => i.form_name === 'Carta de Cambio de Corte (6 págs)')
+    const cartaValues = (cartaInstance?.filled_values as Record<string, unknown> | undefined) ?? {}
+
+    // 15 campos críticos del formulario (excluyen los prellenados del profile
+    // y los completamente opcionales). Cuenta progreso para la barra del card.
+    const CRITICAL_KEYS = [
+      'file_number', 'judge_name', 'next_hearing_date', 'next_hearing_time', 'document_date',
+      'current_court_name', 'current_court_street', 'current_court_city_state_zip',
+      'new_address_street', 'new_address_city', 'new_address_state', 'new_address_zip',
+      'new_court_name', 'new_court_street', 'new_court_city_state_zip',
+    ]
+    const filled = CRITICAL_KEYS.reduce((n, k) => {
+      const v = cartaValues[k]
+      if (v != null && (typeof v !== 'string' || v.trim() !== '')) return n + 1
+      return n
+    }, 0)
+
+    summaries.push({
+      slug: '__cc_carta__',
+      form_name: 'Carta de Cambio de Corte (6 págs)',
+      description_es: 'Moción detallada en inglés legal con beneficiarios, jueces y dirección del Chief Counsel.',
+      state: null,
+      packet_type: 'merits',
+      template_type: 'special',
+      icon: 'mail',
+      total_user_fields: CRITICAL_KEYS.length,
+      completed_user_fields: filled,
+      pct: Math.round((filled / CRITICAL_KEYS.length) * 100),
+      instance_status: (cartaInstance?.status as string | undefined) ?? null,
+      locked_for_client: false,
+      is_mandatory: true,
+      is_special_cc_carta: true,
+      client_last_edit_at: (cartaInstance?.client_last_edit_at as string | undefined) ?? null,
+      client_submitted_at: (cartaInstance?.client_submitted_at as string | undefined) ?? null,
     })
   }
 

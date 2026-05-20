@@ -40,9 +40,24 @@ interface Props {
   caseId: string
   caseNumber: string
   clientName: string
+  /** Override del endpoint base. Default: '/api/admin/cases/{caseId}/carta-cambio-corte'.
+   *  Sobrescribir para usar la versión cliente '/api/cita/{token}/carta-cambio-corte'. */
+  apiUrl?: string
+  /** Mostrar el botón "Generar PDF" (solo admin/empleado). Default true. */
+  showGenerateButton?: boolean
+  /** Mensaje contextual en el header (ej. "Te queda…"). Si null/undefined, se calcula default. */
+  headerSubtitle?: string
 }
 
-export function CartaCambioCorteGenerator({ caseId, caseNumber, clientName }: Props) {
+export function CartaCambioCorteGenerator({
+  caseId,
+  caseNumber,
+  clientName,
+  apiUrl,
+  showGenerateButton = true,
+  headerSubtitle,
+}: Props) {
+  const endpoint = apiUrl ?? `/api/admin/cases/${caseId}/carta-cambio-corte`
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<CartaCambioCorteData | null>(null)
   const [filledPdfAt, setFilledPdfAt] = useState<string | null>(null)
@@ -58,7 +73,7 @@ export function CartaCambioCorteGenerator({ caseId, caseNumber, clientName }: Pr
   useEffect(() => {
     let cancelled = false
     setLoading(true)
-    fetch(`/api/admin/cases/${caseId}/carta-cambio-corte`, { cache: 'no-store' })
+    fetch(endpoint, { cache: 'no-store' })
       .then((r) => { if (!r.ok) throw new Error('Error al cargar carta'); return r.json() })
       .then((j) => {
         if (cancelled) return
@@ -69,12 +84,12 @@ export function CartaCambioCorteGenerator({ caseId, caseNumber, clientName }: Pr
       .catch((err) => { if (!cancelled) toast.error(err instanceof Error ? err.message : 'Error') })
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
-  }, [caseId])
+  }, [endpoint])
 
   const persistValues = useCallback(async (next: CartaCambioCorteData) => {
     setSavingState('saving')
     try {
-      const res = await fetch(`/api/admin/cases/${caseId}/carta-cambio-corte`, {
+      const res = await fetch(endpoint, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ values: next }),
@@ -86,7 +101,7 @@ export function CartaCambioCorteGenerator({ caseId, caseNumber, clientName }: Pr
       setSavingState('error')
       toast.error('Error al guardar')
     }
-  }, [caseId])
+  }, [endpoint])
 
   function update<K extends keyof CartaCambioCorteData>(key: K, val: CartaCambioCorteData[K]) {
     setData((prev) => {
@@ -131,7 +146,7 @@ export function CartaCambioCorteGenerator({ caseId, caseNumber, clientName }: Pr
     }
     setGenerating(true)
     try {
-      const res = await fetch(`/api/admin/cases/${caseId}/carta-cambio-corte`, { method: 'POST' })
+      const res = await fetch(endpoint, { method: 'POST' })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         if (err.missingFields?.length) {
@@ -183,8 +198,8 @@ export function CartaCambioCorteGenerator({ caseId, caseNumber, clientName }: Pr
           <div className="min-w-0">
             <p className="text-sm font-semibold text-gray-900 truncate">Carta de Cambio de Corte — {clientName}</p>
             <p className="text-xs text-gray-500">
-              6 págs, redactada en inglés para presentar ante la Corte de Inmigración actual.
-              {filledPdfAt && (
+              {headerSubtitle ?? '6 págs, redactada en inglés para presentar ante la Corte de Inmigración actual.'}
+              {showGenerateButton && filledPdfAt && (
                 <> · <span className="text-emerald-700">Último PDF: {new Date(filledPdfAt).toLocaleString('es-MX')}</span></>
               )}
             </p>
@@ -192,18 +207,20 @@ export function CartaCambioCorteGenerator({ caseId, caseNumber, clientName }: Pr
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <SaveBadge state={savingState} />
-          <button
-            type="button"
-            disabled={generating}
-            onClick={handleGenerate}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[#002855] text-white rounded-lg hover:bg-[#001d3d] transition-colors disabled:opacity-60"
-          >
-            {generating ? (
-              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generando…</>
-            ) : (
-              <><Download className="w-3.5 h-3.5" /> Generar Carta (6 págs)</>
-            )}
-          </button>
+          {showGenerateButton && (
+            <button
+              type="button"
+              disabled={generating}
+              onClick={handleGenerate}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[#002855] text-white rounded-lg hover:bg-[#001d3d] transition-colors disabled:opacity-60"
+            >
+              {generating ? (
+                <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generando…</>
+              ) : (
+                <><Download className="w-3.5 h-3.5" /> Generar Carta (6 págs)</>
+              )}
+            </button>
+          )}
         </div>
       </div>
 

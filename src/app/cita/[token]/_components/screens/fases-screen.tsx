@@ -8,6 +8,7 @@ import { ClientStoryWizard } from '../../client-story-wizard'
 import { I360WizardCore, type I360FormData } from '@/components/i360/I360WizardCore'
 import { I589PartAWizardCore } from '@/components/i589/I589PartAWizardCore'
 import { EvidenceUrlsManager } from '../evidence-urls-manager'
+import { CartaCambioCorteClientWizard } from '../carta-cambio-corte-wizard'
 import type { CasePhase } from '@/types/database'
 import type { RequiredFormsResponse, FormSummary } from '../forms/types'
 
@@ -100,6 +101,7 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
   const [i589Data, setI589Data] = useState<I589DataResponse | null>(null)
   const [i589Loading, setI589Loading] = useState(false)
   const [urlsOpen, setUrlsOpen] = useState(false)
+  const [ccCartaOpen, setCcCartaOpen] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
@@ -202,6 +204,11 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
     if (form.is_special_evidence_urls) {
       // Manager de URLs de evidencia (Fase 2 Asilo Político).
       setUrlsOpen(true)
+      return
+    }
+    if (form.is_special_cc_carta) {
+      // Carta de Cambio de Corte — wizard cliente bidireccional con admin.
+      setCcCartaOpen(true)
       return
     }
     setOpenSlug(form.slug)
@@ -333,6 +340,19 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
             </p>
             <EvidenceUrlsManager token={token} />
           </div>
+        </Fullscreen>
+      )}
+
+      {ccCartaOpen && data && (
+        <Fullscreen
+          title="Carta de Cambio de Corte (6 págs)"
+          onClose={() => { setCcCartaOpen(false); fetchData() }}
+        >
+          <CartaCambioCorteClientWizard
+            token={token}
+            caseId={data.case_id}
+            clientName={clientName}
+          />
         </Fullscreen>
       )}
     </div>
