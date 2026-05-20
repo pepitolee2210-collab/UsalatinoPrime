@@ -9,7 +9,8 @@ import { DocumentCardDual } from '../documents/document-card-dual'
 import { DocumentCardMultiple } from '../documents/document-card-multiple'
 import { PreviewModal } from '../documents/preview-modal'
 import { deleteClientDocument } from '../documents/upload-client'
-import type { DocItem, RequiredDocsResponse } from '../documents/types'
+import type { DocItem, RequiredDocsResponse, UploadFile } from '../documents/types'
+import { formatBytes, fileTypeIcon } from '../documents/types'
 import type { CasePhase } from '@/types/database'
 
 interface DocumentosScreenProps {
@@ -218,6 +219,13 @@ export function DocumentosScreen({ token }: DocumentosScreenProps) {
             )
           })
         )}
+
+        {data.extra_documents && data.extra_documents.length > 0 && (
+          <ExtraDocumentsSection
+            files={data.extra_documents}
+            onPreview={setPreviewDoc}
+          />
+        )}
       </div>
 
       <PreviewModal token={token} doc={previewDoc} onClose={() => setPreviewDoc(null)} />
@@ -269,6 +277,87 @@ function SkeletonHero() {
         />
       ))}
     </div>
+  )
+}
+
+/**
+ * Sección read-only para documentos del cliente sin `document_type_id` —
+ * típicamente añadidos al expediente por el equipo legal desde su panel admin
+ * o employee. El cliente puede verlos/previsualizarlos pero no eliminarlos.
+ */
+function ExtraDocumentsSection({
+  files,
+  onPreview,
+}: {
+  files: UploadFile[]
+  onPreview: (file: { id: string; name: string }) => void
+}) {
+  return (
+    <section
+      className="rounded-2xl border overflow-hidden"
+      style={{
+        background: 'var(--color-ulp-surface-container-lowest)',
+        borderColor: 'var(--color-ulp-outline-variant)',
+        borderLeftWidth: 4,
+        borderLeftColor: 'var(--color-ulp-outline)',
+      }}
+    >
+      <header
+        className="px-4 py-3 flex items-center gap-2"
+        style={{ background: 'var(--color-ulp-surface-container-low)' }}
+      >
+        <span
+          className="material-symbols-outlined"
+          style={{ fontSize: 20, color: 'var(--color-ulp-on-surface-variant)' }}
+        >
+          folder_open
+        </span>
+        <div className="flex-1 min-w-0">
+          <h3 className="ulp-body-md font-semibold" style={{ color: 'var(--color-ulp-on-surface)' }}>
+            Otros documentos de tu expediente
+          </h3>
+          <p className="ulp-body-sm" style={{ color: 'var(--color-ulp-on-surface-variant)' }}>
+            Tu equipo legal añadió estos archivos a tu caso.
+          </p>
+        </div>
+        <span
+          className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+          style={{
+            background: 'var(--color-ulp-surface-container-high)',
+            color: 'var(--color-ulp-on-surface-variant)',
+          }}
+        >
+          {files.length}
+        </span>
+      </header>
+      <ul className="divide-y" style={{ borderColor: 'var(--color-ulp-outline-variant)' }}>
+        {files.map((f) => (
+          <li key={f.id} className="px-4 py-3 flex items-center gap-3">
+            <span
+              className="material-symbols-outlined flex-shrink-0"
+              style={{ fontSize: 22, color: 'var(--color-ulp-on-surface-variant)' }}
+            >
+              {fileTypeIcon(f.file_type)}
+            </span>
+            <button
+              type="button"
+              onClick={() => onPreview({ id: f.id, name: f.name })}
+              className="flex-1 min-w-0 text-left hover:underline"
+            >
+              <p
+                className="ulp-body-sm font-medium truncate"
+                style={{ color: 'var(--color-ulp-on-surface)' }}
+              >
+                {f.name}
+              </p>
+              <p className="text-[11px]" style={{ color: 'var(--color-ulp-on-surface-variant)' }}>
+                {formatBytes(f.file_size)}
+              </p>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 

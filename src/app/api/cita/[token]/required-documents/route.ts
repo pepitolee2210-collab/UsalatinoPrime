@@ -108,6 +108,13 @@ interface ResponseShape {
   categories: CategoryGroup[]
   /** Solo presente para servicios fasados que agrupan por miembro (Asilo Político). */
   member_groups?: MemberGroup[]
+  /**
+   * Documentos del cliente (direction='client_to_admin' o NULL) que NO tienen
+   * `document_type_id` asignado — típicamente subidos por la firma desde su
+   * panel admin/employee sin asignar categoría. El cliente debe poder verlos
+   * (no borrarlos: son parte del expediente que su equipo legal anexó).
+   */
+  extra_documents?: UploadFile[]
 }
 
 // Mapeo fase → columna boolean en `document_types`.
@@ -304,13 +311,19 @@ export async function GET(
     evaluateConditional(dt.conditional_logic, flags),
   )
 
-  // 5. Cargar uploads del caso (incluye todos los direction=client_to_admin con document_type_id)
+  // 5. Cargar uploads del caso.
+  // Traemos TODOS los docs del cliente (direction='client_to_admin' o NULL),
+  // tengan o no `document_type_id`. Los que tienen tipo se asignan a su slot
+  // dentro de la categoría correspondiente (flujo legacy del cliente). Los
+  // que NO tienen tipo asignado se exponen en `extra_documents` — típicamente
+  // subidos por la firma desde su panel admin/employee con UploadBox
+  // compartido (que registra `document_key='paralegal_upload'` sin tipo). El
+  // cliente debe verlos en su portal aunque no estén categorizados.
   const { data: uploads } = await supabase
     .from('documents')
     .select('id, document_type_id, slot_label, minor_index, minor_label, member_role, name, file_type, file_size, status, rejection_reason, phase_when_uploaded, created_at')
     .eq('case_id', tokenData.case_id)
     .or('direction.eq.client_to_admin,direction.is.null')
-    .not('document_type_id', 'is', null)
     .order('created_at', { ascending: false })
 
   // 5.b Cargar contrato del case para reconstruir los miembros de familia.
@@ -361,8 +374,24 @@ export async function GET(
     `${typeId}:${role ?? 'general'}:${idx ?? -1}`
 
   const uploadsByKey = new Map<string, RawUpload[]>()
+  const extraDocuments: UploadFile[] = []
   for (const u of rawUploads) {
-    if (u.document_type_id == null) continue
+    if (u.document_type_id == null) {
+      // Doc sin tipo (típicamente subido por la firma desde admin/employee
+      // con UploadBox compartido). Lo exponemos read-only al cliente como
+      // "Otros documentos del expediente".
+      extraDocuments.push({
+        id: u.id,
+        name: u.name,
+        file_type: u.file_type,
+        file_size: u.file_size,
+        status: u.status,
+        rejection_reason: u.rejection_reason,
+        uploaded_at: u.created_at,
+        phase_when_uploaded: u.phase_when_uploaded,
+      })
+      continue
+    }
     const effectiveRole: MemberRole | null =
       u.member_role ?? (u.minor_index != null ? 'minor' : null)
     const effectiveIndex = effectiveRole === 'minor' ? u.minor_index : null
@@ -620,6 +649,7 @@ export async function GET(
     progress_pct: totalRequired === 0 ? 0 : Math.round((totalCompleted / totalRequired) * 100),
     categories,
     ...(memberGroups ? { member_groups: memberGroups } : {}),
+    ...(extraDocuments.length > 0 ? { extra_documents: extraDocuments } : {}),
   }
 
   return NextResponse.json(response, {

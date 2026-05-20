@@ -80,6 +80,12 @@ export interface RequiredDocsResponse {
   categories: CategoryGroup[]
   /** Solo presente para Asilo Político — UI prefiere este sobre categories. */
   member_groups?: MemberGroup[]
+  /**
+   * Documentos del cliente sin `document_type_id` — añadidos al expediente
+   * por su equipo legal desde el panel admin/employee. Read-only para el
+   * cliente (no aparecen botones de subir/eliminar).
+   */
+  extra_documents?: UploadFile[]
 }
 
 // ──────────────────────────────────────────────────────────────────
