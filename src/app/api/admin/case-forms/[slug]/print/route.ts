@@ -159,8 +159,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ slug: stri
       valuesByPdfName[spec.pdfFieldName] = value
     }
     try {
+      // Default: AcroForm editable post-descarga. La firma necesita poder
+      // corregir manualmente campos mal autocompletados o que aún no estén
+      // soportados por la automatización. Opt-in con flattenPdf: true en el
+      // registry si algún form específico lo requiere (ninguno actualmente).
       filledBytes = await fillAcroForm(new Uint8Array(pdfBytes), valuesByPdfName, {
-        flatten: def.flattenPdf !== false,
+        flatten: def.flattenPdf === true,
       })
     } catch (err) {
       log.error('fillAcroForm falló', {

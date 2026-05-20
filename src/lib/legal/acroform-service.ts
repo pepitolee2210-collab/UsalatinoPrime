@@ -9,7 +9,7 @@
 // Reemplaza el src/lib/legal/acroform-service.ts retirado en commit 9ba46a1
 // con una versión mucho más acotada.
 
-import { PDFDocument, PDFTextField, PDFCheckBox, PDFRadioGroup, PDFDropdown, PDFName } from 'pdf-lib'
+import { PDFDocument, PDFTextField, PDFCheckBox, PDFRadioGroup, PDFDropdown, PDFName, PDFDict, PDFBool } from 'pdf-lib'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('acroform-service')
@@ -178,11 +178,19 @@ export async function fillAcroForm(
     } catch (err) {
       log.warn('flatten falló — devolvemos PDF con campos editables', { err: err instanceof Error ? err.message : err })
     }
+  } else {
+    // Sin flatten, los AP (appearance streams) de los campos editados quedan
+    // stale porque pdf-lib v1.17 falla regenerando rich text fields (I-485
+    // Part 14) si pedimos updateFieldAppearances. La solución estándar PDF
+    // spec es setear NeedAppearances=true en el /AcroForm dict — los viewers
+    // (Acrobat, Preview, Chrome PDF) regeneran appearances al abrir, así los
+    // valores se ven y los campos siguen editables para que la firma pueda
+    // corregir manualmente lo que la automatización no llenó.
+    const acroForm = doc.catalog.lookup(PDFName.of('AcroForm'))
+    if (acroForm instanceof PDFDict) {
+      acroForm.set(PDFName.of('NeedAppearances'), PDFBool.True)
+    }
   }
 
-  // Skipear updateFieldAppearances cuando no aplanamos: pdf-lib v1.17 falla al
-  // intentar leer rich text fields (ej: USCIS I-485 Part 14 P14_Line*_AdditionalInfo)
-  // durante la regeneración de appearances. Las appearances originales del PDF
-  // siguen siendo válidas para los fields que no editamos.
   return await doc.save({ updateFieldAppearances: flatten })
 }

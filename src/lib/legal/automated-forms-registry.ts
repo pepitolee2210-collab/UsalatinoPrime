@@ -625,9 +625,6 @@ const I485_DEFINITION: AutomatedFormDefinition = {
       n.includes('adjustment of status')
     )
   },
-  // PDF gigante (4.8 MB, 728 fields) — flatten consume mucha RAM en Vercel.
-  // Diana puede igual editar el PDF post-descarga, lo cual es preferible.
-  flattenPdf: false,
 }
 
 // ──────────────────────────────────────────────────────────────────

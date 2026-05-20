@@ -94,17 +94,17 @@ export async function generateI589PartAPdf(parts: I589PartsData): Promise<Uint8A
 
   const pdfPath = path.join(process.cwd(), PDF_DISK_PATH)
   const pdfBytes = await fs.readFile(pdfPath)
-  const filledBytes = await fillAcroForm(new Uint8Array(pdfBytes), valuesByPdfName, { flatten: true })
+  const filledBytes = await fillAcroForm(new Uint8Array(pdfBytes), valuesByPdfName, { flatten: false })
 
+  // Truncar a páginas 1-4 removiendo las extras IN-PLACE. Usar PDFDocument.create()
+  // + copyPages() borraría el /AcroForm dict del catálogo y los widgets quedarían
+  // huérfanos (campos no editables en algunos viewers). removePage() preserva
+  // el AcroForm completo, así Diana puede editar el PDF post-descarga.
   const filledDoc = await PDFDocument.load(filledBytes)
   const totalPages = filledDoc.getPageCount()
-  const pageIndexes = [0, 1, 2, 3].filter((i) => i < totalPages)
-
-  const truncated = await PDFDocument.create()
-  const copiedPages = await truncated.copyPages(filledDoc, pageIndexes)
-  for (const p of copiedPages) {
-    truncated.addPage(p)
+  for (let i = totalPages - 1; i >= 4; i--) {
+    filledDoc.removePage(i)
   }
 
-  return await truncated.save()
+  return await filledDoc.save()
 }

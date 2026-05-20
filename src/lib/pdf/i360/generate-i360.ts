@@ -1,4 +1,4 @@
-import { PDFDocument, PDFTextField, PDFCheckBox, PDFName, StandardFonts, rgb } from 'pdf-lib'
+import { PDFDocument, PDFTextField, PDFCheckBox, PDFName, PDFDict, PDFBool, StandardFonts, rgb } from 'pdf-lib'
 
 // ============================================================================
 // HELPERS
@@ -266,7 +266,15 @@ export async function generateI360PDF(
     })
   }
 
-  // --- 4. Aplanar y guardar ---
-  form.flatten()
+  // --- 4. Guardar manteniendo el AcroForm editable ---
+  // No flattenear: la firma necesita poder corregir manualmente campos mal
+  // autocompletados. Setear NeedAppearances=true le dice al viewer que
+  // regenere appearances al abrir el PDF (los valores se ven y los fields
+  // siguen siendo editables). Los checkboxes son dibujo directo con
+  // page.drawText('X', ...) — esos sí quedan planos (no son AcroForm fields).
+  const acroForm = pdfDoc.catalog.lookup(PDFName.of('AcroForm'))
+  if (acroForm instanceof PDFDict) {
+    acroForm.set(PDFName.of('NeedAppearances'), PDFBool.True)
+  }
   return pdfDoc.save()
 }

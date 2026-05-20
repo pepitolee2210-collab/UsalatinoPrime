@@ -71,13 +71,19 @@ export async function generateI589PartBPdf(structured: StructuredI589BC): Promis
   const values = buildPartBCValues(structured)
   const pdfPath = path.join(process.cwd(), PDF_DISK_PATH)
   const pdfBytes = await fs.readFile(pdfPath)
-  const filledBytes = await fillAcroForm(new Uint8Array(pdfBytes), values, { flatten: true })
+  const filledBytes = await fillAcroForm(new Uint8Array(pdfBytes), values, { flatten: false })
 
+  // Truncar a páginas 5-12 removiendo las extras IN-PLACE. Crear un nuevo
+  // PDFDocument + copyPages perdería el /AcroForm dict y los widgets quedarían
+  // huérfanos; removePage preserva el AcroForm para que Diana pueda editar.
   const filledDoc = await PDFDocument.load(filledBytes)
-  const total = filledDoc.getPageCount()
-  const indexes = [4, 5, 6, 7, 8, 9, 10, 11].filter((i) => i < total)
-  const truncated = await PDFDocument.create()
-  const copied = await truncated.copyPages(filledDoc, indexes)
-  for (const p of copied) truncated.addPage(p)
-  return await truncated.save()
+  // Borrar del final hacia adelante para que los índices no se desfasen.
+  for (let i = filledDoc.getPageCount() - 1; i >= 12; i--) {
+    filledDoc.removePage(i)
+  }
+  // Borrar páginas 0-3 (Parte A), también del final hacia adelante.
+  for (let i = 3; i >= 0; i--) {
+    filledDoc.removePage(i)
+  }
+  return await filledDoc.save()
 }

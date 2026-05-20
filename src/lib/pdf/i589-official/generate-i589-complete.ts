@@ -2,8 +2,9 @@
  * Generador del PDF I-589 oficial USCIS COMPLETO (páginas 1-12) — Parte A
  * con datos del wizard + Parte B/C/D con Miedo Creíble structured.
  *
- * Un solo fillAcroForm con valores mergeados de ambas fuentes, flatten,
- * y devuelve las 12 páginas. Es el PDF que Diana presenta a USCIS.
+ * Un solo fillAcroForm con valores mergeados de ambas fuentes (AcroForm
+ * editable, ver acroform-service NeedAppearances) y devuelve las 12 páginas.
+ * Es el PDF que Diana presenta a USCIS, editable para correcciones manuales.
  */
 
 import fs from 'node:fs/promises'
@@ -26,13 +27,13 @@ export async function generateI589CompletePdf(
 
   const pdfPath = path.join(process.cwd(), PDF_DISK_PATH)
   const pdfBytes = await fs.readFile(pdfPath)
-  const filledBytes = await fillAcroForm(new Uint8Array(pdfBytes), merged, { flatten: true })
+  const filledBytes = await fillAcroForm(new Uint8Array(pdfBytes), merged, { flatten: false })
 
+  // Truncar a las primeras 12 páginas IN-PLACE para preservar el /AcroForm dict.
+  // copyPages() a un PDFDocument nuevo dejaría los widgets sin form root.
   const filledDoc = await PDFDocument.load(filledBytes)
-  const total = filledDoc.getPageCount()
-  const indexes = Array.from({ length: Math.min(12, total) }, (_, i) => i)
-  const truncated = await PDFDocument.create()
-  const copied = await truncated.copyPages(filledDoc, indexes)
-  for (const p of copied) truncated.addPage(p)
-  return await truncated.save()
+  for (let i = filledDoc.getPageCount() - 1; i >= 12; i--) {
+    filledDoc.removePage(i)
+  }
+  return await filledDoc.save()
 }
