@@ -229,7 +229,7 @@ export function generateCambioCorteLetter(s: CartaCambioCorteData): Uint8Array {
 
   for (let i = 0; i < bens.length; i++) {
     normal(11)
-    left(`It Depends ${i + 1}: ${bens[i].full_name.toUpperCase()}`)
+    left(`Dependent ${i + 1}: ${bens[i].full_name.toUpperCase()}`)
     if (bens[i].file_number) {
       y += 4
       left(`A#: ${bens[i].file_number}`)
