@@ -75,6 +75,42 @@ El resto de servicios (mociones, cambio-de-corte, taxes, itin-number, licencia-d
 
 `src/lib/contracts/` tiene los templates de contratos firmables por servicio (etapas, objetos del contrato, precios), que `QuickContractGenerator` consume.
 
+## Dashboard del caso compartido admin ↔ employee
+
+Tanto `/admin/cases/[id]` (Henry) como `/employee/cases/[id]` (Diana, Vanessa, Andrium) renderizan el **mismo** componente `CaseTabsByPhase` (`src/app/employee/_shared/case-tabs-by-phase.tsx`). Henry monta una capa fina (`admin-case-view.tsx`) con header + `PhaseStatusPanel` + acciones admin (aprobar, dar acceso, descargar PDFs) y delega todas las pestañas al componente compartido pasando `isAdmin={true}` y sus tabs admin-only como `extraTabs`.
+
+Lo que controla qué tabs muestra cada servicio vive en **un solo lugar**: `src/lib/services/dashboard-tabs.tsx`. Por servicio se declara una lista de `DashboardTabDef` con un `render(ctx)` que recibe `caseId`, `caseNumber`, `clientId`, `clientName`, `serviceSlug`, `currentPhase`, `isAdmin`, `overview`, `formSubmissions`, `currentUserId`, `onRefresh`. Una tab puede filtrarse por rol con `requiresRole: 'admin' | 'employee' | 'any'`.
+
+Tabs **base** (todos los servicios): `docs`, `client-docs`, `oficiales`, `archivados`, `notas`, `historia` (más `forms` si el servicio está en `SERVICE_REGISTRY`). Las agrega `CaseTabsByPhase` automáticamente — no se tocan al sumar un servicio.
+
+Tabs **admin-only** que vienen como `extraTabs` desde `admin-case-view.tsx`:
+- `cobranza` (Pagos) — `PaymentsTab` en `src/app/admin/cases/[id]/payments-tab.tsx`
+- `bitacora` (`CaseChat`)
+- `client-story` (SIJS) — `ClientStoryReview`, depende de `documents` (no del ctx)
+- `i360` (SIJS) — `I360Review`, panel admin con descarga PDF directa (Diana usa `I360FormSection` declarado en su lado como `i360`)
+- `legal-review` — `LegalReviewer`
+
+### Cómo agregar un servicio nuevo al dashboard
+
+1. **`service_catalog`** (BD): asegúrate de que el slug existe (migración `003_seed_services.sql` y descendientes).
+2. **`src/lib/services/registry.ts`**: si usa fases, agregar entrada con `slug`, `name`, `usesPhases: true`, `phases[]`. Extender el enum `case_phase` con una migración separada (limitación de `ALTER TYPE` de Postgres).
+3. **`src/lib/services/dashboard-tabs.tsx`**: agregar entrada en `SERVICE_DASHBOARD_TABS` con los tabs específicos del servicio. Cada tab es declarativa: `{ id, label, requiresRole?, isVisible?, render, getCount? }`. Listo — **no toques** `admin-case-view.tsx` ni `case-tabs-by-phase.tsx`.
+4. **`src/lib/workflows/<slug>.ts`** (opcional): solo si el servicio necesita wizard de intake propio.
+5. **`src/lib/contracts/<slug>.ts`** (opcional): si firma contratos.
+6. **`document_type_phases`** (BD): si el servicio necesita document_types específicos por fase, inserta filas en esta M2M (override de category, icon, sort_order, etc. por fase).
+
+### Diferencias admin vs employee
+
+| Aspecto | Henry (admin) | Diana/Vanessa/Andrium (employee) |
+|---|---|---|
+| Componente raíz | `admin-case-view.tsx` | `employee-case-view.tsx` |
+| Tabs base | mismas | mismas |
+| Tabs por servicio | mismas (registry) | mismas (registry) |
+| Tabs admin-only | sí (extraTabs: Pagos, Bitácora, Legal Review, etc.) | — |
+| Acciones del header | aprobar, dar acceso, descargar I-360/I-589, asignar empleado | — |
+
+Si una tab debería verse solo en un rol, márcala con `requiresRole` en `dashboard-tabs.tsx`. **No** dupliques componentes admin↔employee — el patrón es: un componente, un registry, dos paneles.
+
 ## Migraciones de Supabase
 
 `supabase/migrations/` mezcla dos convenciones (números secuenciales `001_..` y fechas `20260...`). Aplicar siempre en orden alfabético. Reflejar tipos manualmente en `src/types/database.ts` cuando agregues columnas (no hay generación automática enganchada).

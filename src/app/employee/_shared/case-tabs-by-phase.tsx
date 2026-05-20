@@ -6,12 +6,6 @@ import { Loader2, Upload, X, Download, FileText, Archive } from 'lucide-react'
 import { toast } from 'sonner'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
-import { DeclarationGenerator } from '@/app/admin/cases/[id]/declaration-generator'
-import { ParentalConsentGenerator } from '@/app/admin/cases/[id]/parental-consent-generator'
-import { SupplementaryDataForm } from '@/app/admin/cases/[id]/supplementary-data-form'
-import { JurisdictionPanel } from '@/app/admin/cases/[id]/jurisdiction-panel'
-import { PhaseHistoryTab } from '@/app/admin/cases/[id]/phase-history-tab'
-import { AppealLetterGenerator } from '@/app/admin/cases/[id]/appeal-letter-generator'
 import { NotesTab } from './notes-tab'
 import { PhaseAccordion } from './phase-accordion'
 import { PhaseDocumentList } from './phase-document-list'
@@ -23,28 +17,17 @@ import { I360FormSection } from '@/components/legal/i360-form-section'
 import type { CaseOverview, PhaseGroup, UploadFile } from './phase-types'
 import type { CasePhase } from '@/types/database'
 import { isPhasedService } from '@/lib/services/registry'
+import {
+  getVisibleServiceTabs,
+  type DashboardTabContext,
+  type DashboardTabId,
+} from '@/lib/services/dashboard-tabs'
 
 type UploadDirection = 'client_to_admin' | 'admin_to_client' | 'firm_internal'
 
-export type TabId =
-  | 'docs'
-  | 'client-docs'
-  | 'oficiales'
-  | 'archivados'
-  | 'forms'
-  | 'notas'
-  | 'historia'
-  | 'radicacion'
-  | 'historico'
-  | 'generadores'
-  | 'mi-trabajo'
-  | 'i360'
-  | 'i485'
-  | 'bitacora'
-  | 'cobranza'
-  | 'credible-fear'
-  | 'i589-part-a'
-  | 'carta-apelacion'
+// El conjunto canónico de IDs vive en `dashboard-tabs.tsx`. Re-exportado aquí
+// con el alias histórico `TabId` por compatibilidad con callers existentes.
+export type TabId = DashboardTabId
 
 interface FormSub {
   form_type: string
@@ -99,8 +82,25 @@ export function CaseTabsByPhase({
 
   const currentPhase = overview?.case.current_phase ?? null
   const isPhased = isPhasedService(serviceSlug)
-  const isVisaJuvenil = serviceSlug === 'visa-juvenil'
-  const isApelacion = serviceSlug === 'apelacion'
+
+  // Contexto pasado al registry de tabs por servicio. Lo recalculamos en cada
+  // render (no useMemo) porque sus consumidores son funciones puras `render`
+  // de `dashboard-tabs.tsx` que solo se invocan cuando el usuario abre la tab.
+  const ctx: DashboardTabContext = {
+    caseId,
+    caseNumber,
+    clientId,
+    clientName,
+    serviceSlug,
+    currentPhase,
+    isAdmin,
+    overview,
+    formSubmissions,
+    currentUserId,
+    onRefresh,
+  }
+
+  const serviceTabs = getVisibleServiceTabs(ctx)
 
   const tabs: { id: TabId; label: string; count?: number }[] = useMemo(() => {
     const baseTabs: { id: TabId; label: string; count?: number }[] = [
@@ -116,21 +116,23 @@ export function CaseTabsByPhase({
       { id: 'notas', label: 'Notas' },
       { id: 'historia', label: 'Historia' },
     )
-    if (isVisaJuvenil) {
-      baseTabs.push(
-        { id: 'radicacion', label: 'Radicación' },
-        { id: 'historico', label: 'Histórico' },
-        { id: 'generadores', label: 'Generadores' },
-      )
-    }
-    if (isApelacion) {
-      baseTabs.push({ id: 'carta-apelacion', label: 'Carta de Apelación (IA)' })
+    // Tabs específicos del servicio — declarados en `dashboard-tabs.tsx`.
+    // Agregar/modificar un servicio se hace ahí, NO aquí.
+    for (const def of serviceTabs) {
+      baseTabs.push({
+        id: def.id,
+        label: def.label,
+        count: def.getCount?.(ctx),
+      })
     }
     for (const t of extraTabs) {
       baseTabs.push({ id: t.id, label: t.label, count: t.count })
     }
     return baseTabs
-  }, [overview, isPhased, isVisaJuvenil, isApelacion, extraTabs])
+    // ctx se reconstruye cada render; serviceTabs depende de ctx + serviceSlug.
+    // Las dependencias reales del array son las que afectan el resultado:
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [overview, isPhased, serviceTabs, extraTabs])
 
   const handleScrollToPhase = (phase: CasePhase) => {
     const el = document.getElementById(`phase-section-${phase}`)
@@ -412,49 +414,13 @@ export function CaseTabsByPhase({
         </div>
       )}
 
-      {/* === RADICACIÓN === */}
-      {tab === 'radicacion' && isVisaJuvenil && (
-        <div className="space-y-3">
-          <div className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-3 flex items-center gap-3">
-            <span
-              className="material-symbols-outlined text-purple-700"
-              data-fill="1"
-              style={{ fontSize: 22 }}
-            >
-              child_care
-            </span>
-            <div>
-              <p className="text-xs font-bold text-purple-800 uppercase">Fase 1 — Custodia</p>
-              <p className="text-[11px] text-purple-700">
-                Detección de jurisdicción y formularios estatales para obtener la orden con hallazgos SIJS.
-              </p>
-            </div>
-          </div>
-          <JurisdictionPanel caseId={caseId} />
-        </div>
-      )}
+      {/* === Tabs específicos por servicio — render dirigido por el registry === */}
+      {(() => {
+        const def = serviceTabs.find((d) => d.id === tab)
+        return def ? <div>{def.render(ctx)}</div> : null
+      })()}
 
-      {/* === HISTÓRICO === */}
-      {tab === 'historico' && isVisaJuvenil && (
-        <PhaseHistoryTab caseId={caseId} />
-      )}
-
-      {/* === GENERADORES === */}
-      {tab === 'generadores' && isVisaJuvenil && (
-        <GeneratorsTab
-          caseId={caseId}
-          clientName={clientName}
-          formSubmissions={formSubmissions}
-          currentPhase={currentPhase}
-        />
-      )}
-
-      {/* === CARTA DE APELACIÓN (solo apelación) === */}
-      {tab === 'carta-apelacion' && isApelacion && (
-        <AppealLetterGenerator caseId={caseId} caseNumber={caseNumber} />
-      )}
-
-      {/* === Tabs extra (Mi Trabajo) === */}
+      {/* === Tabs extra (Mi Trabajo, admin-only de admin-case-view) === */}
       {extraTabs.find(t => t.id === tab) && (
         <div>{extraTabs.find(t => t.id === tab)?.content}</div>
       )}
@@ -768,76 +734,6 @@ function formatValue(v: unknown): string {
 
 // ───────────────────────── GeneratorsTab ─────────────────────────
 
-function GeneratorsTab({
-  caseId,
-  clientName,
-  formSubmissions,
-  currentPhase,
-}: {
-  caseId: string
-  clientName: string
-  formSubmissions: FormSub[]
-  currentPhase: CasePhase | null
-}) {
-  const tutorData = formSubmissions.find(s => s.form_type === 'tutor_guardian')?.form_data ?? null
-  // El backend de generación mergea testigos de tutor + client_witnesses.
-  // El UI debe ver la misma lista para que los índices coincidan.
-  const clientWitnessesData = formSubmissions.find(s => s.form_type === 'client_witnesses')?.form_data ?? null
-  const minorStories = formSubmissions
-    .filter(s => s.form_type === 'client_story')
-    .sort((a, b) => (a.minor_index || 0) - (b.minor_index || 0))
-    .map(s => ({ minorIndex: s.minor_index || 0, formData: s.form_data }))
-  const absentParents = formSubmissions
-    .filter(s => s.form_type === 'client_absent_parent')
-    .sort((a, b) => (a.minor_index || 0) - (b.minor_index || 0))
-    .map(s => ({ formData: s.form_data }))
-  // supplementary lo llena Diana en el SupplementaryDataForm; lo necesita el
-  // DeclarationGenerator para hidratar nombre/DOB/ID en casos con esquema
-  // legacy donde el wizard del cliente no capturó esos campos.
-  const supplementaryData = formSubmissions.find(s => s.form_type === 'admin_supplementary')?.form_data ?? null
-
-  return (
-    <div className="space-y-6">
-      <div className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-3 flex items-center gap-3">
-        <span
-          className="material-symbols-outlined text-purple-700"
-          data-fill="1"
-          style={{ fontSize: 22 }}
-        >
-          auto_awesome
-        </span>
-        <div>
-          <p className="text-xs font-bold text-purple-800 uppercase">Generadores de Fase 1 — Custodia</p>
-          <p className="text-[11px] text-purple-700">
-            Crea declaraciones, consentimientos y peticiones a partir de la información del cliente.
-          </p>
-        </div>
-      </div>
-
-      <SupplementaryDataForm
-        caseId={caseId}
-        tutorData={tutorData}
-        minorStories={minorStories}
-        absentParents={absentParents}
-      />
-
-      <ParentalConsentGenerator caseId={caseId} clientName={clientName} formSubmissions={formSubmissions} />
-
-      <DeclarationGenerator
-        caseId={caseId}
-        clientName={clientName}
-        tutorData={tutorData}
-        clientWitnessesData={clientWitnessesData}
-        minorStories={minorStories}
-        absentParents={absentParents}
-        supplementaryData={supplementaryData}
-      />
-
-      {currentPhase && currentPhase !== 'custodia' && (
-        <p className="text-[11px] text-gray-500 italic">
-          Estos generadores son de Fase 1 (Custodia). El caso ya avanzó a {currentPhase.toUpperCase()}, pero puedes seguir generando documentación si necesitas.
-        </p>
-      )}
-    </div>
-  )
-}
+// GeneratorsTab vive ahora en `./generators-tab.tsx` y se consume desde el
+// registry `dashboard-tabs.tsx`. Movido para evitar import circular con el
+// registry y para que la tab pueda incorporarse declarativamente.

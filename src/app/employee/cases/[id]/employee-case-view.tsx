@@ -8,10 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { PhaseStatusPanel } from '@/app/admin/cases/[id]/phase-status-panel'
 import { CaseTabsByPhase } from '@/app/employee/_shared/case-tabs-by-phase'
 import { useCaseOverview } from '@/app/employee/_shared/use-case-overview'
-import { I485FormSection } from '@/components/legal/i485-form-section'
 import { I360FormSection } from '@/components/legal/i360-form-section'
-import { CredibleFearGenerator } from '@/app/admin/cases/[id]/credible-fear-generator'
-import { I589PartAReview } from '@/app/admin/cases/[id]/i589-part-a-review'
 import type { CasePhase } from '@/types/database'
 
 interface CaseData {
@@ -87,7 +84,6 @@ export function EmployeeCaseView({
   const hasAssignment = Boolean(assignment)
   const clientName = `${caseData.client?.first_name || ''} ${caseData.client?.last_name || ''}`.trim()
   const isVisaJuvenil = caseData.service?.slug === 'visa-juvenil'
-  const isAsiloPolitico = caseData.service?.slug === 'asilo-politico'
 
   const { overview, loading, refresh } = useCaseOverview(caseData.id)
 
@@ -109,38 +105,9 @@ export function EmployeeCaseView({
       }]
     : []
 
-  // Tab "I-485" — sección especializada para Fase 3 (ajuste de estatus).
-  const i485Tab = isVisaJuvenil
-    ? [{
-        id: 'i485' as const,
-        label: 'I-485',
-        content: <I485FormSection caseId={caseData.id} />,
-      }]
-    : []
-
-  // Tab "I-589 Parte A" — solo Asilo Político. Diana ve los datos que el
-  // cliente capturó vía el wizard del portal. Mientras se implementa el
-  // AcroForm I-589 oficial, Diana descarga JSON o copia los valores manual.
-  const i589PartATab = isAsiloPolitico
-    ? [{
-        id: 'i589-part-a' as const,
-        label: 'I-589 Parte A',
-        content: (
-          <I589PartAReview caseId={caseData.id} caseNumber={caseData.case_number} />
-        ),
-      }]
-    : []
-
-  // Tab "Miedo Creíble" — solo Asilo Político. Diana genera, revisa y descarga.
-  const credibleFearTab = isAsiloPolitico
-    ? [{
-        id: 'credible-fear' as const,
-        label: 'Miedo Creíble',
-        content: (
-          <CredibleFearGenerator caseId={caseData.id} caseNumber={caseData.case_number} />
-        ),
-      }]
-    : []
+  // i485 (SIJS), i589-part-a (Asilo) y credible-fear (Asilo) viven en el
+  // registry compartido `src/lib/services/dashboard-tabs.tsx` — Diana los
+  // recibe automáticamente sin necesidad de declararlos como extraTabs.
 
   // Tab "Mi Trabajo" se inyecta como extraTab cuando hay asignación.
   const miTrabajoTab = hasAssignment
@@ -235,7 +202,7 @@ export function EmployeeCaseView({
         henryNotes={henryNotes}
         currentUserId={currentUserId}
         isAdmin={false}
-        extraTabs={[...i360Tab, ...i485Tab, ...i589PartATab, ...credibleFearTab, ...miTrabajoTab]}
+        extraTabs={[...i360Tab, ...miTrabajoTab]}
         onRefresh={() => {
           refresh()
           router.refresh()

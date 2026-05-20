@@ -1,47 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Separator } from '@/components/ui/separator'
-import { CaseFormViewer } from '@/components/admin/CaseFormViewer'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { CheckCircle, AlertCircle, FileText, Download, ArrowLeft, Loader2, DollarSign, CreditCard, Plus, ShieldCheck, ShieldOff, Upload, Eye, Pencil, Trash2, MessageSquare, Briefcase, Send, UserPlus, Scale, Gavel } from 'lucide-react'
+import { CheckCircle, AlertCircle, FileText, Download, ArrowLeft, Loader2, ShieldCheck, ShieldOff, Pencil } from 'lucide-react'
 import Link from 'next/link'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
-import { APPOINTMENT_DOCUMENT_KEYS, DOCUMENT_CATEGORIES } from '@/lib/appointments/constants'
 import { CaseChat } from './case-chat'
 import { ClientStoryReview } from './client-story-review'
-import { I589Review } from './i589-review'
-import { CredibleFearGenerator } from './credible-fear-generator'
-import { DeclarationGenerator } from './declaration-generator'
-import { ParentalConsentGenerator } from './parental-consent-generator'
 import { LegalReviewer } from './legal-reviewer'
-import { SupplementaryDataForm } from './supplementary-data-form'
-import { JurisdictionPanel } from './jurisdiction-panel'
 import { PhaseStatusPanel } from './phase-status-panel'
-import { PhaseHistoryTab } from './phase-history-tab'
-import { AppealLetterGenerator } from './appeal-letter-generator'
 import { CasePipeline } from '@/components/case-pipeline'
-import { uploadDirect } from '@/lib/upload-direct'
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table'
 import { I360WizardCore, type I360FormData } from '@/components/i360/I360WizardCore'
-import { I485FormSection } from '@/components/legal/i485-form-section'
+import { CaseTabsByPhase, type TabId as DashboardTabId } from '@/app/employee/_shared/case-tabs-by-phase'
+import { useCaseOverview } from '@/app/employee/_shared/use-case-overview'
+import { PaymentsTab } from './payments-tab'
 
 interface EmployeeAssignment {
   id: string
@@ -70,52 +49,25 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
   const [i589Loading, setI589Loading] = useState(false)
   const [i360Loading, setI360Loading] = useState(false)
   const [markPaidLoading, setMarkPaidLoading] = useState<string | null>(null)
-  const [planDialogOpen, setPlanDialogOpen] = useState(false)
-  const [planLoading, setPlanLoading] = useState(false)
   const [accessLoading, setAccessLoading] = useState(false)
-  const [uploadingKey, setUploadingKey] = useState<string | null>(null)
-  const [uploadingForClient, setUploadingForClient] = useState(false)
-  const [uploadingClient, setUploadingClient] = useState(false)
-  const [deletingDocId, setDeletingDocId] = useState<string | null>(null)
   const [renamingDoc, setRenamingDoc] = useState<{ id: string; name: string } | null>(null)
   const [renameLoading, setRenameLoading] = useState(false)
-  // Employee assignment
-  const [empAssignment, setEmpAssignment] = useState(employeeAssignment || null)
-  const [assignDialog, setAssignDialog] = useState(false)
-  const [assignTask, setAssignTask] = useState('')
-  const [assignEmployee, setAssignEmployee] = useState(employees[0]?.id || '')
-  const [assignLoading, setAssignLoading] = useState(false)
-  const [reviewingSubId, setReviewingSubId] = useState<string | null>(null)
-  const [subNotes, setSubNotes] = useState('')
-  const [subActionLoading, setSubActionLoading] = useState(false)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [planForm, setPlanForm] = useState({
-    total_amount: String(caseData.total_cost || ''),
-    num_installments: '10',
-    payment_method: 'manual',
-    first_payment_date: new Date().toISOString().split('T')[0],
-    notes: '',
-  })
   const router = useRouter()
   const supabase = createClient()
+
+  // Hook compartido con employee-case-view — case-overview lo expone tanto a
+  // admin como a employee desde el mismo endpoint `/api/admin/cases/[id]/case-overview`.
+  const { overview, loading: overviewLoading, refresh: refreshOverview } = useCaseOverview(caseData.id)
+
+  const [currentUserId, setCurrentUserId] = useState<string>('')
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? ''))
+  }, [supabase])
 
   const serviceSlug = caseData.service?.slug || ''
   const isAsylumService = serviceSlug === 'asilo-politico'
   const isVisaJuvenil = serviceSlug === 'visa-juvenil'
-  const isApelacion = serviceSlug === 'apelacion'
-
-  // PDFs/DOCX auto-generados por /api/admin/case-forms/[slug]/print.
-  // Se guardan con direction='admin_to_client' y document_key='<slug>_filled'.
-  // Los aislamos de la pestaña "Para el Cliente" (entregables manuales) en
-  // una pestaña propia "Documentos Oficiales" para paridad con Diana.
-  const isSystemGeneratedDoc = (d: any) =>
-    d.direction === 'admin_to_client' &&
-    typeof d.document_key === 'string' &&
-    d.document_key.endsWith('_filled')
-  const systemGeneratedDocs = documents.filter(isSystemGeneratedDoc)
-  const manualClientDocs = documents.filter(
-    (d: any) => d.direction === 'admin_to_client' && !isSystemGeneratedDoc(d),
-  )
+  const clientName = `${caseData.client?.first_name || ''} ${caseData.client?.last_name || ''}`.trim() || 'el cliente'
 
   async function updateStatus(newStatus: string, notes?: string) {
     setLoading(true)
@@ -156,64 +108,6 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
       toast.error('Error al actualizar')
     } finally {
       setLoading(false)
-    }
-  }
-
-  // Sube un documento en nombre del cliente desde el panel admin.
-  // Replica el flujo de Diana (employee/_shared/case-tabs-by-phase.tsx):
-  // POST signed URL → upload Storage → PATCH register.
-  async function uploadClientDoc(file: File) {
-    if (!caseData.id || !caseData.client_id) {
-      toast.error('No se puede subir: caso no encontrado.')
-      return
-    }
-    setUploadingClient(true)
-    try {
-      const signRes = await fetch('/api/admin/client-documents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          case_id: caseData.id,
-          client_id: caseData.client_id,
-          file_name: file.name,
-          file_size: file.size,
-          direction: 'client_to_admin',
-        }),
-      })
-      if (!signRes.ok) {
-        const err = await signRes.json().catch(() => ({}))
-        throw new Error(err.error || 'Error al preparar subida')
-      }
-      const { token: uploadToken, filePath } = await signRes.json()
-
-      const sbClient = createClient()
-      const { error: upErr } = await sbClient.storage
-        .from('case-documents')
-        .uploadToSignedUrl(filePath, uploadToken, file)
-      if (upErr) throw new Error('Error al subir archivo')
-
-      const confirmRes = await fetch('/api/admin/client-documents', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          case_id: caseData.id,
-          client_id: caseData.client_id,
-          file_path: filePath,
-          file_name: file.name,
-          file_size: file.size,
-          direction: 'client_to_admin',
-        }),
-      })
-      if (!confirmRes.ok) {
-        const err = await confirmRes.json().catch(() => ({}))
-        throw new Error(err.error || 'Error al registrar documento')
-      }
-      toast.success('Documento subido')
-      router.refresh()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Error al subir')
-    } finally {
-      setUploadingClient(false)
     }
   }
 
@@ -342,63 +236,6 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
       setAccessLoading(false)
     }
   }
-
-  async function handleMarkInstallmentPaid(paymentId: string) {
-    setMarkPaidLoading(paymentId)
-    try {
-      const res = await fetch('/api/admin/payments/mark-paid', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ payment_id: paymentId, payment_method: 'manual' }),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error)
-      }
-      toast.success('Pago marcado como completado')
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || 'Error al marcar pago')
-    } finally {
-      setMarkPaidLoading(null)
-    }
-  }
-
-  async function handleCreatePaymentPlan() {
-    if (!planForm.total_amount || !planForm.num_installments) {
-      toast.error('Complete los campos requeridos')
-      return
-    }
-    setPlanLoading(true)
-    try {
-      const res = await fetch('/api/admin/payments/create-plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          case_id: caseData.id,
-          total_amount: Number(planForm.total_amount),
-          num_installments: Number(planForm.num_installments),
-          payment_method: planForm.payment_method,
-          first_payment_date: planForm.first_payment_date,
-          notes: planForm.notes,
-        }),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error)
-      }
-      toast.success('Plan de cuotas creado')
-      setPlanDialogOpen(false)
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || 'Error al crear plan')
-    } finally {
-      setPlanLoading(false)
-    }
-  }
-
-  const totalPaid = payments.filter(p => p.status === 'completed').reduce((s, p) => s + Number(p.amount), 0)
-  const totalPending = payments.filter(p => p.status === 'pending').reduce((s, p) => s + Number(p.amount), 0)
 
   return (
     <div className="space-y-6">
@@ -531,1018 +368,96 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
         />
       )}
 
-      <Tabs defaultValue="payments">
-        <TabsList>
-          <TabsTrigger value="payments">Pagos ({payments.length})</TabsTrigger>
-          <TabsTrigger value="documents">Documentos ({documents.filter((d: any) => d.direction !== 'admin_to_client').length})</TabsTrigger>
-          <TabsTrigger value="client-docs" className="flex items-center gap-1.5">
-            <Download className="w-3.5 h-3.5 text-blue-600" />
-            Para el Cliente ({manualClientDocs.length})
-          </TabsTrigger>
-          <TabsTrigger value="oficiales" className="flex items-center gap-1.5">
-            <FileText className="w-3.5 h-3.5 text-rose-600" />
-            Documentos Oficiales ({systemGeneratedDocs.length})
-          </TabsTrigger>
-          <TabsTrigger value="notes">Notas</TabsTrigger>
-          {isVisaJuvenil && (
-            <TabsTrigger value="phase-history" className="flex items-center gap-1.5">
-              <Scale className="w-3.5 h-3.5 text-purple-600" />
-              Histórico
-            </TabsTrigger>
-          )}
-          {isVisaJuvenil && (
-            <TabsTrigger value="client-story" className="flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-[#F2A900]" />
-              Historia
-              {(aiSubmissions || []).some((s: { form_type: string; status: string }) => s.form_type === 'client_story' && s.status === 'submitted') && (
-                <span className="w-2 h-2 rounded-full bg-yellow-500" />
-              )}
-            </TabsTrigger>
-          )}
-          {isAsylumService && (
-            <TabsTrigger value="i589-review" className="flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-[#F2A900]" />
-              I-589
-              {(aiSubmissions || []).some((s: { form_type: string; status: string }) => s.form_type === 'i589_part_b1' && s.status === 'submitted') && (
-                <span className="w-2 h-2 rounded-full bg-yellow-500" />
-              )}
-            </TabsTrigger>
-          )}
-          {isAsylumService && (
-            <TabsTrigger value="credible-fear" className="flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-purple-600" />
-              Miedo Creíble
-            </TabsTrigger>
-          )}
-          {isVisaJuvenil && (
-            <TabsTrigger value="declaraciones" className="flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-[#F2A900]" />
-              Declaraciones
-            </TabsTrigger>
-          )}
-          {isVisaJuvenil && (
-            <TabsTrigger value="i360" className="flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-indigo-500" />
-              I-360
-              {(aiSubmissions || []).some((s: { form_type: string; status: string }) => s.form_type === 'i360_sijs' && s.status === 'submitted') && (
-                <span className="w-2 h-2 rounded-full bg-indigo-500" />
-              )}
-            </TabsTrigger>
-          )}
-          {isVisaJuvenil && (
-            <TabsTrigger value="i485" className="flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-emerald-600" />
-              I-485
-            </TabsTrigger>
-          )}
-          {isApelacion && (
-            <TabsTrigger value="carta-apelacion" className="flex items-center gap-1.5">
-              <Gavel className="w-3.5 h-3.5 text-rose-700" />
-              Carta de Apelación (IA)
-            </TabsTrigger>
-          )}
-          <TabsTrigger value="legal-review" className="flex items-center gap-1.5">
-            <Scale className="w-3.5 h-3.5 text-[#F2A900]" />
-            Revisión Legal
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="payments" className="mt-4">
-          <div className="space-y-4">
-            {/* Summary */}
-            <div className="grid grid-cols-3 gap-3">
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <p className="text-xs text-gray-500">Total del Servicio</p>
-                  <p className="text-lg font-bold text-gray-900">${Number(caseData.total_cost || 0).toLocaleString()}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <p className="text-xs text-gray-500">Pagado</p>
-                  <p className="text-lg font-bold text-green-600">${totalPaid.toLocaleString()}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <p className="text-xs text-gray-500">Pendiente</p>
-                  <p className="text-lg font-bold text-yellow-600">${totalPending.toLocaleString()}</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Actions */}
-            {payments.length === 0 && (
-              <Dialog open={planDialogOpen} onOpenChange={setPlanDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="w-4 h-4 mr-1" /> Crear Plan de Cuotas
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Crear Plan de Cuotas</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label>Monto Total ($)</Label>
-                      <Input
-                        type="number"
-                        value={planForm.total_amount}
-                        onChange={(e) => setPlanForm({ ...planForm, total_amount: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Numero de cuotas</Label>
-                      <Select value={planForm.num_installments} onValueChange={(v) => setPlanForm({ ...planForm, num_installments: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1 (pago unico)</SelectItem>
-                          <SelectItem value="3">3 cuotas</SelectItem>
-                          <SelectItem value="5">5 cuotas</SelectItem>
-                          <SelectItem value="10">10 cuotas</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Fecha del primer pago</Label>
-                      <Input
-                        type="date"
-                        value={planForm.first_payment_date}
-                        onChange={(e) => setPlanForm({ ...planForm, first_payment_date: e.target.value })}
-                      />
-                      <p className="text-xs text-gray-500">Cuotas siguientes se calculan mensualmente desde esta fecha</p>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Metodo de pago</Label>
-                      <Select value={planForm.payment_method} onValueChange={(v) => setPlanForm({ ...planForm, payment_method: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="manual">Manual</SelectItem>
-                          <SelectItem value="zelle">Zelle</SelectItem>
-                          <SelectItem value="efectivo">Efectivo</SelectItem>
-                          <SelectItem value="transferencia">Transferencia</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <Button onClick={handleCreatePaymentPlan} disabled={planLoading} className="w-full">
-                      {planLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
-                      Crear Plan
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
-
-            {/* Payments Table */}
-            {payments.length > 0 ? (
-              <Card>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Cuota</TableHead>
-                        <TableHead>Monto</TableHead>
-                        <TableHead>Estado</TableHead>
-                        <TableHead>Vencimiento</TableHead>
-                        <TableHead>Pagado</TableHead>
-                        <TableHead>Metodo</TableHead>
-                        <TableHead>Acciones</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {payments.map((p: any) => {
-                        const isOverdue = p.status === 'pending' && p.due_date && new Date(p.due_date) < new Date()
-                        return (
-                          <TableRow key={p.id} className={isOverdue ? 'bg-red-50/50' : ''}>
-                            <TableCell className="text-sm font-medium">
-                              {p.installment_number}/{p.total_installments}
-                            </TableCell>
-                            <TableCell className="text-sm font-semibold">
-                              ${Number(p.amount).toLocaleString()}
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={
-                                isOverdue ? 'bg-red-100 text-red-800' :
-                                p.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                p.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-gray-100 text-gray-800'
-                              }>
-                                {isOverdue ? 'Vencido' : p.status === 'completed' ? 'Pagado' : 'Pendiente'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-sm text-gray-500">
-                              {p.due_date ? format(new Date(p.due_date), 'd MMM yyyy', { locale: es }) : '—'}
-                            </TableCell>
-                            <TableCell className="text-sm text-gray-500">
-                              {p.paid_at ? format(new Date(p.paid_at), 'd MMM yyyy', { locale: es }) : '—'}
-                            </TableCell>
-                            <TableCell className="text-sm text-gray-500">
-                              {p.payment_method || '—'}
-                            </TableCell>
-                            <TableCell>
-                              {p.status === 'pending' && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleMarkInstallmentPaid(p.id)}
-                                  disabled={markPaidLoading === p.id}
-                                >
-                                  {markPaidLoading === p.id ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <CheckCircle className="w-3 h-3 mr-1" />
-                                  )}
-                                  Pagado
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            ) : (
-              <p className="text-sm text-gray-500">No hay pagos registrados. Cree un plan de cuotas para este caso.</p>
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="documents" className="mt-4">
-          {!isVisaJuvenil ? (
-            /* Vista genérica para servicios NO-SIJS (Apelación, Asilo, etc.):
-               agrupa los documentos del cliente por su categoría REAL del
-               catálogo (document_types.category_name_es). Refleja lo que ve
-               Diana en su dashboard sin el legacy hardcoded SIJS. */
-            <PhasedDocumentsView
-              documents={documents}
-              uploadingKey={uploadingKey}
-              deletingDocId={deletingDocId}
-              uploadingClient={uploadingClient}
-              onUploadClient={uploadClientDoc}
-              uploadClientLabel="Subir Documento del Cliente"
-              onSelectPreview={async (filePath) => {
-                const { data } = await supabase.storage.from('case-documents').createSignedUrl(filePath, 300)
-                if (data?.signedUrl) setPreviewUrl(data.signedUrl)
-                else toast.error('Error al generar preview')
-              }}
-              onSelectRename={(doc) => setRenamingDoc({ id: doc.id, name: doc.name })}
-              onDownload={async (filePath, name) => {
-                const { data } = await supabase.storage.from('case-documents').createSignedUrl(filePath, 300)
-                if (data?.signedUrl) {
-                  const l = document.createElement('a')
-                  l.href = data.signedUrl
-                  l.download = name
-                  l.click()
-                }
-              }}
-              onDelete={async (id) => {
-                if (!confirm('¿Eliminar?')) return
-                setDeletingDocId(id)
-                try {
-                  const res = await fetch('/api/admin/upload-document', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ document_id: id }),
-                  })
-                  if (!res.ok) throw new Error()
-                  toast.success('Eliminado')
-                  router.refresh()
-                } catch {
-                  toast.error('Error al eliminar')
-                } finally {
-                  setDeletingDocId(null)
-                }
-              }}
-            />
-          ) : (
-          <div className="space-y-6">
-            {/* Documents grouped by 3 categories */}
-            {DOCUMENT_CATEGORIES.map(category => {
-              const catDocKeys = category.docs.map(d => d.key)
-              const catUploadedCount = documents.filter((d: any) => catDocKeys.includes(d.document_key)).length
-              return (
-                <div key={category.id} className="border border-gray-200 rounded-xl overflow-hidden">
-                  <div className={`px-4 py-3 flex items-center justify-between ${catUploadedCount === category.docs.length ? 'bg-green-50' : 'bg-gray-50'}`}>
-                    <span className="text-sm font-bold text-gray-900">{category.title}</span>
-                    <span className="text-xs text-gray-400">{catUploadedCount}/{category.docs.length}</span>
-                  </div>
-                  <div className="divide-y divide-gray-100">
-                    {category.docs.map(docType => {
-                      const categoryDocs = documents.filter((d: any) => d.document_key === docType.key)
-                      return (
-                        <div key={docType.key} className="px-4 py-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center gap-2">
-                              {categoryDocs.length > 0
-                                ? <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                                : <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                              }
-                              <span className="text-sm font-medium text-gray-800">{docType.label}</span>
-                              {categoryDocs.length > 0 && (
-                                <Badge variant="outline" className="text-green-700 border-green-300 text-[10px]">{categoryDocs.length}</Badge>
-                              )}
-                            </div>
-                            <label className="inline-flex items-center gap-1 px-2.5 py-1 border border-dashed rounded-md cursor-pointer text-[11px] text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
-                              {uploadingKey === docType.key ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-                              {uploadingKey === docType.key ? 'Subiendo...' : 'Subir'}
-                              <input type="file" accept="application/pdf" className="hidden" disabled={uploadingKey !== null}
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0]
-                                  if (!file) return
-                                  setUploadingKey(docType.key)
-                                  try {
-                                    await uploadDirect({ file, documentKey: docType.key, mode: 'admin', caseId: caseData.id, clientId: caseData.client_id })
-                                    toast.success(`${docType.label} subido`)
-                                    router.refresh()
-                                  } catch (err: any) {
-                                    toast.error(err.message || 'Error al subir')
-                                  } finally { setUploadingKey(null); e.target.value = '' }
-                                }}
-                              />
-                            </label>
-                          </div>
-                          {categoryDocs.map((doc: any) => (
-                            <div key={doc.id} className="flex items-center justify-between p-2 ml-6 mt-1 rounded-lg bg-gray-50 border">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <FileText className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                                <div className="min-w-0">
-                                  <p className="text-xs font-medium truncate">{doc.name}</p>
-                                  <p className="text-[10px] text-gray-400">{(doc.file_size / 1024).toFixed(0)} KB</p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-0.5 flex-shrink-0">
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Ver"
-                                  onClick={async () => {
-                                    const { data } = await supabase.storage.from('case-documents').createSignedUrl(doc.file_path, 300)
-                                    if (data?.signedUrl) setPreviewUrl(data.signedUrl)
-                                    else toast.error('Error al generar preview')
-                                  }}><Eye className="w-3 h-3" /></Button>
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Renombrar"
-                                  onClick={() => setRenamingDoc({ id: doc.id, name: doc.name })}><Pencil className="w-3 h-3" /></Button>
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Descargar"
-                                  onClick={async () => {
-                                    const { data } = await supabase.storage.from('case-documents').createSignedUrl(doc.file_path, 300)
-                                    if (data?.signedUrl) { const l = document.createElement('a'); l.href = data.signedUrl; l.download = doc.name; l.click() }
-                                  }}><Download className="w-3 h-3" /></Button>
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:text-red-700" title="Eliminar"
-                                  disabled={deletingDocId === doc.id}
-                                  onClick={async () => {
-                                    if (!confirm('¿Eliminar?')) return
-                                    setDeletingDocId(doc.id)
-                                    try {
-                                      const res = await fetch('/api/admin/upload-document', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ document_id: doc.id }) })
-                                      if (!res.ok) throw new Error()
-                                      toast.success('Eliminado'); router.refresh()
-                                    } catch { toast.error('Error al eliminar') } finally { setDeletingDocId(null) }
-                                  }}>{deletingDocId === doc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}</Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+      <CaseTabsByPhase
+        caseId={caseData.id}
+        caseNumber={caseData.case_number}
+        clientId={caseData.client_id}
+        clientName={clientName}
+        serviceSlug={serviceSlug}
+        overview={overview}
+        loading={overviewLoading}
+        formSubmissions={(aiSubmissions ?? []) as any}
+        henryNotes={henryNotes}
+        currentUserId={currentUserId}
+        isAdmin={true}
+        extraTabs={[
+          {
+            id: 'cobranza' as DashboardTabId,
+            label: `Pagos (${payments.length})`,
+            content: (
+              <PaymentsTab
+                caseId={caseData.id}
+                totalCost={caseData.total_cost ?? null}
+                payments={payments}
+              />
+            ),
+          },
+          ...(isVisaJuvenil
+            ? [{
+                id: 'client-story' as DashboardTabId,
+                label: 'Historia del Cliente',
+                content: (
+                  <ClientStoryReview
+                    caseId={caseData.id}
+                    submissions={(aiSubmissions || []).filter((s: { form_type: string }) =>
+                      ['client_story', 'client_witnesses', 'client_absent_parent', 'tutor_guardian'].includes(s.form_type)
+                    )}
+                    declarationDocs={(documents || [])
+                      .filter((d: { declaration_number?: number; direction?: string }) =>
+                        d.declaration_number != null && (!d.direction || d.direction === 'client_to_admin')
                       )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
-
-            {/* Uncategorized documents */}
-            {documents.filter((d: any) => !APPOINTMENT_DOCUMENT_KEYS.some(k => k.key === d.document_key) && d.direction !== 'admin_to_client').length > 0 && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold">Otros Documentos</CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="space-y-2">
-                    {documents.filter((d: any) => !APPOINTMENT_DOCUMENT_KEYS.some(k => k.key === d.document_key) && d.direction !== 'admin_to_client').map((doc: any) => (
-                      <div key={doc.id} className="flex items-center justify-between p-2 rounded-lg bg-gray-50 border">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">{doc.name}</p>
-                            <p className="text-xs text-gray-400">{doc.document_key} — {(doc.file_size / 1024).toFixed(0)} KB</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-0.5 flex-shrink-0">
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Ver"
-                            onClick={async () => {
-                              const { data } = await supabase.storage.from('case-documents').createSignedUrl(doc.file_path, 300)
-                              if (data?.signedUrl) setPreviewUrl(data.signedUrl)
-                              else toast.error('Error al generar preview')
-                            }}><Eye className="w-3 h-3" /></Button>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Renombrar"
-                            onClick={() => setRenamingDoc({ id: doc.id, name: doc.name })}><Pencil className="w-3 h-3" /></Button>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" title="Descargar"
-                            onClick={async () => {
-                              const { data } = await supabase.storage.from('case-documents').createSignedUrl(doc.file_path, 300)
-                              if (data?.signedUrl) { const l = document.createElement('a'); l.href = data.signedUrl; l.download = doc.name; l.click() }
-                            }}><Download className="w-3 h-3" /></Button>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:text-red-700" title="Eliminar"
-                            disabled={deletingDocId === doc.id}
-                            onClick={async () => {
-                              if (!confirm('¿Eliminar?')) return
-                              setDeletingDocId(doc.id)
-                              try {
-                                const res = await fetch('/api/admin/upload-document', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ document_id: doc.id }) })
-                                if (!res.ok) throw new Error()
-                                toast.success('Eliminado'); router.refresh()
-                              } catch { toast.error('Error al eliminar') } finally { setDeletingDocId(null) }
-                            }}>{deletingDocId === doc.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}</Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-          </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="client-docs" className="mt-4">
-            <div className="border-2 border-blue-200 rounded-xl bg-blue-50/30 p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Download className="w-5 h-5 text-blue-800" />
-                  <span className="text-sm font-bold text-blue-800">Documentos para el Cliente</span>
-                  <Badge variant="outline" className="text-blue-700 border-blue-300">
-                    {manualClientDocs.length}
-                  </Badge>
-                </div>
-              </div>
-
-              {[
-                { key: 'parental_consent', label: '1. Carta de Renuncia', color: 'bg-blue-100 text-blue-700' },
-                { key: 'petition_guardianship', label: '2. Petición de Tutela', color: 'bg-emerald-100 text-emerald-700' },
-                { key: 'minor_declaration', label: '3. Declaración del Menor', color: 'bg-amber-100 text-amber-700' },
-                { key: 'tutor_declaration', label: '4. Declaración del Tutor', color: 'bg-indigo-100 text-indigo-700' },
-                { key: 'witness_declaration', label: '5. Declaración de Testigos', color: 'bg-purple-100 text-purple-700' },
-              ].map(cat => {
-                const catDocs = documents.filter((d: any) => d.direction === 'admin_to_client' && d.document_key?.includes(cat.key))
-                return (
-                  <div key={cat.key} className="bg-white rounded-xl border border-gray-200 p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Badge className={cat.color + ' text-[10px]'}>{cat.label}</Badge>
-                        {catDocs.length > 0 && <CheckCircle className="w-3.5 h-3.5 text-green-500" />}
-                      </div>
-                      <div className="flex gap-1">
-                        {['EN', 'ES'].map(lang => (
-                          <label key={lang} className={`inline-flex items-center gap-1 px-2 py-1 rounded-md cursor-pointer text-[10px] font-bold ${lang === 'EN' ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-amber-500 text-white hover:bg-amber-600'}`}>
-                            <Upload className="w-3 h-3" /> {lang}
-                            <input type="file" accept="application/pdf,.doc,.docx" multiple className="hidden"
-                              disabled={uploadingForClient}
-                              onChange={async (e) => {
-                                const files = Array.from(e.target.files || [])
-                                if (!files.length) return
-                                setUploadingForClient(true)
-                                const docKey = `${cat.key}_${lang.toLowerCase()}`
-                                try {
-                                  for (const file of files) {
-                                    const res = await fetch('/api/admin/client-documents', {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ case_id: caseData.id, client_id: caseData.client_id, file_name: file.name, file_size: file.size, document_key: docKey }),
-                                    })
-                                    if (!res.ok) throw new Error()
-                                    const { token: uploadToken, filePath } = await res.json()
-                                    const supabaseClient = createClient()
-                                    await supabaseClient.storage.from('case-documents').uploadToSignedUrl(filePath, uploadToken, file)
-                                    await fetch('/api/admin/client-documents', {
-                                      method: 'PATCH',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({ case_id: caseData.id, client_id: caseData.client_id, file_path: filePath, file_name: file.name, file_size: file.size, document_key: docKey }),
-                                    })
-                                  }
-                                  toast.success(`${lang} — ${files.length} archivo${files.length > 1 ? 's' : ''} subido${files.length > 1 ? 's' : ''}`)
-                                  router.refresh()
-                                } catch { toast.error('Error al subir') }
-                                finally { setUploadingForClient(false); e.target.value = '' }
-                              }}
-                            />
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    {catDocs.map((doc: any) => (
-                      <div key={doc.id} className="flex items-center justify-between py-1.5">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <FileText className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
-                          <p className="text-xs font-medium text-gray-800 truncate">{doc.name}</p>
-                        </div>
-                        <div className="flex gap-0.5">
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={async () => {
-                            const { data } = await supabase.storage.from('case-documents').createSignedUrl(doc.file_path, 300)
-                            if (data?.signedUrl) window.open(data.signedUrl, '_blank')
-                          }}><Download className="w-3 h-3" /></Button>
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400" onClick={async () => {
-                            if (!confirm('¿Eliminar?')) return
-                            await fetch('/api/admin/upload-document', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ document_id: doc.id }) })
-                            toast.success('Eliminado'); router.refresh()
-                          }}><Trash2 className="w-3 h-3" /></Button>
-                        </div>
-                      </div>
-                    ))}
-                    {catDocs.length === 0 && <p className="text-[10px] text-gray-400 text-center">Sin documento</p>}
-                  </div>
-                )
-              })}
-
-            </div>
-        </TabsContent>
-
-        {/* Documentos Oficiales — PDFs/DOCX auto-generados por /print */}
-        <TabsContent value="oficiales" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm flex items-center gap-2">
-                <FileText className="w-4 h-4 text-rose-700" />
-                Formularios oficiales rellenados
-              </CardTitle>
-              <p className="text-xs text-gray-500">
-                PDFs/DOCX generados automáticamente con la información del cliente
-                (EOIR-26, EOIR-26A, SAPCR-100, I-485, etc.). Para regenerar uno,
-                abre el formulario y presiona "Generar PDF" en su modal.
-              </p>
-            </CardHeader>
-            <CardContent>
-              {systemGeneratedDocs.length === 0 ? (
-                <p className="text-xs text-gray-400 text-center py-6">
-                  Aún no se ha generado ningún PDF oficial para este caso.
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {systemGeneratedDocs.map((d: any) => (
-                    <li
-                      key={d.id}
-                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-white"
-                    >
-                      <FileText className="w-4 h-4 text-rose-700 flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">{d.name}</p>
-                        <p className="text-[11px] text-gray-500">
-                          {d.phase_when_uploaded ?? 'Sin fase'}
-                          {' · '}
-                          {Math.round((d.file_size ?? 0) / 1024)} KB
-                          {' · '}
-                          {format(new Date(d.created_at), "d 'de' MMM yyyy", { locale: es })}
-                        </p>
-                      </div>
-                      <a
-                        href={`/api/employee/download-case-doc?id=${d.id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button size="sm" variant="outline">
-                          <Download className="w-3 h-3 mr-1" />
-                          Descargar
-                        </Button>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-          {/* Rename Dialog */}
-          <Dialog open={renamingDoc !== null} onOpenChange={(open) => { if (!open) setRenamingDoc(null) }}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Renombrar Documento</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <Input
-                  value={renamingDoc?.name || ''}
-                  onChange={(e) => setRenamingDoc(prev => prev ? { ...prev, name: e.target.value } : null)}
-                  placeholder="Nombre del documento"
-                />
-                <Button
-                  className="w-full"
-                  disabled={renameLoading || !renamingDoc?.name.trim()}
-                  onClick={async () => {
-                    if (!renamingDoc) return
-                    setRenameLoading(true)
-                    try {
-                      const res = await fetch('/api/admin/upload-document', {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ document_id: renamingDoc.id, name: renamingDoc.name }),
-                      })
-                      if (!res.ok) {
-                        const data = await res.json()
-                        throw new Error(data.error)
-                      }
-                      toast.success('Documento renombrado')
-                      setRenamingDoc(null)
-                      router.refresh()
-                    } catch (err: any) {
-                      toast.error(err.message || 'Error al renombrar')
-                    } finally {
-                      setRenameLoading(false)
+                      .map((d: { id: string; name: string; file_size?: number; declaration_number: number }) => ({
+                        id: d.id,
+                        name: d.name,
+                        file_size: d.file_size ?? 0,
+                        declaration_number: d.declaration_number,
+                      }))
                     }
-                  }}
-                >
-                  {renameLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
-                  Guardar
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          {/* Preview Dialog */}
-          <Dialog open={previewUrl !== null} onOpenChange={(open) => { if (!open) setPreviewUrl(null) }}>
-            <DialogContent className="max-w-4xl h-[80vh]">
-              <DialogHeader>
-                <DialogTitle>Previsualizar Documento</DialogTitle>
-              </DialogHeader>
-              {previewUrl && (
-                <iframe
-                  src={previewUrl}
-                  className="w-full flex-1 rounded-md border"
-                  style={{ minHeight: 'calc(80vh - 80px)' }}
-                />
-              )}
-            </DialogContent>
-          </Dialog>
-
-        <TabsContent value="notes" className="mt-4">
-          <Card>
-            <CardContent className="p-6 space-y-4">
-              <div>
-                <label className="text-sm font-medium">Notas internas (solo Henry)</label>
-                <Textarea
-                  value={henryNotes}
-                  onChange={(e) => setHenryNotes(e.target.value)}
-                  rows={4}
-                  placeholder="Notas sobre este caso..."
-                />
-                <Button
-                  size="sm"
-                  className="mt-2"
-                  onClick={async () => {
-                    await supabase.from('cases').update({ henry_notes: henryNotes }).eq('id', caseData.id)
-                    toast.success('Notas guardadas')
-                  }}
-                >
-                  Guardar Notas
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {isVisaJuvenil && (
-          <TabsContent value="phase-history" className="mt-4">
-            <PhaseHistoryTab caseId={caseData.id} />
-          </TabsContent>
-        )}
-
-        {isVisaJuvenil && (
-          <TabsContent value="client-story" className="mt-4">
-            <ClientStoryReview
-              caseId={caseData.id}
-              submissions={(aiSubmissions || []).filter((s: { form_type: string }) =>
-                ['client_story', 'client_witnesses', 'client_absent_parent', 'tutor_guardian'].includes(s.form_type)
-              )}
-              declarationDocs={(documents || [])
-                .filter((d: { declaration_number?: number; direction?: string }) =>
-                  d.declaration_number != null && (!d.direction || d.direction === 'client_to_admin')
-                )
-                .map((d: { id: string; name: string; file_size?: number; declaration_number: number }) => ({
-                  id: d.id,
-                  name: d.name,
-                  file_size: d.file_size ?? 0,
-                  declaration_number: d.declaration_number,
-                }))
-              }
-            />
-          </TabsContent>
-        )}
-
-        {isAsylumService && (
-          <TabsContent value="i589-review" className="mt-4">
-            <I589Review
-              caseId={caseData.id}
-              submissions={(aiSubmissions || []).filter((s: { form_type: string }) =>
-                ['i589_part_b1', 'i589_part_b2', 'i589_part_c1', 'i589_part_c2'].includes(s.form_type)
-              )}
-            />
-          </TabsContent>
-        )}
-
-        {isAsylumService && (
-          <TabsContent value="credible-fear" className="mt-4">
-            <CredibleFearGenerator caseId={caseData.id} caseNumber={caseData.case_number} />
-          </TabsContent>
-        )}
-
-        {isVisaJuvenil && (
-          <TabsContent value="declaraciones" className="mt-4 space-y-6">
-            {/* Jurisdiction detection (court + filing procedure from official sources) */}
-            <JurisdictionPanel caseId={caseData.id} />
-
-            {/* Supplementary data for filling [PENDING] fields */}
-            <SupplementaryDataForm
-              caseId={caseData.id}
-              tutorData={(aiSubmissions || []).find((s: any) => s.form_type === 'tutor_guardian')?.form_data || null}
-              minorStories={(aiSubmissions || [])
-                .filter((s: any) => s.form_type === 'client_story')
-                .sort((a: any, b: any) => (a.minor_index || 0) - (b.minor_index || 0))
-                .map((s: any) => ({ minorIndex: s.minor_index || 0, formData: s.form_data }))
-              }
-              absentParents={(aiSubmissions || [])
-                .filter((s: any) => s.form_type === 'client_absent_parent')
-                .map((s: any) => ({ formData: s.form_data }))
-              }
-            />
-
-            {/* 1. Parental Consent */}
-            <ParentalConsentGenerator
-              caseId={caseData.id}
-              clientName={`${caseData.client?.first_name || ''} ${caseData.client?.last_name || ''}`.trim()}
-            />
-
-            <div className="border-t border-gray-200" />
-
-            {/* 2-5. AI-generated declarations */}
-            <DeclarationGenerator
-              caseId={caseData.id}
-              clientName={`${caseData.client?.first_name || ''} ${caseData.client?.last_name || ''}`.trim()}
-              tutorData={(aiSubmissions || []).find((s: any) => s.form_type === 'tutor_guardian')?.form_data || null}
-              clientWitnessesData={(aiSubmissions || []).find((s: any) => s.form_type === 'client_witnesses')?.form_data || null}
-              minorStories={(aiSubmissions || [])
-                .filter((s: any) => s.form_type === 'client_story')
-                .sort((a: any, b: any) => (a.minor_index || 0) - (b.minor_index || 0))
-                .map((s: any) => ({ minorIndex: s.minor_index || 0, formData: s.form_data }))
-              }
-              absentParents={(aiSubmissions || [])
-                .filter((s: any) => s.form_type === 'client_absent_parent')
-                .map((s: any) => ({ formData: s.form_data }))
-              }
-              supplementaryData={(aiSubmissions || []).find((s: any) => s.form_type === 'admin_supplementary')?.form_data || null}
-            />
-
-          </TabsContent>
-        )}
-
-        {/* I-360 Tab */}
-        {isVisaJuvenil && (
-          <TabsContent value="i360" className="mt-4">
-            <I360Review
-              submissions={(aiSubmissions || []).filter((s: any) => s.form_type === 'i360_sijs')}
-              onDownload={handleDownloadI360}
-              downloading={i360Loading}
-              caseId={caseData.id}
-              clientName={`${caseData.client?.first_name || ''} ${caseData.client?.last_name || ''}`.trim() || 'el cliente'}
-            />
-          </TabsContent>
-        )}
-
-        {/* I-485 Tab — formulario USCIS Ajuste de Estatus (Fase 3) */}
-        {isVisaJuvenil && (
-          <TabsContent value="i485" className="mt-4">
-            <I485FormSection caseId={caseData.id} />
-          </TabsContent>
-        )}
-
-        {/* Carta de Apelación (IA) — solo casos de servicio Apelación */}
-        {isApelacion && (
-          <TabsContent value="carta-apelacion" className="mt-4">
-            <AppealLetterGenerator
-              caseId={caseData.id}
-              caseNumber={caseData.case_number}
-            />
-          </TabsContent>
-        )}
-
-        {/* Legal Review — super reviewer powered by Claude Opus 4.7 */}
-        <TabsContent value="legal-review" className="mt-4">
-          <LegalReviewer caseId={caseData.id} />
-        </TabsContent>
-
-      </Tabs>
-    </div>
-  )
-
-}
-
-/**
- * Vista de "Documentos" agnóstica al servicio. Agrupa los documentos del
- * cliente (direction='client_to_admin' o sin direction) por su categoría
- * REAL del catálogo `document_types`, no por las categorías SIJS legacy.
- *
- * Refleja exactamente lo que ve Diana en su dashboard para los servicios
- * de Apelación y Asilo Político: cada categoría (Identidad, Expediente,
- * etc.) en una sección propia con sus documentos listados.
- */
-function PhasedDocumentsView({
-  documents,
-  uploadingKey,
-  deletingDocId,
-  uploadingClient,
-  onUploadClient,
-  uploadClientLabel,
-  onSelectPreview,
-  onSelectRename,
-  onDownload,
-  onDelete,
-}: {
-  documents: any[]
-  uploadingKey: string | null
-  deletingDocId: string | null
-  uploadingClient?: boolean
-  onUploadClient?: (file: File) => Promise<void> | void
-  uploadClientLabel?: string
-  onSelectPreview: (filePath: string) => Promise<void>
-  onSelectRename: (doc: { id: string; name: string }) => void
-  onDownload: (filePath: string, name: string) => Promise<void>
-  onDelete: (id: string) => Promise<void>
-}) {
-  // Filtrar solo documentos del cliente (no admin_to_client, ya en otras pestañas)
-  const clientDocs = documents.filter(
-    (d: any) => !d.direction || d.direction === 'client_to_admin',
-  )
-
-  // Agrupar por categoría del document_type. Documentos sin tipo asignado
-  // caen en "Otros documentos" — útil para uploads legacy o casos en
-  // transición.
-  const grouped = new Map<
-    string,
-    { categoryCode: string; categoryName: string; docs: any[] }
-  >()
-  for (const d of clientDocs) {
-    const dt = Array.isArray(d.document_type) ? d.document_type[0] : d.document_type
-    const code = dt?.category_code ?? 'sin_categoria'
-    const name = dt?.category_name_es ?? 'Otros documentos'
-    if (!grouped.has(code)) {
-      grouped.set(code, { categoryCode: code, categoryName: name, docs: [] })
-    }
-    grouped.get(code)!.docs.push(d)
-  }
-  const categories = Array.from(grouped.values())
-
-  if (clientDocs.length === 0) {
-    return (
-      <div className="space-y-4">
-        {onUploadClient && (
-          <UploadBox
-            uploading={!!uploadingClient}
-            onUpload={onUploadClient}
-            label={uploadClientLabel ?? 'Subir Documento del Cliente'}
-          />
-        )}
-        <Card>
-          <CardContent className="py-10 text-center">
-            <FileText className="w-8 h-8 text-gray-300 mx-auto mb-3" />
-            <p className="text-sm text-gray-500">
-              El cliente aún no ha subido documentos en su portal.
-              {onUploadClient && ' Puedes subir uno en su nombre con el botón de arriba.'}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-4">
-      {onUploadClient && (
-        <UploadBox
-          uploading={!!uploadingClient}
-          onUpload={onUploadClient}
-          label={uploadClientLabel ?? 'Subir Documento del Cliente'}
-        />
-      )}
-      {categories.map((cat) => (
-        <div
-          key={cat.categoryCode}
-          className="border border-gray-200 rounded-xl overflow-hidden"
-        >
-          <div className="px-4 py-3 flex items-center justify-between bg-gray-50">
-            <span className="text-sm font-bold text-gray-900">{cat.categoryName}</span>
-            <Badge variant="outline" className="text-gray-700 border-gray-300 text-[10px]">
-              {cat.docs.length} archivo{cat.docs.length === 1 ? '' : 's'}
-            </Badge>
-          </div>
-          <div className="divide-y divide-gray-100">
-            {cat.docs.map((doc: any) => {
-              const dt = Array.isArray(doc.document_type) ? doc.document_type[0] : doc.document_type
-              const docTypeName = dt?.name_es ?? doc.document_key ?? 'Documento'
-              return (
-                <div key={doc.id} className="px-4 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {docTypeName}
-                        </p>
-                        <p className="text-[11px] text-gray-500 truncate">
-                          {doc.name} · {Math.round((doc.file_size ?? 0) / 1024)} KB
-                          {doc.status && ` · ${doc.status}`}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-0.5 flex-shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0"
-                        title="Ver"
-                        onClick={() => onSelectPreview(doc.file_path)}
-                      >
-                        <Eye className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0"
-                        title="Renombrar"
-                        onClick={() => onSelectRename({ id: doc.id, name: doc.name })}
-                      >
-                        <Pencil className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0"
-                        title="Descargar"
-                        onClick={() => onDownload(doc.file_path, doc.name)}
-                      >
-                        <Download className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0 text-red-500 hover:text-red-700"
-                        title="Eliminar"
-                        disabled={deletingDocId === doc.id}
-                        onClick={() => onDelete(doc.id)}
-                      >
-                        {deletingDocId === doc.id ? (
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-3 h-3" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-/**
- * Botón de upload para que el admin/firma suba un documento en nombre
- * del cliente. Copia del componente que usa Diana en
- * employee/_shared/case-tabs-by-phase.tsx — duplicado intencionalmente
- * para no acoplar `admin/` con `employee/_shared/`.
- */
-function UploadBox({
-  uploading,
-  onUpload,
-  label,
-}: {
-  uploading: boolean
-  onUpload: (file: File) => Promise<void> | void
-  label: string
-}) {
-  return (
-    <label
-      className={`flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed rounded-xl cursor-pointer text-sm font-medium transition-colors ${
-        uploading
-          ? 'opacity-50 cursor-not-allowed border-gray-200 text-gray-400'
-          : 'border-gray-300 text-gray-500 hover:border-blue-400 hover:text-blue-600'
-      }`}
-    >
-      {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-      {uploading ? 'Subiendo...' : label}
-      <input
-        type="file"
-        accept="application/pdf,.jpg,.jpeg,.png,.doc,.docx"
-        className="hidden"
-        disabled={uploading}
-        onChange={async (e) => {
-          const file = e.target.files?.[0]
-          if (file) {
-            await onUpload(file)
-            e.target.value = ''
-          }
+                  />
+                ),
+              }]
+            : []),
+          ...(isVisaJuvenil
+            ? [{
+                id: 'i360' as DashboardTabId,
+                label: 'I-360',
+                content: (
+                  <I360Review
+                    submissions={(aiSubmissions || []).filter((s: any) => s.form_type === 'i360_sijs')}
+                    onDownload={handleDownloadI360}
+                    downloading={i360Loading}
+                    caseId={caseData.id}
+                    clientName={clientName}
+                  />
+                ),
+              }]
+            : []),
+          {
+            id: 'bitacora' as DashboardTabId,
+            label: 'Bitácora',
+            content: (
+              <CaseChat
+                caseId={caseData.id}
+                clientName={clientName}
+                serviceName={caseData.service?.name ?? ''}
+                documentCount={documents.length}
+              />
+            ),
+          },
+          {
+            id: 'legal-review' as DashboardTabId,
+            label: 'Revisión Legal',
+            content: <LegalReviewer caseId={caseData.id} />,
+          },
+        ]}
+        onRefresh={() => {
+          refreshOverview();
+          router.refresh();
         }}
       />
-    </label>
+    </div>
   )
+
 }
 
 function I360Review({
