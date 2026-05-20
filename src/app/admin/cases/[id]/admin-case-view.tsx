@@ -248,8 +248,14 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
           <h1 className="text-2xl font-bold">Caso #{caseData.case_number}</h1>
           <p className="text-gray-600">{caseData.service?.name}</p>
           <p className="text-sm text-gray-500">
-            {caseData.client?.first_name} {caseData.client?.last_name} &mdash; {caseData.client?.email}
+            {caseData.client?.first_name} {caseData.client?.last_name}
           </p>
+          <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+            {caseData.client?.phone && <span>{caseData.client.phone}</span>}
+            {caseData.client?.email && !caseData.client.email.includes('@usalatinoprime.internal') && (
+              <span>{caseData.client.email}</span>
+            )}
+          </div>
         </div>
         <div className="flex gap-2">
           <Button

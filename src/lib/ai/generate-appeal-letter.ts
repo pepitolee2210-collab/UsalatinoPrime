@@ -32,7 +32,7 @@ const log = createLogger('appeal-letter')
  * Versión del prompt. Incrementar cuando cambie el system prompt para
  * correlacionar calidad del output con cambios en la versión.
  */
-export const APPEAL_LETTER_PROMPT_VERSION = '2026-05-19-v2-en'
+export const APPEAL_LETTER_PROMPT_VERSION = '2026-05-20-v3-fallback-en'
 
 /** Path en disco del template PDF (caso ganador de referencia). */
 const APPEAL_TEMPLATE_DISK_PATH = 'public/templates/apelacion-letter-example.pdf'
@@ -157,15 +157,48 @@ function getDocCode(d: ClientDocumentRef): string | null {
   return dt?.code ?? null
 }
 
-async function downloadCaseDocPdf(
+async function downloadByFilePath(
+  service: SupabaseClient,
+  filePath: string,
+): Promise<Uint8Array | null> {
+  const { data, error } = await service.storage
+    .from('case-documents')
+    .download(filePath)
+  if (error || !data) {
+    log.warn('download falló', { filePath, error })
+    return null
+  }
+  const ab = await data.arrayBuffer()
+  return new Uint8Array(ab)
+}
+
+/**
+ * Resuelve los 3 PDFs del cliente que se enviarán a Claude.
+ *
+ * Estrategia:
+ *   1. Intenta primero matchear por `document_types.code` (preferido,
+ *      semánticamente correcto).
+ *   2. Si faltan slots, **fallback**: usa los documentos
+ *      `direction='client_to_admin'` (o sin `direction`) más recientes que
+ *      aún no se hayan tomado, hasta completar 3 docs.
+ *
+ * Razón del fallback: cuando Henry (admin) sube docs en nombre del cliente
+ * desde su panel, el endpoint los registra como `document_key='paralegal_upload'`
+ * sin `document_type_id`, por lo que el match por code no los encuentra. El
+ * fallback les pasa el nombre original a Claude, que identifica qué es qué
+ * por el contenido y el nombre del archivo.
+ *
+ * Devuelve `null` solo si NO hay ningún PDF disponible — la única condición
+ * de error dura. Caso contrario devuelve hasta 3 docs (mejor esfuerzo).
+ */
+async function resolveAppealDocuments(
   service: SupabaseClient,
   caseId: string,
-  code: string,
-): Promise<{ bytes: Uint8Array; name: string } | null> {
+): Promise<Array<{ bytes: Uint8Array; name: string; matchedCode: string | null }> | null> {
   const { data: rows, error } = await service
     .from('documents')
     .select(
-      `id, document_key, file_path, name,
+      `id, document_key, file_path, name, direction,
        document_types ( code )`,
     )
     .eq('case_id', caseId)
@@ -174,19 +207,54 @@ async function downloadCaseDocPdf(
     log.warn('error consultando documents', { caseId, error })
     return null
   }
-  const match = (rows as ClientDocumentRef[]).find((d) => getDocCode(d) === code)
-  if (!match || !match.file_path) {
-    return null
+  type Row = ClientDocumentRef & { direction?: string | null }
+  const all = rows as Row[]
+  // Solo docs del cliente (subidos por él o por la firma en su nombre).
+  // Excluye `admin_to_client` (entregables) y `firm_internal` (archivo de firma).
+  const clientDocs = all.filter(
+    (d) => !d.direction || d.direction === 'client_to_admin',
+  )
+
+  const orderedCodes = [
+    APPEAL_DOC_CODES.passport,
+    APPEAL_DOC_CODES.fullAsylum,
+    APPEAL_DOC_CODES.judgeDenial,
+  ]
+  const picked: Array<Row & { matchedCode: string | null }> = []
+  const usedIds = new Set<string>()
+
+  // 1) Match preferido: por document_types.code en orden Pasaporte → Asilo → Denegación.
+  for (const code of orderedCodes) {
+    const match = clientDocs.find((d) => !usedIds.has(d.id) && getDocCode(d) === code)
+    if (match) {
+      picked.push({ ...match, matchedCode: code })
+      usedIds.add(match.id)
+    }
   }
-  const { data, error: dlErr } = await service.storage
-    .from('case-documents')
-    .download(match.file_path)
-  if (dlErr || !data) {
-    log.warn('download falló', { code, filePath: match.file_path, error: dlErr })
-    return null
+
+  // 2) Fallback: rellenar con los docs cliente más recientes que aún no entraron.
+  if (picked.length < 3) {
+    for (const d of clientDocs) {
+      if (picked.length >= 3) break
+      if (usedIds.has(d.id)) continue
+      if (!d.file_path) continue
+      picked.push({ ...d, matchedCode: null })
+      usedIds.add(d.id)
+    }
   }
-  const ab = await data.arrayBuffer()
-  return { bytes: new Uint8Array(ab), name: match.name }
+
+  if (picked.length === 0) return null
+
+  // Descargar los bytes en paralelo.
+  const downloaded = await Promise.all(
+    picked.map(async (d) => {
+      if (!d.file_path) return null
+      const bytes = await downloadByFilePath(service, d.file_path)
+      if (!bytes) return null
+      return { bytes, name: d.name, matchedCode: d.matchedCode }
+    }),
+  )
+  return downloaded.filter((x): x is { bytes: Uint8Array; name: string; matchedCode: string | null } => x !== null)
 }
 
 function readTemplateWithSha(): Uint8Array {
@@ -282,19 +350,14 @@ export async function generateAppealLetter(
   const stateUs = caseRow.state_us || '[A confirmar]'
   const caseNumber = caseRow.case_number || '(sin asignar)'
 
-  // 2. Descargar los 3 PDFs del cliente desde Storage
-  const docResults = await Promise.all([
-    downloadCaseDocPdf(input.service, input.caseId, APPEAL_DOC_CODES.passport),
-    downloadCaseDocPdf(input.service, input.caseId, APPEAL_DOC_CODES.fullAsylum),
-    downloadCaseDocPdf(input.service, input.caseId, APPEAL_DOC_CODES.judgeDenial),
-  ])
-  const [passport, fullAsylum, judgeDenial] = docResults
-  const missing: string[] = []
-  if (!passport) missing.push(APPEAL_DOC_CODES.passport)
-  if (!fullAsylum) missing.push(APPEAL_DOC_CODES.fullAsylum)
-  if (!judgeDenial) missing.push(APPEAL_DOC_CODES.judgeDenial)
-  if (missing.length > 0) {
-    throw new MissingClientDocumentError(missing)
+  // 2. Resolver los PDFs del cliente (match por tipo o fallback por recencia).
+  const clientDocs = await resolveAppealDocuments(input.service, input.caseId)
+  if (!clientDocs || clientDocs.length === 0) {
+    throw new MissingClientDocumentError([
+      APPEAL_DOC_CODES.passport,
+      APPEAL_DOC_CODES.fullAsylum,
+      APPEAL_DOC_CODES.judgeDenial,
+    ])
   }
 
   // 3. Cargar template desde disco con verificación de SHA
@@ -323,19 +386,33 @@ export async function generateAppealLetter(
     '6. Help me win this appeal.',
     '',
     '# ATTACHMENTS IN THIS MESSAGE',
-    "- Document 1: Client's passport (identity verification).",
-    '- Document 2: Complete Political Asylum file originally presented to the IJ.',
-    "- Document 3: Written decision of the Immigration Judge denying the asylum (subject of this appeal).",
-    '- Document 4: TEMPLATE — Winning appeal letter (Lina Vanegas case). Replicate its FORMAT and TONE, NOT its facts/data.',
+    ...clientDocs.map((d, i) => `- Document ${i + 1}: ${d.matchedCode ? codeToLabel[d.matchedCode] + ' — ' : ''}${d.name}`),
+    `- Document ${clientDocs.length + 1}: TEMPLATE — Winning appeal letter (Lina Vanegas case). Replicate its FORMAT and TONE, NOT its facts/data.`,
+    '',
+    clientDocs.some((d) => !d.matchedCode)
+      ? 'NOTE: Some attachments arrived without explicit type tagging. Identify each one yourself by file name and content (you should see at least: the client passport, the full asylum file with the I-589 and supporting evidence, and the IJ\'s denial decision). Use them all to build the brief.'
+      : '',
     '',
     'Draft the complete Appeal Brief in ENGLISH following the 8-section structure defined in the system prompt. Return ONLY markdown — no meta-explanations, no preamble. Start directly with the heading `# APPEAL BRIEF TO THE BOARD OF IMMIGRATION APPEALS`.',
   ].join('\n')
 
-  // 5. Llamar a Claude con los 4 PDFs (template cacheable, clientes no)
+  // 5. Llamar a Claude con los PDFs del cliente + template (cacheable).
+  // Si los docs tienen un `matchedCode` (subidos via portal cliente con tipo),
+  // usamos el label semántico ("Pasaporte"/"Expediente Asilo"/"Decisión del Juez").
+  // Si vienen del fallback (subidos por admin sin tipo), pasamos el nombre del
+  // archivo verbatim — Claude identifica qué es por contenido.
+  const codeToLabel: Record<string, string> = {
+    [APPEAL_DOC_CODES.passport]: 'Pasaporte',
+    [APPEAL_DOC_CODES.fullAsylum]: 'Expediente Asilo',
+    [APPEAL_DOC_CODES.judgeDenial]: 'Decisión del Juez',
+  }
   const documents: DocumentInput[] = [
-    { pdfBytes: passport!.bytes, title: `Pasaporte — ${passport!.name}` },
-    { pdfBytes: fullAsylum!.bytes, title: `Expediente Asilo — ${fullAsylum!.name}` },
-    { pdfBytes: judgeDenial!.bytes, title: `Decisión del Juez — ${judgeDenial!.name}` },
+    ...clientDocs.map((d) => ({
+      pdfBytes: d.bytes,
+      title: d.matchedCode
+        ? `${codeToLabel[d.matchedCode]} — ${d.name}`
+        : `Documento del cliente — ${d.name}`,
+    })),
     { pdfBytes: templateBytes, title: 'TEMPLATE — Carta de Apelación ganadora (Lina Vanegas)', cacheable: true },
   ]
 
@@ -363,10 +440,10 @@ export async function generateAppealLetter(
     promptVersion: APPEAL_LETTER_PROMPT_VERSION,
     usage: result.usage,
     generationSeconds,
-    documentsUsed: [
-      { code: APPEAL_DOC_CODES.passport, name: passport!.name, bytes: passport!.bytes.byteLength },
-      { code: APPEAL_DOC_CODES.fullAsylum, name: fullAsylum!.name, bytes: fullAsylum!.bytes.byteLength },
-      { code: APPEAL_DOC_CODES.judgeDenial, name: judgeDenial!.name, bytes: judgeDenial!.bytes.byteLength },
-    ],
+    documentsUsed: clientDocs.map((d) => ({
+      code: d.matchedCode ?? '(fallback — sin tipo)',
+      name: d.name,
+      bytes: d.bytes.byteLength,
+    })),
   }
 }
