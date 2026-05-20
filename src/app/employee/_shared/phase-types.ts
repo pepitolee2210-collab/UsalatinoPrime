@@ -21,6 +21,13 @@ export interface UploadFile {
 }
 
 export interface FormInstance {
+  /**
+   * UUID de la fila en `case_form_instances` cuando existe. Para forms del
+   * registry que aún NO tienen instance (placeholder en la pestaña
+   * Formularios), el formato es `virtual:<slug>` — ej. `virtual:eoir-26`.
+   * No usar este id para fetch directo: el `slug` es la clave canónica para
+   * todas las operaciones admin (`/api/admin/case-forms/[slug]`).
+   */
   id: string
   /** Slug del registry de formularios automatizados (ej. `eoir-26`). NULL si el form no está registrado. */
   slug: string | null

@@ -14,6 +14,7 @@ import { PhaseEmptyState } from './phase-empty-state'
 import { ReopenPhaseButton } from './reopen-phase-button'
 import { PhaseTimelineStrip } from './phase-timeline-strip'
 import { I360FormSection } from '@/components/legal/i360-form-section'
+import { AutomatedFormModal } from '@/app/admin/cases/[id]/automated-form-modal'
 import type { CaseOverview, PhaseGroup, UploadFile } from './phase-types'
 import type { CasePhase } from '@/types/database'
 import { isPhasedService } from '@/lib/services/registry'
@@ -79,6 +80,7 @@ export function CaseTabsByPhase({
   const [tab, setTab] = useState<TabId>('docs')
   const [previewDoc, setPreviewDoc] = useState<UploadFile | null>(null)
   const [uploading, setUploading] = useState<UploadDirection | null>(null)
+  const [editingFormSlug, setEditingFormSlug] = useState<string | null>(null)
 
   const currentPhase = overview?.case.current_phase ?? null
   const isPhased = isPhasedService(serviceSlug)
@@ -207,6 +209,18 @@ export function CaseTabsByPhase({
   return (
     <div className="space-y-4">
       {previewDoc && <PreviewModal doc={previewDoc} onClose={() => setPreviewDoc(null)} />}
+
+      {editingFormSlug && (
+        <AutomatedFormModal
+          caseId={caseId}
+          slug={editingFormSlug}
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) setEditingFormSlug(null)
+          }}
+          onSaved={onRefresh}
+        />
+      )}
 
       {isPhased && overview && currentPhase && (
         <PhaseTimelineStrip
@@ -390,7 +404,12 @@ export function CaseTabsByPhase({
                     submission={formSubmissions.find(s => s.form_type === 'i360_sijs')}
                   />
                 )}
-                <PhaseFormsList forms={group.forms} caseId={caseId} onPdfGenerated={onRefresh} />
+                <PhaseFormsList
+                  forms={group.forms}
+                  caseId={caseId}
+                  onPdfGenerated={onRefresh}
+                  onEdit={setEditingFormSlug}
+                />
                 {group.phase === 'custodia' && group.forms.length > 0 && (
                   <p className="text-[11px] text-gray-500 mt-2">
                     Para llenar/imprimir formularios de Fase 1, ve a la pestaña <strong>Radicación</strong>.

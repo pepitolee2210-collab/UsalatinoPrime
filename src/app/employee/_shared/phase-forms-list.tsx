@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { FileText, CheckCircle2, Clock, Download, Loader2 } from 'lucide-react'
+import { FileText, CheckCircle2, Clock, Download, Loader2, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import type { FormInstance } from './phase-types'
 
@@ -10,6 +10,9 @@ interface PhaseFormsListProps {
   caseId: string
   /** Callback opcional para refrescar la vista del padre cuando se descarga un PDF. */
   onPdfGenerated?: () => void
+  /** Callback opcional para abrir el editor del formulario (`AutomatedFormModal`).
+   *  Si se pasa, aparece un botón "Editar" junto a "Generar PDF" para forms con slug. */
+  onEdit?: (slug: string) => void
   emptyMessage?: string
 }
 
@@ -56,7 +59,7 @@ async function generateAndDownloadPdf(slug: string, formName: string, caseId: st
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-export function PhaseFormsList({ forms, caseId, onPdfGenerated, emptyMessage }: PhaseFormsListProps) {
+export function PhaseFormsList({ forms, caseId, onPdfGenerated, onEdit, emptyMessage }: PhaseFormsListProps) {
   const [generatingSlug, setGeneratingSlug] = useState<string | null>(null)
 
   if (forms.length === 0) {
@@ -123,6 +126,17 @@ export function PhaseFormsList({ forms, caseId, onPdfGenerated, emptyMessage }: 
                 )}
               </div>
             </div>
+            {isAutomated && f.slug && onEdit && (
+              <button
+                type="button"
+                onClick={() => onEdit(f.slug as string)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                title={`Edita los campos de ${f.form_name} desde aquí — la firma puede llenar/corregir sin entrar al portal del cliente.`}
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Editar
+              </button>
+            )}
             {isAutomated && f.slug && (
               <button
                 type="button"

@@ -372,6 +372,30 @@ export async function GET(
       .filter(f => (f.phase_when_submitted ?? effectivePhase(f.form_name)) === p)
       .map(mapForm)
 
+    // Forms aplicables a esta fase que aún NO tienen instance en BD — placeholder
+    // "virtual" para que la pestaña Formularios los muestre antes de que alguien
+    // abra el modal. Al abrir el modal, GET /api/admin/case-forms/[slug] crea la
+    // instance real on-demand y la próxima carga reemplaza al virtual.
+    // Dedup por formName (UNIQUE en case_form_instances(case_id, packet_type, form_name)).
+    const realFormNames = new Set(phaseForms.map(f => f.form_name))
+    const virtualForms: FormInstance[] = Object.values(AUTOMATED_FORMS)
+      .filter(def => formApplies(def, p, caseStateUs))
+      .filter(def => !realFormNames.has(def.formName))
+      .map(def => ({
+        id: `virtual:${def.slug}`,
+        slug: def.slug,
+        form_name: def.formName,
+        packet_type: def.packetType,
+        status: 'pending',
+        filled_pdf_path: null,
+        filled_pdf_generated_at: null,
+        client_last_edit_at: null,
+        client_submitted_at: null,
+        phase_when_submitted: null,
+        total_filled_keys: 0,
+      }))
+    const allPhaseForms: FormInstance[] = [...phaseForms, ...virtualForms]
+
     // Sumar el wizard I-360 (case_form_submissions) al contador de Fase 2.
     // No lo agregamos al array `forms` porque se renderiza vía I360FormSection
     // como bloque dedicado — sólo afecta el badge visual.
@@ -393,15 +417,15 @@ export async function GET(
         client_uploads_approved: clientUploads.filter(u => u.status === 'approved').length,
         firm_documents: firmDocuments.length,
         system_generated: systemGeneratedDocuments.length,
-        forms_total: phaseForms.length + i360CountBoost,
-        forms_submitted: phaseForms.filter(f => f.client_submitted_at != null).length + i360SubmittedBoost,
+        forms_total: allPhaseForms.length + i360CountBoost,
+        forms_submitted: allPhaseForms.filter(f => f.client_submitted_at != null).length + i360SubmittedBoost,
       },
       documents: {
         client_uploads: clientUploads,
         firm_documents: firmDocuments,
         system_generated_documents: systemGeneratedDocuments,
       },
-      forms: phaseForms,
+      forms: allPhaseForms,
     }
   })
 

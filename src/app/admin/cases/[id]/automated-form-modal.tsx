@@ -78,9 +78,13 @@ interface Props {
   slug: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Se invoca tras un save exitoso (autosave) o tras print. Útil para que el
+   *  componente padre refresque su vista (ej. recargar `case-overview` para
+   *  reemplazar un form virtual por su instance real una vez creada). */
+  onSaved?: () => void
 }
 
-export function AutomatedFormModal({ caseId, slug, open, onOpenChange }: Props) {
+export function AutomatedFormModal({ caseId, slug, open, onOpenChange, onSaved }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<FormResponse | null>(null)
@@ -149,6 +153,7 @@ export function AutomatedFormModal({ caseId, slug, open, onOpenChange }: Props) 
         updatedAtRef.current = json.updatedAt
         setSavingState('saved')
         setTimeout(() => setSavingState((s) => (s === 'saved' ? 'idle' : s)), 1500)
+        onSaved?.()
       } catch (err) {
         setSavingState('error')
         toast.error(err instanceof Error ? err.message : 'Error al guardar')
@@ -238,6 +243,7 @@ export function AutomatedFormModal({ caseId, slug, open, onOpenChange }: Props) 
       URL.revokeObjectURL(url)
       toast.success('PDF generado y archivado en Documentos del caso')
       router.refresh()
+      onSaved?.()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al imprimir')
     } finally {
