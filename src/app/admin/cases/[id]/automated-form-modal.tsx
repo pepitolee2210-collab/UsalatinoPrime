@@ -25,11 +25,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+
+interface FieldDependsOn {
+  semanticKey: string
+  equals: string | string[]
+}
 
 interface FieldSpec {
   semanticKey: string
   pdfFieldName: string | null
-  type: 'text' | 'textarea' | 'checkbox' | 'date' | 'phone' | 'state' | 'zip' | 'select'
+  type:
+    | 'text'
+    | 'textarea'
+    | 'checkbox'
+    | 'date'
+    | 'phone'
+    | 'state'
+    | 'zip'
+    | 'select'
+    | 'radio'
   labelEs: string
   helpEs?: string
   page?: number
@@ -43,6 +58,12 @@ interface FieldSpec {
    * (ej: en PR-GEN-116, los 80 checkboxes individuales sólo aparecen cuando
    * `case_type === '__show_all__'`). El control sentinela vive en cada form. */
   hiddenByDefault?: boolean
+  /** Valor por defecto cuando no hay saved/prefill/hardcoded. Se aplica al montar
+   * el modal y se persiste vía autosave inmediato. */
+  defaultValue?: string | boolean
+  /** Condicionalidad: este field solo se muestra cuando otro field tiene cierto valor.
+   * Cuando la condición no se cumple, el valor se limpia del state. */
+  dependsOn?: FieldDependsOn
 }
 
 interface FormSection {
@@ -111,9 +132,35 @@ export function AutomatedFormModal({ caseId, slug, open, onOpenChange, onSaved }
         const json = (await res.json()) as FormResponse
         if (cancelled) return
         const merged: Values = { ...json.prefilledValues, ...json.savedValues }
+        // Aplicar defaultValue para fields sin valor en prefill ni saved.
+        // Esto permite que radios como "No detenido" salgan preseleccionados
+        // desde la primera apertura del modal.
+        const toAutosave: Values = {}
+        for (const section of json.schemaSections) {
+          for (const f of section.fields) {
+            if (f.defaultValue === undefined) continue
+            if (merged[f.semanticKey] !== undefined && merged[f.semanticKey] !== '' && merged[f.semanticKey] !== false) continue
+            merged[f.semanticKey] = f.defaultValue
+            toAutosave[f.semanticKey] = f.defaultValue
+          }
+        }
         setData(json)
         setValues(merged)
         updatedAtRef.current = json.updatedAt
+        if (Object.keys(toAutosave).length > 0) {
+          // Persistir defaults inmediatamente para que el PDF los tome desde
+          // la primera impresión, sin esperar a un cambio del usuario.
+          void fetch(`/api/admin/case-forms/${encodeURIComponent(slug)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ caseId, values: merged, expectedUpdatedAt: json.updatedAt }),
+          })
+            .then((r) => r.ok ? r.json() : null)
+            .then((j) => {
+              if (j?.updatedAt) updatedAtRef.current = j.updatedAt
+            })
+            .catch(() => { /* defaults son best-effort */ })
+        }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Error al cargar')
       } finally {
@@ -197,10 +244,43 @@ export function AutomatedFormModal({ caseId, slug, open, onOpenChange, onSaved }
     return false
   }, [data, values])
 
+  function isDependsOnSatisfied(dep: FieldDependsOn | undefined): boolean {
+    if (!dep) return true
+    const v = values[dep.semanticKey]
+    if (v === null || v === undefined) return false
+    const expected = Array.isArray(dep.equals) ? dep.equals : [dep.equals]
+    return expected.includes(String(v))
+  }
+
   function isFieldVisible(f: FieldSpec): boolean {
     if (f.hiddenByDefault && !showHiddenFields) return false
+    if (!isDependsOnSatisfied(f.dependsOn)) return false
     return true
   }
+
+  // Limpieza automática: cuando un field con dependsOn deja de cumplirse pero
+  // tiene valor, lo borramos para que no se escriba al PDF (ej. dhs_interlocutory
+  // cuando appeal_type cambia de 'Bond proceedings appeal' a otro).
+  useEffect(() => {
+    if (!data) return
+    const toClear: string[] = []
+    for (const section of data.schemaSections) {
+      for (const f of section.fields) {
+        if (!f.dependsOn) continue
+        const satisfied = isDependsOnSatisfied(f.dependsOn)
+        const has = values[f.semanticKey]
+        if (!satisfied && has !== undefined && has !== '' && has !== false) {
+          toClear.push(f.semanticKey)
+        }
+      }
+    }
+    if (toClear.length === 0) return
+    const next = { ...values }
+    for (const k of toClear) delete next[k]
+    setValues(next)
+    triggerSave(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, values])
 
   const missingRequired = useMemo(() => {
     if (!data) return []
@@ -211,6 +291,15 @@ export function AutomatedFormModal({ caseId, slug, open, onOpenChange, onSaved }
         // Fields ocultos no cuentan para "missing required" — su valor no está
         // pidiéndose al usuario en este momento.
         if (f.hiddenByDefault && !showHiddenFields) continue
+        // Tampoco cuentan si dependsOn no se cumple (ej. dhs_interlocutory cuando
+        // appeal_type no es 'Bond proceedings appeal').
+        if (f.dependsOn) {
+          const dep = f.dependsOn
+          const depV = values[dep.semanticKey]
+          if (depV === null || depV === undefined) continue
+          const expected = Array.isArray(dep.equals) ? dep.equals : [dep.equals]
+          if (!expected.includes(String(depV))) continue
+        }
         const v = values[f.semanticKey]
         if (v === undefined || v === null || v === '' || v === false) {
           missing.push({ semanticKey: f.semanticKey, labelEs: f.labelEs, sectionId: section.id })
@@ -449,6 +538,35 @@ function FieldRow({
             ))}
           </SelectContent>
         </Select>
+        {field.helpEs && <p className="text-[10px] text-gray-500 mt-0.5">{field.helpEs}</p>}
+      </div>
+    )
+  }
+
+  if (field.type === 'radio') {
+    const current = (value as string) ?? ''
+    return (
+      <div>
+        <FieldLabel field={field} isOverridden={isOverridden} onReset={onReset} />
+        <RadioGroup
+          value={current}
+          onValueChange={(v) => onChange(v)}
+          className="gap-2"
+        >
+          {(field.options ?? []).map((opt) => {
+            const itemId = `f-${field.semanticKey}-${opt.value}`
+            return (
+              <label
+                key={opt.value}
+                htmlFor={itemId}
+                className="flex items-start gap-2 rounded-md border px-2.5 py-2 cursor-pointer hover:bg-gray-50 text-xs"
+              >
+                <RadioGroupItem id={itemId} value={opt.value} className="mt-0.5" />
+                <span className="flex-1 leading-snug text-gray-900">{opt.labelEs}</span>
+              </label>
+            )
+          })}
+        </RadioGroup>
         {field.helpEs && <p className="text-[10px] text-gray-500 mt-0.5">{field.helpEs}</p>}
       </div>
     )

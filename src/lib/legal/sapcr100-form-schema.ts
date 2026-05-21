@@ -39,10 +39,19 @@ export type FieldType =
   | 'phone'
   | 'state'
   | 'zip'
+  | 'radio'
+  | 'select'
 
 export interface FieldOption {
   value: string
   labelEs: string
+}
+
+export interface FieldDependsOn {
+  /** semanticKey de otro field cuyo valor activa este. */
+  semanticKey: string
+  /** Valor (o lista de valores) que activa este field. */
+  equals: string | string[]
 }
 
 export interface FieldSpec {
@@ -64,6 +73,18 @@ export interface FieldSpec {
   options?: FieldOption[]
   /** maxLength para inputs text/textarea (informativo en UI, no validacion estricta). */
   maxLength?: number
+  /**
+   * Valor por defecto que se aplica cuando no hay saved/prefill/hardcoded.
+   * El runner y el modal lo aplican al montar el form y lo persisten en autosave
+   * inmediato para que el PDF tenga el valor desde la primera impresión.
+   */
+  defaultValue?: string | boolean
+  /**
+   * Condicionalidad: este field solo se renderiza/persiste cuando otro field
+   * tiene cierto valor. Cuando la condición no se cumple, el valor se limpia
+   * del state para no enviar datos huérfanos al PDF.
+   */
+  dependsOn?: FieldDependsOn
   /**
    * Si false, este campo solo es editable por Diana en el admin (datos jurídicos
    * como cause_number, court_number, hardcoded). Si undefined o true, el cliente

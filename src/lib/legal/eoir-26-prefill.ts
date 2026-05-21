@@ -13,19 +13,21 @@ import { createLogger } from '@/lib/logger'
 const log = createLogger('eoir-26-prefill')
 
 // ──────────────────────────────────────────────────────────────────
-// Constantes de la firma (UsaLatino Prime).
-// Si la firma se muda o cambia de dirección, actualizar aquí. Estos
-// valores aparecen en la sección "Attorney/Representative" del Notice
-// of Appeal (sección 11 del PDF EOIR-26).
+// Información de la firma (sección 11 del PDF EOIR-26 — Attorney/Representative).
+//
+// El cliente de UsaLatino Prime presenta la apelación pro se (sin representante
+// legal acreditado ante EOIR). Estos campos quedan en blanco al imprimir.
+// Si en el futuro algún caso lleva representante, Diana puede llenarlos
+// manualmente desde el modal del admin — pero NO se auto-rellenan.
 // ──────────────────────────────────────────────────────────────────
 
 const FIRM_INFO = {
-  name: 'UsaLatino Prime',
+  name: '',
   street_address: '',
   suite: '',
   city_state_zip: '',
   phone: '',
-  email: 'henry@usalatino.com',
+  email: '',
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -113,10 +115,33 @@ export async function buildEoir26PrefilledValues(
     .eq('id', caseRow.client_id)
     .maybeSingle()
 
+  // Buscar el "Auto de Denegación del Juez" más reciente (subido por el cliente)
+  // con extracción de IA completada. La columna `ai_extracted_data` la popula el
+  // worker `/api/workers/extract-eoir-26-decision` después del upload.
+  const { data: denegacionDoc } = await service
+    .from('documents')
+    .select('ai_extracted_data')
+    .eq('case_id', caseId)
+    .eq('document_key', 'apelacion_denegacion_juez')
+    .eq('ai_extraction_status', 'completed')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const aiDecisionDate =
+    (denegacionDoc?.ai_extracted_data as { eoir_26?: { decision_date?: string } } | null)?.eoir_26
+      ?.decision_date ?? ''
+
   const firstName = (profile?.first_name ?? '').trim()
   const lastName = (profile?.last_name ?? '').trim()
   const middleName = (profile?.middle_name ?? '').trim()
   const fullName = joinName([firstName, middleName, lastName])
+
+  // Prioridad de `decision_date`: cases.decision_date (manual de Diana) > IA > vacío.
+  // La IA es ayuda, no sobreescritura silenciosa del trabajo manual.
+  const decisionDate = caseRow.decision_date
+    ? String(caseRow.decision_date)
+    : aiDecisionDate
 
   const bag: DataBag = {
     appellant: {
@@ -132,12 +157,12 @@ export async function buildEoir26PrefilledValues(
       aliens_list: lastName || firstName
         ? formatAlienEntry(lastName, firstName, middleName || null, profile?.a_number ?? null)
         : '',
-      custody_status: '',
+      custody_status: 'Not Detained',
     },
     appeal_decision: {
       last_hearing_location: '',
       summary: '',
-      decision_date: caseRow.decision_date ? String(caseRow.decision_date) : '',
+      decision_date: decisionDate,
       hearing_date_1: '',
     },
     firm: FIRM_INFO,
@@ -151,6 +176,15 @@ export async function buildEoir26PrefilledValues(
     if (v === undefined || v === null) continue
     if (typeof v === 'string' || typeof v === 'boolean') {
       out[f.semanticKey] = v
+    }
+  }
+
+  // Aplicar defaultValue para campos sin valor derivado ni hardcoded — esto
+  // permite que el cliente vea "Not Detained" preseleccionado en la UI.
+  for (const f of ALL_FIELDS) {
+    if (out[f.semanticKey] !== undefined && out[f.semanticKey] !== '') continue
+    if (f.defaultValue !== undefined) {
+      out[f.semanticKey] = f.defaultValue
     }
   }
 

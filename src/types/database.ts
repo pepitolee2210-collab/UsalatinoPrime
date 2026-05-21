@@ -147,6 +147,10 @@ export interface Document {
   rejection_reason?: string
   uploaded_by?: string
   created_at: string
+  ai_extracted_data?: Record<string, unknown> | null
+  ai_extraction_status?: 'pending' | 'processing' | 'completed' | 'failed' | null
+  ai_extraction_error?: string | null
+  ai_extracted_at?: string | null
 }
 
 export type CaseActivityCategory =

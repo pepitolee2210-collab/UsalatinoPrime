@@ -1,0 +1,422 @@
+{
+  "pdf_path": "public/forms/eoir-26.pdf",
+  "sha256": "d1aeeb70e3a23b579ffad092aaa99d118a1a4c5f42f0429d6a036faa53811313",
+  "bytes": 935810,
+  "total_fields": 42,
+  "total_pages": 7,
+  "inspected_at": "2026-05-21T17:34:25.630Z",
+  "fields": [
+    {
+      "name": "Print Name",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Sign Here",
+      "type": "unknown",
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Street Address",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Apartment or Room Number",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "City State Zip Code",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Telephone Number",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "4. Last hearing",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "2",
+      "type": "radio",
+      "options": [
+        "Respondent/Applicant",
+        "DHS-ICE"
+      ],
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "3",
+      "type": "radio",
+      "options": [
+        "Detained",
+        "Not Detained"
+      ],
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "5",
+      "type": "radio",
+      "options": [
+        "Merits proceedings appeal",
+        "Bond proceedings appeal",
+        "Denial of motion to reopen or a motion to reconsider appeal",
+        "Interlocutory appeal"
+      ],
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "5DHS",
+      "type": "radio",
+      "options": [
+        "Yes",
+        "No"
+      ],
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "6",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "7",
+      "type": "radio",
+      "options": [
+        "No",
+        "Choice1"
+      ],
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "8",
+      "type": "radio",
+      "options": [
+        "Choice3",
+        "Yes"
+      ],
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "10. Name",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "11. Name",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "11. Street Address",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "11. Suite or Room Number",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "11. City, State, and Zip Code",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "11. Telephone Number",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "11. Email",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "12. Name",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "12. Copy of Notice to Appeal mailed/delivered to",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "12. Address",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "12. SIGN HERE",
+      "type": "unknown",
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "12. No service needed",
+      "type": "checkbox",
+      "checkboxOnValue": "Yes",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "12. Date_af_date",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "General Instructions checkbox",
+      "type": "checkbox",
+      "checkboxOnValue": "Yes",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Requested information checkbox",
+      "type": "checkbox",
+      "checkboxOnValue": "Yes",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Completed form in English checkbox",
+      "type": "checkbox",
+      "checkboxOnValue": "Yes",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Certified translation checkbox",
+      "type": "checkbox",
+      "checkboxOnValue": "Yes",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Signed the form checkbox",
+      "type": "checkbox",
+      "checkboxOnValue": "Yes",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Served a copy of the form checkbox",
+      "type": "checkbox",
+      "checkboxOnValue": "Yes",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Proof of Service checkbox",
+      "type": "checkbox",
+      "checkboxOnValue": "Yes",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Receipt checkbox",
+      "type": "checkbox",
+      "checkboxOnValue": "Yes",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "EOIR-27 checkbox",
+      "type": "checkbox",
+      "checkboxOnValue": "Yes",
+      "isChecked": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "9. Date_af_date",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Date 5.1_af_date",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Date 5.2_af_date",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Date 5.3_af_date",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "Date 5.4_af_date",
+      "type": "text",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": false,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    },
+    {
+      "name": "1. List names and alien numbers",
+      "type": "textarea",
+      "defaultValue": "",
+      "maxLength": null,
+      "isMultiline": true,
+      "isReadOnly": false,
+      "isRequired": false,
+      "pages": []
+    }
+  ]
+}

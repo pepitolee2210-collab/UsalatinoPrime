@@ -22,7 +22,21 @@ import type { CasePhase } from '@/types/database'
  * sigue manejando Diana en /admin/cases/[id]/jurisdiction-panel.
  */
 
-type FieldType = 'text' | 'textarea' | 'checkbox' | 'date' | 'phone' | 'state' | 'zip'
+type FieldType =
+  | 'text'
+  | 'textarea'
+  | 'checkbox'
+  | 'date'
+  | 'phone'
+  | 'state'
+  | 'zip'
+  | 'radio'
+  | 'select'
+
+interface ClientFieldDependsOn {
+  semanticKey: string
+  equals: string | string[]
+}
 
 interface ClientField {
   semanticKey: string
@@ -33,6 +47,8 @@ interface ClientField {
   groupKey?: string
   options?: { value: string; labelEs: string }[]
   maxLength?: number
+  defaultValue?: string | boolean
+  dependsOn?: ClientFieldDependsOn
 }
 
 interface ClientSection {
@@ -155,6 +171,8 @@ export async function GET(
         groupKey: field.groupKey,
         options: field.options,
         maxLength: field.maxLength,
+        defaultValue: field.defaultValue,
+        dependsOn: field.dependsOn,
       })
     }
     if (userFields.length > 0) {

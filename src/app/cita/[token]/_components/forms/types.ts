@@ -1,4 +1,18 @@
-export type FieldType = 'text' | 'textarea' | 'checkbox' | 'date' | 'phone' | 'state' | 'zip'
+export type FieldType =
+  | 'text'
+  | 'textarea'
+  | 'checkbox'
+  | 'date'
+  | 'phone'
+  | 'state'
+  | 'zip'
+  | 'radio'
+  | 'select'
+
+export interface ClientFieldDependsOn {
+  semanticKey: string
+  equals: string | string[]
+}
 
 export interface ClientField {
   semanticKey: string
@@ -9,6 +23,8 @@ export interface ClientField {
   groupKey?: string
   options?: { value: string; labelEs: string }[]
   maxLength?: number
+  defaultValue?: string | boolean
+  dependsOn?: ClientFieldDependsOn
 }
 
 export interface ClientSection {

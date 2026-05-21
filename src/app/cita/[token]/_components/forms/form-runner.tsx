@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { toast } from 'sonner'
-import type { FormDetail, ClientField } from './types'
+import type { FormDetail, ClientField, ClientFieldDependsOn } from './types'
 import { SOURCE_LABEL } from './types'
 
 interface FormRunnerProps {
@@ -36,7 +36,29 @@ export function FormRunner({ token, slug, onClose, onSubmitted }: FormRunnerProp
       .then((j: FormDetail) => {
         if (cancelled) return
         setData(j)
-        setValues({ ...(j.saved_values ?? {}) })
+        // Aplicar defaultValue para campos sin saved_value ni prefill (que
+        // el server no marcó como confirmado). Esto asegura que radios como
+        // "No detenido" salgan preseleccionados desde el primer render.
+        const initial: Record<string, string | boolean | null> = { ...(j.saved_values ?? {}) }
+        const toAutosave: Record<string, string | boolean | null> = {}
+        for (const section of j.sections) {
+          for (const f of section.fields) {
+            if (f.defaultValue === undefined) continue
+            if (initial[f.semanticKey] !== undefined && initial[f.semanticKey] !== null && initial[f.semanticKey] !== '') continue
+            initial[f.semanticKey] = f.defaultValue
+            toAutosave[f.semanticKey] = f.defaultValue
+          }
+        }
+        setValues(initial)
+        if (Object.keys(toAutosave).length > 0 && !j.locked_for_client) {
+          // Persistir defaults inmediatamente para que el PDF los tome desde
+          // la primera impresión, sin esperar a un cambio del usuario.
+          void fetch(`/api/cita/${encodeURIComponent(token)}/forms/${encodeURIComponent(slug)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ values: toAutosave }),
+          }).catch(() => { /* defaults son best-effort */ })
+        }
       })
       .catch((err) => {
         if (cancelled) return
@@ -125,7 +147,12 @@ export function FormRunner({ token, slug, onClose, onSubmitted }: FormRunnerProp
   const totalSections = data.sections.length
   const isLastSection = activeSection >= totalSections - 1
   const allComplete = data.sections.every((s) =>
-    s.fields.every((f) => !f.required || hasValue(values[f.semanticKey])),
+    s.fields.every((f) => {
+      if (!f.required) return true
+      // Si el field está oculto por dependsOn, no contar como pendiente.
+      if (!isDependsOnSatisfied(f.dependsOn, values)) return true
+      return hasValue(values[f.semanticKey])
+    }),
   )
 
   // Si el form no tiene secciones (todo viene auto-resuelto), mostrar review pantalla
@@ -370,6 +397,30 @@ function formatConfirmedValue(v: string | boolean | null): string {
   return v
 }
 
+function isDependsOnSatisfied(
+  dependsOn: ClientFieldDependsOn | undefined,
+  values: Record<string, string | boolean | null>,
+): boolean {
+  if (!dependsOn) return true
+  const v = values[dependsOn.semanticKey]
+  if (v === null || v === undefined) return false
+  const expected = Array.isArray(dependsOn.equals) ? dependsOn.equals : [dependsOn.equals]
+  return expected.includes(String(v))
+}
+
+const GROUP_LABELS: Record<string, { title: string; description?: string; tone?: 'plain' | 'critical' }> = {
+  hearings: {
+    title: 'Audiencias previas (opcional)',
+    description: 'Solo si la BIA las requiere para tu caso. Puedes dejar todas en blanco.',
+    tone: 'plain',
+  },
+  decision: {
+    title: '📅 Fecha del fallo del juez de inmigración',
+    description: 'Es la fecha al pie del Auto de Denegación — CRÍTICA porque define el plazo de 30 días para apelar.',
+    tone: 'critical',
+  },
+}
+
 function SectionRenderer({
   section,
   values,
@@ -381,7 +432,37 @@ function SectionRenderer({
   setField: (key: string, val: string | boolean | null) => void
   disabled: boolean
 }) {
+  // Limpieza automática: si un field con dependsOn ya no se satisface pero
+  // tiene valor, lo borramos para que no se envíe al PDF (cumple el requisito
+  // de "no marcar nada del Sí o No de los campos siguientes" cuando el tipo
+  // de apelación cambia).
+  useEffect(() => {
+    if (!section) return
+    for (const f of section.fields) {
+      if (!f.dependsOn) continue
+      const satisfied = isDependsOnSatisfied(f.dependsOn, values)
+      const has = values[f.semanticKey]
+      if (!satisfied && has !== undefined && has !== null && has !== '') {
+        setField(f.semanticKey, null)
+      }
+    }
+  }, [section, values, setField])
+
   if (!section) return null
+
+  // Agrupar campos por groupKey preservando el orden de aparición.
+  const visibleFields = section.fields.filter((f) => isDependsOnSatisfied(f.dependsOn, values))
+  const groups: { key: string | null; fields: ClientField[] }[] = []
+  for (const f of visibleFields) {
+    const key = f.groupKey ?? null
+    const last = groups[groups.length - 1]
+    if (last && last.key === key) {
+      last.fields.push(f)
+    } else {
+      groups.push({ key, fields: [f] })
+    }
+  }
+
   return (
     <div className="p-5 space-y-5">
       <header>
@@ -392,16 +473,56 @@ function SectionRenderer({
           {section.descriptionEs}
         </p>
       </header>
-      <div className="space-y-4">
-        {section.fields.map((field) => (
-          <FieldRenderer
-            key={field.semanticKey}
-            field={field}
-            value={values[field.semanticKey]}
-            onChange={(v) => setField(field.semanticKey, v)}
-            disabled={disabled}
-          />
-        ))}
+      <div className="space-y-5">
+        {groups.map((g, idx) => {
+          const label = g.key ? GROUP_LABELS[g.key] : null
+          const isCritical = label?.tone === 'critical'
+          return (
+            <div
+              key={g.key ?? `g${idx}`}
+              className={label ? 'rounded-xl p-3 space-y-3' : 'space-y-4'}
+              style={
+                label
+                  ? {
+                      background: isCritical
+                        ? 'var(--color-ulp-error-container, rgb(254 243 199))'
+                        : 'var(--color-ulp-surface-container-low)',
+                      border: isCritical
+                        ? '1px solid var(--color-ulp-error, rgb(217 119 6))'
+                        : '1px solid var(--color-ulp-outline-variant)',
+                    }
+                  : undefined
+              }
+            >
+              {label && (
+                <div>
+                  <p
+                    className="ulp-label font-bold"
+                    style={{ color: isCritical ? 'rgb(146 64 14)' : 'var(--color-ulp-on-surface)' }}
+                  >
+                    {label.title}
+                  </p>
+                  {label.description && (
+                    <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-ulp-on-surface-variant)' }}>
+                      {label.description}
+                    </p>
+                  )}
+                </div>
+              )}
+              <div className="space-y-4">
+                {g.fields.map((field) => (
+                  <FieldRenderer
+                    key={field.semanticKey}
+                    field={field}
+                    value={values[field.semanticKey]}
+                    onChange={(v) => setField(field.semanticKey, v)}
+                    disabled={disabled}
+                  />
+                ))}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
@@ -463,6 +584,77 @@ function FieldRenderer({
           </label>
           {help}
         </div>
+      </div>
+    )
+  }
+
+  if (field.type === 'radio') {
+    const current = typeof value === 'string' ? value : ''
+    return (
+      <fieldset className="border-0 p-0 m-0">
+        <legend className="ulp-label block mb-2" style={{ color: 'var(--color-ulp-on-surface-variant)' }}>
+          {field.labelEs}{' '}
+          {field.required && <span style={{ color: 'rgb(185 28 28)' }}>*</span>}
+        </legend>
+        <div className="space-y-2">
+          {(field.options ?? []).map((opt) => {
+            const selected = current === opt.value
+            return (
+              <label
+                key={opt.value}
+                className="flex items-start gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors"
+                style={{
+                  background: selected
+                    ? 'var(--color-ulp-primary-container)'
+                    : 'var(--color-ulp-surface-container-low)',
+                  borderColor: selected
+                    ? 'var(--color-ulp-primary)'
+                    : 'var(--color-ulp-outline-variant)',
+                  color: selected
+                    ? 'var(--color-ulp-on-primary-container)'
+                    : 'var(--color-ulp-on-surface)',
+                }}
+              >
+                <input
+                  type="radio"
+                  name={field.semanticKey}
+                  value={opt.value}
+                  checked={selected}
+                  onChange={() => onChange(opt.value)}
+                  disabled={disabled}
+                  className="mt-1 w-4 h-4 flex-shrink-0"
+                />
+                <span className="ulp-body-sm flex-1">{opt.labelEs}</span>
+              </label>
+            )
+          })}
+        </div>
+        {help}
+      </fieldset>
+    )
+  }
+
+  if (field.type === 'select') {
+    const current = typeof value === 'string' ? value : ''
+    return (
+      <div>
+        {baseLabel}
+        <select
+          id={field.semanticKey}
+          value={current}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+          className="w-full px-3 py-2 rounded-xl border text-sm focus:outline-none focus:ring-2"
+          style={inputStyle}
+        >
+          <option value="">— Selecciona una opción —</option>
+          {(field.options ?? []).map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.labelEs}
+            </option>
+          ))}
+        </select>
+        {help}
       </div>
     )
   }

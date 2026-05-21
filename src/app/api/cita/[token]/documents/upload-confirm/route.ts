@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { logActivity, SUBCATEGORIES } from '@/lib/activity/log-activity'
+import { enqueueJob } from '@/lib/qstash/client'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('upload-confirm')
 
 /**
  * POST /api/cita/[token]/documents/upload-confirm
@@ -195,6 +199,32 @@ export async function POST(
     actor: { kind: 'token', tokenType: 'cita', clientId: tokenData.client_id },
     client: supabase,
   })
+
+  // Disparar extracción IA en background para tipos de documento que tienen
+  // extractores registrados. El cliente recibe respuesta inmediata; el worker
+  // popula `documents.ai_extracted_data` cuando termine (~5-15s con Gemini).
+  if (docType.code === 'apelacion_denegacion_juez') {
+    try {
+      await supabase
+        .from('documents')
+        .update({ ai_extraction_status: 'pending' })
+        .eq('id', insertedDoc.id)
+
+      const workerUrl = `${request.nextUrl.origin}/api/workers/extract-eoir-26-decision`
+      await enqueueJob({
+        endpoint: workerUrl,
+        body: { documentId: insertedDoc.id, caseId: tokenData.case_id },
+        deduplicationId: `extract-eoir-26-${insertedDoc.id}`,
+      })
+    } catch (err) {
+      // No bloqueamos el upload si la extracción falla — Diana puede llenar
+      // la fecha manualmente. Solo log warning.
+      log.warn('enqueue extract-eoir-26-decision falló', {
+        documentId: insertedDoc.id,
+        err: err instanceof Error ? err.message : String(err),
+      })
+    }
+  }
 
   return NextResponse.json({ document: insertedDoc })
 }

@@ -21,7 +21,7 @@ import type { FieldSpec, SapcrSection } from './sapcr100-form-schema'
 export const PDF_PUBLIC_PATH = '/forms/eoir-26.pdf'
 export const PDF_DISK_PATH = 'public/forms/eoir-26.pdf'
 export const PDF_SHA256 = 'd1aeeb70e3a23b579ffad092aaa99d118a1a4c5f42f0429d6a036faa53811313'
-export const SCHEMA_VERSION = '2026-05-18'
+export const SCHEMA_VERSION = '2026-05-21'
 export const FORM_SLUG = 'eoir-26'
 export const FORM_NAME = 'EOIR-26 — Notice of Appeal'
 export const FORM_DESCRIPTION_ES =
@@ -29,19 +29,20 @@ export const FORM_DESCRIPTION_ES =
 
 // Valores válidos para los RadioGroups del PDF (deben coincidir EXACTO con
 // `form.getField(name).getOptions()` — verificado vía pdf-lib en la inspección).
-const RADIO_2_OPTS = ['Respondent/Applicant', 'DHS-ICE'] as const
-const RADIO_3_OPTS = ['Detained', 'Not Detained'] as const
-const RADIO_5_OPTS = [
-  'Merits proceedings appeal',
-  'Bond proceedings appeal',
-  'Denial of motion to reopen or a motion to reconsider appeal',
-  'Interlocutory appeal',
-] as const
-const RADIO_5DHS_OPTS = ['Yes', 'No'] as const
-// Items 7 y 8 traen un opt legacy ('Choice1'/'Choice3') junto al esperado.
-// Cuando el cliente responde "Sí", aplicamos el valor estándar; "No" usa 'No'.
-const RADIO_7_OPTS = ['Choice1', 'No'] as const
-const RADIO_8_OPTS = ['Yes', 'Choice3'] as const
+// Re-confirmados por scripts/inspect-eoir-26-fields.mjs (output en
+// scripts/eoir-26-raw-fields.json):
+//   '2'    → ['Respondent/Applicant', 'DHS-ICE']
+//   '3'    → ['Detained', 'Not Detained']
+//   '5'    → 4 opciones de tipo de apelación
+//   '5DHS' → ['Yes', 'No']
+//   '7'    → ['No', 'Choice1']      ← Brief intent (item #8 del PDF físico).
+//                                     'Choice1' = Yes; 'No' = No.
+//   '8'    → ['Choice3', 'Yes']     ← Oral argument (item #7 del PDF físico).
+//                                     'Yes' = Yes; 'Choice3' = No.
+//
+// Cross-mapping importante: el pdfFieldName NO refleja el número visible de
+// la pregunta del PDF. El semanticKey describe la función real (brief_intent /
+// oral_argument_request) y resuelve la confusión.
 
 // ──────────────────────────────────────────────────────────────────
 // Secciones
@@ -78,14 +79,120 @@ const SECTION_3: SapcrSection = {
   descriptionEs:
     'Detalles de la decisión del Juez de Inmigración (IJ) que se está apelando. Estos datos los obtiene del auto de denegación del juez.',
   fields: [
-    { semanticKey: 'appeal_party', pdfFieldName: '2', type: 'text', labelEs: '¿Quién presenta la apelación?', helpEs: `Valores válidos: ${RADIO_2_OPTS.join(' / ')}. Para apelaciones del solicitante de asilo, usar "Respondent/Applicant".`, page: 1, required: true, hardcoded: 'Respondent/Applicant' },
-    { semanticKey: 'custody_status', pdfFieldName: '3', type: 'text', labelEs: 'Estatus de custodia del apelante', helpEs: `Valores válidos: ${RADIO_3_OPTS.join(' / ')}.`, page: 1, required: true, deriveFrom: 'appellant.custody_status' },
-    { semanticKey: 'last_hearing_location', pdfFieldName: '4. Last hearing', type: 'textarea', labelEs: 'Ciudad y estado de la última audiencia ante el IJ', helpEs: 'Ej. Houston, TX. Aparece en el auto de denegación.', page: 1, required: true, deriveFrom: 'appeal_decision.last_hearing_location' },
-    { semanticKey: 'appeal_type', pdfFieldName: '5', type: 'text', labelEs: 'Tipo de apelación', helpEs: `Valores válidos: ${RADIO_5_OPTS.join(' / ')}. Para apelación de denegación de asilo: "Merits proceedings appeal".`, page: 1, required: true, hardcoded: 'Merits proceedings appeal' },
-    { semanticKey: 'dhs_interlocutory', pdfFieldName: '5DHS', type: 'text', labelEs: '¿Es apelación interlocutoria de DHS?', helpEs: `Valores válidos: ${RADIO_5DHS_OPTS.join(' / ')}. Si la presenta el solicitante (no DHS), usar "No".`, page: 1, required: true, hardcoded: 'No' },
-    { semanticKey: 'decision_description', pdfFieldName: '6', type: 'textarea', labelEs: 'Resumen de la decisión que se apela', helpEs: 'Describir brevemente qué decidió el IJ (ej. "Denegación de Asilo bajo §208 del INA").', page: 1, required: true, deriveFrom: 'appeal_decision.summary' },
-    { semanticKey: 'brief_intent', pdfFieldName: '7', type: 'text', labelEs: '¿Presentará un brief escrito separado?', helpEs: `Valores válidos: ${RADIO_7_OPTS.join(' / ')}. Para apelaciones bajo asistencia legal típicamente se presenta brief: usar "Choice1" (= Yes).`, page: 1, required: true, hardcoded: 'Choice1' },
-    { semanticKey: 'oral_argument_request', pdfFieldName: '8', type: 'text', labelEs: '¿Solicita argumento oral ante la BIA?', helpEs: `Valores válidos: ${RADIO_8_OPTS.join(' / ')}.`, page: 1, required: true, hardcoded: 'Choice3' },
+    {
+      semanticKey: 'appeal_party',
+      pdfFieldName: '2',
+      type: 'radio',
+      labelEs: '¿Quién presenta la apelación?',
+      helpEs: 'Para apelaciones del solicitante de asilo: "El apelante (Respondent/Applicant)".',
+      page: 1,
+      required: true,
+      defaultValue: 'Respondent/Applicant',
+      editableByClient: true,
+      options: [
+        { value: 'Respondent/Applicant', labelEs: 'El apelante (Respondent / Applicant)' },
+        { value: 'DHS-ICE', labelEs: 'DHS-ICE' },
+      ],
+    },
+    {
+      semanticKey: 'custody_status',
+      pdfFieldName: '3',
+      type: 'radio',
+      labelEs: '¿El apelante está detenido?',
+      helpEs: 'Marca "No detenido" por defecto. Cambia a "Detenido" solo si el cliente está bajo custodia de ICE.',
+      page: 1,
+      required: true,
+      defaultValue: 'Not Detained',
+      editableByClient: true,
+      deriveFrom: 'appellant.custody_status',
+      options: [
+        { value: 'Not Detained', labelEs: 'No detenido' },
+        { value: 'Detained', labelEs: 'Detenido (en custodia ICE)' },
+      ],
+    },
+    {
+      semanticKey: 'last_hearing_location',
+      pdfFieldName: '4. Last hearing',
+      type: 'textarea',
+      labelEs: 'Ciudad y estado de la última audiencia ante el IJ',
+      helpEs: 'Ej. Houston, TX. Aparece en el auto de denegación.',
+      page: 1,
+      required: true,
+      deriveFrom: 'appeal_decision.last_hearing_location',
+    },
+    {
+      semanticKey: 'appeal_type',
+      pdfFieldName: '5',
+      type: 'radio',
+      labelEs: 'Tipo de apelación',
+      helpEs: 'Selecciona el tipo de decisión que estás apelando ante la BIA.',
+      page: 1,
+      required: true,
+      editableByClient: true,
+      options: [
+        { value: 'Merits proceedings appeal', labelEs: 'Apelación directa por denegación de asilo (Merits)' },
+        { value: 'Bond proceedings appeal', labelEs: 'Apelación en procedimiento de fianza (Bond)' },
+        { value: 'Denial of motion to reopen or a motion to reconsider appeal', labelEs: 'Moción de Reapertura o Reconsideración' },
+        { value: 'Interlocutory appeal', labelEs: 'Apelación interlocutoria' },
+      ],
+    },
+    {
+      semanticKey: 'dhs_interlocutory',
+      pdfFieldName: '5DHS',
+      type: 'radio',
+      labelEs: '¿Es apelación interlocutoria del DHS?',
+      helpEs: 'Solo aplica cuando el tipo es "Apelación en procedimiento de fianza".',
+      page: 1,
+      editableByClient: true,
+      defaultValue: 'No',
+      dependsOn: { semanticKey: 'appeal_type', equals: 'Bond proceedings appeal' },
+      options: [
+        { value: 'Yes', labelEs: 'Sí' },
+        { value: 'No', labelEs: 'No' },
+      ],
+    },
+    {
+      semanticKey: 'decision_description',
+      pdfFieldName: '6',
+      type: 'textarea',
+      labelEs: 'Resumen de la decisión que se apela',
+      helpEs: 'Describe brevemente qué decidió el IJ (ej. "Denegación de Asilo bajo §208 del INA"). Si solicitas argumento oral (pregunta #7), explica aquí por qué tu caso amerita revisión por panel de tres miembros.',
+      page: 1,
+      required: true,
+      deriveFrom: 'appeal_decision.summary',
+    },
+    {
+      // Item #7 del PDF físico: "Do you desire oral argument before the BIA?"
+      // Cross-mapping: pdfFieldName '8' (no '7') — confirmado por inspect.
+      semanticKey: 'oral_argument_request',
+      pdfFieldName: '8',
+      type: 'radio',
+      labelEs: '#7 — ¿Desea argumento oral ante la BIA?',
+      helpEs: 'Si marcas "Sí": debes explicar en el item #6 por qué tu caso amerita revisión por panel de tres miembros. La BIA normalmente no concede argumento oral salvo que también se presente un brief.',
+      page: 1,
+      required: true,
+      editableByClient: true,
+      options: [
+        { value: 'Yes', labelEs: 'Sí, solicito argumento oral' },
+        { value: 'Choice3', labelEs: 'No solicito argumento oral' },
+      ],
+    },
+    {
+      // Item #8 del PDF físico: "Do you intend to file a separate written brief?"
+      // Cross-mapping: pdfFieldName '7' (no '8') — confirmado por inspect.
+      semanticKey: 'brief_intent',
+      pdfFieldName: '7',
+      type: 'radio',
+      labelEs: '#8 — ¿Presentará un brief o declaración escrita separada después de este Notice of Appeal?',
+      helpEs: 'Si marcas "Sí", deberás enviar el brief a la BIA dentro del plazo que se te indique.',
+      page: 1,
+      required: true,
+      editableByClient: true,
+      options: [
+        { value: 'Choice1', labelEs: 'Sí, presentaré brief separado' },
+        { value: 'No', labelEs: 'No presentaré brief separado' },
+      ],
+    },
   ],
 }
 
@@ -93,44 +200,144 @@ const SECTION_4: SapcrSection = {
   id: 4,
   titleEs: '4. Fechas relevantes',
   descriptionEs:
-    'Fechas de audiencias previas y de la decisión apelada. Todas en formato MM/DD/YYYY.',
+    'Fechas de audiencias previas (opcionales) y la fecha CRÍTICA del fallo del IJ. Todas en formato MM/DD/YYYY.',
   fields: [
-    { semanticKey: 'hearing_date_1', pdfFieldName: 'Date 5.1_af_date', type: 'date', labelEs: 'Fecha de audiencia 1', helpEs: 'Primera audiencia relevante ante el IJ.', page: 1, deriveFrom: 'appeal_decision.hearing_date_1' },
-    { semanticKey: 'hearing_date_2', pdfFieldName: 'Date 5.2_af_date', type: 'date', labelEs: 'Fecha de audiencia 2', page: 1 },
-    { semanticKey: 'hearing_date_3', pdfFieldName: 'Date 5.3_af_date', type: 'date', labelEs: 'Fecha de audiencia 3', page: 1 },
-    { semanticKey: 'hearing_date_4', pdfFieldName: 'Date 5.4_af_date', type: 'date', labelEs: 'Fecha de audiencia 4', page: 1 },
-    { semanticKey: 'decision_date', pdfFieldName: '9. Date_af_date', type: 'date', labelEs: 'Fecha de la decisión del IJ (apelada)', helpEs: 'Fecha del auto de denegación. CRÍTICO — define el plazo de 30 días.', page: 1, required: true, deriveFrom: 'appeal_decision.decision_date' },
+    {
+      semanticKey: 'hearing_date_1',
+      pdfFieldName: 'Date 5.1_af_date',
+      type: 'date',
+      labelEs: 'Fecha de audiencia 1',
+      helpEs: 'Primera audiencia relevante ante el IJ (opcional).',
+      page: 1,
+      groupKey: 'hearings',
+      deriveFrom: 'appeal_decision.hearing_date_1',
+    },
+    {
+      semanticKey: 'hearing_date_2',
+      pdfFieldName: 'Date 5.2_af_date',
+      type: 'date',
+      labelEs: 'Fecha de audiencia 2',
+      page: 1,
+      groupKey: 'hearings',
+    },
+    {
+      semanticKey: 'hearing_date_3',
+      pdfFieldName: 'Date 5.3_af_date',
+      type: 'date',
+      labelEs: 'Fecha de audiencia 3',
+      page: 1,
+      groupKey: 'hearings',
+    },
+    {
+      semanticKey: 'hearing_date_4',
+      pdfFieldName: 'Date 5.4_af_date',
+      type: 'date',
+      labelEs: 'Fecha de audiencia 4',
+      page: 1,
+      groupKey: 'hearings',
+    },
+    {
+      semanticKey: 'decision_date',
+      pdfFieldName: '9. Date_af_date',
+      type: 'date',
+      labelEs: 'Fecha del fallo / decisión del IJ (apelada)',
+      helpEs: '⚠️ CRÍTICO — esta fecha define el plazo legal de 30 días para presentar la apelación. Es la fecha que aparece al pie del auto de denegación del juez, NO una fecha de audiencia previa. Si subiste el "Auto de Denegación del Juez", la IA puede haberla pre-llenado.',
+      page: 1,
+      required: true,
+      groupKey: 'decision',
+      deriveFrom: 'appeal_decision.decision_date',
+    },
   ],
 }
 
+// SECTION_5: en UsaLatino Prime el cliente presenta la apelación **pro se**
+// (sin representante legal acreditado ante EOIR). Esta sección debe quedar
+// COMPLETAMENTE en blanco al imprimir el PDF. Los campos se mantienen en el
+// schema (sin deriveFrom y sin hardcoded) para que Diana pueda llenarlos
+// manualmente si en el futuro algún caso sí lleva representante.
 const SECTION_5: SapcrSection = {
   id: 5,
-  titleEs: '5. Abogado / Representante',
+  titleEs: '5. Abogado / Representante (no aplica — cliente pro se)',
   descriptionEs:
-    'Información del representante legal acreditado ante EOIR que prepara la apelación (UsaLatino Prime y/o su abogado supervisor).',
+    'En UsaLatino Prime el cliente firma y presenta la apelación pro se (sin representante legal acreditado ante EOIR). Esta sección queda en blanco al imprimir.',
   fields: [
-    { semanticKey: 'attorney_name', pdfFieldName: '10. Name', type: 'text', labelEs: 'Nombre del abogado supervisor o representante', helpEs: 'Si va sin representación, dejar vacío.', page: 1, editableByClient: false },
-    { semanticKey: 'firm_name', pdfFieldName: '11. Name', type: 'text', labelEs: 'Nombre de la firma / organización', page: 1, editableByClient: false, deriveFrom: 'firm.name' },
-    { semanticKey: 'firm_street_address', pdfFieldName: '11. Street Address', type: 'text', labelEs: 'Dirección de la firma', page: 1, editableByClient: false, deriveFrom: 'firm.street_address' },
-    { semanticKey: 'firm_suite', pdfFieldName: '11. Suite or Room Number', type: 'text', labelEs: 'Suite o Room Number', page: 1, editableByClient: false, deriveFrom: 'firm.suite' },
-    { semanticKey: 'firm_city_state_zip', pdfFieldName: '11. City, State, and Zip Code', type: 'text', labelEs: 'Ciudad, estado, zip de la firma', page: 1, editableByClient: false, deriveFrom: 'firm.city_state_zip' },
-    { semanticKey: 'firm_telephone', pdfFieldName: '11. Telephone Number', type: 'phone', labelEs: 'Teléfono de la firma', page: 1, editableByClient: false, deriveFrom: 'firm.phone' },
-    { semanticKey: 'firm_email', pdfFieldName: '11. Email', type: 'text', labelEs: 'Email de la firma', page: 1, editableByClient: false, deriveFrom: 'firm.email' },
+    { semanticKey: 'attorney_name', pdfFieldName: '10. Name', type: 'text', labelEs: 'Nombre del abogado supervisor o representante', helpEs: 'Dejar vacío — cliente pro se.', page: 1, editableByClient: false },
+    { semanticKey: 'firm_name', pdfFieldName: '11. Name', type: 'text', labelEs: 'Nombre de la firma / organización', page: 1, editableByClient: false },
+    { semanticKey: 'firm_street_address', pdfFieldName: '11. Street Address', type: 'text', labelEs: 'Dirección de la firma', page: 1, editableByClient: false },
+    { semanticKey: 'firm_suite', pdfFieldName: '11. Suite or Room Number', type: 'text', labelEs: 'Suite o Room Number', page: 1, editableByClient: false },
+    { semanticKey: 'firm_city_state_zip', pdfFieldName: '11. City, State, and Zip Code', type: 'text', labelEs: 'Ciudad, estado, zip de la firma', page: 1, editableByClient: false },
+    { semanticKey: 'firm_telephone', pdfFieldName: '11. Telephone Number', type: 'phone', labelEs: 'Teléfono de la firma', page: 1, editableByClient: false },
+    { semanticKey: 'firm_email', pdfFieldName: '11. Email', type: 'text', labelEs: 'Email de la firma', page: 1, editableByClient: false },
   ],
 }
 
+// SECTION_6: "Proof of Service" del item #12 del PDF. La firma del CERTIFICANTE
+// (la persona que afirma haber entregado/enviado copia del Notice of Appeal al
+// DHS) ES el cliente apelante, no el DHS. Confirmación vía inspect:
+//   '12. Name'                                       → firma del certificante (cliente)
+//   '12. Copy of Notice to Appeal mailed/delivered to' → nombre del destinatario (oficina DHS)
+//   '12. Address'                                    → dirección del destinatario
 const SECTION_6: SapcrSection = {
   id: 6,
-  titleEs: '6. Servicio de la apelación a DHS',
+  titleEs: '6. Servicio de la apelación al DHS (Proof of Service)',
   descriptionEs:
-    'El apelante debe servir copia de este Notice of Appeal al Office of the District Counsel del DHS. Este bloque registra a quién se le entregó.',
+    'El apelante (cliente) certifica que entregó copia de este Notice of Appeal al Office of the District Counsel del DHS-ICE. Aquí va el nombre del cliente (quien certifica), seguido del destinatario y su dirección.',
   fields: [
-    { semanticKey: 'service_recipient_name', pdfFieldName: '12. Name', type: 'text', labelEs: 'Nombre del destinatario del servicio', helpEs: 'Típicamente "Office of the District Counsel, DHS-ICE".', page: 1, hardcoded: 'Office of the District Counsel, DHS-ICE' },
-    { semanticKey: 'service_delivery_method', pdfFieldName: '12. Copy of Notice to Appeal mailed/delivered to', type: 'textarea', labelEs: 'Método de entrega (mail / hand-delivered)', helpEs: 'Ej. "First-class mail, USPS" o "Hand-delivered".', page: 1 },
-    { semanticKey: 'service_address', pdfFieldName: '12. Address', type: 'textarea', labelEs: 'Dirección del destinatario del servicio', page: 1 },
-    { semanticKey: 'service_signature_placeholder', pdfFieldName: '12. SIGN HERE', type: 'text', labelEs: 'Firma del que sirvió (texto)', helpEs: 'Firma a mano sobre el impreso.', page: 1, deriveFrom: 'appellant.full_name', editableByClient: false },
-    { semanticKey: 'no_service_needed', pdfFieldName: '12. No service needed', type: 'checkbox', labelEs: 'No se requiere servicio (raro)', helpEs: 'Solo marcar si DHS no estaba representado en el caso.', page: 1 },
-    { semanticKey: 'service_date', pdfFieldName: '12. Date_af_date', type: 'date', labelEs: 'Fecha del servicio', page: 1 },
+    {
+      semanticKey: 'service_certifier_name',
+      pdfFieldName: '12. Name',
+      type: 'text',
+      labelEs: 'Nombre del cliente (quien certifica el servicio)',
+      helpEs: 'Aparece como "I, [nombre]…" — confirma que tú entregaste copia al DHS.',
+      page: 1,
+      required: true,
+      editableByClient: true,
+      deriveFrom: 'appellant.full_name',
+    },
+    {
+      semanticKey: 'service_recipient_org',
+      pdfFieldName: '12. Copy of Notice to Appeal mailed/delivered to',
+      type: 'textarea',
+      labelEs: 'Destinatario del servicio (a quién se entregó copia)',
+      helpEs: 'Típicamente "Office of the District Counsel, DHS-ICE" de la jurisdicción de la corte.',
+      page: 1,
+      hardcoded: 'Office of the District Counsel, DHS-ICE',
+    },
+    {
+      semanticKey: 'service_address',
+      pdfFieldName: '12. Address',
+      type: 'textarea',
+      labelEs: 'Dirección del destinatario del servicio',
+      helpEs: 'Dirección postal de la oficina del District Counsel donde se envía/entrega la copia.',
+      page: 1,
+      required: true,
+      editableByClient: true,
+    },
+    {
+      semanticKey: 'service_signature_placeholder',
+      pdfFieldName: '12. SIGN HERE',
+      type: 'text',
+      labelEs: 'Firma (sobre el impreso)',
+      helpEs: 'El cliente firma a mano sobre la copia impresa — el sistema no lo rellena digitalmente.',
+      page: 1,
+      editableByClient: false,
+    },
+    {
+      semanticKey: 'no_service_needed',
+      pdfFieldName: '12. No service needed',
+      type: 'checkbox',
+      labelEs: 'No se requiere servicio (caso raro)',
+      helpEs: 'Solo marcar si DHS no estaba representado en el caso.',
+      page: 1,
+    },
+    {
+      semanticKey: 'service_date',
+      pdfFieldName: '12. Date_af_date',
+      type: 'date',
+      labelEs: 'Fecha del servicio',
+      helpEs: 'Fecha en que se entregó/envió la copia al DHS.',
+      page: 1,
+    },
   ],
 }
 
