@@ -6,6 +6,7 @@ import { formApplies } from '@/lib/legal/phase-form-mapping'
 import { TOTAL_I360_FIELDS, countI360FilledFields } from '@/components/i360/i360-questions'
 import { TOTAL_I589_PART_A_FIELDS, countI589PartAFilledFields } from '@/components/i589/i589-part-a-questions'
 import type { CasePhase } from '@/types/database'
+import { isAsylumService } from '@/lib/services/asylum'
 
 /**
  * GET /api/cita/[token]/required-forms
@@ -351,10 +352,15 @@ export async function GET(
     })
   }
 
-  // Asilo Político — Fase 2 (Reforzar): formulario para que el cliente pegue
-  // URLs de noticias / reportes que respalden su caso. La tabla
-  // `case_evidence_urls` ya guarda los links; este card abre el manager.
-  if (isAsiloPolitico && currentPhase === 'asilo_reforzar') {
+  // Familia Asilo Político — Fase 2 (Reforzar): formulario para que el
+  // cliente pegue URLs de noticias / reportes que respalden su caso. La
+  // tabla `case_evidence_urls` ya guarda los links; este card abre el
+  // manager. Aplica TANTO a 'asilo-politico' (cuando avanza a Fase 2) como
+  // a 'reforzar-asilo' (donde es la fase única). Por eso usamos
+  // isAsylumService en lugar del flag local isAsiloPolitico — ese flag
+  // sigue siendo específico de 'asilo-politico' porque la Fase 1 (I-589
+  // Parte A) NO aplica a 'reforzar-asilo'.
+  if (isAsylumService(serviceSlug) && currentPhase === 'asilo_reforzar') {
     const { count: urlsCount } = await supabase
       .from('case_evidence_urls')
       .select('id', { count: 'exact', head: true })

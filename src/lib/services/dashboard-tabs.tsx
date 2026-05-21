@@ -204,6 +204,42 @@ export const SERVICE_DASHBOARD_TABS: Record<string, DashboardTabDef[]> = {
       ),
     },
   ],
+  // Reforzar Asilo — servicio standalone (solo Fase 2). Reusa el wizard
+  // de revisión I-589 Parte B/C de Henry y el generador de Miedo Creíble.
+  // NO incluye I-589 Parte A (esa pertenece a la Fase 1 del proceso completo
+  // 'asilo-politico'; los clientes de Reforzar Asilo ya presentaron el I-589
+  // y no lo llenan en plataforma).
+  'reforzar-asilo': [
+    {
+      id: 'i589-review',
+      label: 'I-589',
+      requiresRole: 'admin',
+      render: (ctx) => (
+        <I589Review
+          caseId={ctx.caseId}
+          submissions={ctx.formSubmissions
+            .filter((s) =>
+              ['i589_part_b1', 'i589_part_b2', 'i589_part_c1', 'i589_part_c2'].includes(s.form_type),
+            )
+            .map((s) => ({
+              id: s.id ?? '',
+              form_type: s.form_type,
+              form_data: s.form_data,
+              status: s.status,
+              admin_notes: s.admin_notes,
+              updated_at: s.updated_at,
+            }))}
+        />
+      ),
+    },
+    {
+      id: 'credible-fear',
+      label: 'Miedo Creíble',
+      render: (ctx) => (
+        <CredibleFearGenerator caseId={ctx.caseId} caseNumber={ctx.caseNumber} />
+      ),
+    },
+  ],
   'apelacion': [
     {
       id: 'carta-apelacion',

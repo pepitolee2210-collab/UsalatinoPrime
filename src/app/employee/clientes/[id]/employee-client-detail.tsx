@@ -14,6 +14,7 @@ import { BitacoraTab } from '@/app/employee/_shared/bitacora-tab'
 import { CollectionTab, type CollectionContract, type CollectionPayment } from '@/components/payments/collection-tab'
 import { AsiloGeneradoresTab } from '@/app/admin/cases/[id]/asilo-generadores-tab'
 import type { CasePhase } from '@/types/database'
+import { isAsylumService } from '@/lib/services/asylum'
 
 interface Client {
   id: string
@@ -88,7 +89,7 @@ export function EmployeeClientDetail({
   const activeCase = cases.find(c => c.id === selectedCaseId)
   const clientName = `${client.first_name} ${client.last_name}`.trim()
   const isVisaJuvenil = activeCase?.service?.slug === 'visa-juvenil'
-  const isAsiloPolitico = activeCase?.service?.slug === 'asilo-politico'
+  const isAsiloPolitico = isAsylumService(activeCase?.service?.slug)
 
   const caseForms = formSubmissions.filter(f => f.case_id === selectedCaseId)
   const caseDocs = documents.filter(d => d.case_id === selectedCaseId)

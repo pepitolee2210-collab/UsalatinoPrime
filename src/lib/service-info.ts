@@ -99,6 +99,60 @@ const serviceInfoMap: Record<string, ServiceInfo> = {
   // 'asilo-politico'. Si en el futuro necesitamos diferenciar afirmativo vs
   // defensivo, se modela vía subservicio en `lib/contracts/index.ts`.
 
+  // Reforzar Asilo — servicio standalone para clientes que ya presentaron
+  // I-589 y solo vienen a reforzar el caso. Comparte enum case_phase con
+  // 'asilo-politico' pero arranca directamente en asilo_reforzar.
+  'reforzar-asilo': {
+    slug: 'reforzar-asilo',
+    totalTimeline: '6 meses a 3+ años (depende del backlog de USCIS)',
+    stages: [
+      {
+        step: 1,
+        title: 'Revisión del I-589 presentado',
+        description: 'Subir las páginas 1-4 del Formulario I-589 ya presentado a USCIS para que tu equipo legal sepa qué se presentó y diseñe el refuerzo del caso.',
+        timeline: '1 semana',
+      },
+      {
+        step: 2,
+        title: 'Preparación de declaración jurada',
+        description: 'Redacción detallada de tu declaración personal describiendo el temor fundado de persecución, ampliando la narrativa del I-589 original.',
+        timeline: '2-4 semanas',
+      },
+      {
+        step: 3,
+        title: 'Recopilación de evidencia',
+        description: 'Reunir informes de país, evidencia de persecución, cartas de apoyo y links de noticias que respalden tu caso.',
+        timeline: '2-4 semanas',
+      },
+      {
+        step: 4,
+        title: 'Generación del Miedo Creíble (IA)',
+        description: 'Tu equipo legal usa asistencia de IA para generar el relato de Miedo Creíble basado en tu declaración jurada y la evidencia recopilada.',
+        timeline: '1-2 semanas',
+      },
+      {
+        step: 5,
+        title: 'Presentación del expediente reforzado',
+        description: 'Presentar el expediente con el Miedo Creíble y las evidencias adicionales ante USCIS o la Corte de Inmigración según el estado del caso.',
+        timeline: '1-2 semanas',
+        formNumber: 'I-589 (refuerzo)',
+        filingFee: '$0 (gratis)',
+        filingFeeNote: 'No hay filing fee adicional para reforzar un I-589 ya presentado. Sin embargo, el caso sigue sujeto a la Annual Asylum Fee de $100/año mientras esté pendiente.',
+      },
+      {
+        step: 6,
+        title: 'Acompañamiento a la entrevista',
+        description: 'Ensayo completo de la entrevista, revisión de preguntas comunes y acompañamiento durante la entrevista ante el Oficial de Asilo de USCIS.',
+        timeline: '1-2 semanas antes de la entrevista',
+      },
+    ],
+    importantNotes: [
+      'Este servicio asume que YA presentaste tu I-589 ante USCIS. Si aún no lo has presentado, contrata el servicio "Asilo Político" completo.',
+      'Puede solicitar permiso de trabajo (EAD) 180 días después de presentar el I-589 original — si aún no lo solicitaste, hay que tramitarlo.',
+      'Si tu caso es referido a la Corte de Inmigración después del refuerzo, continúa como asilo defensivo.',
+    ],
+  },
+
   'visa-juvenil': {
     slug: 'visa-juvenil',
     totalTimeline: '6 a 18 meses (varía por estado y disponibilidad de visa)',

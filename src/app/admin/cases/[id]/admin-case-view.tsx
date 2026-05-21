@@ -21,6 +21,7 @@ import { I360WizardCore, type I360FormData } from '@/components/i360/I360WizardC
 import { CaseTabsByPhase, type TabId as DashboardTabId } from '@/app/employee/_shared/case-tabs-by-phase'
 import { useCaseOverview } from '@/app/employee/_shared/use-case-overview'
 import { PaymentsTab } from './payments-tab'
+import { isAsylumService } from '@/lib/services/asylum'
 
 interface EmployeeAssignment {
   id: string
@@ -65,7 +66,7 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
   }, [supabase])
 
   const serviceSlug = caseData.service?.slug || ''
-  const isAsylumService = serviceSlug === 'asilo-politico'
+  const isAsylumCase = isAsylumService(serviceSlug)
   const isVisaJuvenil = serviceSlug === 'visa-juvenil'
   const clientName = `${caseData.client?.first_name || ''} ${caseData.client?.last_name || ''}`.trim() || 'el cliente'
 
@@ -270,7 +271,7 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
             )}
             {pdfLoading ? 'Generando...' : 'Descargar PDF'}
           </Button>
-          {isAsylumService && (
+          {isAsylumCase && (
             <Button
               variant="outline"
               onClick={handleDownloadI589}

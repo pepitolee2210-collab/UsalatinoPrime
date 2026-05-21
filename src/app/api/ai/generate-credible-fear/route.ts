@@ -6,6 +6,7 @@ import { extractDocumentsForCase } from '@/lib/ai/extract-documents'
 import { loadI589WizardData } from '@/lib/ai/load-i589-wizard'
 import { logActivity } from '@/lib/activity/log-activity'
 import { createLogger } from '@/lib/logger'
+import { isAsylumService } from '@/lib/services/asylum'
 
 const log = createLogger('api:generate-credible-fear')
 
@@ -80,9 +81,9 @@ export async function POST(request: NextRequest) {
   const serviceSlug = Array.isArray(caseRow.service)
     ? caseRow.service[0]?.slug
     : caseRow.service?.slug
-  if (serviceSlug !== 'asilo-politico') {
+  if (!isAsylumService(serviceSlug)) {
     return NextResponse.json(
-      { error: 'Solo aplica a servicio asilo-politico' },
+      { error: 'Solo aplica a servicios de Asilo Político (asilo-politico, reforzar-asilo)' },
       { status: 400 },
     )
   }

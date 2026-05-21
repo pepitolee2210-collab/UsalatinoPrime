@@ -34,11 +34,14 @@ export interface ContractLike {
   asylum_family_type?: string | null
 }
 
+import { isAsylumService } from '@/lib/services/asylum'
+
 export interface GetFamilyMembersOpts {
   /**
-   * Slug del servicio del caso. Solo `'asilo-politico'` agrega applicant +
-   * spouse al output. SIJS y otros servicios siguen el patrón legacy
-   * (solo minors).
+   * Slug del servicio del caso. Los servicios de la familia "Asilo Político"
+   * (`isAsylumService(slug)` true — hoy `asilo-politico` y `reforzar-asilo`)
+   * agregan applicant + spouse al output. SIJS y otros servicios siguen el
+   * patrón legacy (solo minors).
    */
   serviceSlug?: string | null
 }
@@ -52,10 +55,10 @@ export function getFamilyMembers(
   contract: ContractLike,
   opts: GetFamilyMembersOpts = {},
 ): FamilyMember[] {
-  const isAsiloPolitico = opts.serviceSlug === 'asilo-politico'
+  const isAsylum = isAsylumService(opts.serviceSlug)
   const out: FamilyMember[] = []
 
-  if (isAsiloPolitico) {
+  if (isAsylum) {
     const applicantName = (contract.client_full_name ?? '').trim()
     if (applicantName) {
       out.push({

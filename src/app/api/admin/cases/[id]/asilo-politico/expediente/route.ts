@@ -4,6 +4,7 @@ import { PDFDocument } from 'pdf-lib'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { createLogger } from '@/lib/logger'
+import { isAsylumService } from '@/lib/services/asylum'
 
 const log = createLogger('asilo-expediente')
 
@@ -58,8 +59,8 @@ export async function GET(
     return NextResponse.json({ error: 'Caso no encontrado' }, { status: 404 })
   }
   const serviceSlug = Array.isArray(caseRow.service) ? caseRow.service[0]?.slug : caseRow.service?.slug
-  if (serviceSlug !== 'asilo-politico') {
-    return NextResponse.json({ error: 'Solo aplica a Asilo Político' }, { status: 400 })
+  if (!isAsylumService(serviceSlug)) {
+    return NextResponse.json({ error: 'Solo aplica a servicios de Asilo Político (asilo-politico, reforzar-asilo)' }, { status: 400 })
   }
 
   // Cargar artefactos

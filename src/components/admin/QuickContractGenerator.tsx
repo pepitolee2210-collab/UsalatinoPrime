@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { getInstallmentCount } from '@/lib/contracts'
+import { isAsylumService } from '@/lib/services/asylum'
 import {
   FileText, PenLine, Download, Plus, X, ChevronDown,
   User, Users, Stamp, Calendar, Baby, PackagePlus, DollarSign, Hash, CalendarClock, Save, Phone,
@@ -50,6 +51,7 @@ type ZipLookupState = 'idle' | 'loading' | 'found' | 'not-found'
 
 const SERVICE_OPTIONS = [
   { slug: 'asilo-politico', label: 'Asilo Pol\u00edtico' },
+  { slug: 'reforzar-asilo', label: 'Reforzar Asilo' },
   { slug: 'ajuste-de-estatus', label: 'Ajuste de Estatus (I-485)' },
   { slug: 'visa-juvenil', label: 'Visa Juvenil (SIJS)' },
   { slug: 'apelacion', label: 'Apelaci\u00f3n (EOIR-26 / BIA)' },
@@ -588,7 +590,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
           //   - O es Asilo Político Familiar (Casados con hijos / Convivientes
           //     con hijos en común). Novios sin hijos NO persiste minors.
           const asiloFamilyHasChildren =
-            selectedSlug === 'asilo-politico' &&
+            isAsylumService(selectedSlug) &&
             (asylumFamilyType === 'married' || asylumFamilyType === 'cohabiting_with_kids')
           if (!template.requiresMinor && !asiloFamilyHasChildren) return []
           return minors
@@ -601,7 +603,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
             }))
         })(),
         spouse: (() => {
-          if (selectedSlug !== 'asilo-politico') return null
+          if (!isAsylumService(selectedSlug)) return null
           const includeSpouse =
             asylumFamilyType === 'married' || asylumFamilyType === 'cohabiting_with_kids'
           if (!includeSpouse || !spouse.fullName.trim()) return null
@@ -613,7 +615,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
           }
         })(),
         asylum_family_type:
-          selectedSlug === 'asilo-politico' && asylumFamilyType ? asylumFamilyType : null,
+          isAsylumService(selectedSlug) && asylumFamilyType ? asylumFamilyType : null,
         total_price: finalPrice,
         initial_payment: getInitialPayment(),
         installment_count: getFinalInstallments(),
@@ -854,8 +856,9 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
               ))}
             </div>
 
-            {/* Reglas Familiar específicas para Asilo Político */}
-            {selectedSlug === 'asilo-politico'
+            {/* Reglas Familiar específicas para Asilo Político (aplica a
+                'asilo-politico' y 'reforzar-asilo' — ver isAsylumService) */}
+            {isAsylumService(selectedSlug)
               && getActiveVariants()[selectedVariantIndex]?.label === 'Familiar' && (
               <div className="mt-2 p-3 rounded-lg bg-purple-50 border border-purple-200 space-y-2">
                 <p className="text-[11px] font-bold uppercase tracking-wider text-purple-900">
@@ -1425,7 +1428,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                 El cónyuge se persiste en `contracts.spouse JSONB` y alimenta
                 la expansión per-member del portal cliente (sale como
                 "Pasaporte — Cónyuge (María)" en la pestaña Documentos). */}
-            {selectedSlug === 'asilo-politico'
+            {isAsylumService(selectedSlug)
               && (asylumFamilyType === 'married' || asylumFamilyType === 'cohabiting_with_kids') && (
               <div className="space-y-3 pt-2">
                 <div className="flex items-center gap-2">
@@ -1470,14 +1473,14 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                 - El template lo requiere (SIJS), o
                 - Es Asilo Político Familiar Casados/Convivientes (con hijos opcionales) */}
             {(template.requiresMinor
-              || (selectedSlug === 'asilo-politico'
+              || (isAsylumService(selectedSlug)
                   && (asylumFamilyType === 'married' || asylumFamilyType === 'cohabiting_with_kids'))
             ) && (
               <div className="space-y-3 pt-2">
                 <div className="flex items-center gap-2">
                   <Baby className="w-4 h-4 text-[#002855]/50" />
                   <span className="text-sm font-semibold text-[#002855]/70">
-                    {selectedSlug === 'asilo-politico' ? 'Hijos beneficiarios' : 'Menores Beneficiarios'}
+                    {isAsylumService(selectedSlug) ? 'Hijos beneficiarios' : 'Menores Beneficiarios'}
                   </span>
                   <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#002855] text-white text-[10px] font-bold">
                     {minors.length}

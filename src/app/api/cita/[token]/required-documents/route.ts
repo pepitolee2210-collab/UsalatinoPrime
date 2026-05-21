@@ -5,6 +5,7 @@ import { getPhaseCategory } from '@/lib/document-types/phase-category-overrides'
 import { resolvePhaseCategory, type DocumentTypePhaseRow } from '@/lib/document-types/phase-overrides-registry'
 import { isPhasedService } from '@/lib/services/registry'
 import { getFamilyMembers, memberSuffix, type FamilyMember, type MemberRole } from '@/lib/contracts/family-members'
+import { isAsylumService } from '@/lib/services/asylum'
 
 /**
  * GET /api/cita/[token]/required-documents
@@ -583,15 +584,17 @@ export async function GET(
     totalCompleted += done
   }
 
-  // 8. Agrupar por miembro de familia (Asilo Político).
+  // 8. Agrupar por miembro de familia (familia "Asilo Político").
   //
-  // Para Asilo Político en Fase 1, el cliente debe ver "Documentos del
-  // Solicitante (Mauricio)", "Documentos del Cónyuge (Angela)", "Documentos
-  // del Hijo (Pepe)", etc. en lugar de categorías legales. La estructura
-  // `member_groups[]` se emite SOLO para asilo-politico — SIJS sigue usando
-  // `categories[]`. La UI prefiere `member_groups` cuando existe.
+  // Para los servicios de la familia asilo (`isAsylumService(slug)` —
+  // hoy 'asilo-politico' y 'reforzar-asilo'), el cliente debe ver
+  // "Documentos del Solicitante (Mauricio)", "Documentos del Cónyuge
+  // (Angela)", "Documentos del Hijo (Pepe)", etc. en lugar de categorías
+  // legales. La estructura `member_groups[]` se emite SOLO para esos
+  // servicios — SIJS sigue usando `categories[]`. La UI prefiere
+  // `member_groups` cuando existe.
   let memberGroups: MemberGroup[] | null = null
-  if (serviceSlug === 'asilo-politico' && familyMembers.length > 0) {
+  if (isAsylumService(serviceSlug) && familyMembers.length > 0) {
     const groupsMap = new Map<string, MemberGroup>()
 
     function memberKey(role: MemberGroupRole, idx: number | null): string {

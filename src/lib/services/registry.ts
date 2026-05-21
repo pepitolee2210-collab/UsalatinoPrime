@@ -156,6 +156,37 @@ const ASILO_POLITICO_PHASES: ServicePhaseDef[] = [
   },
 ]
 
+// "Reforzar Asilo" — servicio standalone para clientes que ya presentaron su
+// I-589. Comparte el enum `case_phase` con `asilo-politico` (reusa
+// `asilo_reforzar` y `asilo_completado`) pero arranca directamente en la fase
+// de reforzamiento — sin la Fase 1 de sustentos. Conceptualmente es la "fase
+// única" del producto (igual al patrón de Apelación).
+const REFORZAR_ASILO_PHASES: ServicePhaseDef[] = [
+  {
+    code: 'asilo_reforzar',
+    shortCode: 'reforzar',
+    label: 'Reforzar Asilo',
+    number: 'Fase única',
+    description: 'Declaración jurada, evidencias y generación del Miedo Creíble',
+    icon: 'shield_person',
+    bgClass: 'bg-blue-100',
+    textClass: 'text-blue-800',
+    sortOrder: 0,
+  },
+  {
+    code: 'asilo_completado',
+    shortCode: 'completado',
+    label: 'Completado',
+    number: 'Final',
+    description: 'Expediente reforzado presentado ante USCIS',
+    icon: 'check_circle',
+    bgClass: 'bg-amber-100',
+    textClass: 'text-amber-800',
+    sortOrder: 1,
+    isCompletion: true,
+  },
+]
+
 export const SERVICE_REGISTRY: Record<string, ServiceRegistryEntry> = {
   'visa-juvenil': {
     slug: 'visa-juvenil',
@@ -168,6 +199,12 @@ export const SERVICE_REGISTRY: Record<string, ServiceRegistryEntry> = {
     name: 'Asilo Político',
     usesPhases: true,
     phases: ASILO_POLITICO_PHASES,
+  },
+  'reforzar-asilo': {
+    slug: 'reforzar-asilo',
+    name: 'Reforzar Asilo',
+    usesPhases: true,
+    phases: REFORZAR_ASILO_PHASES,
   },
   'apelacion': {
     slug: 'apelacion',

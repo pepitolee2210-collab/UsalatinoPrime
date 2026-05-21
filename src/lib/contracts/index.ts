@@ -45,12 +45,11 @@ export interface ContractTemplate {
 }
 
 const contracts: Record<string, ContractTemplate> = {
-  // Asilo Pol\u00edtico \u2014 reemplaza los legacy `asilo-afirmativo` y `asilo-defensivo`.
-  // El servicio convive con 2 subservicios:
-  //   - 'completo' \u2192 Fase 1 (Sustentos) + Fase 2 (Reforzar). `startingPhase = asilo_sustentos`.
-  //   - 'solo-reforzar' \u2192 cliente ya tiene I-589 presentado, solo viene a reforzarlo.
-  //     `startingPhase = asilo_reforzar`.
-  // El template padre sin subservicio cae al flujo completo por compatibilidad.
+  // Asilo Pol\u00edtico \u2014 proceso completo (Fase 1 + Fase 2). Reemplaza los
+  // legacy `asilo-afirmativo` y `asilo-defensivo`. Para clientes que vienen
+  // a reforzar un I-589 ya presentado existe el servicio standalone
+  // 'reforzar-asilo' (ver entrada m\u00e1s abajo) \u2014 no se modela como
+  // subservicio sino como servicio top-level propio.
   'asilo-politico': {
     installments: true,
     requiresMinor: false,
@@ -71,47 +70,28 @@ const contracts: Record<string, ContractTemplate> = {
       'Presentaci\u00f3n de la solicitud',
       'Preparaci\u00f3n y acompa\u00f1amiento a la entrevista',
     ],
-    subservices: [
-      {
-        slug: 'completo',
-        label: 'Proceso completo (Fase 1 + Fase 2)',
-        description: 'Para clientes que inician el proceso desde cero. Cubre identidad, I-589 partes 1-5, declaraci\u00f3n jurada, Miedo Cre\u00edble y presentaci\u00f3n.',
-        startingPhase: 'asilo_sustentos',
-        variants: [
-          { label: 'Individual', totalPrice: 1500 },
-          { label: 'Familiar', totalPrice: 2200 },
-        ],
-        objetoDelContrato:
-          'El CONSULTOR se compromete a brindar asesor\u00eda y asistencia en el proceso completo de Asilo Pol\u00edtico ante USCIS, desde la recopilaci\u00f3n de documentos de identidad hasta la presentaci\u00f3n del expediente final con el relato de Miedo Cre\u00edble.',
-        etapas: [
-          'Recopilaci\u00f3n de documentaci\u00f3n de identidad y estatus de ingreso',
-          'Llenado guiado del Formulario I-589 (partes 1-5) con asistencia de IA',
-          'Recopilaci\u00f3n de declaraci\u00f3n jurada y URLs de evidencias',
-          'Generaci\u00f3n asistida por IA del relato de Miedo Cre\u00edble',
-          'Llenado del Formulario I-589 (partes 6-14)',
-          'Armado del expediente final ante USCIS',
-          'Presentaci\u00f3n de la solicitud',
-          'Preparaci\u00f3n y acompa\u00f1amiento a la entrevista',
-        ],
-      },
-      {
-        slug: 'solo-reforzar',
-        label: 'Solo Reforzar Asilo (cliente ya present\u00f3 I-589)',
-        description: 'Para clientes que ya presentaron su asilo y vienen a reforzar el caso con declaraci\u00f3n jurada, evidencias y Miedo Cre\u00edble generado por IA.',
-        startingPhase: 'asilo_reforzar',
-        variants: [
-          { label: 'Individual', totalPrice: 900 },
-          { label: 'Familiar', totalPrice: 1300 },
-        ],
-        objetoDelContrato:
-          'El CONSULTOR se compromete a brindar asesor\u00eda y asistencia en el refuerzo del caso de Asilo Pol\u00edtico de un cliente con I-589 ya presentado, mediante la recopilaci\u00f3n de declaraci\u00f3n jurada, evidencias, y la generaci\u00f3n asistida por IA del relato de Miedo Cre\u00edble.',
-        etapas: [
-          'Recopilaci\u00f3n de declaraci\u00f3n jurada y URLs de evidencias',
-          'Generaci\u00f3n asistida por IA del relato de Miedo Cre\u00edble',
-          'Llenado del Formulario I-589 (partes 6-14)',
-          'Acompa\u00f1amiento a la entrevista',
-        ],
-      },
+  },
+  // Reforzar Asilo \u2014 servicio standalone para clientes que ya presentaron
+  // I-589 y vienen \u00fanicamente a reforzar el caso. Comparte el enum
+  // `case_phase` con `asilo-politico` (reusa `asilo_reforzar` y
+  // `asilo_completado`) pero arranca directamente en la fase de
+  // reforzamiento. Helper `isAsylumService(slug)` engloba ambos.
+  'reforzar-asilo': {
+    installments: true,
+    requiresMinor: false,
+    startingPhase: 'asilo_reforzar',
+    variants: [
+      { label: 'Individual', totalPrice: 900 },
+      { label: 'Familiar', totalPrice: 1300 },
+    ],
+    objetoDelContrato:
+      'El CONSULTOR se compromete a brindar asesor\u00eda y asistencia en el refuerzo del caso de Asilo Pol\u00edtico de un cliente con Formulario I-589 ya presentado ante USCIS, mediante la recopilaci\u00f3n de declaraci\u00f3n jurada, evidencias, y la generaci\u00f3n asistida por IA del relato de Miedo Cre\u00edble.',
+    etapas: [
+      'Recopilaci\u00f3n de declaraci\u00f3n jurada y URLs de evidencias',
+      'Generaci\u00f3n asistida por IA del relato de Miedo Cre\u00edble',
+      'Llenado del Formulario I-589 (partes 6-14)',
+      'Armado del expediente reforzado ante USCIS',
+      'Acompa\u00f1amiento a la entrevista',
     ],
   },
   'ajuste-de-estatus': {
