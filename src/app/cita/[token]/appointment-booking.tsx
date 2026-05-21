@@ -1,24 +1,104 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useMemo, useState, useSyncExternalStore } from 'react'
 import { Calendar } from '@/components/ui/calendar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CalendarClock, Clock, Video, AlertTriangle, CheckCircle, X } from 'lucide-react'
+import {
+  CalendarClock, Clock, Video, AlertTriangle, CheckCircle, X, Globe,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { checkPenalty } from '@/lib/appointments/penalty'
-import { formatToMT, formatDateMT } from '@/lib/appointments/slots'
+import { TimezoneSelector } from '@/components/appointments/timezone-selector'
+import {
+  formatTime,
+  formatDate,
+  OFFICE_TIMEZONE,
+  tzShortLabel,
+  getBrowserTimezone,
+  isValidTimezone,
+} from '@/lib/timezones/format'
+import type { TzSource } from '@/lib/appointments/resolve-tz'
 import type { Appointment } from '@/types/database'
+
+/**
+ * Snapshot del browser timezone vía useSyncExternalStore — necesario
+ * para refinar la TZ cuando el server cayó al fallback "office" sin
+ * disparar un setState dentro de un useEffect (regla del codebase).
+ */
+const noopSubscribe = () => () => {}
+function getBrowserSnapshot(): string | null {
+  if (typeof window === 'undefined') return null
+  return getBrowserTimezone() || null
+}
+function getBrowserServerSnapshot(): string | null {
+  return null
+}
 
 interface AppointmentBookingProps {
   token: string
   appointments: Appointment[]
   zoomLink: string
+  initialTimezone: string
+  initialTimezoneSource: TzSource
 }
 
-export function AppointmentBooking({ token, appointments, zoomLink }: AppointmentBookingProps) {
+/**
+ * Booking UI del cliente. Las citas se almacenan siempre en UTC; este
+ * componente decide qué TZ usar para mostrar slots y hora confirmada.
+ *
+ * La TZ inicial viene del server (cascada preferred → contract → profile).
+ * Si la cascada terminó en 'office' (no había nada del cliente), aquí
+ * podemos refinar con el browser tz; cuando el cliente la cambia con el
+ * selector, persistimos vía POST /api/cita/[token]/preferred-timezone.
+ */
+export function AppointmentBooking({
+  token,
+  appointments,
+  zoomLink,
+  initialTimezone,
+  initialTimezoneSource,
+}: AppointmentBookingProps) {
   const scheduledAppointment = appointments.find(a => a.status === 'scheduled')
   const penalty = checkPenalty(appointments)
+
+  // Si el server cayó en 'office' (sin preferred ni state), refinamos con
+  // el browser tz para que un cliente de Florida vea Eastern sin tener
+  // que tocar el combobox manualmente.
+  const browserTz = useSyncExternalStore(noopSubscribe, getBrowserSnapshot, getBrowserServerSnapshot)
+  const inferred = useMemo<{ tz: string; src: TzSource }>(() => {
+    if (initialTimezoneSource !== 'office') {
+      return { tz: initialTimezone, src: initialTimezoneSource }
+    }
+    if (browserTz && isValidTimezone(browserTz) && browserTz !== initialTimezone) {
+      return { tz: browserTz, src: 'browser' }
+    }
+    return { tz: initialTimezone, src: initialTimezoneSource }
+  }, [initialTimezone, initialTimezoneSource, browserTz])
+
+  const [override, setOverride] = useState<{ tz: string; src: TzSource } | null>(null)
+  const tz = override?.tz ?? inferred.tz
+  const tzSource = override?.src ?? inferred.src
+
+  const persistTz = useCallback(
+    async (next: string) => {
+      setOverride({ tz: next, src: 'preferred' })
+      try {
+        const res = await fetch(`/api/cita/${token}/preferred-timezone`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ timezone: next }),
+        })
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}))
+          toast.error(data.error || 'No se pudo guardar tu zona horaria')
+        }
+      } catch {
+        toast.error('No se pudo guardar tu zona horaria')
+      }
+    },
+    [token],
+  )
 
   if (penalty.isPenalized) {
     return <PenaltyView penalty={penalty} />
@@ -30,11 +110,54 @@ export function AppointmentBooking({ token, appointments, zoomLink }: Appointmen
         appointment={scheduledAppointment}
         zoomLink={zoomLink}
         token={token}
+        tz={tz}
+        tzSource={tzSource}
+        onTzChange={persistTz}
       />
     )
   }
 
-  return <BookingView token={token} />
+  return (
+    <BookingView
+      token={token}
+      tz={tz}
+      tzSource={tzSource}
+      onTzChange={persistTz}
+    />
+  )
+}
+
+function TzSelectorBlock({
+  tz,
+  tzSource,
+  onTzChange,
+}: {
+  tz: string
+  tzSource: TzSource
+  onTzChange: (next: string) => void
+}) {
+  const hint = tzSource === 'preferred'
+    ? 'Zona horaria guardada en tu cuenta'
+    : tzSource === 'contract'
+    ? 'Detectada del estado en tu contrato'
+    : tzSource === 'profile'
+    ? 'Detectada de la dirección en tu perfil'
+    : tzSource === 'browser'
+    ? 'Detectada de tu dispositivo'
+    : 'Hora de la oficina · cambia abajo si no es la tuya'
+
+  return (
+    <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 p-3 flex items-center gap-3">
+      <Globe className="w-4 h-4 text-gray-400 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-gray-700">Ver horarios en mi hora local</p>
+        <p className="text-[10px] text-gray-400 truncate">{hint}</p>
+      </div>
+      <div className="w-44 shrink-0">
+        <TimezoneSelector value={tz} onChange={onTzChange} size="sm" />
+      </div>
+    </div>
+  )
 }
 
 // ── Vista de penalización ──
@@ -67,15 +190,22 @@ function ScheduledView({
   appointment,
   zoomLink,
   token,
+  tz,
+  tzSource,
+  onTzChange,
 }: {
   appointment: Appointment
   zoomLink: string
   token: string
+  tz: string
+  tzSource: TzSource
+  onTzChange: (next: string) => void
 }) {
   const [cancelling, setCancelling] = useState(false)
   const [cancelled, setCancelled] = useState(false)
 
   const hoursUntil = (new Date(appointment.scheduled_at).getTime() - Date.now()) / (1000 * 60 * 60)
+  const tzIsOffice = tz === OFFICE_TIMEZONE
 
   async function handleCancel() {
     if (!confirm(
@@ -119,6 +249,8 @@ function ScheduledView({
 
   return (
     <div>
+      <TzSelectorBlock tz={tz} tzSource={tzSource} onTzChange={onTzChange} />
+
       <div className="flex items-center gap-2 mb-4">
         <CheckCircle className="w-5 h-5 text-green-600" />
         <h2 className="text-lg font-bold text-gray-900">Cita Agendada</h2>
@@ -128,14 +260,20 @@ function ScheduledView({
         <div className="flex items-center gap-2">
           <CalendarClock className="w-4 h-4 text-green-700" />
           <span className="text-sm font-medium text-green-900">
-            {formatDateMT(appointment.scheduled_at)}
+            {formatDate(appointment.scheduled_at, tz)}
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-green-700" />
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <Clock className="w-4 h-4 text-green-700 shrink-0" />
           <span className="text-sm text-green-800">
-            {formatToMT(appointment.scheduled_at)} (Hora de Utah/Mountain)
+            {formatTime(appointment.scheduled_at, tz)}{' '}
+            <span className="text-xs text-green-700/70">({tzShortLabel(tz)})</span>
           </span>
+          {!tzIsOffice && (
+            <span className="text-xs text-green-700/60">
+              · equivale a {formatTime(appointment.scheduled_at, OFFICE_TIMEZONE)} en Utah
+            </span>
+          )}
         </div>
         {zoomLink && (
           <div className="flex items-center gap-2">
@@ -173,7 +311,17 @@ function ScheduledView({
 }
 
 // ── Vista de agendamiento ──
-function BookingView({ token }: { token: string }) {
+function BookingView({
+  token,
+  tz,
+  tzSource,
+  onTzChange,
+}: {
+  token: string
+  tz: string
+  tzSource: TzSource
+  onTzChange: (next: string) => void
+}) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>()
   const [slots, setSlots] = useState<string[]>([])
   const [loadingSlots, setLoadingSlots] = useState(false)
@@ -183,6 +331,8 @@ function BookingView({ token }: { token: string }) {
   const [booking, setBooking] = useState(false)
   const [booked, setBooked] = useState(false)
   const [blocked, setBlocked] = useState(false)
+
+  const tzIsOffice = tz === OFFICE_TIMEZONE
 
   async function handleDateSelect(date: Date | undefined) {
     setSelectedDate(date)
@@ -257,18 +407,20 @@ function BookingView({ token }: { token: string }) {
     )
   }
 
-  // Deshabilitar días pasados y días no disponibles (mostrar como "llenos")
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
   return (
     <div>
+      <TzSelectorBlock tz={tz} tzSource={tzSource} onTzChange={onTzChange} />
+
       <div className="flex items-center gap-2 mb-4">
         <CalendarClock className="w-5 h-5 text-[#002855]" />
         <h2 className="text-lg font-bold text-gray-900">Agendar Cita</h2>
       </div>
       <p className="text-sm text-gray-500 mb-4">
-        Seleccione un d&iacute;a y horario disponible. Todos los horarios est&aacute;n en hora de Utah (Mountain Time).
+        Seleccione un d&iacute;a y horario disponible. Los horarios se muestran en tu hora local
+        {tzIsOffice ? ' (Mountain Time)' : ` (${tzShortLabel(tz)}) — la hora de Utah aparece debajo`}.
       </p>
 
       {/* Calendario */}
@@ -305,19 +457,27 @@ function BookingView({ token }: { token: string }) {
             </div>
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {slots.map(slot => (
-                <button
-                  key={slot}
-                  onClick={() => setSelectedSlot(slot)}
-                  className={`px-3 py-2 text-sm rounded-lg border transition-colors ${
-                    selectedSlot === slot
-                      ? 'bg-[#002855] text-white border-[#002855]'
-                      : 'border-gray-200 hover:border-[#002855] hover:bg-[#002855]/5'
-                  }`}
-                >
-                  {formatToMT(slot)}
-                </button>
-              ))}
+              {slots.map(slot => {
+                const isSelected = selectedSlot === slot
+                return (
+                  <button
+                    key={slot}
+                    onClick={() => setSelectedSlot(slot)}
+                    className={`px-2 py-2 text-sm rounded-lg border transition-colors flex flex-col items-center ${
+                      isSelected
+                        ? 'bg-[#002855] text-white border-[#002855]'
+                        : 'border-gray-200 hover:border-[#002855] hover:bg-[#002855]/5'
+                    }`}
+                  >
+                    <span className="font-medium">{formatTime(slot, tz)}</span>
+                    {!tzIsOffice && (
+                      <span className={`text-[10px] mt-0.5 ${isSelected ? 'text-white/70' : 'text-gray-400'}`}>
+                        {formatTime(slot, OFFICE_TIMEZONE)} MT
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>
@@ -351,13 +511,19 @@ function BookingView({ token }: { token: string }) {
       {/* Confirmar */}
       {selectedSlot && (
         <div className="border-t pt-4">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
             <div>
               <p className="text-sm font-medium text-gray-900">
-                {formatDateMT(selectedSlot)}
+                {formatDate(selectedSlot, tz)}
               </p>
               <p className="text-sm text-gray-500">
-                {formatToMT(selectedSlot)} (Hora Mountain)
+                {formatTime(selectedSlot, tz)}{' '}
+                <span className="text-xs text-gray-400">({tzShortLabel(tz)})</span>
+                {!tzIsOffice && (
+                  <span className="text-xs text-gray-400">
+                    {' '}· equivale a {formatTime(selectedSlot, OFFICE_TIMEZONE)} en Utah
+                  </span>
+                )}
               </p>
             </div>
             <Badge className="bg-[#002855]/10 text-[#002855]">Seleccionado</Badge>

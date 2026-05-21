@@ -1,25 +1,29 @@
 'use client'
 
 import type { Appointment } from '@/types/database'
+import type { TzSource } from '@/lib/appointments/resolve-tz'
 import { AppointmentBooking } from '../../appointment-booking'
 
 interface CitasScreenProps {
   token: string
   appointments: Appointment[]
   zoomLink: string
+  initialTimezone: string
+  initialTimezoneSource: TzSource
 }
 
 /**
  * Wrapper visual de AppointmentBooking. La lógica de slots, penalty,
  * book y cancel se mantiene intacta — solo se le da el chrome del
- * nuevo design system (header con título + descripción, contenedor
- * con padding y radio).
- *
- * En sprints posteriores AppointmentBooking interno se refactorizará
- * para que sus subvistas (PenaltyView/ScheduledView/BookingView) usen
- * los mismos tokens que las otras pantallas.
+ * nuevo design system.
  */
-export function CitasScreen({ token, appointments, zoomLink }: CitasScreenProps) {
+export function CitasScreen({
+  token,
+  appointments,
+  zoomLink,
+  initialTimezone,
+  initialTimezoneSource,
+}: CitasScreenProps) {
   return (
     <div className="ulp-screen px-6 py-6 space-y-6 max-w-2xl mx-auto">
       <header>
@@ -51,6 +55,8 @@ export function CitasScreen({ token, appointments, zoomLink }: CitasScreenProps)
           token={token}
           appointments={appointments}
           zoomLink={zoomLink}
+          initialTimezone={initialTimezone}
+          initialTimezoneSource={initialTimezoneSource}
         />
       </section>
     </div>

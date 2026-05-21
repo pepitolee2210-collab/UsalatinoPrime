@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { sendEmail } from '@/lib/email/send'
 import { sendWhatsapp } from '@/lib/twilio/client'
-import { formatToMT, formatDateMT } from '@/lib/appointments/slots'
+import {
+  formatTime,
+  formatDate,
+  OFFICE_TIMEZONE,
+  tzShortLabel,
+} from '@/lib/timezones/format'
+import { resolveClientTimezone } from '@/lib/appointments/resolve-tz'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('cron-reminders')
@@ -26,6 +32,10 @@ const log = createLogger('cron-reminders')
  * Note on FK: after migration 024 `appointments` has two FKs to `profiles`
  * (`client_id` and `consultant_id`). The embed must be disambiguated with
  * `!appointments_client_id_fkey`, otherwise PostgREST returns a 400.
+ *
+ * TZ: la hora principal se muestra en la zona del cliente
+ * (preferred_timezone → address_state → office). MT siempre aparece como
+ * referencia debajo, para que llamadas a la oficina cuadren.
  */
 
 type ApptRow = {
@@ -35,7 +45,12 @@ type ApptRow = {
   guest_phone: string | null
   guest_name: string | null
   source: string | null
-  client: { first_name: string | null; email: string | null } | null
+  client: {
+    first_name: string | null
+    email: string | null
+    preferred_timezone: string | null
+    address_state: string | null
+  } | null
 }
 
 async function loadRemindersDueWithin(args: {
@@ -49,7 +64,7 @@ async function loadRemindersDueWithin(args: {
   const { data, error } = await supabase
     .from('appointments')
     .select(
-      'id, scheduled_at, client_id, guest_phone, guest_name, source, client:profiles!appointments_client_id_fkey(first_name, email)',
+      'id, scheduled_at, client_id, guest_phone, guest_name, source, client:profiles!appointments_client_id_fkey(first_name, email, preferred_timezone, address_state)',
     )
     .eq('status', 'scheduled')
     .eq(requestedCol, true)
@@ -68,17 +83,73 @@ async function loadRemindersDueWithin(args: {
   }))
 }
 
-function buildWhatsappReminder(name: string | null, scheduledAt: string, timeframe: '1 hora' | '24 horas'): string {
+/**
+ * Pull contract state si el profile no tiene preferred_timezone ni
+ * address_state. Cache local por client_id para no consultarlo dos veces
+ * en el mismo run (clientes con ambos reminders pendientes).
+ */
+const contractStateCache = new Map<string, string | null>()
+
+async function lookupContractState(clientId: string | null): Promise<string | null> {
+  if (!clientId) return null
+  if (contractStateCache.has(clientId)) return contractStateCache.get(clientId) ?? null
+  const supabase = createServiceClient()
+  const { data } = await supabase
+    .from('contracts')
+    .select('client_state')
+    .eq('client_id', clientId)
+    .not('client_state', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const state = data?.client_state ?? null
+  contractStateCache.set(clientId, state)
+  return state
+}
+
+async function resolveTzForReminder(apt: ApptRow): Promise<string> {
+  // Guests sin profile (voice-agent, whatsapp-chatbot, chatbot) → MT.
+  // Es lo más seguro porque no sabemos su estado; el bot puede después
+  // hacer una sesión normal y el cliente nos da su zona.
+  if (!apt.client) return OFFICE_TIMEZONE
+
+  const contractState = apt.client.address_state
+    ? null // si profile tiene state, no necesitamos el contrato
+    : await lookupContractState(apt.client_id)
+
+  return resolveClientTimezone({
+    preferredTz: apt.client.preferred_timezone,
+    contractState,
+    profileState: apt.client.address_state,
+    browserTz: null,
+  }).tz
+}
+
+function buildWhatsappReminder(args: {
+  name: string | null
+  scheduledAt: string
+  timeframe: '1 hora' | '24 horas'
+  tz: string
+}): string {
+  const { name, scheduledAt, timeframe, tz } = args
   const salutation = name ? `${name.split(/\s+/)[0]}, ` : ''
   const header =
     timeframe === '1 hora'
       ? `⏰ ${salutation}te recordamos que tu llamada con Henry Orellana es en *1 hora*.`
       : `📅 ${salutation}te recordamos que tu llamada con Henry Orellana es *mañana*.`
+
+  const tzLine = tz === OFFICE_TIMEZONE
+    ? `Hora: *${formatTime(scheduledAt, OFFICE_TIMEZONE)} Mountain Time (Utah)*`
+    : [
+        `Hora: *${formatTime(scheduledAt, tz)} ${tzShortLabel(tz)}*`,
+        `(equivale a ${formatTime(scheduledAt, OFFICE_TIMEZONE)} Mountain Time / Utah)`,
+      ].join('\n')
+
   return [
     header,
     '',
-    `Fecha: *${formatDateMT(scheduledAt)}*`,
-    `Hora: *${formatToMT(scheduledAt)} Mountain Time (Utah)*`,
+    `Fecha: *${formatDate(scheduledAt, tz)}*`,
+    tzLine,
     '',
     'Henry te llamará al número desde el que escribes. Si necesitas reagendar responde este mensaje.',
   ].join('\n')
@@ -90,6 +161,7 @@ async function dispatchReminder(
 ): Promise<{ ok: boolean; channel: 'whatsapp' | 'email' | 'skipped'; reason?: string }> {
   const supabase = createServiceClient()
   const timeframeEs = kind === '1h' ? '1 hora' : '24 horas'
+  const tz = await resolveTzForReminder(apt)
 
   const isWhatsappLead =
     apt.source === 'whatsapp-chatbot' || apt.source === 'voice-agent' || apt.source === 'chatbot'
@@ -97,7 +169,12 @@ async function dispatchReminder(
     try {
       await sendWhatsapp({
         to: apt.guest_phone,
-        body: buildWhatsappReminder(apt.guest_name, apt.scheduled_at, timeframeEs),
+        body: buildWhatsappReminder({
+          name: apt.guest_name,
+          scheduledAt: apt.scheduled_at,
+          timeframe: timeframeEs,
+          tz,
+        }),
       })
       return { ok: true, channel: 'whatsapp' }
     } catch (err) {
@@ -112,7 +189,12 @@ async function dispatchReminder(
         kind === '1h'
           ? 'Recordatorio: Su cita es en 1 hora'
           : 'Recordatorio: Su cita es mañana',
-      html: buildReminderEmail(apt.client.first_name ?? '', apt.scheduled_at, timeframeEs),
+      html: buildReminderEmail({
+        firstName: apt.client.first_name ?? '',
+        scheduledAt: apt.scheduled_at,
+        timeframe: timeframeEs,
+        tz,
+      }),
     })
     if (emailSent) return { ok: true, channel: 'email' }
     return { ok: false, channel: 'email', reason: 'send failed' }
@@ -134,6 +216,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
+  contractStateCache.clear()
   const supabase = createServiceClient()
   const now = new Date()
   const results = { sent_wa_1h: 0, sent_email_1h: 0, sent_wa_24h: 0, sent_email_24h: 0, skipped: 0, failed: 0 }
@@ -188,15 +271,28 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(results)
 }
 
-function buildReminderEmail(firstName: string, scheduledAt: string, timeframe: string): string {
+function buildReminderEmail(args: {
+  firstName: string
+  scheduledAt: string
+  timeframe: string
+  tz: string
+}): string {
+  const { firstName, scheduledAt, timeframe, tz } = args
+  const dateLine = formatDate(scheduledAt, tz)
+  const localTime = formatTime(scheduledAt, tz)
+  const officeTime = formatTime(scheduledAt, OFFICE_TIMEZONE)
+  const tzLabel = tzShortLabel(tz)
+  const showOffice = tz !== OFFICE_TIMEZONE
+
   return `
     <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
       <h2 style="color: #002855;">UsaLatinoPrime</h2>
       <p>Hola ${firstName},</p>
       <p>Le recordamos que tiene una cita programada en ${timeframe}:</p>
       <div style="background: #f0f4f8; border-radius: 8px; padding: 16px; margin: 16px 0;">
-        <p style="margin: 4px 0;"><strong>Fecha:</strong> ${formatDateMT(scheduledAt)}</p>
-        <p style="margin: 4px 0;"><strong>Hora:</strong> ${formatToMT(scheduledAt)} (Hora Mountain / Utah)</p>
+        <p style="margin: 4px 0;"><strong>Fecha:</strong> ${dateLine}</p>
+        <p style="margin: 4px 0;"><strong>Hora:</strong> ${localTime} ${tzLabel}${showOffice ? '' : ' (Mountain Time / Utah)'}</p>
+        ${showOffice ? `<p style="margin: 4px 0; color: #6b7280; font-size: 13px;">Equivale a <strong>${officeTime}</strong> Mountain Time (Utah).</p>` : ''}
       </div>
       <p>Por favor, est&eacute; preparado/a y tenga sus documentos listos.</p>
       <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />

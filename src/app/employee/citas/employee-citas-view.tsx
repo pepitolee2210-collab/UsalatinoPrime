@@ -1,17 +1,35 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import {
   Phone, CalendarClock, Clock, CheckCircle, XCircle, AlertTriangle,
-  MessageSquare, X, Search, ChevronRight,
+  MessageSquare, X, Search, ChevronRight, Globe, UserPlus, UserRound,
 } from 'lucide-react'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
 import { CompleteAppointmentDialog, type DialogMode } from './_components/complete-appointment-dialog'
+import {
+  formatDateTimeShort,
+  OFFICE_TIMEZONE,
+  formatTime,
+  tzShortLabel,
+  getBrowserTimezone,
+} from '@/lib/timezones/format'
+import { TimezoneSelector } from '@/components/appointments/timezone-selector'
+import { usePersistedTimezone } from '@/components/appointments/use-persisted-tz'
+import {
+  ClientBookForm,
+  type ActiveCase,
+} from '@/components/appointments/client-book-form'
+import { GuestBookForm } from '@/components/appointments/guest-book-form'
+
+const TZ_STORAGE_KEY = 'ulp:employee-citas:viewTz'
 
 const statusColors: Record<string, string> = {
   scheduled: 'bg-blue-100 text-blue-800',
@@ -60,9 +78,16 @@ interface Appointment {
 interface EmployeeCitasViewProps {
   appointments: Appointment[]
   canManageStatus: boolean
+  canBook: boolean
+  activeCases: ActiveCase[]
 }
 
-export function EmployeeCitasView({ appointments: initial, canManageStatus }: EmployeeCitasViewProps) {
+export function EmployeeCitasView({
+  appointments: initial,
+  canManageStatus,
+  canBook,
+  activeCases,
+}: EmployeeCitasViewProps) {
   const router = useRouter()
   const [appointments, setAppointments] = useState(initial)
   const [filter, setFilter] = useState<string>('all')
@@ -72,6 +97,17 @@ export function EmployeeCitasView({ appointments: initial, canManageStatus }: Em
   const [viewingNote, setViewingNote] = useState<{ name: string; note: string } | null>(null)
   const [dialogApt, setDialogApt] = useState<Appointment | null>(null)
   const [dialogMode, setDialogMode] = useState<DialogMode>('complete')
+  const [bookDialogOpen, setBookDialogOpen] = useState(false)
+  const [guestDialogOpen, setGuestDialogOpen] = useState(false)
+
+  // Default = TZ del navegador del empleado. Vanessa en Bogotá → America/Bogota,
+  // Andrium en CDMX → America/Mexico_City. Persistimos para que su elección
+  // sobreviva refrescos. `useMemo` para no recomputar el getBrowserTimezone
+  // en cada render (depende solo del runtime del cliente).
+  const browserTz = useMemo(() => getBrowserTimezone(), [])
+  const [viewTz, changeViewTz] = usePersistedTimezone(TZ_STORAGE_KEY, browserTz)
+
+  const tzIsOffice = viewTz === OFFICE_TIMEZONE
 
   const filtered = appointments.filter(a => {
     if (filter !== 'all' && a.status !== filter) return false
@@ -106,9 +142,7 @@ export function EmployeeCitasView({ appointments: initial, canManageStatus }: Em
 
   function onDialogDone() {
     closeDialog()
-    // refrescar el RSC para que la lista refleje el nuevo status y session_number
     router.refresh()
-    // optimistic local update para que la UI no espere al refresh
     setAppointments(prev =>
       prev.map(a =>
         a.id === dialogApt?.id
@@ -144,6 +178,65 @@ export function EmployeeCitasView({ appointments: initial, canManageStatus }: Em
           </div>
         </div>
       )}
+
+      {/* TZ selector + acciones de booking */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-2 py-1">
+          <Globe className="w-3.5 h-3.5 text-gray-400" />
+          <span className="text-xs text-gray-500">Ver en</span>
+          <div className="w-56">
+            <TimezoneSelector value={viewTz} onChange={changeViewTz} size="sm" />
+          </div>
+        </div>
+        {!tzIsOffice && (
+          <span className="text-[11px] text-gray-400">
+            Mountain Time (oficina) se muestra debajo de cada hora.
+          </span>
+        )}
+        {canBook && (
+          <div className="ml-auto flex gap-2">
+            <Dialog open={guestDialogOpen} onOpenChange={setGuestDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="border-[#F2A900] text-[#002855] hover:bg-[#F2A900]/10">
+                  <UserRound className="w-4 h-4 mr-2" />
+                  Agendar No-Cliente
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Agendar Visita — No Cliente</DialogTitle>
+                </DialogHeader>
+                <GuestBookForm
+                  bookEndpoint="/api/employee/appointments/book"
+                  slotsEndpoint="/api/employee/appointments/available-slots"
+                  viewTimezone={viewTz}
+                  onSuccess={() => { setGuestDialogOpen(false); router.refresh() }}
+                />
+              </DialogContent>
+            </Dialog>
+            <Dialog open={bookDialogOpen} onOpenChange={setBookDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="bg-[#002855] hover:bg-[#003570]">
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Agendar para Cliente
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Agendar Cita para Cliente</DialogTitle>
+                </DialogHeader>
+                <ClientBookForm
+                  activeCases={activeCases}
+                  bookEndpoint="/api/employee/appointments/book"
+                  slotsEndpoint="/api/employee/appointments/available-slots"
+                  viewTimezone={viewTz}
+                  onSuccess={() => { setBookDialogOpen(false); router.refresh() }}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
+      </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
@@ -260,7 +353,12 @@ export function EmployeeCitasView({ appointments: initial, canManageStatus }: Em
                   <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
                     <span className="flex items-center gap-1">
                       <CalendarClock className="w-3 h-3" />
-                      {format(new Date(apt.scheduled_at), "EEEE d MMM, h:mm a", { locale: es })}
+                      {formatDateTimeShort(apt.scheduled_at, viewTz)} {tzShortLabel(viewTz)}
+                      {!tzIsOffice && (
+                        <span className="text-gray-300">
+                          {' '}· {formatTime(apt.scheduled_at, OFFICE_TIMEZONE)} MT
+                        </span>
+                      )}
                     </span>
                     {apt.client?.phone && (
                       <span className="flex items-center gap-1">

@@ -1,5 +1,6 @@
 import type { SchedulingConfig, Appointment } from '@/types/database'
 import { TIMEZONE } from './constants'
+import { formatTime, formatDate, OFFICE_TIMEZONE } from '@/lib/timezones/format'
 
 /**
  * Find the next available slot starting from a given date, looking forward
@@ -143,27 +144,21 @@ function mtToUTC(dateTimeStr: string): Date | null {
 
 /**
  * Formatea una fecha UTC a hora de Mountain Time para display.
+ *
+ * Thin wrapper sobre `formatTime` con `OFFICE_TIMEZONE`. Conservado para
+ * back-compat con código pre-refactor; código nuevo debe importar
+ * `formatTime` directamente y pasar la TZ del consumidor.
  */
 export function formatToMT(isoString: string): string {
-  const date = new Date(isoString)
-  return date.toLocaleString('en-US', {
-    timeZone: TIMEZONE,
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  })
+  return formatTime(isoString, OFFICE_TIMEZONE)
 }
 
 /**
  * Formatea una fecha UTC a fecha completa en Mountain Time.
+ *
+ * Thin wrapper sobre `formatDate` con `OFFICE_TIMEZONE`. Conservado para
+ * back-compat con código pre-refactor.
  */
 export function formatDateMT(isoString: string): string {
-  const date = new Date(isoString)
-  return date.toLocaleDateString('es-US', {
-    timeZone: TIMEZONE,
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  return formatDate(isoString, OFFICE_TIMEZONE)
 }

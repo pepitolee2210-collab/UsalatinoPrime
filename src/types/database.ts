@@ -57,10 +57,13 @@ export interface Profile {
   passport_country?: string
   passport_expiry?: string
   preferred_language: 'es' | 'en'
+  /** IANA timezone string. Si NULL, se infiere de contracts.client_state o address_state. */
+  preferred_timezone?: string | null
   avatar_url?: string
   notes?: string
   created_at: string
   updated_at: string
+  employee_type?: string | null
 }
 
 export interface ServiceCatalog {

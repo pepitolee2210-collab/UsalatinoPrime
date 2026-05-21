@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,19 +9,25 @@ import { Switch } from '@/components/ui/switch'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
-import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import {
   CalendarClock, Settings, ChevronDown, ChevronUp,
   CheckCircle, XCircle, AlertTriangle, Trash2, Plus, RefreshCw, UserPlus, Loader2, Clock,
-  Search, X, UserRound,
+  Search, X, UserRound, Globe,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { formatToMT, formatDateMT } from '@/lib/appointments/slots'
-import type { SchedulingConfig, SchedulingSettings, BlockedDate, TimeBlock } from '@/types/database'
+import { formatTime, formatDate, OFFICE_TIMEZONE, tzShortLabel } from '@/lib/timezones/format'
+import {
+  ClientBookForm,
+  type ActiveCase as ReusableActiveCase,
+} from '@/components/appointments/client-book-form'
+import { GuestBookForm } from '@/components/appointments/guest-book-form'
+import { TimezoneSelector } from '@/components/appointments/timezone-selector'
+import { usePersistedTimezone } from '@/components/appointments/use-persisted-tz'
+import type { SchedulingConfig, SchedulingSettings, BlockedDate } from '@/types/database'
+
+const TZ_STORAGE_KEY = 'ulp:admin-citas:viewTz'
 
 const statusColors: Record<string, string> = {
   scheduled: 'bg-blue-100 text-blue-800',
@@ -39,13 +45,7 @@ const statusLabels: Record<string, string> = {
 
 const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
-interface ActiveCase {
-  id: string
-  case_number: string
-  client_id: string
-  client?: { first_name: string; last_name: string; phone?: string } | { first_name: string; last_name: string; phone?: string }[] | null
-  service?: { name: string } | { name: string }[] | null
-}
+type ActiveCase = ReusableActiveCase
 
 interface AdminCitasViewProps {
   appointments: Array<{
@@ -95,6 +95,10 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
   const [showConfig, setShowConfig] = useState(false)
   const [bookDialogOpen, setBookDialogOpen] = useState(false)
   const [guestDialogOpen, setGuestDialogOpen] = useState(false)
+  // Persistencia local de la TZ con la que el operador ve las citas.
+  // Default = MT para preservar la experiencia de Henry; cualquier admin
+  // puede cambiarlo a su zona local sin afectar a otros (per-browser).
+  const [viewTz, changeViewTz] = usePersistedTimezone(TZ_STORAGE_KEY, OFFICE_TIMEZONE)
 
   const filtered = appointments.filter(a => {
     const matchesFilter = filter === 'all' || a.status === filter
@@ -110,21 +114,30 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
 
   return (
     <div className="space-y-6">
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          type="text"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar por nombre, caso o notas..."
-          className="w-full pl-9 pr-9 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40 focus:border-[#F2A900]/30"
-        />
-        {search && (
-          <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-            <X className="w-4 h-4" />
-          </button>
-        )}
+      {/* Search + TZ selector */}
+      <div className="flex gap-2 flex-wrap items-center">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar por nombre, caso o notas..."
+            className="w-full pl-9 pr-9 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40 focus:border-[#F2A900]/30"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-2 py-1">
+          <Globe className="w-3.5 h-3.5 text-gray-400" />
+          <span className="text-xs text-gray-500 hidden md:inline">Ver en</span>
+          <div className="w-56">
+            <TimezoneSelector value={viewTz} onChange={changeViewTz} size="sm" hideAuto />
+          </div>
+        </div>
       </div>
 
       {/* Filtros + Botones agendar */}
@@ -152,7 +165,10 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
               <DialogHeader>
                 <DialogTitle>Agendar Visita — No Cliente</DialogTitle>
               </DialogHeader>
-              <GuestBookForm onSuccess={() => { setGuestDialogOpen(false); window.location.reload() }} />
+              <GuestBookForm
+                viewTimezone={viewTz}
+                onSuccess={() => { setGuestDialogOpen(false); window.location.reload() }}
+              />
             </DialogContent>
           </Dialog>
           <Dialog open={bookDialogOpen} onOpenChange={setBookDialogOpen}>
@@ -166,8 +182,9 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
               <DialogHeader>
                 <DialogTitle>Agendar Cita para Cliente</DialogTitle>
               </DialogHeader>
-              <AdminBookForm
+              <ClientBookForm
                 activeCases={activeCases}
+                viewTimezone={viewTz}
                 onSuccess={() => { setBookDialogOpen(false); window.location.reload() }}
               />
             </DialogContent>
@@ -203,7 +220,12 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
                 </TableRow>
               ) : (
                 filtered.map(apt => (
-                  <AppointmentRow key={apt.id} appointment={apt} completedCount={apt.client_id ? (completedCounts.get(apt.client_id) || 0) : 0} />
+                  <AppointmentRow
+                    key={apt.id}
+                    appointment={apt}
+                    completedCount={apt.client_id ? (completedCounts.get(apt.client_id) || 0) : 0}
+                    viewTz={viewTz}
+                  />
                 ))
               )}
             </TableBody>
@@ -233,7 +255,16 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
 }
 
 // ── Fila de cita ──
-function AppointmentRow({ appointment, completedCount }: { appointment: AdminCitasViewProps['appointments'][0]; completedCount: number }) {
+function AppointmentRow({
+  appointment,
+  completedCount,
+  viewTz,
+}: {
+  appointment: AdminCitasViewProps['appointments'][0]
+  completedCount: number
+  viewTz: string
+}) {
+  const tzIsOffice = viewTz === OFFICE_TIMEZONE
   const [updating, setUpdating] = useState(false)
   const [waiving, setWaiving] = useState(false)
   const [showReschedule, setShowReschedule] = useState(false)
@@ -351,8 +382,13 @@ function AppointmentRow({ appointment, completedCount }: { appointment: AdminCit
     <TableRow>
       <TableCell>
         <div>
-          <p className="text-sm font-medium">{formatDateMT(appointment.scheduled_at)}</p>
-          <p className="text-xs text-gray-500">{formatToMT(appointment.scheduled_at)} MT</p>
+          <p className="text-sm font-medium">{formatDate(appointment.scheduled_at, viewTz)}</p>
+          <p className="text-xs text-gray-500">
+            {formatTime(appointment.scheduled_at, viewTz)} {tzShortLabel(viewTz)}
+            {!tzIsOffice && (
+              <span className="text-gray-300"> · {formatTime(appointment.scheduled_at, OFFICE_TIMEZONE)} MT</span>
+            )}
+          </p>
         </div>
       </TableCell>
       <TableCell>
@@ -482,10 +518,17 @@ function AppointmentRow({ appointment, completedCount }: { appointment: AdminCit
                         variant={rescheduleSlot === slot ? 'default' : 'outline'}
                         size="sm"
                         onClick={() => setRescheduleSlot(slot)}
-                        className={`h-9 ${rescheduleSlot === slot ? 'bg-[#002855]' : ''}`}
+                        className={`flex-col h-auto py-1.5 ${rescheduleSlot === slot ? 'bg-[#002855]' : ''}`}
                       >
-                        <Clock className="w-3 h-3 mr-1" />
-                        {formatToMT(slot)}
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {formatTime(slot, viewTz)}
+                        </span>
+                        {!tzIsOffice && (
+                          <span className={`text-[10px] mt-0.5 ${rescheduleSlot === slot ? 'text-white/70' : 'text-gray-400'}`}>
+                            {formatTime(slot, OFFICE_TIMEZONE)} MT
+                          </span>
+                        )}
                       </Button>
                     ))}
                   </div>
@@ -516,373 +559,9 @@ function AppointmentRow({ appointment, completedCount }: { appointment: AdminCit
   )
 }
 
-// ── Formulario para agendar cita desde admin ──
-function AdminBookForm({ activeCases, onSuccess }: { activeCases: ActiveCase[]; onSuccess: () => void }) {
-  const [selectedCaseId, setSelectedCaseId] = useState('')
-  const [selectedDate, setSelectedDate] = useState('')
-  const [selectedSlot, setSelectedSlot] = useState('')
-  const [slots, setSlots] = useState<string[]>([])
-  const [loadingSlots, setLoadingSlots] = useState(false)
-  const [blocked, setBlocked] = useState(false)
-  const [booking, setBooking] = useState(false)
-  const [clientSearch, setClientSearch] = useState('')
-  const [dropdownOpen, setDropdownOpen] = useState(false)
-  const dropdownRef = useRef<HTMLDivElement>(null)
-
-  // Cerrar el dropdown cuando clickeo fuera de él (más robusto que onBlur con timeout)
-  useEffect(() => {
-    if (!dropdownOpen) return
-    function onClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
-  }, [dropdownOpen])
-
-  const selectedCase = activeCases.find(c => c.id === selectedCaseId)
-
-  // Resolver joins que pueden venir como array
-  function resolveJoin<T>(val: unknown): T | null {
-    if (Array.isArray(val)) return (val[0] as T) || null
-    return (val as T) || null
-  }
-
-  async function loadSlots(date: string) {
-    setSelectedSlot('')
-    setBlocked(false)
-    setLoadingSlots(true)
-    try {
-      const res = await fetch(`/api/admin/appointments/available-slots?date=${date}`)
-      const data = await res.json()
-      if (data.blocked) {
-        setBlocked(true)
-        setSlots([])
-      } else {
-        setSlots(data.slots || [])
-      }
-    } catch {
-      toast.error('Error al cargar horarios')
-      setSlots([])
-    } finally {
-      setLoadingSlots(false)
-    }
-  }
-
-  async function handleBook() {
-    if (!selectedCaseId || !selectedSlot) return
-    const caseInfo = activeCases.find(c => c.id === selectedCaseId)
-    if (!caseInfo) return
-
-    setBooking(true)
-    try {
-      const res = await fetch('/api/admin/appointments/book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          case_id: selectedCaseId,
-          client_id: caseInfo.client_id,
-          scheduled_at: selectedSlot,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Error')
-      toast.success('Cita agendada exitosamente')
-      onSuccess()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Error al agendar')
-    } finally {
-      setBooking(false)
-    }
-  }
-
-  const today = new Date().toISOString().split('T')[0]
-
-  return (
-    <div className="space-y-4">
-      {/* Selector de cliente/caso con buscador (click-toggle, no depende de focus) */}
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium">Cliente / Caso</Label>
-        <div ref={dropdownRef} className="relative">
-          {/* Trigger: si no hay seleccionado, muestra placeholder + caret. Si hay, muestra el cliente */}
-          {!selectedCaseId ? (
-            <button
-              type="button"
-              onClick={() => setDropdownOpen(v => !v)}
-              className="w-full h-10 px-3 rounded-md border border-gray-200 text-sm flex items-center justify-between bg-white hover:border-[#F2A900] focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40 focus:border-[#F2A900]"
-            >
-              <span className="text-gray-400">Seleccionar cliente...</span>
-              <svg className="w-4 h-4 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.25 4.39a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-              </svg>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => { setSelectedCaseId(''); setClientSearch(''); setDropdownOpen(true) }}
-              className="w-full h-10 px-3 rounded-md border border-[#F2A900] bg-amber-50 text-sm flex items-center justify-between"
-            >
-              {(() => {
-                const c = activeCases.find(ac => ac.id === selectedCaseId)
-                const client = c ? resolveJoin<{ first_name: string; last_name: string }>(c.client) : null
-                return (
-                  <span className="text-gray-900 font-medium truncate">
-                    {client?.first_name} {client?.last_name} — #{c?.case_number}
-                  </span>
-                )
-              })()}
-              <span className="text-gray-400 hover:text-gray-600 text-xs ml-2">✕</span>
-            </button>
-          )}
-
-          {dropdownOpen && !selectedCaseId && (
-            <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg">
-              <div className="p-2 border-b border-gray-100">
-                <input
-                  type="text"
-                  value={clientSearch}
-                  onChange={e => setClientSearch(e.target.value)}
-                  placeholder="Buscar por nombre, # caso o servicio..."
-                  autoFocus
-                  className="w-full h-8 px-2 rounded border border-gray-200 text-sm focus:outline-none focus:ring-1 focus:ring-[#F2A900]/40"
-                />
-              </div>
-              <div className="max-h-60 overflow-y-auto">
-                {(() => {
-                  const filtered = activeCases.filter(c => {
-                    if (!clientSearch.trim()) return true
-                    const client = resolveJoin<{ first_name: string; last_name: string }>(c.client)
-                    const service = resolveJoin<{ name: string }>(c.service)
-                    const q = clientSearch.toLowerCase()
-                    return `${client?.first_name || ''} ${client?.last_name || ''}`.toLowerCase().includes(q) ||
-                      c.case_number.toLowerCase().includes(q) ||
-                      (service?.name || '').toLowerCase().includes(q)
-                  })
-                  if (filtered.length === 0) return <div className="p-3 text-xs text-gray-400 text-center">Sin resultados</div>
-                  return filtered.map(c => {
-                    const client = resolveJoin<{ first_name: string; last_name: string }>(c.client)
-                    const service = resolveJoin<{ name: string }>(c.service)
-                    return (
-                      <button key={c.id} type="button"
-                        onClick={() => { setSelectedCaseId(c.id); setClientSearch(''); setDropdownOpen(false) }}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-amber-50 transition-colors border-b border-gray-100 last:border-b-0">
-                        <p className="font-medium text-gray-900">{client?.first_name} {client?.last_name}</p>
-                        <p className="text-xs text-gray-500">#{c.case_number} — {service?.name || 'Sin servicio'}</p>
-                      </button>
-                    )
-                  })
-                })()}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Info del cliente seleccionado */}
-      {selectedCase && (
-        <div className="bg-blue-50 rounded-lg p-3">
-          <p className="text-sm font-medium text-[#002855]">
-            {resolveJoin<{ first_name: string; last_name: string }>(selectedCase.client)?.first_name}{' '}
-            {resolveJoin<{ first_name: string; last_name: string }>(selectedCase.client)?.last_name}
-          </p>
-          <p className="text-xs text-gray-500">
-            Caso #{selectedCase.case_number} — {resolveJoin<{ name: string }>(selectedCase.service)?.name}
-          </p>
-          {resolveJoin<{ phone?: string }>(selectedCase.client)?.phone && (
-            <p className="text-xs text-gray-500">Tel: {resolveJoin<{ phone?: string }>(selectedCase.client)?.phone}</p>
-          )}
-        </div>
-      )}
-
-      {/* Selector de fecha */}
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium">Fecha</Label>
-        <Input
-          type="date"
-          min={today}
-          value={selectedDate}
-          onChange={e => {
-            setSelectedDate(e.target.value)
-            if (e.target.value) loadSlots(e.target.value)
-          }}
-        />
-      </div>
-
-      {/* Horarios disponibles */}
-      {selectedDate && (
-        <div className="space-y-1.5">
-          <Label className="text-sm font-medium">Horario disponible (Mountain Time)</Label>
-          {loadingSlots ? (
-            <div className="flex items-center gap-2 py-3 text-sm text-gray-500">
-              <Loader2 className="w-4 h-4 animate-spin" /> Cargando horarios...
-            </div>
-          ) : blocked ? (
-            <p className="text-sm text-red-600 py-2">Esta fecha esta bloqueada</p>
-          ) : slots.length === 0 ? (
-            <p className="text-sm text-gray-500 py-2">No hay horarios disponibles para esta fecha</p>
-          ) : (
-            <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-              {slots.map(slot => (
-                <Button
-                  key={slot}
-                  variant={selectedSlot === slot ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedSlot(slot)}
-                  className={selectedSlot === slot ? 'bg-[#002855]' : ''}
-                >
-                  <Clock className="w-3 h-3 mr-1" />
-                  {formatToMT(slot)}
-                </Button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Boton confirmar */}
-      <Button
-        className="w-full bg-[#002855] hover:bg-[#003570]"
-        disabled={!selectedCaseId || !selectedSlot || booking}
-        onClick={handleBook}
-      >
-        {booking ? (
-          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Agendando...</>
-        ) : (
-          <><CalendarClock className="w-4 h-4 mr-2" /> Confirmar Cita</>
-        )}
-      </Button>
-    </div>
-  )
-}
-
-// ── Formulario para agendar cita de no-cliente ──
-function GuestBookForm({ onSuccess }: { onSuccess: () => void }) {
-  const [guestName, setGuestName] = useState('')
-  const [selectedDate, setSelectedDate] = useState('')
-  const [selectedSlot, setSelectedSlot] = useState('')
-  const [slots, setSlots] = useState<string[]>([])
-  const [loadingSlots, setLoadingSlots] = useState(false)
-  const [blocked, setBlocked] = useState(false)
-  const [booking, setBooking] = useState(false)
-
-  async function loadSlots(date: string) {
-    setSelectedSlot('')
-    setBlocked(false)
-    setLoadingSlots(true)
-    try {
-      const res = await fetch(`/api/admin/appointments/available-slots?date=${date}`)
-      const data = await res.json()
-      if (data.blocked) {
-        setBlocked(true)
-        setSlots([])
-      } else {
-        setSlots(data.slots || [])
-      }
-    } catch {
-      toast.error('Error al cargar horarios')
-      setSlots([])
-    } finally {
-      setLoadingSlots(false)
-    }
-  }
-
-  async function handleBook() {
-    if (!guestName.trim() || !selectedSlot) return
-    setBooking(true)
-    try {
-      const res = await fetch('/api/admin/appointments/book', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ guest_name: guestName.trim(), scheduled_at: selectedSlot }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Error')
-      toast.success(`Visita de ${guestName} agendada`)
-      onSuccess()
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Error al agendar')
-    } finally {
-      setBooking(false)
-    }
-  }
-
-  const today = new Date().toISOString().split('T')[0]
-
-  return (
-    <div className="space-y-4">
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium">Nombre del visitante</Label>
-        <Input
-          value={guestName}
-          onChange={e => setGuestName(e.target.value)}
-          placeholder="Ej: Eliana García"
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label className="text-sm font-medium">Fecha</Label>
-        <Input
-          type="date"
-          min={today}
-          value={selectedDate}
-          onChange={e => {
-            setSelectedDate(e.target.value)
-            if (e.target.value) loadSlots(e.target.value)
-          }}
-        />
-      </div>
-
-      {selectedDate && (
-        <div className="space-y-1.5">
-          <Label className="text-sm font-medium">Horario disponible (Mountain Time)</Label>
-          {loadingSlots ? (
-            <div className="flex items-center gap-2 py-3 text-sm text-gray-500">
-              <Loader2 className="w-4 h-4 animate-spin" /> Cargando horarios...
-            </div>
-          ) : blocked ? (
-            <p className="text-sm text-red-600 py-2">Esta fecha está bloqueada</p>
-          ) : slots.length === 0 ? (
-            <p className="text-sm text-gray-500 py-2">No hay horarios disponibles</p>
-          ) : (
-            <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
-              {slots.map(slot => (
-                <Button
-                  key={slot}
-                  variant={selectedSlot === slot ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedSlot(slot)}
-                  className={selectedSlot === slot ? 'bg-[#002855]' : ''}
-                >
-                  <Clock className="w-3 h-3 mr-1" />
-                  {formatToMT(slot)}
-                </Button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="bg-amber-50 rounded-lg p-3 text-sm text-amber-700">
-        <p className="font-medium">Visita presencial</p>
-        <p className="text-xs text-amber-600 mt-0.5">Esta cita bloqueará el horario para que ningún cliente lo reserve.</p>
-      </div>
-
-      <Button
-        className="w-full bg-[#002855] hover:bg-[#003570]"
-        disabled={!guestName.trim() || !selectedSlot || booking}
-        onClick={handleBook}
-      >
-        {booking ? (
-          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Agendando...</>
-        ) : (
-          <><CalendarClock className="w-4 h-4 mr-2" /> Confirmar Visita</>
-        )}
-      </Button>
-    </div>
-  )
-}
-
+// AdminBookForm y GuestBookForm fueron extraídos a
+// src/components/appointments/{client,guest}-book-form.tsx para reusarse
+// también desde el panel de empleado.
 // ── Panel de configuración de horarios ──
 function formatHour(h: number): string {
   if (h === 0) return '12 AM'

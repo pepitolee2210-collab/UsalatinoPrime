@@ -4,6 +4,7 @@ import { ClientPortal, type ClientPortalProps } from './client-portal'
 import { VoiceProvider } from '@/components/voice/voice-context'
 import type { Appointment, CasePhase } from '@/types/database'
 import type { QuickContact, PhaseAsset } from './_components/screens/inicio-screen'
+import { resolveClientTimezone } from '@/lib/appointments/resolve-tz'
 
 export default async function CitaPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
@@ -48,7 +49,7 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
     communityReactionsRes,
     schedulingConfigRes,
   ] = await Promise.all([
-    supabase.from('profiles').select('first_name, last_name, email, avatar_url').eq('id', tokenData.client_id).single(),
+    supabase.from('profiles').select('first_name, last_name, email, avatar_url, preferred_timezone, address_state').eq('id', tokenData.client_id).single(),
     supabase.from('cases').select('id, case_number, form_data, service:service_catalog(id, name, slug)').eq('id', tokenData.case_id).single(),
     supabase.from('appointments').select('*').eq('client_id', tokenData.client_id).order('scheduled_at', { ascending: false }),
     supabase.from('documents').select('id, document_key, name, file_size, status, direction, declaration_number').eq('case_id', tokenData.case_id),
@@ -81,6 +82,29 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
     .map(d => ({ id: d.id, name: d.name, file_size: d.file_size ?? 0, declaration_number: d.declaration_number as number }))
 
   const clientName = `${profile?.first_name || ''} ${profile?.last_name || ''}`.trim()
+
+  // Resolver la timezone del cliente para mostrar las citas en su hora
+  // local. El storage es siempre UTC; esto solo controla el display +
+  // qué hora interpreta el slot picker. La cascada vive en
+  // src/lib/appointments/resolve-tz.ts. Para el contrato tomamos el más
+  // reciente del cliente (mejor proxy de su estado actual).
+  const { data: latestContract } = await supabase
+    .from('contracts')
+    .select('client_state')
+    .eq('client_id', tokenData.client_id)
+    .not('client_state', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const tzResolution = resolveClientTimezone({
+    preferredTz: profile?.preferred_timezone ?? null,
+    contractState: latestContract?.client_state ?? null,
+    profileState: profile?.address_state ?? null,
+    // browserTz se aplica del lado cliente como override final si nada
+    // del server dio respuesta — aquí pasamos null.
+    browserTz: null,
+  })
 
   // ──────────────────────────────────────────────────────────────────
   // Sprint 0 — datos nuevos (tolerantes a migraciones no aplicadas).
@@ -155,6 +179,8 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
     currentPhase,
     phaseAsset,
     quickContacts: effectiveQuickContacts,
+    clientTimezone: tzResolution.tz,
+    clientTimezoneSource: tzResolution.source,
   }
 
   return (
