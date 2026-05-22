@@ -71,7 +71,11 @@ export async function generateCredibleFear(
   const { text, usage } = await generateTextWithUsage({
     system: CREDIBLE_FEAR_SYSTEM_V5,
     user: userPrompt,
-    maxTokens: 16384,
+    // 32k es necesario porque el JSON completo (declaration EN + ES +
+    // i589_field_values + supplement_b + evidence_index + factual_claims_audit)
+    // puede llegar a 20-28k tokens en casos densos. Truncar al límite produce
+    // JSON inválido (mid-string cut) y forzaría REQUIRES_REVIEW innecesario.
+    maxTokens: 32000,
     signal: input.signal,
     logLabel: 'credible-fear-v5',
   })
