@@ -291,14 +291,15 @@ export const declarationV6Schema = z.object({
 export type DeclarationV6 = z.infer<typeof declarationV6Schema>
 
 // URLs citadas en el body (sección VI Parte A + B). Auditoría de qué URLs
-// reales aparecieron en la declaración.
+// reales aparecieron en la declaración. Todos los string fields tolerantes
+// a null (Claude a veces no tiene fecha de publicación del artículo).
 export const citedUrlInBodySchema = z.object({
-  roman_numeral: z.string(), // típicamente "VI"
+  roman_numeral: nullableString, // típicamente "VI"
   subpart: z.string().nullable().optional(), // "A" o "B"
-  medio: z.string(),
-  titulo: z.string(),
-  fecha_pub: z.string(),
-  url: z.string(),
+  medio: nullableString,
+  titulo: nullableString,
+  fecha_pub: nullableString,
+  url: nullableString,
 })
 export type CitedUrlInBody = z.infer<typeof citedUrlInBodySchema>
 
