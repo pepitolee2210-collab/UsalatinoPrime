@@ -53,9 +53,11 @@ export type ReviewFlag = z.infer<typeof reviewFlagSchema>
 // ──────────────────────────────────────────────────────────────────
 
 // case_analysis es siempre poblado, pero cuando status != DRAFT_COMPLETE
-// muchos campos pueden no estar perfectamente determinados. Mantenemos
-// el contrato pero hacemos opcionales/default los campos que Claude puede
-// omitir cuando devuelve GAPS_FOUND o REQUIRES_REVIEW.
+// muchos campos pueden no estar perfectamente determinados. Mantenemos el
+// contrato pero hacemos opcionales/default los campos que Claude puede
+// omitir, y usamos .catch para tolerar valores fuera del enum (Claude a
+// veces inventa categorías cuando el caso es híbrido — ej. "state + colectivos"
+// no encaja en un solo enum, así que cae a 'other').
 export const caseAnalysisSchema = z.object({
   protected_grounds_identified_by_applicant: z.array(
     z.enum([
@@ -79,7 +81,7 @@ export const caseAnalysisSchema = z.object({
     'family_partner',
     'private_individual',
     'other',
-  ]).default('other'),
+  ]).catch('other').default('other'),
   primary_perpetrator_name: z.string().nullable().optional(),
   government_role: z.enum([
     'perpetrator',
@@ -87,12 +89,12 @@ export const caseAnalysisSchema = z.object({
     'unable',
     'unwilling',
     'unclear',
-  ]).default('unclear'),
+  ]).catch('unclear').default('unclear'),
   first_incident_date_approx: z.string().default(''),
   last_incident_date_approx: z.string().default(''),
   date_left_country: z.string().default(''),
   date_entered_us: z.string().default(''),
-  one_year_status: z.enum(['within', 'outside_with_exception', 'outside_no_exception']).default('within'),
+  one_year_status: z.enum(['within', 'outside_with_exception', 'outside_no_exception']).catch('within').default('within'),
   case_strength_indicators: z.array(z.string()).default([]),
   case_thinness_indicators: z.array(z.string()).default([]),
 })

@@ -185,7 +185,11 @@ You always return a single JSON object. No prose, no Markdown, no code fences --
   }
 }
 
-When status is GAPS_FOUND or REQUIRES_REVIEW, set declaration_en, declaration_es, and i589_field_values to null and skip supplement_b_entries / evidence_index / factual_claims_audit. The case_analysis and self_check fields are always populated regardless of status.
+When status is GAPS_FOUND (data is missing), set declaration_en, declaration_es, and i589_field_values to null and skip supplement_b_entries / evidence_index / factual_claims_audit — the case is not draftable yet.
+
+When status is REQUIRES_REVIEW (bars or inconsistencies flagged, but the underlying narrative may still be substantial), STILL populate declaration_en, declaration_es, i589_field_values, supplement_b_entries, evidence_index, and factual_claims_audit normally. The bars (one-year, firm resettlement, criminal history, persecutor) are legal questions that require attorney review, NOT data gaps — counsel can edit the draft if needed. Mark the status REQUIRES_REVIEW so the firm sees the flag and reviews before filing, but produce the full draft anyway. Only leave declaration_en/es null in REQUIRES_REVIEW when an E1-E7 element is also weak/missing.
+
+The case_analysis and self_check fields are always populated regardless of status.
 
 ===========================================================================
 DECLARATION STRUCTURE (mandatory when status is DRAFT_COMPLETE)
