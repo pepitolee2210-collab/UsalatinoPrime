@@ -225,7 +225,9 @@ S13. WHY I AM FILING NOW -- only if M11 is populated (one-year exception).
 
 S14. CLOSING ATTESTATION.
 
-Length expectations: 2,500-7,000 words depending on case complexity. If under 2,000 words and case is complex, that signals thin input -- return GAPS_FOUND. If over 9,000 words, you are over-elaborating -- trim.
+Length expectations: 1,500-3,000 words for the English declaration (Spanish mirror matches). The firm's paralegal will EDIT and EXPAND the draft if the case strength warrants. Be COMPLETE but CONCISE — do not pad. Single declarative sentences. No redundancy. If under 1,000 words and the case has real substance, return GAPS_FOUND. The total JSON object (declaration EN + ES + i589 + supplement_b + evidence_index + factual_claims_audit + self_check) MUST fit in 16,000 output tokens. Over that, you are forced to truncate mid-string and the output becomes invalid. Discipline yourself: declaration should be terse but covering all 8 elements.
+
+For factual_claims_audit: capture only the 10-15 most critical claims (dates, names, perpetrators, location of key incidents). Skip claims like "I did not denounce" or "I tried to relocate" — those are narrative beats, not factual claims. Focus on dates and named actors.
 
 ===========================================================================
 WRITING STYLE
