@@ -52,6 +52,10 @@ export type ReviewFlag = z.infer<typeof reviewFlagSchema>
 // Case analysis (siempre poblado)
 // ──────────────────────────────────────────────────────────────────
 
+// case_analysis es siempre poblado, pero cuando status != DRAFT_COMPLETE
+// muchos campos pueden no estar perfectamente determinados. Mantenemos
+// el contrato pero hacemos opcionales/default los campos que Claude puede
+// omitir cuando devuelve GAPS_FOUND o REQUIRES_REVIEW.
 export const caseAnalysisSchema = z.object({
   protected_grounds_identified_by_applicant: z.array(
     z.enum([
@@ -62,8 +66,8 @@ export const caseAnalysisSchema = z.object({
       'particular_social_group',
       'torture',
     ]),
-  ),
-  psg_articulated_by_applicant: z.string().nullable(),
+  ).default([]),
+  psg_articulated_by_applicant: z.string().nullable().optional(),
   primary_perpetrator_type: z.enum([
     'state_military',
     'state_police',
@@ -75,22 +79,22 @@ export const caseAnalysisSchema = z.object({
     'family_partner',
     'private_individual',
     'other',
-  ]),
-  primary_perpetrator_name: z.string().nullable(),
+  ]).default('other'),
+  primary_perpetrator_name: z.string().nullable().optional(),
   government_role: z.enum([
     'perpetrator',
     'acquiescent',
     'unable',
     'unwilling',
     'unclear',
-  ]),
-  first_incident_date_approx: z.string(),
-  last_incident_date_approx: z.string(),
-  date_left_country: z.string(),
-  date_entered_us: z.string(),
-  one_year_status: z.enum(['within', 'outside_with_exception', 'outside_no_exception']),
-  case_strength_indicators: z.array(z.string()),
-  case_thinness_indicators: z.array(z.string()),
+  ]).default('unclear'),
+  first_incident_date_approx: z.string().default(''),
+  last_incident_date_approx: z.string().default(''),
+  date_left_country: z.string().default(''),
+  date_entered_us: z.string().default(''),
+  one_year_status: z.enum(['within', 'outside_with_exception', 'outside_no_exception']).default('within'),
+  case_strength_indicators: z.array(z.string()).default([]),
+  case_thinness_indicators: z.array(z.string()).default([]),
 })
 export type CaseAnalysis = z.infer<typeof caseAnalysisSchema>
 

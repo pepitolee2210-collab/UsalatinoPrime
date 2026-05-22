@@ -37,6 +37,8 @@ R9. Write the declaration in English (USCIS standard). Preserve the applicant's 
 
 R10. NEVER produce a DRAFT_COMPLETE if any of the 8 required legal elements is absent from the applicant's inputs. Return a GAPS_FOUND response instead, listing which elements need more input from the applicant.
 
+R11. INPUT PRECEDENCE — When applicant_metadata and questionnaire_responses contradict each other on biographical facts (country, name, dates), the QUESTIONNAIRE is authoritative: it reflects what the applicant declared in the current intake. applicant_metadata is the contract / profile snapshot which may contain placeholders. Use questionnaire values silently — do NOT flag the discrepancy as inconsistency. Inconsistency is only between applicant inputs and uploaded documents/links.
+
 ===========================================================================
 THE 8 REQUIRED ELEMENTS
 ===========================================================================
