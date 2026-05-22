@@ -224,29 +224,41 @@ export function ReforzarScreen({ token, clientName }: ReforzarScreenProps) {
       </section>
 
       {/* 3. Documentos subidos */}
-      <section className="rounded-2xl border bg-white p-5 space-y-3" style={{ borderColor: 'var(--color-ulp-outline-variant)' }}>
+      <section
+        className="rounded-2xl border p-5 space-y-3"
+        style={{
+          borderColor: 'rgb(110 231 183)',
+          background: 'rgb(236 253 245)',
+        }}
+      >
         <header className="flex items-start gap-3">
           <span className="material-symbols-outlined text-emerald-700" data-fill="1" style={{ fontSize: 22 }}>
             folder
           </span>
           <div className="flex-1">
             <h2 className="text-sm font-bold text-gray-900">
-              3. Tus documentos subidos
+              3. Sube evidencia que respalde tu caso (opcional pero muy recomendado)
             </h2>
-            <p className="text-xs text-gray-500 mt-0.5">
-              La IA leerá los documentos que subiste en la pestaña &ldquo;Documentos&rdquo; para reforzar tu caso.
+            <p className="text-xs text-gray-700 mt-0.5">
+              La IA legal cita tus documentos como evidencia ante USCIS. Mientras más pruebas concretas tengas, más fuerte tu caso.
+            </p>
+            <p className="text-[11px] mt-1.5 text-gray-600">
+              Ejemplos: denuncias policiales, reportes médicos / psicológicos, capturas de amenazas (WhatsApp, SMS, redes),
+              fotos de lesiones o propiedad dañada, cartas juradas de testigos, credenciales de partido / sindicato / ONG.
             </p>
           </div>
         </header>
         {Object.keys(ctx.documentsByCategory).length === 0 ? (
-          <p className="text-xs italic text-gray-500">Aún no has subido documentos.</p>
+          <p className="text-xs italic text-gray-700">
+            Aún no has subido documentos. Ve a la pestaña <strong>Documentos</strong> para empezar.
+          </p>
         ) : (
           <ul className="space-y-1.5">
             {Object.entries(ctx.documentsByCategory).map(([cat, count]) => (
               <li
                 key={cat}
                 className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
-                style={{ background: 'var(--color-ulp-surface-container-lowest)' }}
+                style={{ background: 'rgba(255, 255, 255, 0.7)' }}
               >
                 <span className="material-symbols-outlined text-emerald-700" style={{ fontSize: 16 }}>
                   check_circle
@@ -257,6 +269,26 @@ export function ReforzarScreen({ token, clientName }: ReforzarScreenProps) {
             ))}
           </ul>
         )}
+        <button
+          type="button"
+          onClick={() => {
+            // Click programático en el botón "Documentos" del sidenav/bottomnav —
+            // patrón sin acoplar al padre porque el portal usa state interno.
+            const btn = Array.from(document.querySelectorAll<HTMLButtonElement>('nav button')).find((b) =>
+              /^\s*folder\s*Documentos\s*$/.test(b.textContent ?? ''),
+            )
+            btn?.click()
+          }}
+          className="w-full px-4 py-2.5 rounded-full text-sm font-bold flex items-center justify-center gap-2"
+          style={{
+            background: 'var(--color-ulp-primary-container)',
+            color: 'var(--color-ulp-on-primary-container)',
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>folder_open</span>
+          Ir a Documentos
+          <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>
+        </button>
       </section>
 
       {/* 4. Validación */}

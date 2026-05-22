@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import {
-  generateCredibleFear,
+  generateAsylumAnalysis,
+  generateAsylumDeclaration,
   CredibleFearGenerationError,
   CREDIBLE_FEAR_PROMPT_VERSION,
 } from '@/lib/ai/generate-credible-fear'
 import { extractDocumentsForCase } from '@/lib/ai/extract-documents'
-import { searchCountryConditions } from '@/lib/ai/web-search-tavily'
+import { searchCountryConditions, type AsylumPersecutionType } from '@/lib/ai/web-search-tavily'
 import {
   CREDIBLE_FEAR_QUESTIONNAIRE_SLUG,
   type CFAnswers,
@@ -17,7 +18,7 @@ import { validateCaseBeforeGeneration } from '@/lib/asylum/validate-case-before-
 import { logActivity } from '@/lib/activity/log-activity'
 import { createLogger } from '@/lib/logger'
 import { isAsylumService } from '@/lib/services/asylum'
-import type { Declaration } from '@/lib/ai/credible-fear-schema'
+import type { DeclarationV6 } from '@/lib/ai/credible-fear-schema'
 import { CLAUDE_MODEL } from '@/lib/ai/anthropic-client'
 
 const log = createLogger('api:generate-credible-fear')
@@ -27,20 +28,23 @@ const log = createLogger('api:generate-credible-fear')
  *
  * Body: { case_id: string }
  *
- * Solo admin / paralegal. Genera el JSON estructurado del Miedo Creíble
- * (v5) combinando:
- *   - applicantMetadata: profiles + I-589 Parte A submissions.
- *   - questionnaire M1-M11: case_form_instances con form_name CREDIBLE_FEAR_QUESTIONNAIRE_SLUG.
- *   - uploadedDocuments: documents con extracted_text (todas las categorías
- *     de evidencia, no solo el affidavit que ya retiramos del flow cliente).
- *   - evidence_links: case_evidence_urls + URLs marcadas en M9
- *     (country_evidence_links) + country conditions de Tavily si faltan.
+ * Solo admin / paralegal. Genera el Miedo Creíble v6 en DOS llamadas a
+ * Claude Opus 4.7 (split necesario por el 16k output cap):
  *
- * Persiste en case_credible_fear_drafts:
- *   - status del output (DRAFT_COMPLETE | GAPS_FOUND | REQUIRES_REVIEW)
- *   - JSONB de cada bloque
- *   - body_md (Markdown renderizado desde declaration_es_json) para que el
- *     preview existente y el endpoint .docx sigan funcionando.
+ *   1. Análisis estructurado (case_analysis, i589_field_values, supplement_b,
+ *      evidence_index, factual_claims_seed, self_check). ~30-60s.
+ *
+ *   2. Declaración detallada en español (estructura I-VI, 3000-5000 palabras
+ *      con URLs citadas y datos estadísticos del país). ~90-180s.
+ *
+ * Si la llamada 1 devuelve GAPS_FOUND no se hace la llamada 2 (no hay
+ * sustento para declaración).
+ *
+ * Persiste en `case_credible_fear_drafts` con:
+ *   - JSONB columns del schema v6 (analysis + declaration mergeados)
+ *   - body_md renderizado para preview / .docx legacy
+ *   - tokens separados de las 2 llamadas (analysis_*_tokens + declaration_*_tokens)
+ *   - cited_urls_in_body_json para auditar las URLs citadas en sección VI
  */
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -136,9 +140,6 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // El país viene preferentemente del M2 del cuestionario (lo que el cliente
-  // declaró en la pestaña Formularios) y cae al perfil si M2 está vacío.
-  // Pero como aún no cargamos `answers` aquí, ese override se hace más abajo.
   const country = caseRow.client?.country_of_birth ?? caseRow.client?.nationality ?? ''
   if (!country) {
     return NextResponse.json(
@@ -172,12 +173,24 @@ export async function POST(request: NextRequest) {
     .maybeSingle()
   const answers = (questionnaire?.filled_values as CFAnswers | undefined) ?? {}
 
-  // El M2 del cuestionario gana sobre el perfil para país de búsqueda Tavily
-  // y como referencia en el prompt.
   const countryFromQuestionnaire = typeof answers['m2_country_of_birth'] === 'string'
     ? (answers['m2_country_of_birth'] as string)
     : null
   const effectiveCountry = countryFromQuestionnaire || country
+
+  // Derivar tipo de persecución de M3 grounds para query de Tavily más relevante
+  const grounds = Array.isArray(answers['m3_grounds']) ? (answers['m3_grounds'] as string[]) : []
+  const persecutionType: AsylumPersecutionType = grounds.includes('political_opinion')
+    ? 'political'
+    : grounds.includes('religion')
+    ? 'religious'
+    : grounds.includes('particular_social_group') && /\blgbt|gay|lesbi|trans/i.test(JSON.stringify(answers).slice(0, 8000))
+    ? 'lgbtq'
+    : grounds.includes('particular_social_group') && /\bgang|pandilla|tren de aragua|mara/i.test(JSON.stringify(answers).slice(0, 8000))
+    ? 'gang'
+    : grounds.includes('particular_social_group') && /\bmujer|gender|violenc.*domestic|domestic violence/i.test(JSON.stringify(answers).slice(0, 8000))
+    ? 'gender_violence'
+    : 'general'
 
   // ──────────────────────────────────────────────────────────────────
   // 4. Cargar I-589 Parte A submissions (para applicantMetadata)
@@ -238,14 +251,14 @@ export async function POST(request: NextRequest) {
       return {
         document_id: d.id,
         filename: d.file_name ?? '(sin nombre)',
-        declared_category: dt?.category_code ?? dt?.code ?? 'unknown',
+        declared_category: dt?.code ?? dt?.category_code ?? 'unknown',
         language: 'es',
         extracted_text: d.extracted_text ?? '',
       }
     })
 
   // ──────────────────────────────────────────────────────────────────
-  // 6. Cargar evidence_links
+  // 6. Cargar evidence_links (cliente + M9 + Tavily)
   // ──────────────────────────────────────────────────────────────────
   const { data: clientUrls } = await service
     .from('case_evidence_urls')
@@ -261,7 +274,6 @@ export async function POST(request: NextRequest) {
     category: 'client_provided',
   }))
 
-  // URLs marcadas por el cliente en M9 (multi_checkbox de country_evidence_links)
   const m9Selected = Array.isArray(answers['m9_prefilled_country_urls'])
     ? (answers['m9_prefilled_country_urls'] as string[])
     : []
@@ -286,7 +298,6 @@ export async function POST(request: NextRequest) {
     }))
   }
 
-  // M9 custom URLs (url_list)
   const m9Custom = Array.isArray(answers['m9_custom_urls'])
     ? (answers['m9_custom_urls'] as CFUrlValue[])
     : []
@@ -298,8 +309,8 @@ export async function POST(request: NextRequest) {
     category: u.category ?? 'other',
   }))
 
-  // Tavily (country conditions) — solo si no hay evidencia suficiente.
-  const totalLinks = clientEvidenceLinks.length + m9EvidenceLinks.length + m9CustomLinks.length
+  // Tavily: siempre buscar country conditions con persecutionType para enriquecer
+  // el prompt v6 con casos emblemáticos y datos estadísticos actuales del país.
   let tavilyLinks: Array<{
     url: string
     title: string | null
@@ -308,182 +319,113 @@ export async function POST(request: NextRequest) {
     category: string | null
     scraped_content?: string
   }> = []
-  if (totalLinks < 3) {
-    try {
-      const tavily = await searchCountryConditions(effectiveCountry)
-      tavilyLinks = tavily.map((r) => ({
-        url: r.url,
-        title: r.title,
-        source_organization: null,
-        description: r.content?.slice(0, 400) ?? null,
-        category: 'country_conditions_auto',
-        scraped_content: r.content ?? undefined,
-      }))
-    } catch (err) {
-      log.warn('Tavily fallback falló', { country: effectiveCountry, err: String(err) })
-    }
+  try {
+    const tavily = await searchCountryConditions(effectiveCountry, { persecutionType, maxResults: 8 })
+    tavilyLinks = tavily.map((r) => ({
+      url: r.url,
+      title: r.title,
+      source_organization: null,
+      description: r.content?.slice(0, 400) ?? null,
+      category: 'country_conditions_auto',
+      scraped_content: r.content ?? undefined,
+    }))
+  } catch (err) {
+    log.warn('Tavily fallback falló', { country: effectiveCountry, persecutionType, err: String(err) })
   }
 
   const evidenceLinks = [...clientEvidenceLinks, ...m9EvidenceLinks, ...m9CustomLinks, ...tavilyLinks]
 
   // ──────────────────────────────────────────────────────────────────
-  // 7. Llamar generador v5
+  // 7. Llamada 1 + Llamada 2 IA
   // ──────────────────────────────────────────────────────────────────
-  const t0 = Date.now()
+  const tStart = Date.now()
+  const baseInputs = {
+    applicantMetadata: {
+      full_name: fullName || 'Solicitante',
+      a_number: caseRow.client?.a_number,
+      date_of_birth: caseRow.client?.date_of_birth,
+      city_country_of_birth: countryFromQuestionnaire || caseRow.client?.country_of_birth,
+      current_nationality: caseRow.client?.nationality,
+      date_entered_us: dateEnteredUs,
+      port_of_entry: typeof i589Merged.port_of_entry === 'string' ? i589Merged.port_of_entry : null,
+      days_since_entry: daysSinceEntry,
+      marital_status: caseRow.client?.marital_status,
+      current_us_address: [
+        caseRow.client?.address_street,
+        caseRow.client?.address_city,
+        caseRow.client?.address_state,
+        caseRow.client?.address_zip,
+      ]
+        .filter(Boolean)
+        .join(', ') || null,
+      native_language: caseRow.client?.preferred_language ?? 'es',
+    },
+    questionnaireResponsesJson: answers as Record<string, unknown>,
+    uploadedDocuments,
+    evidenceLinks,
+  }
+
   try {
-    const result = await generateCredibleFear({
-      applicantMetadata: {
-        full_name: fullName || 'Solicitante',
-        a_number: caseRow.client?.a_number,
-        date_of_birth: caseRow.client?.date_of_birth,
-        city_country_of_birth: countryFromQuestionnaire || caseRow.client?.country_of_birth,
-        current_nationality: caseRow.client?.nationality,
-        date_entered_us: dateEnteredUs,
-        port_of_entry: typeof i589Merged.port_of_entry === 'string' ? i589Merged.port_of_entry : null,
-        days_since_entry: daysSinceEntry,
-        marital_status: caseRow.client?.marital_status,
-        current_us_address: [
-          caseRow.client?.address_street,
-          caseRow.client?.address_city,
-          caseRow.client?.address_state,
-          caseRow.client?.address_zip,
-        ]
-          .filter(Boolean)
-          .join(', ') || null,
-        native_language: caseRow.client?.preferred_language ?? 'es',
-      },
-      questionnaireResponsesJson: answers as Record<string, unknown>,
-      uploadedDocuments,
-      evidenceLinks,
-    })
-    const durationMs = Date.now() - t0
-    log.info('credible-fear v5 generado', {
+    // ─── Llamada 1: análisis ──────────────────────────────────────
+    const analysisResult = await generateAsylumAnalysis(baseInputs)
+    const analysisDurationMs = Date.now() - tStart
+    log.info('credible-fear v6 analysis OK', {
       caseId,
-      status: result.output.status,
-      ...result.usage,
-      durationMs,
+      status: analysisResult.output.status,
+      ...analysisResult.usage,
+      analysisDurationMs,
     })
 
-    // ────────────────────────────────────────────────────────────────
-    // 8. Renderizar body_md desde declaration_es_json (compat preview)
-    // ────────────────────────────────────────────────────────────────
-    const bodyMd = renderDeclarationMarkdown(result.output.declaration_es ?? result.output.declaration_en)
-
-    // ────────────────────────────────────────────────────────────────
-    // 9. Persistir draft
-    // ────────────────────────────────────────────────────────────────
-    // is_current=true cuando:
-    //   - DRAFT_COMPLETE (caso ideal), o
-    //   - REQUIRES_REVIEW pero con declaration_en y declaration_es poblados.
-    //     Las flags legales (one-year, firm resettlement, etc.) son señales
-    //     para Diana, no razón para esconder el draft. La firma quiere ver
-    //     el material editable.
-    // is_current=false cuando:
-    //   - GAPS_FOUND (faltan datos, no hay declaración), o
-    //   - REQUIRES_REVIEW con declaration_en/es nulos (no hay nada que mostrar).
-    const willBeCurrent =
-      result.output.status === 'DRAFT_COMPLETE' ||
-      (result.output.status === 'REQUIRES_REVIEW' &&
-        !!result.output.declaration_en &&
-        !!result.output.declaration_es)
-
-    if (willBeCurrent) {
-      await service
-        .from('case_credible_fear_drafts')
-        .update({ is_current: false })
-        .eq('case_id', caseId)
-        .eq('is_current', true)
-    }
-    const { data: lastVer } = await service
-      .from('case_credible_fear_drafts')
-      .select('version')
-      .eq('case_id', caseId)
-      .order('version', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-    const nextVersion = (lastVer?.version ?? 0) + 1
-
-    const sourcesForLegacy = evidenceLinks
-      .filter((l) => l.url)
-      .map((l) => ({ url: l.url, title: l.title ?? l.url }))
-
-    const { data: inserted, error } = await service
-      .from('case_credible_fear_drafts')
-      .insert({
-        case_id: caseId,
-        version: nextVersion,
-        body_md: bodyMd,
-        sources: sourcesForLegacy,
-        model_used: result.modelUsed,
-        prompt_version: result.promptVersion,
-        generated_by: user.id,
-        is_current: willBeCurrent,
-        status: result.output.status,
-        case_analysis_json: result.output.case_analysis,
-        gaps_found_json: result.output.gaps_found ?? [],
-        review_required_flags_json: result.output.review_required_flags ?? [],
-        declaration_en_json: result.output.declaration_en,
-        declaration_es_json: result.output.declaration_es,
-        i589_field_values_json: result.output.i589_field_values,
-        supplement_b_entries_json: result.output.supplement_b_entries ?? [],
-        evidence_index_json: result.output.evidence_index ?? [],
-        factual_claims_audit_json: result.output.factual_claims_audit ?? [],
-        self_check_json: result.output.self_check,
-        input_tokens: result.usage.inputTokens,
-        output_tokens: result.usage.outputTokens,
-        cached_tokens: result.usage.cacheReadTokens,
+    // Si hay GAPS_FOUND, no hace falta la segunda llamada (no hay sustento).
+    if (analysisResult.output.status === 'GAPS_FOUND') {
+      return await persistAndReturn({
+        service,
+        caseId,
+        userId: user.id,
+        supabase,
+        analysisOutput: analysisResult.output,
+        declarationOutput: null,
+        analysisUsage: analysisResult.usage,
+        declarationUsage: null,
+        evidenceLinks,
       })
-      .select('id, version, generated_at, status')
-      .single()
-    if (error) {
-      log.error('Error insertando draft', { caseId, error })
-      return NextResponse.json({ error: 'Error al guardar el draft' }, { status: 500 })
     }
 
-    await logActivity({
+    // ─── Llamada 2: declaración ───────────────────────────────────
+    const declarationResult = await generateAsylumDeclaration({
+      ...baseInputs,
+      analysisJson: analysisResult.raw,
+    })
+    const totalDurationMs = Date.now() - tStart
+    log.info('credible-fear v6 declaration OK', {
       caseId,
-      category: 'system',
-      subcategory: 'system.credible_fear_generated_v5',
-      description: `Miedo Creíble v5 generado (versión ${nextVersion}, status ${result.output.status})`,
-      metadata: {
-        version: nextVersion,
-        status: result.output.status,
-        prompt_version: result.promptVersion,
-        gaps_count: (result.output.gaps_found ?? []).length,
-        review_flags_count: (result.output.review_required_flags ?? []).length,
-        input_tokens: result.usage.inputTokens,
-        output_tokens: result.usage.outputTokens,
-        cached_tokens: result.usage.cacheReadTokens,
-      },
-      visibleToClient: false,
-      actor: { kind: 'session', supabase },
-      client: service,
+      ...declarationResult.usage,
+      totalDurationMs,
     })
 
-    return NextResponse.json({
-      ok: true,
-      draft_id: inserted.id,
-      version: inserted.version,
-      generated_at: inserted.generated_at,
-      status: inserted.status,
-      output: result.output,
+    return await persistAndReturn({
+      service,
+      caseId,
+      userId: user.id,
+      supabase,
+      analysisOutput: analysisResult.output,
+      declarationOutput: declarationResult.output,
+      analysisUsage: analysisResult.usage,
+      declarationUsage: declarationResult.usage,
+      evidenceLinks,
     })
   } catch (err) {
     if (err instanceof CredibleFearGenerationError) {
-      log.error('Generación falló por output inválido — persistiendo como REQUIRES_REVIEW', {
+      log.error('Generación falló por output inválido', {
         caseId,
+        phase: err.phase,
         message: err.message,
       })
-      // Persistir un draft con status REQUIRES_REVIEW. Guardamos el raw output
-      // dentro de body_md envuelto con cabecera para que Diana pueda revisarlo,
-      // editarlo a mano y usarlo como punto de partida — el .docx generado
-      // desde este draft NO sale en blanco. Truncamos a 80k chars para no
-      // explotar la fila (Claude rara vez produce >50k).
       const rawTruncated = err.raw.slice(0, 80_000)
       const reviewBody = [
         '# OUTPUT REQUIERE REVISIÓN MANUAL',
         '',
-        'La IA devolvió un JSON que no satisface el schema esperado para esta versión del prompt.',
+        `La IA devolvió un JSON que no satisface el schema esperado en la fase **${err.phase}**.`,
         '',
         `**Razón técnica:** ${err.message}`,
         '',
@@ -520,16 +462,28 @@ export async function POST(request: NextRequest) {
           is_current: false,
           status: 'REQUIRES_REVIEW',
           review_required_flags_json: [
-            { flag_type: 'inconsistency', details: `Output inválido: ${err.message}` },
+            { flag_type: 'inconsistency', details: `Output inválido en fase ${err.phase}: ${err.message}` },
           ],
           input_tokens: err.usage.inputTokens,
           output_tokens: err.usage.outputTokens,
           cached_tokens: err.usage.cacheReadTokens,
+          ...(err.phase === 'analysis'
+            ? {
+                analysis_input_tokens: err.usage.inputTokens,
+                analysis_output_tokens: err.usage.outputTokens,
+                analysis_cached_tokens: err.usage.cacheReadTokens,
+              }
+            : {
+                declaration_input_tokens: err.usage.inputTokens,
+                declaration_output_tokens: err.usage.outputTokens,
+                declaration_cached_tokens: err.usage.cacheReadTokens,
+              }),
         })
       return NextResponse.json(
         {
           ok: false,
           status: 'REQUIRES_REVIEW',
+          phase: err.phase,
           error: 'La IA devolvió un output inválido. La firma revisará manualmente.',
         },
         { status: 422 },
@@ -540,30 +494,177 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// ──────────────────────────────────────────────────────────────────
+// Persistencia + respuesta
+// ──────────────────────────────────────────────────────────────────
+
+async function persistAndReturn(args: {
+  service: ReturnType<typeof createServiceClient>
+  caseId: string
+  userId: string
+  supabase: Awaited<ReturnType<typeof createClient>>
+  analysisOutput: import('@/lib/ai/credible-fear-schema').AnalysisOutput
+  declarationOutput: import('@/lib/ai/credible-fear-schema').DeclarationOutput | null
+  analysisUsage: import('@/lib/ai/anthropic-client').UsageStats
+  declarationUsage: import('@/lib/ai/anthropic-client').UsageStats | null
+  evidenceLinks: Array<{ url: string; title?: string | null }>
+}) {
+  const {
+    service, caseId, userId, supabase,
+    analysisOutput, declarationOutput,
+    analysisUsage, declarationUsage,
+    evidenceLinks,
+  } = args
+
+  const declaration = declarationOutput?.declaration_es ?? null
+  const bodyMd = renderDeclarationMarkdown(declaration)
+
+  // is_current=true cuando hay declaración poblada (DRAFT_COMPLETE o REQUIRES_REVIEW
+  // con declaración). GAPS_FOUND no marca current.
+  const willBeCurrent =
+    (analysisOutput.status === 'DRAFT_COMPLETE' || analysisOutput.status === 'REQUIRES_REVIEW') &&
+    !!declaration
+
+  if (willBeCurrent) {
+    await service
+      .from('case_credible_fear_drafts')
+      .update({ is_current: false })
+      .eq('case_id', caseId)
+      .eq('is_current', true)
+  }
+
+  const { data: lastVer } = await service
+    .from('case_credible_fear_drafts')
+    .select('version')
+    .eq('case_id', caseId)
+    .order('version', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  const nextVersion = (lastVer?.version ?? 0) + 1
+
+  const sourcesForLegacy = evidenceLinks
+    .filter((l) => l.url)
+    .map((l) => ({ url: l.url, title: l.title ?? l.url }))
+
+  // Suma agregada para columnas legacy `input_tokens`/`output_tokens`.
+  const totalInput = analysisUsage.inputTokens + (declarationUsage?.inputTokens ?? 0)
+  const totalOutput = analysisUsage.outputTokens + (declarationUsage?.outputTokens ?? 0)
+  const totalCached = analysisUsage.cacheReadTokens + (declarationUsage?.cacheReadTokens ?? 0)
+
+  const { data: inserted, error } = await service
+    .from('case_credible_fear_drafts')
+    .insert({
+      case_id: caseId,
+      version: nextVersion,
+      body_md: bodyMd,
+      sources: sourcesForLegacy,
+      model_used: CLAUDE_MODEL,
+      prompt_version: CREDIBLE_FEAR_PROMPT_VERSION,
+      generated_by: userId,
+      is_current: willBeCurrent,
+      status: analysisOutput.status,
+      case_analysis_json: analysisOutput.case_analysis,
+      gaps_found_json: analysisOutput.gaps_found ?? [],
+      review_required_flags_json: analysisOutput.review_required_flags ?? [],
+      // v6: solo declaration_es (sin EN).
+      declaration_en_json: null,
+      declaration_es_json: declaration,
+      i589_field_values_json: analysisOutput.i589_field_values,
+      supplement_b_entries_json: analysisOutput.supplement_b_entries ?? [],
+      evidence_index_json: analysisOutput.evidence_index ?? [],
+      // Audit: usar la versión completa (llamada 2) si está disponible; si no, el seed.
+      factual_claims_audit_json:
+        declarationOutput?.factual_claims_audit ??
+        analysisOutput.factual_claims_audit_seed ??
+        [],
+      self_check_json: analysisOutput.self_check,
+      // Tokens
+      input_tokens: totalInput,
+      output_tokens: totalOutput,
+      cached_tokens: totalCached,
+      analysis_input_tokens: analysisUsage.inputTokens,
+      analysis_output_tokens: analysisUsage.outputTokens,
+      analysis_cached_tokens: analysisUsage.cacheReadTokens,
+      declaration_input_tokens: declarationUsage?.inputTokens ?? null,
+      declaration_output_tokens: declarationUsage?.outputTokens ?? null,
+      declaration_cached_tokens: declarationUsage?.cacheReadTokens ?? null,
+      // v6 nuevos
+      declaration_total_words: declarationOutput?.declaration_total_words ?? null,
+      cited_urls_in_body_json: declarationOutput?.cited_urls_in_body ?? [],
+    })
+    .select('id, version, generated_at, status')
+    .single()
+  if (error) {
+    log.error('Error insertando draft', { caseId, error })
+    return NextResponse.json({ error: 'Error al guardar el draft' }, { status: 500 })
+  }
+
+  await logActivity({
+    caseId,
+    category: 'system',
+    subcategory: 'system.credible_fear_generated_v6',
+    description: `Miedo Creíble v6 generado (versión ${nextVersion}, status ${analysisOutput.status})`,
+    metadata: {
+      version: nextVersion,
+      status: analysisOutput.status,
+      prompt_version: CREDIBLE_FEAR_PROMPT_VERSION,
+      declaration_words: declarationOutput?.declaration_total_words ?? 0,
+      cited_urls_count: (declarationOutput?.cited_urls_in_body ?? []).length,
+      gaps_count: (analysisOutput.gaps_found ?? []).length,
+      review_flags_count: (analysisOutput.review_required_flags ?? []).length,
+      analysis_input_tokens: analysisUsage.inputTokens,
+      analysis_output_tokens: analysisUsage.outputTokens,
+      declaration_input_tokens: declarationUsage?.inputTokens,
+      declaration_output_tokens: declarationUsage?.outputTokens,
+    },
+    visibleToClient: false,
+    actor: { kind: 'session', supabase },
+    client: service,
+  })
+
+  return NextResponse.json({
+    ok: true,
+    draft_id: inserted.id,
+    version: inserted.version,
+    generated_at: inserted.generated_at,
+    status: inserted.status,
+    output: {
+      ...analysisOutput,
+      declaration_es: declaration,
+      cited_urls_in_body: declarationOutput?.cited_urls_in_body ?? [],
+      factual_claims_audit: declarationOutput?.factual_claims_audit ?? analysisOutput.factual_claims_audit_seed ?? [],
+      declaration_total_words: declarationOutput?.declaration_total_words ?? 0,
+    },
+  })
+}
+
 /**
- * Renderiza una Declaration JSON como Markdown legible para el preview
- * en el portal cliente y la descarga .docx existente.
+ * Renderiza una Declaration V6 (estructura I-VI con roman_numeral y subpart)
+ * como Markdown legible para el preview en el portal cliente y la descarga
+ * .docx existente.
  */
-function renderDeclarationMarkdown(d: Declaration | null | undefined): string {
+function renderDeclarationMarkdown(d: DeclarationV6 | null | undefined): string {
   if (!d) return ''
   const lines: string[] = []
   lines.push(`# ${d.title}`)
   lines.push('')
   lines.push(d.applicant_full_name_uppercase)
   lines.push('')
-  lines.push(d.opening_statement)
-  lines.push('')
   for (const section of d.sections) {
-    lines.push(`## ${section.heading}`)
+    const subpart = section.subpart ? ` ${section.subpart}` : ''
+    lines.push(`## ${section.roman_numeral}${subpart}. ${section.heading}`)
     lines.push('')
     for (const p of section.paragraphs) {
-      lines.push(`${p.number}. ${p.text}`)
+      lines.push(p.text)
       lines.push('')
     }
   }
+  lines.push('---')
+  lines.push('')
   lines.push(d.closing_attestation)
   lines.push('')
   lines.push(d.signature_line)
+  lines.push('')
   lines.push(d.date_line)
   return lines.join('\n').trim()
 }

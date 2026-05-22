@@ -1,51 +1,68 @@
-// Generador del Miedo Creíble (v5) usando Claude Opus 4.7 con prompt
-// estructurado. Reemplaza la versión v4 (markdown + JSON embebido en HTML
-// comment) por un único JSON canónico validado con Zod.
+// Generador del Miedo Creíble v6 — split en 2 llamadas a Claude Opus 4.7.
 //
-// Inputs:
-//   - applicantMetadata: profile + I-589 Parte A.
-//   - questionnaireResponses: respuestas M1-M11 del cuestionario nuevo.
-//   - uploadedDocuments: documentos del cliente con OCR (categorías B-G).
-//   - evidenceLinks: URLs del cliente + selecciones de country_evidence_links.
+// Llamada 1 (`generateAsylumAnalysis`): análisis estructurado del caso sin
+//                                       declaración (~5-8k output tokens).
+// Llamada 2 (`generateAsylumDeclaration`): declaración_es de 3000-5000
+//                                          palabras con URLs citadas y datos
+//                                          estadísticos (~10-14k output tokens).
 //
-// Output: CredibleFearStructuredOutput (validado por Zod) + UsageStats.
-// El route handler decide qué columnas JSONB poblar según `status`.
+// El route handler orquesta ambas llamadas y mergea el output en
+// `CredibleFearMergedOutputV6` para persistir.
 
 import { generateTextWithUsage, CLAUDE_MODEL, type UsageStats } from './anthropic-client'
 import {
-  CREDIBLE_FEAR_SYSTEM_V5,
-  CREDIBLE_FEAR_PROMPT_VERSION_V5,
-  buildCredibleFearUserPrompt,
-  type BuildUserPromptInput,
-} from './credible-fear-prompt-v5'
+  CREDIBLE_FEAR_ANALYSIS_SYSTEM_V6,
+  CREDIBLE_FEAR_DECLARATION_SYSTEM_V6,
+  CREDIBLE_FEAR_PROMPT_VERSION_V6,
+  buildAnalysisUserPrompt,
+  buildDeclarationUserPrompt,
+  type BuildAnalysisUserPromptInput,
+  type BuildDeclarationUserPromptInput,
+} from './credible-fear-prompt-v6'
 import {
-  credibleFearStructuredOutputSchema,
-  type CredibleFearStructuredOutput,
+  analysisOutputSchema,
+  declarationOutputSchema,
+  type AnalysisOutput,
+  type DeclarationOutput,
 } from './credible-fear-schema'
 import { createLogger } from '@/lib/logger'
 
-const log = createLogger('credible-fear-v5')
+const log = createLogger('credible-fear-v6')
 
-/** Versión exportada para que el route handler la persista en BD. */
-export const CREDIBLE_FEAR_PROMPT_VERSION = CREDIBLE_FEAR_PROMPT_VERSION_V5
+/** Versión que el route handler persiste en `prompt_version`. */
+export const CREDIBLE_FEAR_PROMPT_VERSION = CREDIBLE_FEAR_PROMPT_VERSION_V6
 
-export interface GenerateCredibleFearInput extends BuildUserPromptInput {
+export interface GenerateAsylumAnalysisInput extends BuildAnalysisUserPromptInput {
   signal?: AbortSignal
 }
 
-export interface GenerateCredibleFearResult {
-  output: CredibleFearStructuredOutput
-  raw: string
-  usage: UsageStats
-  modelUsed: string
-  promptVersion: string
+export interface GenerateAsylumDeclarationInput extends BuildDeclarationUserPromptInput {
+  signal?: AbortSignal
 }
 
+export interface AnalysisCallResult {
+  output: AnalysisOutput
+  raw: string
+  usage: UsageStats
+}
+
+export interface DeclarationCallResult {
+  output: DeclarationOutput
+  raw: string
+  usage: UsageStats
+}
+
+/**
+ * Lanza este error cuando el output de Claude no es JSON válido o no satisface
+ * el schema Zod. El caller captura `raw` y `usage` para persistir un draft
+ * REQUIRES_REVIEW con el output crudo en `body_md` para revisión humana.
+ */
 export class CredibleFearGenerationError extends Error {
   constructor(
     message: string,
     public readonly raw: string,
     public readonly usage: UsageStats,
+    public readonly phase: 'analysis' | 'declaration',
     public readonly cause?: unknown,
   ) {
     super(message)
@@ -53,31 +70,20 @@ export class CredibleFearGenerationError extends Error {
   }
 }
 
-/**
- * Genera el output estructurado del Miedo Creíble.
- *
- * Lanza `CredibleFearGenerationError` si:
- *   - Claude devuelve texto que no contiene un JSON válido.
- *   - El JSON no satisface el schema Zod.
- *
- * El caller (route handler) captura el error y persiste el `raw` con
- * status='REQUIRES_REVIEW' + flag 'inconsistency' para que un humano revise.
- */
-export async function generateCredibleFear(
-  input: GenerateCredibleFearInput,
-): Promise<GenerateCredibleFearResult> {
-  const userPrompt = buildCredibleFearUserPrompt(input)
+// ──────────────────────────────────────────────────────────────────
+// Llamada 1: análisis estructurado
+// ──────────────────────────────────────────────────────────────────
 
+export async function generateAsylumAnalysis(
+  input: GenerateAsylumAnalysisInput,
+): Promise<AnalysisCallResult> {
+  const userPrompt = buildAnalysisUserPrompt(input)
   const { text, usage } = await generateTextWithUsage({
-    system: CREDIBLE_FEAR_SYSTEM_V5,
+    system: CREDIBLE_FEAR_ANALYSIS_SYSTEM_V6,
     user: userPrompt,
-    // 32k es necesario porque el JSON completo (declaration EN + ES +
-    // i589_field_values + supplement_b + evidence_index + factual_claims_audit)
-    // puede llegar a 20-28k tokens en casos densos. Truncar al límite produce
-    // JSON inválido (mid-string cut) y forzaría REQUIRES_REVIEW innecesario.
-    maxTokens: 32000,
+    maxTokens: 12000, // ~5-8k típico, hard cap conservador para no truncar
     signal: input.signal,
-    logLabel: 'credible-fear-v5',
+    logLabel: 'credible-fear-v6-analysis',
   })
 
   let parsed: unknown
@@ -85,52 +91,101 @@ export async function generateCredibleFear(
     parsed = JSON.parse(extractJson(text))
   } catch (err) {
     throw new CredibleFearGenerationError(
-      'La IA devolvió un JSON inválido',
+      'La IA devolvió un JSON inválido (análisis)',
       text,
       usage,
+      'analysis',
       err,
     )
   }
 
-  const validation = credibleFearStructuredOutputSchema.safeParse(parsed)
+  const validation = analysisOutputSchema.safeParse(parsed)
   if (!validation.success) {
     const issues = validation.error.issues.slice(0, 10)
-    log.warn('Zod validation failed', { issues })
+    log.warn('Zod analysis validation failed', { issues })
     const issuesSummary = issues
       .map((i) => `  • path=${i.path.join('.') || '(root)'} — ${i.message}`)
       .join('\n')
     throw new CredibleFearGenerationError(
-      `La IA devolvió un JSON que no satisface el schema esperado. Primeros ${issues.length} issues:\n${issuesSummary}`,
+      `El JSON del análisis no satisface el schema esperado. Primeros ${issues.length} issues:\n${issuesSummary}`,
       text,
       usage,
+      'analysis',
       validation.error,
     )
   }
 
-  return {
-    output: validation.data,
-    raw: text,
-    usage,
-    modelUsed: CLAUDE_MODEL,
-    promptVersion: CREDIBLE_FEAR_PROMPT_VERSION_V5,
-  }
+  return { output: validation.data, raw: text, usage }
 }
 
+// ──────────────────────────────────────────────────────────────────
+// Llamada 2: declaración detallada
+// ──────────────────────────────────────────────────────────────────
+
+export async function generateAsylumDeclaration(
+  input: GenerateAsylumDeclarationInput,
+): Promise<DeclarationCallResult> {
+  const userPrompt = buildDeclarationUserPrompt(input)
+  const { text, usage } = await generateTextWithUsage({
+    system: CREDIBLE_FEAR_DECLARATION_SYSTEM_V6,
+    user: userPrompt,
+    maxTokens: 16000, // necesario para 3000-5000 palabras + audit + URLs
+    signal: input.signal,
+    logLabel: 'credible-fear-v6-declaration',
+  })
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(extractJson(text))
+  } catch (err) {
+    throw new CredibleFearGenerationError(
+      'La IA devolvió un JSON inválido (declaración)',
+      text,
+      usage,
+      'declaration',
+      err,
+    )
+  }
+
+  const validation = declarationOutputSchema.safeParse(parsed)
+  if (!validation.success) {
+    const issues = validation.error.issues.slice(0, 10)
+    log.warn('Zod declaration validation failed', { issues })
+    const issuesSummary = issues
+      .map((i) => `  • path=${i.path.join('.') || '(root)'} — ${i.message}`)
+      .join('\n')
+    throw new CredibleFearGenerationError(
+      `El JSON de la declaración no satisface el schema esperado. Primeros ${issues.length} issues:\n${issuesSummary}`,
+      text,
+      usage,
+      'declaration',
+      validation.error,
+    )
+  }
+
+  return { output: validation.data, raw: text, usage }
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────────────────────────
+
+/** Conveniencia para el route handler — modelo + versión del prompt. */
+export const CREDIBLE_FEAR_MODEL = CLAUDE_MODEL
+
 /**
- * Extrae un objeto JSON de un texto que puede tener prosa, code fences o
- * espacios alrededor. La IA debería devolver solo JSON, pero a veces
- * añade "```json" y "```" o un comentario al inicio.
+ * Extrae un JSON object de un texto que puede tener prosa, code fences o
+ * espacios alrededor. La IA debería devolver SOLO JSON, pero a veces añade
+ * ```json o un breve comentario antes/después.
  */
 function extractJson(text: string): string {
-  // Intenta primero parsear directo
   const trimmed = text.trim()
   if (trimmed.startsWith('{')) return trimmed
 
-  // Si hay un fence ```json ... ```, extraerlo
   const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)
   if (fenceMatch) return fenceMatch[1].trim()
 
-  // Buscar el primer { y emparejar llaves balanceadas
+  // Empareja llaves balanceadas desde el primer "{"
   const start = trimmed.indexOf('{')
   if (start < 0) return trimmed
   let depth = 0

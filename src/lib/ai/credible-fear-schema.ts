@@ -1,16 +1,22 @@
-// Schema Zod del output del prompt v5 del Miedo Creíble.
+// Schema Zod del output del prompt v6 del Miedo Creíble.
 //
-// La IA devuelve un JSON object canónico con todo lo necesario para:
-//   1. Persistir un draft tipado en `case_credible_fear_drafts`.
-//   2. Llenar el I-589 oficial páginas 5-9 desde `i589_field_values`.
-//   3. Generar Supplement B para textos que excedan el espacio del field.
-//   4. Mostrar la declaración EN+ES al admin con audit trail (claims +
-//      module sources).
-//   5. Devolver gaps al cliente cuando faltan datos críticos.
+// Cambio principal vs v5: la generación se divide en DOS llamadas a Claude
+// Opus 4.7 (16k output cap):
 //
-// IMPORTANTE: las claves de `i589_field_values` siguen el spec
-// `documentos/i589_pages_4_to_12_mapping.json`. Si cambia el PDF I-589
-// oficial, actualizar el field-map del PDF Y este schema.
+//   1. `analysisOutputSchema` — análisis estructurado del caso (case_analysis,
+//      i589_field_values, supplement_b, evidence_index, self_check, audit_seed).
+//      Sin declaración. Cabe en ~5-8k output tokens.
+//
+//   2. `declarationOutputSchema` — declaración_es de 3000-5000 palabras con
+//      estructura I-VI (idéntica a la carta de referencia del caso Karen
+//      Maleni Rivas Avalos), URLs citadas en el body de la sección VI, y
+//      factual_claims_audit completo. Cabe en ~10-14k output tokens.
+//
+// El route handler las combina en `CredibleFearMergedOutput` y persiste todo
+// en `case_credible_fear_drafts` con tokens separados por sub-llamada.
+//
+// Comparado con v5: solo declaration_es (sin EN), nueva estructura con
+// roman_numeral y subpart en sections, nuevo cited_urls_in_body.
 
 import { z } from 'zod'
 
@@ -49,15 +55,8 @@ export const reviewFlagSchema = z.object({
 export type ReviewFlag = z.infer<typeof reviewFlagSchema>
 
 // ──────────────────────────────────────────────────────────────────
-// Case analysis (siempre poblado)
+// Case analysis (siempre poblado, robusto contra valores no-enum de Claude)
 // ──────────────────────────────────────────────────────────────────
-
-// case_analysis es siempre poblado, pero cuando status != DRAFT_COMPLETE
-// muchos campos pueden no estar perfectamente determinados. Para los enums
-// usamos `z.preprocess` que NORMALIZA valores fuera del enum a un default
-// antes de validar (más robusto que `.catch()` cuando Claude inventa
-// categorías híbridas — ej. "state_actor_and_state_aligned_armed_group"
-// para GNB + colectivos cae a 'other').
 
 const PERPETRATOR_VALUES = [
   'state_military',
@@ -129,32 +128,6 @@ export const caseAnalysisSchema = z.object({
 export type CaseAnalysis = z.infer<typeof caseAnalysisSchema>
 
 // ──────────────────────────────────────────────────────────────────
-// Declaración (EN + ES)
-// ──────────────────────────────────────────────────────────────────
-
-export const declarationParagraphSchema = z.object({
-  number: z.number().int().positive(),
-  text: z.string(),
-  source_modules: z.array(z.string()),
-})
-
-export const declarationSectionSchema = z.object({
-  heading: z.string(),
-  paragraphs: z.array(declarationParagraphSchema),
-})
-
-export const declarationSchema = z.object({
-  title: z.string(),
-  applicant_full_name_uppercase: z.string(),
-  opening_statement: z.string(),
-  sections: z.array(declarationSectionSchema),
-  closing_attestation: z.string(),
-  signature_line: z.string(),
-  date_line: z.string(),
-})
-export type Declaration = z.infer<typeof declarationSchema>
-
-// ──────────────────────────────────────────────────────────────────
 // I-589 field values (páginas 5-9)
 // ──────────────────────────────────────────────────────────────────
 
@@ -164,7 +137,6 @@ const yesNoTextSchema = z.object({
 })
 
 export const i589FieldValuesSchema = z.object({
-  // Página 5 — Part B Q1
   part_b_q1_grounds: z.object({
     race: z.boolean(),
     religion: z.boolean(),
@@ -175,17 +147,14 @@ export const i589FieldValuesSchema = z.object({
   }),
   part_b_q1a_past_persecution: yesNoTextSchema,
   part_b_q1b_future_fear: yesNoTextSchema,
-  // Página 6 — Part B Q2-Q4
   part_b_q2_legal_trouble: yesNoTextSchema,
   part_b_q3a_organizations: yesNoTextSchema,
   part_b_q3b_continued_participation: yesNoTextSchema,
   part_b_q4_torture_fear: yesNoTextSchema,
-  // Página 7 — Part C Q1, Q2a, Q2b, Q3
   part_c_q1_prior_applications: yesNoTextSchema,
   part_c_q2a_transit_countries: yesNoTextSchema,
   part_c_q2b_third_country_status: yesNoTextSchema,
   part_c_q3_persecutor_bar: yesNoTextSchema,
-  // Página 8 — Part C Q4, Q5, Q6
   part_c_q4_returned_to_country: yesNoTextSchema,
   part_c_q5_one_year_late: yesNoTextSchema,
   part_c_q6_us_crimes: yesNoTextSchema,
@@ -228,7 +197,7 @@ export const evidenceItemSchema = z.object({
   date: z.string(),
   language: z.enum(['es', 'en', 'other']),
   translation_required: z.boolean(),
-  supports_paragraphs: z.array(z.number().int().positive()),
+  supports_paragraphs: z.array(z.number().int().positive()).default([]),
 })
 export type EvidenceItem = z.infer<typeof evidenceItemSchema>
 
@@ -239,7 +208,7 @@ export type EvidenceItem = z.infer<typeof evidenceItemSchema>
 export const factualClaimSchema = z.object({
   claim_id: z.string(),
   claim_text: z.string(),
-  in_paragraph: z.number().int().positive(),
+  in_section: z.string().default(''), // "III", "IV", etc.
   source_module: z.string(),
   source_excerpt: z.string(),
 })
@@ -267,20 +236,88 @@ export const selfCheckSchema = z.object({
 export type SelfCheck = z.infer<typeof selfCheckSchema>
 
 // ──────────────────────────────────────────────────────────────────
-// Output completo del prompt v5
+// Declaración v6 — estructura I-VI con roman_numeral
 // ──────────────────────────────────────────────────────────────────
 
-export const credibleFearStructuredOutputSchema = z.object({
+export const declarationParagraphV6Schema = z.object({
+  number: z.number().int().positive(),
+  text: z.string(),
+  source_modules: z.array(z.string()).default([]),
+})
+
+export const declarationSectionV6Schema = z.object({
+  roman_numeral: z.enum(['I', 'II', 'III', 'IV', 'V', 'VI']),
+  subpart: z.string().nullable().optional(), // "A" o "B" para sección VI
+  heading: z.string(),
+  paragraphs: z.array(declarationParagraphV6Schema),
+})
+
+export const declarationV6Schema = z.object({
+  title: z.string(),
+  applicant_full_name_uppercase: z.string(),
+  sections: z.array(declarationSectionV6Schema),
+  closing_attestation: z.string(),
+  signature_line: z.string(),
+  date_line: z.string(),
+})
+export type DeclarationV6 = z.infer<typeof declarationV6Schema>
+
+// URLs citadas en el body (sección VI Parte A + B). Auditoría de qué URLs
+// reales aparecieron en la declaración.
+export const citedUrlInBodySchema = z.object({
+  roman_numeral: z.string(), // típicamente "VI"
+  subpart: z.string().nullable().optional(), // "A" o "B"
+  medio: z.string(),
+  titulo: z.string(),
+  fecha_pub: z.string(),
+  url: z.string(),
+})
+export type CitedUrlInBody = z.infer<typeof citedUrlInBodySchema>
+
+// ──────────────────────────────────────────────────────────────────
+// Output llamada 1 — análisis estructurado (sin declaración)
+// ──────────────────────────────────────────────────────────────────
+
+export const analysisOutputSchema = z.object({
   status: credibleFearStatusSchema,
   gaps_found: z.array(gapFoundSchema).optional().default([]),
   review_required_flags: z.array(reviewFlagSchema).optional().default([]),
   case_analysis: caseAnalysisSchema,
-  declaration_en: declarationSchema.nullable(),
-  declaration_es: declarationSchema.nullable(),
   i589_field_values: i589FieldValuesSchema.nullable(),
   supplement_b_entries: z.array(supplementBEntrySchema).optional().default([]),
   evidence_index: z.array(evidenceItemSchema).optional().default([]),
-  factual_claims_audit: z.array(factualClaimSchema).optional().default([]),
+  factual_claims_audit_seed: z.array(factualClaimSchema).optional().default([]),
   self_check: selfCheckSchema,
 })
-export type CredibleFearStructuredOutput = z.infer<typeof credibleFearStructuredOutputSchema>
+export type AnalysisOutput = z.infer<typeof analysisOutputSchema>
+
+// ──────────────────────────────────────────────────────────────────
+// Output llamada 2 — declaración detallada
+// ──────────────────────────────────────────────────────────────────
+
+export const declarationOutputSchema = z.object({
+  declaration_es: declarationV6Schema.nullable(),
+  cited_urls_in_body: z.array(citedUrlInBodySchema).optional().default([]),
+  factual_claims_audit: z.array(factualClaimSchema).optional().default([]),
+  declaration_total_words: z.number().int().nonnegative().default(0),
+})
+export type DeclarationOutput = z.infer<typeof declarationOutputSchema>
+
+// ──────────────────────────────────────────────────────────────────
+// Output mergeado final v6 (combinación de las 2 llamadas)
+// ──────────────────────────────────────────────────────────────────
+
+export interface CredibleFearMergedOutputV6 {
+  status: CredibleFearStatus
+  gaps_found: GapFound[]
+  review_required_flags: ReviewFlag[]
+  case_analysis: CaseAnalysis
+  i589_field_values: I589FieldValues | null
+  supplement_b_entries: SupplementBEntry[]
+  evidence_index: EvidenceItem[]
+  self_check: SelfCheck
+  declaration_es: DeclarationV6 | null
+  cited_urls_in_body: CitedUrlInBody[]
+  factual_claims_audit: FactualClaim[]
+  declaration_total_words: number
+}

@@ -100,33 +100,85 @@ export async function tavilySearch(opts: TavilySearchOptions): Promise<TavilySea
 }
 
 /**
- * Búsqueda especializada en country conditions para casos de asilo.
- * Combina 3 queries paralelas: state department, human rights, news.
+ * Tipo de persecución para enriquecer las queries de Tavily. Se deriva en el
+ * route handler desde `m3_grounds` del cuestionario M3 + heurísticas sobre
+ * las respuestas. Permite que la búsqueda traiga casos emblemáticos del
+ * país directamente relacionados con el tipo de persecución del cliente
+ * (ej. en MX abuso policial → caso Giovanni López; HN defensores ambientales
+ * → caso Berta Cáceres).
  */
-export async function searchCountryConditions(country: string): Promise<TavilySearchResult[]> {
+export type AsylumPersecutionType =
+  | 'political'         // opinión política (real o imputada)
+  | 'religious'         // persecución religiosa
+  | 'lgbtq'             // PSG: orientación sexual / identidad de género
+  | 'gang'              // PSG: víctimas de pandillas / crimen organizado
+  | 'gender_violence'   // PSG: violencia de género / doméstica
+  | 'ethnic'            // raza / etnia / nacionalidad
+  | 'general'           // catch-all
+
+export interface CountryConditionsOptions {
+  /** Tipo de persecución del cliente (M3 grounds + heurística). */
+  persecutionType?: AsylumPersecutionType
+  /** Máximo de resultados consolidados a devolver (default 8). */
+  maxResults?: number
+}
+
+const PERSECUTION_KEYWORDS: Record<AsylumPersecutionType, string> = {
+  political: 'political prisoners persecution opposition activists',
+  religious: 'religious persecution churches pastors believers',
+  lgbtq: 'LGBTQ persecution violence transgender gay rights',
+  gang: 'gang violence organized crime extortion forced recruitment',
+  gender_violence: 'gender violence domestic violence women femicide',
+  ethnic: 'ethnic persecution indigenous minority',
+  general: 'human rights violations persecution',
+}
+
+/**
+ * Búsqueda especializada en country conditions para casos de asilo.
+ * Combina queries paralelas: state department + hrw/amnesty, news reciente,
+ * y una query enfocada en el tipo de persecución específico del cliente.
+ */
+export async function searchCountryConditions(
+  country: string,
+  opts: CountryConditionsOptions = {},
+): Promise<TavilySearchResult[]> {
   const year = new Date().getFullYear()
+  const persecutionType = opts.persecutionType ?? 'general'
+  const persecutionKeywords = PERSECUTION_KEYWORDS[persecutionType]
+  const maxResults = opts.maxResults ?? 8
+
   const queries = [
+    // 1. State Department + HRW + Amnesty (informe canónico)
     {
       query: `country conditions ${country} ${year} state department human rights report`,
-      includeDomains: ['state.gov', 'travel.state.gov', 'hrw.org', 'amnesty.org'],
+      includeDomains: ['state.gov', 'travel.state.gov', 'hrw.org', 'amnesty.org', 'oas.org'],
       topic: 'general' as const,
       maxResults: 4,
     },
+    // 2. Noticias recientes específicas al tipo de persecución (últimos 365 días)
     {
-      query: `${country} persecution violence news ${year}`,
+      query: `${country} ${persecutionKeywords} news ${year}`,
       topic: 'news' as const,
-      days: 90,
+      days: 365,
+      maxResults: 5,
+    },
+    // 3. Casos emblemáticos relacionados al tipo de persecución
+    {
+      query: `${country} ${persecutionKeywords} emblematic case investigation`,
+      topic: 'general' as const,
       maxResults: 4,
     },
+    // 4. Reportajes en medios de tier alto (NYT/WaPo/CNN/BBC/Reuters/Guardian)
     {
-      query: `${country} asylum claims country conditions report`,
+      query: `${country} ${persecutionKeywords} report investigation`,
+      includeDomains: ['nytimes.com', 'washingtonpost.com', 'bbc.com', 'cnn.com', 'reuters.com', 'theguardian.com', 'apnews.com', 'dw.com', 'aljazeera.com'],
       topic: 'general' as const,
-      maxResults: 3,
+      maxResults: 5,
     },
   ]
 
   const responses = await Promise.all(queries.map((q) => tavilySearch(q)))
-  // Dedupe por URL
+  // Dedupe por URL, manteniendo el primer hit (mayor prioridad por orden de query)
   const seen = new Set<string>()
   const merged: TavilySearchResult[] = []
   for (const r of responses) {
@@ -136,5 +188,5 @@ export async function searchCountryConditions(country: string): Promise<TavilySe
       merged.push(item)
     }
   }
-  return merged.slice(0, 10)
+  return merged.slice(0, maxResults)
 }
