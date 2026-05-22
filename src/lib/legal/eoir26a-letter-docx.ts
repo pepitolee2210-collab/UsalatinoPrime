@@ -10,12 +10,12 @@ import {
 import { markdownToDocxParagraphs } from './markdown-to-docx'
 
 /**
- * Genera un archivo .docx (Word) a partir del markdown del Brief / Carta de
- * Apelación generado por Claude (`case_appeal_letter_drafts.body_md`).
+ * Genera un .docx (Word) de la Carta de Exoneración (fee waiver letter) a
+ * partir del markdown almacenado en `case_eoir26a_letter_drafts.body_md`.
  *
- * El parseo markdown→Paragraph[] vive en `markdown-to-docx.ts` (compartido
- * con otras cartas IA). Este wrapper solo añade la metadata y el footer
- * específicos del Brief.
+ * El parseo markdown → Paragraph[] vive en `markdown-to-docx.ts` (compartido
+ * con appeal-letter-docx). Este archivo solo añade la metadata y footer
+ * específicos de la Carta de Exoneración.
  */
 
 interface BuildOpts {
@@ -24,13 +24,13 @@ interface BuildOpts {
   bodyMarkdown: string
 }
 
-export async function buildAppealLetterDocx(opts: BuildOpts): Promise<Uint8Array> {
+export async function buildEoir26aLetterDocx(opts: BuildOpts): Promise<Uint8Array> {
   const children = markdownToDocxParagraphs(opts.bodyMarkdown)
 
   const doc = new Document({
     creator: 'UsaLatino Prime',
-    title: `Carta de Apelación — ${opts.applicantName}`,
-    description: `Brief / Carta de Apelación BIA — Caso ${opts.caseNumber}`,
+    title: `Carta de Exoneración — ${opts.applicantName}`,
+    description: `Fee Waiver Letter EOIR-26A — Caso ${opts.caseNumber}`,
     sections: [
       {
         properties: {},
@@ -42,7 +42,7 @@ export async function buildAppealLetterDocx(opts: BuildOpts): Promise<Uint8Array
                 alignment: AlignmentType.CENTER,
                 children: [
                   new TextRun({
-                    text: `Carta de Apelación · Caso ${opts.caseNumber} · Página `,
+                    text: `Carta de Exoneración · Caso ${opts.caseNumber} · Página `,
                     size: 16,
                     color: '888888',
                   }),

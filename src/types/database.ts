@@ -380,7 +380,10 @@ export interface ServicePhaseAsset {
   description_es?: string | null
 }
 
-export interface AppealLetterDraft {
+export type LetterDraftStatus = 'pending' | 'generating' | 'ready' | 'failed'
+
+/** Shape compartida por las tablas case_*_letter_drafts (mismo patrón async). */
+export interface LetterDraftBase {
   id: string
   case_id: string
   version: number
@@ -398,7 +401,14 @@ export interface AppealLetterDraft {
   cache_read_tokens?: number | null
   cache_creation_tokens?: number | null
   generation_seconds?: number | null
+  status: LetterDraftStatus
+  error_message?: string | null
+  job_started_at?: string | null
+  job_finished_at?: string | null
 }
+
+export type AppealLetterDraft = LetterDraftBase
+export type Eoir26aLetterDraft = LetterDraftBase
 
 export interface QuickContactRow {
   id: number

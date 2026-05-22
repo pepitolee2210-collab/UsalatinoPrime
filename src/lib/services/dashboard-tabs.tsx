@@ -22,6 +22,7 @@ import type { CaseOverview } from '@/app/employee/_shared/phase-types'
 import { JurisdictionPanel } from '@/app/admin/cases/[id]/jurisdiction-panel'
 import { PhaseHistoryTab } from '@/app/admin/cases/[id]/phase-history-tab'
 import { AppealLetterGenerator } from '@/app/admin/cases/[id]/appeal-letter-generator'
+import { Eoir26aLetterGenerator } from '@/app/admin/cases/[id]/eoir26a-letter-generator'
 import { CartaCambioCorteGenerator } from '@/app/admin/cases/[id]/carta-cambio-corte-generator'
 import { I589Review } from '@/app/admin/cases/[id]/i589-review'
 import { I589PartAReview } from '@/app/admin/cases/[id]/i589-part-a-review'
@@ -55,6 +56,7 @@ export type DashboardTabId =
   | 'i589-review'
   | 'client-story'
   | 'carta-apelacion'
+  | 'carta-exoneracion'
   | 'carta-cambio-corte'
   | 'legal-review'
 
@@ -245,6 +247,11 @@ export const SERVICE_DASHBOARD_TABS: Record<string, DashboardTabDef[]> = {
       id: 'carta-apelacion',
       label: 'Carta de Apelación (IA)',
       render: (ctx) => <AppealLetterGenerator caseId={ctx.caseId} caseNumber={ctx.caseNumber} />,
+    },
+    {
+      id: 'carta-exoneracion',
+      label: 'Carta de Exoneración (IA)',
+      render: (ctx) => <Eoir26aLetterGenerator caseId={ctx.caseId} caseNumber={ctx.caseNumber} />,
     },
   ],
   'cambio-de-corte': [
