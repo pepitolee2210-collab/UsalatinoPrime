@@ -53,11 +53,47 @@ export type ReviewFlag = z.infer<typeof reviewFlagSchema>
 // ──────────────────────────────────────────────────────────────────
 
 // case_analysis es siempre poblado, pero cuando status != DRAFT_COMPLETE
-// muchos campos pueden no estar perfectamente determinados. Mantenemos el
-// contrato pero hacemos opcionales/default los campos que Claude puede
-// omitir, y usamos .catch para tolerar valores fuera del enum (Claude a
-// veces inventa categorías cuando el caso es híbrido — ej. "state + colectivos"
-// no encaja en un solo enum, así que cae a 'other').
+// muchos campos pueden no estar perfectamente determinados. Para los enums
+// usamos `z.preprocess` que NORMALIZA valores fuera del enum a un default
+// antes de validar (más robusto que `.catch()` cuando Claude inventa
+// categorías híbridas — ej. "state_actor_and_state_aligned_armed_group"
+// para GNB + colectivos cae a 'other').
+
+const PERPETRATOR_VALUES = [
+  'state_military',
+  'state_police',
+  'state_other',
+  'armed_group',
+  'organized_crime',
+  'gang',
+  'religious_extremist',
+  'family_partner',
+  'private_individual',
+  'other',
+] as const
+
+const GOVERNMENT_ROLE_VALUES = [
+  'perpetrator',
+  'acquiescent',
+  'unable',
+  'unwilling',
+  'unclear',
+] as const
+
+const ONE_YEAR_STATUS_VALUES = ['within', 'outside_with_exception', 'outside_no_exception'] as const
+
+function coerceEnum<T extends readonly string[]>(
+  values: T,
+  fallback: T[number],
+): (v: unknown) => T[number] {
+  return (v) => {
+    if (typeof v === 'string' && (values as readonly string[]).includes(v)) {
+      return v as T[number]
+    }
+    return fallback
+  }
+}
+
 export const caseAnalysisSchema = z.object({
   protected_grounds_identified_by_applicant: z.array(
     z.enum([
@@ -70,31 +106,23 @@ export const caseAnalysisSchema = z.object({
     ]),
   ).default([]),
   psg_articulated_by_applicant: z.string().nullable().optional(),
-  primary_perpetrator_type: z.enum([
-    'state_military',
-    'state_police',
-    'state_other',
-    'armed_group',
-    'organized_crime',
-    'gang',
-    'religious_extremist',
-    'family_partner',
-    'private_individual',
-    'other',
-  ]).catch('other').default('other'),
+  primary_perpetrator_type: z.preprocess(
+    coerceEnum(PERPETRATOR_VALUES, 'other'),
+    z.enum(PERPETRATOR_VALUES),
+  ),
   primary_perpetrator_name: z.string().nullable().optional(),
-  government_role: z.enum([
-    'perpetrator',
-    'acquiescent',
-    'unable',
-    'unwilling',
-    'unclear',
-  ]).catch('unclear').default('unclear'),
+  government_role: z.preprocess(
+    coerceEnum(GOVERNMENT_ROLE_VALUES, 'unclear'),
+    z.enum(GOVERNMENT_ROLE_VALUES),
+  ),
   first_incident_date_approx: z.string().default(''),
   last_incident_date_approx: z.string().default(''),
   date_left_country: z.string().default(''),
   date_entered_us: z.string().default(''),
-  one_year_status: z.enum(['within', 'outside_with_exception', 'outside_no_exception']).catch('within').default('within'),
+  one_year_status: z.preprocess(
+    coerceEnum(ONE_YEAR_STATUS_VALUES, 'within'),
+    z.enum(ONE_YEAR_STATUS_VALUES),
+  ),
   case_strength_indicators: z.array(z.string()).default([]),
   case_thinness_indicators: z.array(z.string()).default([]),
 })
