@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle, XCircle, Clock, Loader2, Image, ExternalLink } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 type ZellePayment = {
@@ -127,7 +127,6 @@ export default function AdminZellePage() {
                     rel="noopener noreferrer"
                     className="w-20 h-20 rounded-lg bg-gray-100 border flex items-center justify-center flex-shrink-0 overflow-hidden hover:opacity-80 transition-opacity"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={payment.screenshot_url}
                       alt="Comprobante"

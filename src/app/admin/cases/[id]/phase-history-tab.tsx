@@ -154,7 +154,7 @@ export function PhaseHistoryTab({ caseId }: PhaseHistoryTabProps) {
                   </p>
                 )}
                 {h.reason && (
-                  <p className="text-xs text-gray-700 mt-1.5 italic">"{h.reason}"</p>
+                  <p className="text-xs text-gray-700 mt-1.5 italic">&quot;{h.reason}&quot;</p>
                 )}
               </div>
             </li>

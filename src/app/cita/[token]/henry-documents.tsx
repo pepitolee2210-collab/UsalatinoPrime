@@ -1,6 +1,6 @@
 'use client'
 
-import { Download, FileText, CheckCircle, Users, User, Shield, BookOpen } from 'lucide-react'
+import { Download, CheckCircle, Users, User, Shield, BookOpen } from 'lucide-react'
 
 interface HenryDoc {
   id: string
@@ -83,12 +83,6 @@ export function HenryDocuments({ token, documents }: { token: string; documents:
       return cat.keys.some(k => key.includes(k))
     })
   }
-
-  const uncategorized = documents.filter(d =>
-    !DOC_CATEGORIES.some(cat => cat.keys.some(k => d.document_key?.toLowerCase().includes(k)))
-  )
-
-  const hasAnyDoc = documents.length > 0
 
   return (
     <div className="space-y-4">

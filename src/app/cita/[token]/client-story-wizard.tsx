@@ -6,7 +6,7 @@ import { TutorFormSections } from './tutor-form-sections'
 import { MinorBasicSection, MinorAbuseSection, MinorBestInterestSection, type MinorAbuseData, type AbandonedBy } from './minor-form-sections'
 import {
   ChevronLeft, ChevronRight, CheckCircle, Send, Loader2,
-  BookOpen, Lock, ArrowRight, Upload, X, FileText,
+  BookOpen, Lock, ArrowRight,
   UserPlus, Trash2, AlertCircle, Users,
 } from 'lucide-react'
 
@@ -712,7 +712,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   needs_correction: { label: 'Requiere correcciones', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
 }
 
-function DJSelector({
+function _DJSelector({
   djStates, visibleDJs, onOpen,
 }: {
   djStates: Record<number, DJState>
@@ -807,8 +807,8 @@ function DJSelector({
 // ══ DJ WIZARD ══════════════════════════════════════════════════════
 
 function DJWizard({
-  djNumber, token, initial, isLastPossibleDJ,
-  onBack, onStateChange, onDocAdded, onDocRemoved,
+  djNumber, token, initial, isLastPossibleDJ: _isLastPossibleDJ,
+  onBack, onStateChange, onDocAdded: _onDocAdded, onDocRemoved: _onDocRemoved,
 }: {
   djNumber: number
   token: string
@@ -1129,7 +1129,7 @@ function TutorStep({ tutor, token, onChange, onSave, onBack }: {
 
 // ══ STEP 0: CHILDREN ═══════════════════════════════════════════════
 
-function ChildrenStep({ children, onChange, djNumber }: {
+function _ChildrenStep({ children, onChange, djNumber }: {
   children: ChildInfo[]
   onChange: (c: ChildInfo[]) => void
   djNumber: number
@@ -1216,7 +1216,7 @@ function ChildrenStep({ children, onChange, djNumber }: {
 
 // ══ STEP 1: STORY ══════════════════════════════════════════════════
 
-function StoryStep({ story, children, onChange }: {
+function _StoryStep({ story, children, onChange }: {
   story: StoryData
   children: ChildInfo[]
   onChange: (s: StoryData) => void
@@ -1487,7 +1487,7 @@ function ParentStep({ parent, parent2, abandonedBy, childNames, onChange }: {
 
 // ══ STEP 3: WITNESSES ══════════════════════════════════════════════
 
-function WitnessStep({ witnesses, childNames, onChange }: {
+function _WitnessStep({ witnesses, childNames, onChange }: {
   witnesses: Witness[]
   childNames: string[]
   onChange: (w: Witness[]) => void
@@ -1538,91 +1538,6 @@ function WitnessStep({ witnesses, childNames, onChange }: {
           Agregar otro testigo
         </button>
       )}
-    </div>
-  )
-}
-
-// ══ STEP 4: DOCUMENTS ══════════════════════════════════════════════
-
-function DocsStep({ djNumber, token, docs, onAdded, onRemoved }: {
-  djNumber: number
-  token: string
-  docs: DJDoc[]
-  onAdded: (doc: DJDoc) => void
-  onRemoved: (docId: string) => void
-}) {
-  const [uploading, setUploading] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
-
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.type !== 'application/pdf') { toast.error('Solo se aceptan PDFs'); return }
-
-    setUploading(true)
-    try {
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('token', token)
-      fd.append('declaration_number', String(djNumber))
-
-      const res = await fetch('/api/declarations/upload-document', { method: 'POST', body: fd })
-      if (!res.ok) { toast.error('Error al subir documento'); return }
-      const { document } = await res.json()
-      onAdded({ id: document.id, name: document.name, file_size: document.file_size })
-      toast.success('Documento subido')
-    } catch { toast.error('Error al subir documento') }
-    finally { setUploading(false); if (fileRef.current) fileRef.current.value = '' }
-  }
-
-  async function handleDelete(docId: string) {
-    try {
-      await fetch('/api/declarations/upload-document', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, document_id: docId }),
-      })
-      onRemoved(docId)
-    } catch { toast.error('Error al eliminar') }
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 mb-2">
-        <FileText className="w-5 h-5 text-[#F2A900]" />
-        <h3 className="font-semibold text-gray-900">Documentos — Declaración {djNumber}</h3>
-      </div>
-      <p className="text-sm text-gray-500">
-        Suba los documentos relacionados con esta declaración (actas de nacimiento, identificaciones, etc.).
-        <span className="font-medium"> Este paso es opcional</span> — puede subirlos ahora o más adelante.
-      </p>
-
-      {docs.length > 0 && (
-        <div className="space-y-2">
-          {docs.map(doc => (
-            <div key={doc.id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50">
-              <FileText className="w-4 h-4 text-gray-400 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800 truncate">{doc.name}</p>
-                <p className="text-xs text-gray-400">{(doc.file_size / 1024 / 1024).toFixed(1)} MB</p>
-              </div>
-              <button onClick={() => handleDelete(doc.id)} className="text-gray-400 hover:text-red-500 transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <button
-        onClick={() => fileRef.current?.click()}
-        disabled={uploading}
-        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 border-dashed border-gray-300 text-sm font-medium text-gray-600 hover:border-[#F2A900] hover:text-[#F2A900] transition-colors disabled:opacity-60"
-      >
-        {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-        {uploading ? 'Subiendo...' : 'Subir documento PDF'}
-      </button>
-      <input ref={fileRef} type="file" accept=".pdf" className="hidden" onChange={handleUpload} />
     </div>
   )
 }

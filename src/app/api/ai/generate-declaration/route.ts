@@ -245,8 +245,6 @@ function buildDeclarationPrompt(
   const minorAgeStr = minorAge > 0 ? `${minorAge} years old (DOB: ${minorBasic.dob})` : ''
 
   // Determine which absent parent belongs to THIS minor based on children array
-  const childrenArr = (minorData.children as Array<Record<string, string>>) || []
-  const hasAnotherFather = minorData.has_another_father
 
   // Build supplementary data block if available
   const suppBlock = supp ? (() => {

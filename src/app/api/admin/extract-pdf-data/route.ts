@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { geminiFetch, extractGeminiText } from '@/lib/ai/gemini-fetch'
-import { createLogger } from '@/lib/logger'
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY
-const log = createLogger('extract-pdf-data')
 
 interface ExtractedData {
   passport_number?: string

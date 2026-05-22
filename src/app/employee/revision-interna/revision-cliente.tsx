@@ -50,7 +50,7 @@ interface Props {
   currentUserId: string
 }
 
-export function RevisionInternaClient({ currentUserId }: Props) {
+export function RevisionInternaClient({ currentUserId: _currentUserId }: Props) {
   const [docs, setDocs] = useState<DocumentRow[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<TabKey>('pending_review')

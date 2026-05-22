@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
 import {
-  Phone, Plus, Loader2, Clock, CheckCircle, PhoneOff, UserX, UserCheck, CalendarClock, Trash2, AlertTriangle, Save, XCircle, Bot,
+  Phone, Plus, Loader2, Clock, PhoneOff, UserX, UserCheck, CalendarClock, Trash2, AlertTriangle, Save, XCircle, Bot,
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'

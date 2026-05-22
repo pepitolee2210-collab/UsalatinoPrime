@@ -108,16 +108,10 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
   const statusInfo = statusConfig[status] || statusConfig.nuevo
 
   const s = submission
-  const clientOldAddr = `${s.client_address_street}\n${s.client_address_city}, ${s.client_address_state} ${s.client_address_zip}`
-  const clientNewAddr = `${s.new_address_street}\n${s.new_address_city}, ${s.new_address_state} ${s.new_address_zip}`
-  const currentCourtFull = `${s.current_court_street}\n${s.current_court_city_state_zip}`
-  const newCourtFull = `${s.new_court_street}\n${s.new_court_city_state_zip}`
-
   // Extract current court city — fallback to court name if city_state_zip has no comma
   const currentCourtCity = s.current_court_city_state_zip.includes(',')
     ? s.current_court_city_state_zip.split(',')[0].trim()
     : s.current_court_name.replace(/Immigration Court\s*[-\u2013]\s*/i, '').trim()
-  const newCourtCityState = `${s.new_address_city}, ${s.new_address_state}`
 
   function handleDownloadPDF() {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' })
@@ -145,13 +139,6 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
       doc.text(txt, pw / 2, y, { align: 'center' })
       doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.3)
       doc.line(tx, y + 0.8, tx + tw, y + 0.8)
-    }
-
-    function underlineLeft(txt: string, x: number = ml) {
-      const tw = doc.getTextWidth(txt)
-      doc.text(txt, x, y)
-      doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.3)
-      doc.line(x, y + 0.8, x + tw, y + 0.8)
     }
 
     function dashedLine(x1: number, x2: number) {

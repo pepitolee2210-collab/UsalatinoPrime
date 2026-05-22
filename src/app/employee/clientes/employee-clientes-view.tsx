@@ -1,11 +1,8 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Badge } from '@/components/ui/badge'
-import { Phone, Mail, Search, ChevronRight, Users, Filter } from 'lucide-react'
+import { Phone, Search, ChevronRight, Users } from 'lucide-react'
 import Link from 'next/link'
-import { format } from 'date-fns'
-import { es } from 'date-fns/locale'
 
 interface Client {
   id: string

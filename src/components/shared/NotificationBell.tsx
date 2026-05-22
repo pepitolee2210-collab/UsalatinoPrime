@@ -7,7 +7,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import Link from 'next/link'
 
 interface Notification {
   id: string

@@ -57,7 +57,7 @@ export async function uploadDirect(params: UploadParams): Promise<UploadResult> 
     throw new Error(err.error || 'Error al preparar subida')
   }
 
-  const { signedUrl, token: uploadToken, filePath, clientId: resolvedClientId, caseId: resolvedCaseId } = await signRes.json()
+  const { token: uploadToken, filePath, clientId: resolvedClientId, caseId: resolvedCaseId } = await signRes.json()
 
   // Step 2: Upload file directly to Supabase Storage
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!

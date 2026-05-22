@@ -92,7 +92,7 @@ async function buildDataBag(
   const caseRes = await service.from('cases').select('client_id').eq('id', caseId).single()
   const clientId = caseRes.data?.client_id ?? null
 
-  const [profileRes, tutorRes, storyRes, jurisdictionRes, sapcr100Res] = await Promise.all([
+  const [profileRes, tutorRes, storyRes, _jurisdictionRes, sapcr100Res] = await Promise.all([
     clientId
       ? service
           .from('profiles')
@@ -131,7 +131,6 @@ async function buildDataBag(
   const profile = (profileRes.data ?? {}) as Record<string, unknown>
   const tutor = ((tutorRes.data?.form_data ?? {}) as Record<string, unknown>) || {}
   const story = ((storyRes.data?.form_data ?? {}) as Record<string, unknown>) || {}
-  const jurisdiction = (jurisdictionRes.data ?? {}) as Record<string, unknown>
   const sapcr = ((sapcr100Res.data?.filled_values ?? {}) as Record<string, unknown>) || {}
 
   const minorBasic = ((story.minorBasic as Record<string, unknown>) ?? {})

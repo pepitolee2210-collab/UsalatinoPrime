@@ -9,7 +9,6 @@ import { InicioScreen, type QuickContact, type PhaseAsset } from './_components/
 import { CitasScreen } from './_components/screens/citas-screen'
 import { DocumentosScreen } from './_components/screens/documentos-screen'
 import { FasesScreen } from './_components/screens/fases-screen'
-import { ReforzarScreen } from './_components/screens/reforzar-screen'
 import { MasScreen } from './_components/screens/mas-screen'
 import type { Appointment, CasePhase } from '@/types/database'
 import type { TzSource } from '@/lib/appointments/resolve-tz'
@@ -99,7 +98,7 @@ function isScreenId(value: unknown): value is ScreenId {
 export function ClientPortal(props: ClientPortalProps) {
   const {
     token, clientId, clientName, caseNumber, avatarUrl,
-    appointments, zoomLink, uploadedDocuments, henryDocuments,
+    appointments, zoomLink, uploadedDocuments: _uploadedDocuments, henryDocuments,
     communityPosts, communityReactions, schedulingDays,
     serviceName, serviceSlug, currentPhase, phaseAsset, quickContacts,
     clientTimezone, clientTimezoneSource,

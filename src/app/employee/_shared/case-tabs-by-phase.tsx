@@ -650,7 +650,6 @@ function PreviewModal({ doc, onClose }: { doc: UploadFile; onClose: () => void }
             <div className="flex items-center justify-center p-4">
               {/* next/image no aplica: el endpoint requiere auth y el path
                   dinámico no encaja en remotePatterns sin sacrificar control. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={previewUrl}
                 alt={doc.name}

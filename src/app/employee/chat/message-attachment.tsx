@@ -60,7 +60,6 @@ export function MessageAttachment({ path, type, name, size, isMe }: Props) {
             <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
           </div>
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={url}
             alt={name || 'imagen'}

@@ -206,7 +206,6 @@ function PhaseTimeline({ currentIdx, phaseOrder }: { currentIdx: number; phaseOr
         const def = PHASE_LABELS[p]
         const isActive = idx === currentIdx
         const isPast = idx < currentIdx
-        const isFuture = idx > currentIdx
 
         let bg = 'var(--color-ulp-phase-inactive)'
         let textColor = 'var(--color-ulp-on-surface-variant)'

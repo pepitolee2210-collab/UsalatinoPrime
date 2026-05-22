@@ -35,7 +35,10 @@ type Filter = 'all' | 'overdue' | 'upcoming' | 'paid'
 export function MetricsClient({ payments, contracts }: Props) {
   const [filter, setFilter] = useState<Filter>('overdue')
 
-  const now = new Date()
+  // Snapshot al mount: estabiliza `now` para que los useMemo no recalculen
+  // por construir un Date nuevo en cada render. Las métricas no necesitan
+  // ticker — refrescan al navegar.
+  const [now] = useState(() => new Date())
   const todayStr = now.toISOString().slice(0, 10)
   const sevenDays = new Date(now.getTime() + 7 * 86400_000)
   const sevenDaysStr = sevenDays.toISOString().slice(0, 10)
@@ -65,7 +68,7 @@ export function MetricsClient({ payments, contracts }: Props) {
     }
 
     return months
-  }, [payments])
+  }, [payments, now])
 
   const maxValue = Math.max(1, ...monthlyData.map(m => Math.max(m.paid, m.due)))
 

@@ -10,7 +10,7 @@ import { createClient } from '@/lib/supabase/client'
 import { getInstallmentCount } from '@/lib/contracts'
 import { isAsylumService } from '@/lib/services/asylum'
 import {
-  FileText, PenLine, Download, Plus, X, ChevronDown,
+  FileText, PenLine, Plus, X, ChevronDown,
   User, Users, Stamp, Calendar, Baby, PackagePlus, DollarSign, Hash, CalendarClock, Save, Phone,
   MapPin, Building2, Hash as HashIcon, Loader2, CheckCircle2,
 } from 'lucide-react'

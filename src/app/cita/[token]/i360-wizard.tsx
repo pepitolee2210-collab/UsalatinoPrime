@@ -130,7 +130,7 @@ function PrefilledBadge() {
 
 // ══ MAIN WIZARD ════════════════════════════════════════════════
 
-export function I360Wizard({ token, clientName }: { token: string; clientName: string }) {
+export function I360Wizard({ token, clientName: _clientName }: { token: string; clientName: string }) {
   const [data, setData] = useState<I360Data>({ ...EMPTY_I360 })
   const [step, setStep] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -532,13 +532,13 @@ function Step4SIJS({ data, upd }: { data: I360Data; upd: (f: keyof I360Data, v: 
       <p className="text-xs font-bold text-gray-500 uppercase mt-2">3A. Colocación actual</p>
       {data.currently_under_jurisdiction === 'Sí' && (
         <div>
-          <FieldLabel>Si respondió "Sí" a 2C, ¿reside actualmente en una colocación ordenada por la corte?</FieldLabel>
+          <FieldLabel>Si respondió &quot;Sí&quot; a 2C, ¿reside actualmente en una colocación ordenada por la corte?</FieldLabel>
           <YesNo value={data.in_court_ordered_placement} onChange={v => upd('in_court_ordered_placement', v)} />
         </div>
       )}
       {data.currently_under_jurisdiction === 'No' && (
         <div>
-          <FieldLabel>3B. Si respondió "No" a 2C, seleccione la razón:</FieldLabel>
+          <FieldLabel>3B. Si respondió &quot;No&quot; a 2C, seleccione la razón:</FieldLabel>
           <div className="flex flex-wrap gap-2">
             {['Adoptado/a o en guardianship permanente', 'Cumplió la edad límite de la corte', 'Otra razón'].map(opt => (
               <button key={opt} type="button" onClick={() => upd('placement_reason', opt)}
@@ -708,7 +708,7 @@ function Step6Confirm({ data, onEdit }: { data: I360Data; onEdit: (step: number)
   return (
     <div className="space-y-4">
       <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-800">
-        Revise toda la información antes de enviar. Puede editar cualquier sección haciendo clic en "Editar".
+        Revise toda la información antes de enviar. Puede editar cualquier sección haciendo clic en &quot;Editar&quot;.
       </div>
       {sections.map(s => (
         <div key={s.title} className="rounded-xl border border-gray-200 overflow-hidden">

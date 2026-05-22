@@ -75,7 +75,8 @@ export function MarkPaidModal({
       toast.success(
         `Pago marcado · cuota ${selectedPayment.installment_number ?? '?'}/${selectedPayment.total_installments ?? '?'} ($${Number(selectedPayment.amount).toLocaleString()})`,
       )
-      onMarked ? onMarked() : router.refresh()
+      if (onMarked) onMarked()
+      else router.refresh()
       onClose()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error de red')

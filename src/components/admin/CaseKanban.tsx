@@ -85,7 +85,6 @@ export function CaseKanban({ cases: initialCases }: CaseKanbanProps) {
       <div className="flex gap-4 overflow-x-auto pb-4">
         {kanbanColumns.map((column) => {
           const columnCases = getCasesForColumn(column.id)
-          const colStatus = statusLabels[column.id]
           return (
             <div key={column.id} className="flex-shrink-0 w-64">
               <div className="mb-3 flex items-center gap-2">

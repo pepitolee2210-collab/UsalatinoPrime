@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import { Send, Loader2, Copy, Check, MessageSquare, FileText, User, Bot, RotateCcw } from 'lucide-react'
@@ -44,7 +43,7 @@ const QUICK_TEMPLATES = {
 export function CaseChat({ caseId, clientName, serviceName, documentCount, parentSituation }: CaseChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingText, setStreamingText] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)

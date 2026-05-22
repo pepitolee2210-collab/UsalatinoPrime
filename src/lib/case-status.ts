@@ -1,5 +1,3 @@
-import type { IntakeStatus } from '@/types/database'
-
 export const statusLabels: Record<string, { label: string; color: string }> = {
   payment_pending: { label: 'Pago Pendiente', color: 'bg-yellow-100 text-yellow-800' },
   in_progress: { label: 'En Progreso', color: 'bg-blue-100 text-blue-800' },

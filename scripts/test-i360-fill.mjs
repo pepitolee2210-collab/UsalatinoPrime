@@ -247,7 +247,7 @@ async function run() {
       const val = form.getTextField(pdfField).getText()
       const ok = /^\d{2}\/\d{2}\/\d{4}$/.test(val)
       console.log(`  ${ok ? '✓' : '✗'} ${label}: "${val}" ${ok ? '(mm/dd/yyyy)' : '(FORMATO INCORRECTO!)'}`)
-    } catch (e) { console.log(`  ✗ ${label}: FIELD ERROR`) }
+    } catch { console.log(`  ✗ ${label}: FIELD ERROR`) }
   }
 
   // Verificar checkbox states
@@ -261,7 +261,7 @@ async function run() {
       const v = cb.acroField.dict.lookup(PDFName.of('V'))
       const isOff = as?.toString() === '/Off' || !as
       console.log(`  ${isOff ? '✗' : '✓'} ${name}: AS=${as?.toString()} V=${v?.toString()}`)
-    } catch (e) { console.log(`  ✗ ${name}: ERROR`) }
+    } catch { console.log(`  ✗ ${name}: ERROR`) }
   }
 
   // NO flatten para inspección

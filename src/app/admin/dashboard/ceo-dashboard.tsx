@@ -1,12 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   TrendingUp, TrendingDown, Users, FileSignature, DollarSign,
-  AlertTriangle, Clock, ArrowRight, Bot, PhoneCall, CheckCircle,
+  AlertTriangle, Clock, ArrowRight, PhoneCall,
   Briefcase, Activity, Sparkles, Zap, Layers,
 } from 'lucide-react'
 import type { CeoDashboardData } from '@/app/api/admin/ceo-dashboard/route'
@@ -346,7 +346,6 @@ function ServicesBreakdown({ services }: { services: CeoDashboardData['services'
 
 function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
   const maxRev = Math.max(...points.map(p => Math.max(p.revenue_collected, p.revenue_expected)), 1)
-  const maxContracts = Math.max(...points.map(p => Math.max(p.contracts_created, p.contracts_signed)), 1)
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
 
   return (

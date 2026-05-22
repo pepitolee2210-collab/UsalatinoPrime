@@ -40,7 +40,7 @@ const ASYLUM_REASON_LABELS: Record<string, string> = {
   tortura: 'Convención contra la Tortura',
 }
 
-export function I589Review({ caseId, submissions }: I589ReviewProps) {
+export function I589Review({ caseId: _caseId, submissions }: I589ReviewProps) {
   const [subs, setSubs] = useState(submissions)
   const [loading, setLoading] = useState(false)
   const [editingNotes, setEditingNotes] = useState<string | null>(null)

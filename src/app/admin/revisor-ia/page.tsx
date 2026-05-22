@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import {
   Loader2, Send, Paperclip, X, FileText, Plus, Trash2, MessageSquare,
-  Scale, Sparkles, ChevronRight, File as FileIcon, Bot, User,
+  Scale, ChevronRight, File as FileIcon, User,
 } from 'lucide-react'
 import { formatDistanceToNow, format } from 'date-fns'
 import { es } from 'date-fns/locale'

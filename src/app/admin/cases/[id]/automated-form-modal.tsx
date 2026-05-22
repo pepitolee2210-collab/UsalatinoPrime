@@ -206,7 +206,7 @@ export function AutomatedFormModal({ caseId, slug, open, onOpenChange, onSaved }
         toast.error(err instanceof Error ? err.message : 'Error al guardar')
       }
     }, 600)
-  }, [caseId, slug])
+  }, [caseId, slug, onSaved])
 
   function setField(key: string, value: string | boolean) {
     setValues((prev) => {

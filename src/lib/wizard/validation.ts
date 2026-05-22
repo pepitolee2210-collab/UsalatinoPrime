@@ -1,4 +1,4 @@
-import type { WorkflowField, WorkflowStep } from '@/types/wizard'
+import type { WorkflowStep } from '@/types/wizard'
 import { evaluateCondition } from './conditions'
 
 export interface ValidationError {

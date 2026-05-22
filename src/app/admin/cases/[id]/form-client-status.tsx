@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { toast } from 'sonner'
-import { Lock, LockOpen, Loader2, Eye, Send, User } from 'lucide-react'
+import { Lock, LockOpen, Loader2, Send, User } from 'lucide-react'
 import { format, formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 

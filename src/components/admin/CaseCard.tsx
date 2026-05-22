@@ -1,8 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { Badge } from '@/components/ui/badge'
-import { statusLabels } from '@/lib/case-status'
 import { format, differenceInDays } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Clock, FileText, CheckCircle, BookOpen } from 'lucide-react'
@@ -14,7 +12,6 @@ interface CaseCardProps {
 export function CaseCard({ caseData }: CaseCardProps) {
   const daysSinceUpdate = differenceInDays(new Date(), new Date(caseData.updated_at))
   const isUrgent = daysSinceUpdate > 7
-  const status = statusLabels[caseData.intake_status] || statusLabels.in_progress
 
   return (
     <Link href={`/admin/cases/${caseData.id}`}>

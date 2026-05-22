@@ -85,7 +85,7 @@ export async function fillDocxTemplate(
 
   // Reportar tokens que quedaron sin reemplazar (los pasamos a vacío para
   // no exponerlos al juez).
-  let leftoverTokens: string[] = []
+  const leftoverTokens: string[] = []
   for (const partPath of TEMPLATE_PARTS) {
     const file = zip.file(partPath)
     if (!file) continue

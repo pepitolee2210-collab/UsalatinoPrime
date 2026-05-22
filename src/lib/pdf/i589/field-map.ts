@@ -89,11 +89,6 @@ function otherNamesToString(val: any): string {
   return String(val || '')
 }
 
-function textArrayFirst(val: any): string {
-  if (Array.isArray(val)) return val[0] || ''
-  return String(val || '')
-}
-
 // ====================================================================
 // PAGE 0 - Personal Information (HOJA 01)
 // ====================================================================

@@ -18,7 +18,7 @@ function normalizePhone(raw) {
   return raw.replace(/\D/g, '').replace(/^1(\d{10})$/, '$1')
 }
 
-function parseMoney(val) {
+function _parseMoney(val) {
   if (!val) return 0
   return parseFloat(String(val).replace(/[$,]/g, '')) || 0
 }

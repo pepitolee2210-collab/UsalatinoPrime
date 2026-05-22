@@ -6,7 +6,7 @@
 //
 // Uso: node scripts/test-pr-gen-116-fill.mjs
 
-import { PDFDocument, PDFTextField, PDFCheckBox, PDFRadioGroup, PDFDropdown, PDFName } from 'pdf-lib'
+import { PDFDocument, PDFTextField, PDFCheckBox, PDFName } from 'pdf-lib'
 import fs from 'node:fs'
 import path from 'node:path'
 import crypto from 'node:crypto'

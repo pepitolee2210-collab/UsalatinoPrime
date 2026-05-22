@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { FileText, Upload, CheckCircle, Trash2, Users, Home, FolderOpen, Camera, Eye, X, Loader2 } from 'lucide-react'
+import { FileText, Upload, CheckCircle, Trash2, Users, Home, FolderOpen, Camera, Eye, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'

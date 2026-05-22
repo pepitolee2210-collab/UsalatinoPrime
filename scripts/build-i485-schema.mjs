@@ -179,7 +179,7 @@ function inferLabel(short) {
   return null
 }
 
-function buildField(rawField, idxInPart) {
+function buildField(rawField, _idxInPart) {
   const short = shortName(rawField.name).toLowerCase()
   const label = inferLabel(short)
   const part = detectPart(rawField.name)

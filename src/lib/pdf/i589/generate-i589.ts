@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
-import { i589FieldMap, type FieldMapping } from './field-map'
+import { i589FieldMap } from './field-map'
 
 // FPDF uses mm from top-left. pdf-lib uses points from bottom-left.
 // Template PDF is A4 size: 297mm height (not US Letter 279.4mm)
@@ -78,7 +78,7 @@ export async function generateI589PDF(formData: Record<string, any>): Promise<Ui
     const page = pages[pageIndex]
 
     // Resolve value
-    let rawValue = resolveValue(formData, field.formDataKey)
+    const rawValue = resolveValue(formData, field.formDataKey)
 
     // Apply transform
     let text: string

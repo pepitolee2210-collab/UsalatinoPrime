@@ -5,11 +5,11 @@ import bwipjs from 'bwip-js/browser'
 // HELPERS
 // ============================================================================
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const digitsOnly = (v: any): string => String(v ?? '').replace(/\D/g, '')
 
 /** yyyy-mm-dd → mm/dd/yyyy (formato USCIS). */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 function formatDate(v: any): string {
   const s = String(v ?? '')
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/)
@@ -17,14 +17,14 @@ function formatDate(v: any): string {
   return s
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 function isYes(v: any): boolean {
   if (v === true || v === 1) return true
   const s = String(v ?? '').trim().toLowerCase()
   return s === 'sí' || s === 'si' || s === 'yes' || s === 'true' || s === '1'
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 function isNo(v: any): boolean {
   if (v === false || v === 0) return true
   const s = String(v ?? '').trim().toLowerCase()
@@ -40,7 +40,7 @@ function isNo(v: any): boolean {
 // otros ~440 campos del PDF quedan editables vacíos para que Henry/Diana los
 // llenen a mano.
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type TextEntry = { pdfName: string; dataKey: string; transform?: (v: any) => string }
 
 const TEXT_FIELDS: TextEntry[] = [
@@ -151,7 +151,7 @@ const MARITAL_CHECKBOX: Record<string, string> = {
 // ============================================================================
 
 export async function generateI360PDF(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   formData: Record<string, any>,
 ): Promise<Uint8Array> {
   const response = await fetch('/forms/i-360.pdf')
@@ -305,7 +305,7 @@ async function generatePdf417Png(text: string): Promise<Uint8Array> {
     throw new Error('generatePdf417Png requiere un entorno browser con `document`')
   }
   const canvas = document.createElement('canvas')
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   bwipjs.toCanvas(canvas, {
     bcid: 'pdf417',
     text,

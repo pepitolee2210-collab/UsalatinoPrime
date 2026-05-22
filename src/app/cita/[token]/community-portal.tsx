@@ -251,7 +251,7 @@ function VideoModal({ post, ytId, rxCounts, myRx, bouncing, onReact, onClose }: 
 }
 
 // ── Video Card (thumbnail only — play opens modal) ─────────────────
-function VideoCard({ post, ytId, thumb, rxCounts, myRx, onReact, bouncing, onPlay }: {
+function VideoCard({ post, ytId: _ytId, thumb, rxCounts, myRx, onReact, bouncing, onPlay }: {
   post: CommunityPost; ytId: string | null; thumb: string | null
   rxCounts: Record<string, number>; myRx: string[]
   onReact: (pid: string, emoji: string) => void; bouncing: string | null

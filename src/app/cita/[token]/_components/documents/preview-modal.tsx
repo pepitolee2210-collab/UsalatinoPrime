@@ -81,7 +81,6 @@ export function PreviewModal({ token, doc, onClose }: PreviewModalProps) {
             title={doc.name}
           />
         ) : isImage ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={url}
             alt={doc.name}

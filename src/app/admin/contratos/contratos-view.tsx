@@ -137,6 +137,9 @@ function ContratosInner({ basePath }: Props) {
     setLoading(false)
   }
 
+  // loadContracts es un closure local que captura `supabase`; estabilizarlo
+  // con useCallback requeriría un refactor mayor. Solo se llama al mount.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { loadContracts() }, [])
 
   async function handleDelete(id: string, clientName: string) {

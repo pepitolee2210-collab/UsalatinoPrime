@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
@@ -7,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   PhoneCall, Clock, CalendarCheck, UserPlus, ArrowRight,
-  AlertCircle, CheckCircle, Flame, Phone, Sparkles, Users,
+  CheckCircle, Flame, Phone, Sparkles, Users,
 } from 'lucide-react'
 import { format, formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -46,7 +47,9 @@ export function ConsultantDashboard({ firstName, today, callNow, acceptedNoContr
     ? Math.round((weekStats.acepta / weekStats.completadas) * 100)
     : 0
 
-  const now = Date.now()
+  // Snapshot al mount para evitar Date.now() en render (react-hooks/purity).
+  // El filtro "today.filter" se recalcula con cada nav pero no necesita ticker.
+  const [now] = useState(() => Date.now())
   const upcomingToday = today.filter(a => new Date(a.scheduled_at).getTime() >= now)
   const pastToday = today.filter(a => new Date(a.scheduled_at).getTime() < now)
 

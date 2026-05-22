@@ -25,6 +25,10 @@ export function CommentSection({ postId, userId, comments: initialComments, isAc
   const [newComment, setNewComment] = useState('')
   const [expanded, setExpanded] = useState(false)
   const [sending, setSending] = useState(false)
+  // Snapshot al mount para "hace X minutos/horas". Sin ticker — los timestamps
+  // de comentarios viejos no necesitan refrescar; los nuevos vienen con
+  // created_at fresco. Evita Date.now() en render (react-hooks/purity).
+  const [nowMs] = useState(() => Date.now())
   const supabase = createClient()
 
   async function handleSubmit(e: React.FormEvent) {
@@ -61,7 +65,7 @@ export function CommentSection({ postId, userId, comments: initialComments, isAc
   }
 
   function timeAgo(date: string) {
-    const diff = Date.now() - new Date(date).getTime()
+    const diff = nowMs - new Date(date).getTime()
     const mins = Math.floor(diff / 60000)
     if (mins < 1) return 'ahora'
     if (mins < 60) return `hace ${mins}m`

@@ -168,7 +168,7 @@ export function AppealLetterGenerator({ caseId, caseNumber }: AppealLetterGenera
           <p className="text-xs text-gray-400 text-center py-4">Cargando…</p>
         ) : drafts.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-6 rounded-xl border border-dashed border-gray-200">
-            Aún no se ha generado ninguna Carta de Apelación. Pulsa "Generar Carta".
+            Aún no se ha generado ninguna Carta de Apelación. Pulsa &quot;Generar Carta&quot;.
           </p>
         ) : (
           <ul className="space-y-2">

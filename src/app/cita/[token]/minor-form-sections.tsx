@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, ChevronUp, UserPlus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { AIImproveButton } from '@/components/ai-improve-button'
 import { FieldLabel, LegalFieldInput, ValidatedInput } from './form-components'
 import { VoiceTextarea } from '@/components/voice/VoiceTextarea'

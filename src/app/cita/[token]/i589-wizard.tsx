@@ -112,7 +112,7 @@ interface I589WizardProps {
 
 // -- Main Component --
 
-export function I589Wizard({ token, clientName }: I589WizardProps) {
+export function I589Wizard({ token, clientName: _clientName }: I589WizardProps) {
   const [step, setStep] = useState(0)
   const [saving, setSaving] = useState(false)
   const [submitting, setSubmitting] = useState(false)

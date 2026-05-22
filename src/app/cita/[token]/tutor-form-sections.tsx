@@ -207,7 +207,7 @@ export function TutorFormSections({ data, onChange }: { data: TutorFormData; onC
       {/* Sección 2: Sobre los Menores */}
       <Section title="Información de los Menores" number={2}>
         <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-800 mb-2">
-          Complete la información de cada menor. Si tiene más de un hijo/a en este caso, use el botón "Agregar otro menor".
+          Complete la información de cada menor. Si tiene más de un hijo/a en este caso, use el botón &quot;Agregar otro menor&quot;.
         </div>
 
         {/* Primer menor (siempre visible) */}

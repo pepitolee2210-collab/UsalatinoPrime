@@ -88,6 +88,9 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
       }
     }
     fetchProfile()
+    // `supabase` viene de createClient() en el body — agregarlo a las deps
+    // causaría loop porque cada render produce nueva instancia. Solo mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -112,7 +115,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
   const visibleNavItems = navConfig.filter((item) => item.show(employeeType))
   const roleLabel = ROLE_LABEL[employeeType ?? 'default']
 
-  const NavContent = () => (
+  const navContent = (
     <div className="flex flex-col h-full">
       <div className="p-6">
         <div className="flex items-center gap-2">
@@ -162,14 +165,14 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
   return (
     <div className="min-h-screen bg-gray-50">
       <aside className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col border-r bg-white">
-        <NavContent />
+        {navContent}
       </aside>
       <div className="sticky top-0 z-40 flex items-center gap-4 bg-white border-b px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:hidden">
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon"><Menu className="w-5 h-5" /></Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-64"><NavContent /></SheetContent>
+          <SheetContent side="left" className="p-0 w-64">{navContent}</SheetContent>
         </Sheet>
         <h1 className="font-semibold">UsaLatino Prime</h1>
       </div>

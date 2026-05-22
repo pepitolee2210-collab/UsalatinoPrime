@@ -32,6 +32,10 @@ type TrendView = 'monthly' | 'yearly'
 export function CeoDashboardV2({ data, firstName }: Props) {
   const [period, setPeriod] = useState<Period>('month')
   const [trendView, setTrendView] = useState<TrendView>('monthly')
+  // Snapshot al mount para evitar Date.now() en render (react-hooks/purity).
+  // Los "días vencidos" se calculan vs este timestamp — se refresca con
+  // cada navegación al dashboard, suficiente para los KPIs operativos.
+  const [nowMs] = useState(() => Date.now())
   const [openDrawer, setOpenDrawer] = useState<DrawerKey>(null)
   const { kpi, ops, trend, lists } = data
 
@@ -357,7 +361,7 @@ export function CeoDashboardV2({ data, firstName }: Props) {
             <div>
               {ops.overdue_clients.map((c) => {
                 const daysOver = Math.floor(
-                  (Date.now() - new Date(c.oldest_due_date).getTime()) / 86400_000,
+                  (nowMs - new Date(c.oldest_due_date).getTime()) / 86400_000,
                 )
                 return (
                   <DrawerRow

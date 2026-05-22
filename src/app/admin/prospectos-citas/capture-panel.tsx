@@ -69,6 +69,10 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
     }
+    // `save` cierra sobre todos los deps listados — agregarlo daría loop
+    // infinito. Pattern intencional: refrescar el timer solo cuando cambia
+    // el contenido a guardar, no cuando cambia la closure.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, probability, decision, notes])
 
   function update<K extends keyof CapturedData>(key: K, value: CapturedData[K]) {

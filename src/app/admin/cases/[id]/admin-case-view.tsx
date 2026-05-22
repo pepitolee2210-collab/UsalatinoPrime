@@ -42,17 +42,14 @@ interface AdminCaseViewProps {
   employees?: { id: string; first_name: string; last_name: string }[]
 }
 
-export function AdminCaseView({ caseData, documents, activities, payments, aiSubmissions, employeeAssignment, employees = [] }: AdminCaseViewProps) {
+export function AdminCaseView({ caseData, documents, activities: _activities, payments, aiSubmissions, employeeAssignment: _employeeAssignment, employees: _employees = [] }: AdminCaseViewProps) {
   const [correctionNotes, setCorrectionNotes] = useState('')
-  const [henryNotes, setHenryNotes] = useState(caseData.henry_notes || '')
+  const [henryNotes] = useState(caseData.henry_notes || '')
   const [loading, setLoading] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [i589Loading, setI589Loading] = useState(false)
   const [i360Loading, setI360Loading] = useState(false)
-  const [markPaidLoading, setMarkPaidLoading] = useState<string | null>(null)
   const [accessLoading, setAccessLoading] = useState(false)
-  const [renamingDoc, setRenamingDoc] = useState<{ id: string; name: string } | null>(null)
-  const [renameLoading, setRenameLoading] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -105,7 +102,7 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
 
       toast.success('Estado actualizado')
       router.refresh()
-    } catch (error) {
+    } catch {
       toast.error('Error al actualizar')
     } finally {
       setLoading(false)
@@ -231,7 +228,7 @@ export function AdminCaseView({ caseData, documents, activities, payments, aiSub
 
       toast.success(newValue ? 'Acceso otorgado al cliente' : 'Acceso revocado')
       router.refresh()
-    } catch (error) {
+    } catch {
       toast.error('Error al cambiar acceso')
     } finally {
       setAccessLoading(false)
