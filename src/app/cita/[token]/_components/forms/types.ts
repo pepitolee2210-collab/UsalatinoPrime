@@ -76,6 +76,8 @@ export interface FormSummary {
   is_special_i589?: boolean
   /** Form URLs de noticias/evidencia (Asilo Político Fase 2). */
   is_special_evidence_urls?: boolean
+  /** Cuestionario de 11 módulos para generar Miedo Creíble (Asilo Político Fase 2). */
+  is_special_credible_fear_questionnaire?: boolean
   /** Carta de Cambio de Corte (6 págs custom, Cambio de Corte). */
   is_special_cc_carta?: boolean
   client_last_edit_at: string | null

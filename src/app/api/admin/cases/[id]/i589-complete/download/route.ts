@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { generateI589CompletePdf } from '@/lib/pdf/i589-official/generate-i589-complete'
-import { parseStructuredI589 } from '@/lib/pdf/i589-official/parse-structured'
+import { loadStructured, type I589FieldValuesV5 } from '@/lib/pdf/i589-official/parse-structured'
+import type { SupplementBEntry } from '@/lib/pdf/i589-official/generate-i589-part-b'
 
 /**
  * GET /api/admin/cases/[id]/i589-complete/download
@@ -38,7 +39,7 @@ export async function GET(
     return NextResponse.json({ error: 'Solo admin o paralegal' }, { status: 403 })
   }
 
-  // Cargar wizard submissions + draft current en paralelo
+  // Cargar wizard submissions + draft current + caso (con perfil para Part D)
   const [{ data: subs }, { data: draft }, { data: caseRow }] = await Promise.all([
     service
       .from('case_form_submissions')
@@ -47,15 +48,30 @@ export async function GET(
       .in('form_type', ['i589_part_a1', 'i589_part_a2', 'i589_part_a3', 'i589_part_a4']),
     service
       .from('case_credible_fear_drafts')
-      .select('body_md')
+      .select('body_md, i589_field_values_json, supplement_b_entries_json')
       .eq('case_id', id)
       .eq('is_current', true)
-      .maybeSingle<{ body_md: string }>(),
+      .maybeSingle<{
+        body_md: string | null
+        i589_field_values_json: I589FieldValuesV5 | null
+        supplement_b_entries_json: SupplementBEntry[] | null
+      }>(),
     service
       .from('cases')
-      .select('case_number')
+      .select(`
+        case_number,
+        client:profiles!cases_client_id_fkey(first_name, middle_name, last_name, phone)
+      `)
       .eq('id', id)
-      .single<{ case_number: string }>(),
+      .single<{
+        case_number: string
+        client: {
+          first_name: string | null
+          middle_name: string | null
+          last_name: string | null
+          phone: string | null
+        } | null
+      }>(),
   ])
 
   const partsMap = new Map<string, Record<string, unknown>>()
@@ -66,17 +82,33 @@ export async function GET(
     )
   }
 
-  const structured = parseStructuredI589(draft?.body_md ?? null)
+  // Prefiere v5 JSONB columnar; cae a body_md regex (drafts v4 legacy).
+  const structured = loadStructured(
+    draft?.i589_field_values_json ?? null,
+    draft?.body_md ?? null,
+  )
+  const supplementBEntries = draft?.supplement_b_entries_json ?? []
+  const applicantFullName = [
+    caseRow?.client?.first_name,
+    caseRow?.client?.middle_name,
+    caseRow?.client?.last_name,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .trim() || 'Solicitante'
 
-  const pdfBytes = await generateI589CompletePdf(
-    {
+  const pdfBytes = await generateI589CompletePdf({
+    parts: {
       a1: partsMap.get('i589_part_a1') ?? {},
       a2: partsMap.get('i589_part_a2') ?? {},
       a3: partsMap.get('i589_part_a3') ?? {},
       a4: partsMap.get('i589_part_a4') ?? {},
     },
     structured,
-  )
+    applicantFullName,
+    applicantTelephone: caseRow?.client?.phone ?? null,
+    supplementBEntries,
+  })
 
   const filename = `I-589-Completo-${caseRow?.case_number ?? id}.pdf`
   const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' })

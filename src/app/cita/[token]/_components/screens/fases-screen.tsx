@@ -9,6 +9,7 @@ import { I360WizardCore, type I360FormData } from '@/components/i360/I360WizardC
 import { I589PartAWizardCore } from '@/components/i589/I589PartAWizardCore'
 import { EvidenceUrlsManager } from '../evidence-urls-manager'
 import { CartaCambioCorteClientWizard } from '../carta-cambio-corte-wizard'
+import { CredibleFearQuestionnaireWizard } from '../forms/credible-fear-questionnaire-wizard'
 import type { CasePhase } from '@/types/database'
 import type { RequiredFormsResponse, FormSummary } from '../forms/types'
 
@@ -102,6 +103,7 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
   const [i589Loading, setI589Loading] = useState(false)
   const [urlsOpen, setUrlsOpen] = useState(false)
   const [ccCartaOpen, setCcCartaOpen] = useState(false)
+  const [credibleFearOpen, setCredibleFearOpen] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
@@ -204,6 +206,11 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
     if (form.is_special_evidence_urls) {
       // Manager de URLs de evidencia (Fase 2 Asilo Político).
       setUrlsOpen(true)
+      return
+    }
+    if (form.is_special_credible_fear_questionnaire) {
+      // Cuestionario Miedo Creíble (Fase 2 Asilo Político / Reforzar Asilo).
+      setCredibleFearOpen(true)
       return
     }
     if (form.is_special_cc_carta) {
@@ -352,6 +359,18 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
             token={token}
             caseId={data.case_id}
             clientName={clientName}
+          />
+        </Fullscreen>
+      )}
+
+      {credibleFearOpen && (
+        <Fullscreen
+          title="Cuestionario Miedo Creíble (M1-M11)"
+          onClose={() => { setCredibleFearOpen(false); fetchData() }}
+        >
+          <CredibleFearQuestionnaireWizard
+            token={token}
+            onClose={() => { setCredibleFearOpen(false); fetchData() }}
           />
         </Fullscreen>
       )}

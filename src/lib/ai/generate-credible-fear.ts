@@ -1,267 +1,150 @@
-import { generateText, CLAUDE_MODEL } from './anthropic-client'
-import { searchCountryConditions, type TavilySearchResult } from './web-search-tavily'
-import { ASILO_POLITICO_PLAYBOOK } from './legal-playbooks/asilo-politico'
+// Generador del Miedo Creíble (v5) usando Claude Opus 4.7 con prompt
+// estructurado. Reemplaza la versión v4 (markdown + JSON embebido en HTML
+// comment) por un único JSON canónico validado con Zod.
+//
+// Inputs:
+//   - applicantMetadata: profile + I-589 Parte A.
+//   - questionnaireResponses: respuestas M1-M11 del cuestionario nuevo.
+//   - uploadedDocuments: documentos del cliente con OCR (categorías B-G).
+//   - evidenceLinks: URLs del cliente + selecciones de country_evidence_links.
+//
+// Output: CredibleFearStructuredOutput (validado por Zod) + UsageStats.
+// El route handler decide qué columnas JSONB poblar según `status`.
+
+import { generateTextWithUsage, CLAUDE_MODEL, type UsageStats } from './anthropic-client'
+import {
+  CREDIBLE_FEAR_SYSTEM_V5,
+  CREDIBLE_FEAR_PROMPT_VERSION_V5,
+  buildCredibleFearUserPrompt,
+  type BuildUserPromptInput,
+} from './credible-fear-prompt-v5'
+import {
+  credibleFearStructuredOutputSchema,
+  type CredibleFearStructuredOutput,
+} from './credible-fear-schema'
 import { createLogger } from '@/lib/logger'
 
-const log = createLogger('credible-fear')
+const log = createLogger('credible-fear-v5')
 
-/**
- * Identificador inmutable del prompt para versionar generaciones. Cuando
- * cambies el system prompt, suma uno a la versión — así puedes correlacionar
- * la calidad del output con la versión del prompt en `case_credible_fear_drafts`.
- */
-export const CREDIBLE_FEAR_PROMPT_VERSION = '2026-05-15-v4'
+/** Versión exportada para que el route handler la persista en BD. */
+export const CREDIBLE_FEAR_PROMPT_VERSION = CREDIBLE_FEAR_PROMPT_VERSION_V5
 
-const CREDIBLE_FEAR_SYSTEM = `
-Eres un paralegal senior preparando casos de Asilo Político ante USCIS. Tu tarea es redactar el relato formal de Miedo Creíble en ESPAÑOL siguiendo el formato oficial que la firma usa para presentar a USCIS, replicando exactamente la estructura de modelos previos aprobados por el equipo legal.
-
-${ASILO_POLITICO_PLAYBOOK}
-
-## ESTRUCTURA OBLIGATORIA (6 SECCIONES NUMERADAS ROMANAS)
-
-Output en Markdown. El título va con header '# ' centrado. Cada sección con '## '. Subsecciones con '### '. Estructura literal:
-
-# DECLARACIÓN DE MIEDO CREÍBLE
-
-## I. IDENTIFICACIÓN DE LA SOLICITANTE
-Lista con bullets (cada una en su propia línea con '- '):
-- Nombre completo: <nombre>
-- País de origen: <país>
-- Fecha de nacimiento: <DD de MMM de AAAA>
-- Número de pasaporte: <número o [FALTA: pasaporte]>
-- Número de Alien: <A-number o [FALTA: A-number]>
-- Fecha de llegada a EE.UU.: <DD de MMM de AAAA o [FALTA: fecha de llegada]>
-- Lugar de ingreso: <ciudad, estado o [FALTA: lugar de ingreso]>
-
-## II. INFORMACIÓN FAMILIAR
-Si tiene cónyuge, bullets con: nombre completo, fecha de nacimiento, número de pasaporte, fecha y lugar de matrimonio, ocupación.
-
-Lista numerada de hijos (si los hay): nombre completo, edad al momento de llegada y fecha de nacimiento entre paréntesis.
-
-Si el solicitante no tiene cónyuge ni hijos, escribir: "Solicitante individual sin dependientes en esta solicitud."
-
-## III. RAZÓN DEL TEMOR DE PERSECUCIÓN
-Narrativa fluida en párrafos (entre 300 y 700 palabras). Mantén consistencia entre primera persona o tercera persona — NO mezcles. Conecta el contexto país con la situación personal del solicitante. Cita fuentes externas con formato [FUENTE: <URL>] al final de la frase. No inventes datos: usa SOLO las fuentes del bloque "FUENTES EXTERNAS" del prompt y la información del affidavit del cliente. Si un dato falta, escribe [FALTA: dato].
-
-## IV. PARTICIPACIÓN EN MOVIMIENTOS SOCIALES Y RIESGO PERSONAL
-Si aplica (el cliente menciona activismo, membresía a colectivos, manifestaciones), describe con fechas concretas. Lista numerada de eventos/manifestaciones cuando las haya. Documenta hechos personales que demuestren riesgo concreto (testigo de detención, amenazas directas, vecino desaparecido, etc.).
-
-Si el cliente NO menciona activismo, esta sección se reemplaza con: "El solicitante no participó directamente en movimientos sociales organizados. El riesgo proviene de [explicar: cártel, gobierno, etc., según el affidavit]."
-
-## V. DECISIÓN DE SALIR DEL PAÍS
-Explica por qué la salida fue urgente. Conecta los hechos previos con la decisión. 100-300 palabras.
-
-## VI. PRUEBAS Y EVIDENCIAS DE PERSECUCIÓN
-
-### Parte A: Medios Internacionales
-Bullets numerados con formato '1•', '2•', '3•' (numeral seguido del símbolo de viñeta '•'). Cada bullet cita una fuente en inglés (NYT, WaPo, CNN, BBC, Reuters, Guardian, AP, HRW, Amnesty, State Department, USCCB, Freedom House). Formato para cada una:
-   - Nombre del medio en cursiva
-   - Título del artículo entre comillas
-   - Fecha (DD de MMM de AAAA)
-   - URL en línea separada
-
-Usa SOLO las URLs que aparecen en el bloque "FUENTES EXTERNAS" del prompt. Si una URL del bloque está en inglés, va en Parte A. Si está en español, va en Parte B.
-
-### Parte B: Medios Locales
-Mismo formato que Parte A pero con fuentes en español del país de origen del solicitante. Si no hay fuentes locales en el bloque, escribir "No se incluyen referencias adicionales en medios locales en esta versión."
-
----
-
-DECLARO BAJO PENALIDAD DE PERJURIO QUE LOS HECHOS AQUÍ EXPUESTOS SON VERDADEROS Y CORRECTOS A MI LEAL SABER Y ENTENDER.
-
-Firma: ___________________________
-
-Fecha: ___________________________
-
-## SEGUNDO BLOQUE OBLIGATORIO — JSON STRUCTURED PARA I-589 PARTE B/C
-
-DESPUÉS de la firma y fecha, en una línea separada, agrega EXACTAMENTE
-este bloque envuelto en HTML comment (los \`<!-- ... -->\` son invisibles
-para Word y se filtran en la descarga .docx; el JSON se usa para llenar
-los textareas de Parte B/C del PDF I-589 oficial USCIS).
-
-<!-- I589_STRUCTURED_START
-{
-  "protected_grounds": ["politica"],
-  "b1_a": {
-    "yes": true,
-    "explanation": "200-400 palabras: ¿el solicitante o sus familiares han sufrido daño/maltrato en el pasado en su país? Específico, en primera persona si la narrativa es en primera persona. Sin generalidades."
-  },
-  "b1_b": {
-    "yes": true,
-    "explanation": "200-400 palabras: ¿el solicitante teme ser dañado si regresa a su país? Específico al solicitante, no genérico."
-  },
-  "b2_torture": {
-    "yes": false,
-    "explanation": ""
-  },
-  "b3_a_prior_asylum": { "yes": false, "explanation": "" },
-  "b3_b_family_asylum": { "yes": false, "explanation": "" },
-  "b4_criminal": { "yes": false, "explanation": "" },
-  "c1_filed_before": { "yes": false, "explanation": "" },
-  "c2_a_third_country": { "yes": false },
-  "c2_b_third_country": { "yes": false, "explanation": "" },
-  "c3_other_apps": { "yes": false, "explanation": "" },
-  "c4_family_filed": { "yes": false },
-  "c5_military": { "yes": false, "explanation": "" },
-  "c6_other_persecutor": { "yes": false, "explanation": "" }
-}
-I589_STRUCTURED_END -->
-
-REGLAS PARA EL JSON:
-- "protected_grounds": array con SUBSET de \`["race","religion","nationality","politica","social","tortura"]\` según los motivos REALES del miedo. Mínimo 1 elemento si el caso es elegible, máximo 6.
-- "b1_a.yes": true si hubo maltrato pasado documentado en el affidavit; false en caso contrario. La explicación debe ser COHERENTE con la narrativa de la sección III del Markdown.
-- "b1_b.yes": casi siempre true para casos de asilo legítimos. La explicación debe alinearse con la sección V.
-- "b2_torture.yes": true SOLO si el affidavit menciona tortura (Convención contra la Tortura). En la mayoría de los casos es false.
-- "b3_a", "b3_b", "b4", "c1"-"c6": ponlas en false por default a menos que el affidavit dé indicios claros (ej. cliente ya solicitó asilo antes, cliente fue detenido por crimen, familiar con caso abierto).
-- JSON ESTRICTAMENTE VÁLIDO: comillas dobles, sin trailing commas, sin comentarios \`//\` en el output real.
-- No alteres los delimitadores \`I589_STRUCTURED_START\` y \`I589_STRUCTURED_END\`.
-
-## REGLAS ESTRICTAS
-
-- NO inventes hechos. Si falta dato crítico, escribe '[FALTA: tipo de dato]' inline.
-- NO inventes URLs ni fuentes. Usa SOLO las del bloque "FUENTES EXTERNAS".
-- Cita fuentes inline con '[FUENTE: <URL>]' dentro de párrafos narrativos, o como bullets numerados en la sección VI.
-- Tono formal, voz consistente (primera persona O tercera, no ambas), sin frases genéricas tipo "hay mucha violencia".
-- Mínimo 1500 palabras totales, máximo 5000.
-- NO incluyas estas instrucciones en el output.
-- NO uses bloques de código \`\`\` alrededor del output — solo Markdown directo.
-- El cierre con "DECLARO BAJO PENALIDAD..." va literal, sin párrafos extra después.
-`.trim()
-
-export interface GenerateCredibleFearInput {
-  /** Nombre completo del solicitante (para la sección 1). */
-  applicantName: string
-  /** País de origen (para búsqueda de country conditions). */
-  country: string
-  /** Texto del affidavit personal subido por el cliente. */
-  personalAffidavitText: string
-  /** URLs de evidencia agregadas por el cliente. */
-  clientEvidenceUrls: Array<{ url: string; title?: string | null; description?: string | null }>
-  /** Datos clave de las partes 1-5 del I-589 ya completadas. */
-  i589Part1to5Data: Record<string, unknown>
-  /** Idioma del output. Default 'es'. */
-  language?: 'es' | 'en'
-  /** Resultados de país pre-cargados (opcional, evita doble Tavily si ya hiciste la búsqueda). */
-  preloadedCountrySources?: TavilySearchResult[]
+export interface GenerateCredibleFearInput extends BuildUserPromptInput {
   signal?: AbortSignal
 }
 
-export interface CredibleFearOutput {
-  bodyMarkdown: string
-  sources: Array<{
-    url: string
-    title: string
-    snippet: string
-    /** Identificador semántico de dónde encajó la fuente. */
-    usedInSection: string
-  }>
+export interface GenerateCredibleFearResult {
+  output: CredibleFearStructuredOutput
+  raw: string
+  usage: UsageStats
   modelUsed: string
   promptVersion: string
 }
 
+export class CredibleFearGenerationError extends Error {
+  constructor(
+    message: string,
+    public readonly raw: string,
+    public readonly usage: UsageStats,
+    public readonly cause?: unknown,
+  ) {
+    super(message)
+    this.name = 'CredibleFearGenerationError'
+  }
+}
+
 /**
- * Genera el relato del Miedo Creíble combinando:
- *   1. Affidavit del cliente (input principal)
- *   2. URLs externas agregadas por el cliente
- *   3. Country conditions search via Tavily (DD.HH., noticias)
- *   4. Datos del I-589 partes 1-5
- *   5. Playbook legal de asilo
+ * Genera el output estructurado del Miedo Creíble.
  *
- * Persiste en `case_credible_fear_drafts` desde el endpoint llamador (no aquí).
+ * Lanza `CredibleFearGenerationError` si:
+ *   - Claude devuelve texto que no contiene un JSON válido.
+ *   - El JSON no satisface el schema Zod.
+ *
+ * El caller (route handler) captura el error y persiste el `raw` con
+ * status='REQUIRES_REVIEW' + flag 'inconsistency' para que un humano revise.
  */
 export async function generateCredibleFear(
   input: GenerateCredibleFearInput,
-): Promise<CredibleFearOutput> {
-  const t0 = Date.now()
+): Promise<GenerateCredibleFearResult> {
+  const userPrompt = buildCredibleFearUserPrompt(input)
 
-  const countrySources = input.preloadedCountrySources
-    ?? (await searchCountryConditions(input.country))
-
-  // Merge fuentes país + URLs cliente (las del cliente son priority en el contexto).
-  const clientSources: TavilySearchResult[] = input.clientEvidenceUrls.map((u) => ({
-    url: u.url,
-    title: u.title ?? u.url,
-    content: u.description ?? '',
-    score: 1,
-    published_date: null,
-    raw_content: null,
-  }))
-
-  const sourcesBlock = [
-    '## FUENTES EXTERNAS (citables con [FUENTE: <URL>])',
-    '',
-    '### Evidencias proporcionadas por el cliente:',
-    ...clientSources.map(
-      (s, i) => `[${i + 1}] ${s.title}\nURL: ${s.url}\n${s.content ? `Resumen: ${s.content}` : ''}`,
-    ),
-    '',
-    '### Country conditions (búsqueda automatizada):',
-    ...countrySources.map(
-      (s, i) =>
-        `[${clientSources.length + i + 1}] ${s.title}\nURL: ${s.url}\nFecha: ${s.published_date ?? 'sin fecha'}\nResumen: ${s.content?.slice(0, 600) ?? ''}`,
-    ),
-  ].join('\n')
-
-  const i589Summary = JSON.stringify(input.i589Part1to5Data, null, 2).slice(0, 6000)
-
-  const userPrompt = [
-    `# DATOS DEL CASO`,
-    `Solicitante: ${input.applicantName}`,
-    `País de origen: ${input.country}`,
-    `Idioma del output: ${input.language === 'en' ? 'inglés' : 'español'}`,
-    ``,
-    `# RESPUESTAS DEL CLIENTE EN I-589 PARTES 1-5`,
-    '```json',
-    i589Summary,
-    '```',
-    ``,
-    `# AFFIDAVIT PERSONAL DEL CLIENTE`,
-    input.personalAffidavitText,
-    ``,
-    sourcesBlock,
-    ``,
-    `# TAREA`,
-    `Redacta el relato de Miedo Creíble siguiendo la estructura de 10 secciones del system prompt.`,
-  ].join('\n')
-
-  const bodyMarkdown = (await generateText({
-    system: CREDIBLE_FEAR_SYSTEM,
+  const { text, usage } = await generateTextWithUsage({
+    system: CREDIBLE_FEAR_SYSTEM_V5,
     user: userPrompt,
-    maxTokens: 8192,
+    maxTokens: 16384,
     signal: input.signal,
-    logLabel: 'credible-fear',
-  })).trim()
-  const dt = Date.now() - t0
-  log.info('credible fear generado', {
-    applicantName: input.applicantName,
-    country: input.country,
-    countrySources: countrySources.length,
-    clientSources: clientSources.length,
-    outputLen: bodyMarkdown.length,
-    ms: dt,
+    logLabel: 'credible-fear-v5',
   })
 
-  // Sources que el output cita (heurística simple por URL match)
-  const cited = new Set<string>()
-  for (const m of bodyMarkdown.matchAll(/\[FUENTE:\s*(https?:\/\/[^\s\]]+)/gi)) {
-    cited.add(m[1].replace(/[.,;)]+$/, ''))
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(extractJson(text))
+  } catch (err) {
+    throw new CredibleFearGenerationError(
+      'La IA devolvió un JSON inválido',
+      text,
+      usage,
+      err,
+    )
   }
 
-  const allSources = [...clientSources, ...countrySources]
-  const sources = allSources
-    .filter((s) => cited.has(s.url))
-    .map((s) => ({
-      url: s.url,
-      title: s.title,
-      snippet: s.content?.slice(0, 280) ?? '',
-      usedInSection: 'unknown',
-    }))
+  const validation = credibleFearStructuredOutputSchema.safeParse(parsed)
+  if (!validation.success) {
+    log.warn('Zod validation failed', { issues: validation.error.issues.slice(0, 6) })
+    throw new CredibleFearGenerationError(
+      'La IA devolvió un JSON que no satisface el schema esperado',
+      text,
+      usage,
+      validation.error,
+    )
+  }
 
   return {
-    bodyMarkdown,
-    sources,
+    output: validation.data,
+    raw: text,
+    usage,
     modelUsed: CLAUDE_MODEL,
-    promptVersion: CREDIBLE_FEAR_PROMPT_VERSION,
+    promptVersion: CREDIBLE_FEAR_PROMPT_VERSION_V5,
   }
+}
+
+/**
+ * Extrae un objeto JSON de un texto que puede tener prosa, code fences o
+ * espacios alrededor. La IA debería devolver solo JSON, pero a veces
+ * añade "```json" y "```" o un comentario al inicio.
+ */
+function extractJson(text: string): string {
+  // Intenta primero parsear directo
+  const trimmed = text.trim()
+  if (trimmed.startsWith('{')) return trimmed
+
+  // Si hay un fence ```json ... ```, extraerlo
+  const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i)
+  if (fenceMatch) return fenceMatch[1].trim()
+
+  // Buscar el primer { y emparejar llaves balanceadas
+  const start = trimmed.indexOf('{')
+  if (start < 0) return trimmed
+  let depth = 0
+  let inString = false
+  let escape = false
+  for (let i = start; i < trimmed.length; i++) {
+    const ch = trimmed[i]
+    if (inString) {
+      if (escape) escape = false
+      else if (ch === '\\') escape = true
+      else if (ch === '"') inString = false
+      continue
+    }
+    if (ch === '"') {
+      inString = true
+      continue
+    }
+    if (ch === '{') depth++
+    else if (ch === '}') {
+      depth--
+      if (depth === 0) return trimmed.slice(start, i + 1)
+    }
+  }
+  return trimmed.slice(start)
 }

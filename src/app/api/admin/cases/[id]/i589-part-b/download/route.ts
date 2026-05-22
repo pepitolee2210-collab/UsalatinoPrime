@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { generateI589PartBPdf } from '@/lib/pdf/i589-official/generate-i589-part-b'
-import { parseStructuredI589 } from '@/lib/pdf/i589-official/parse-structured'
+import { loadStructured, type I589FieldValuesV5 } from '@/lib/pdf/i589-official/parse-structured'
 
 /**
  * GET /api/admin/cases/[id]/i589-part-b/download
@@ -40,10 +40,13 @@ export async function GET(
 
   const { data: draft } = await service
     .from('case_credible_fear_drafts')
-    .select('body_md')
+    .select('body_md, i589_field_values_json')
     .eq('case_id', id)
     .eq('is_current', true)
-    .maybeSingle<{ body_md: string }>()
+    .maybeSingle<{
+      body_md: string | null
+      i589_field_values_json: I589FieldValuesV5 | null
+    }>()
 
   if (!draft) {
     return NextResponse.json(
@@ -52,7 +55,7 @@ export async function GET(
     )
   }
 
-  const structured = parseStructuredI589(draft.body_md)
+  const structured = loadStructured(draft.i589_field_values_json, draft.body_md)
   const pdfBytes = await generateI589PartBPdf(structured)
 
   const { data: caseRow } = await service

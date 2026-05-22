@@ -241,6 +241,65 @@ export async function generateTextWithDocuments(
   return { text, usage: stats, stopReason: message.stop_reason ?? null }
 }
 
+/**
+ * Variante de `generateText` que también devuelve las estadísticas de uso
+ * (input_tokens, output_tokens, cache_read_tokens, cache_creation_tokens).
+ * Útil para callers que quieren persistir el costo por draft.
+ */
+export async function generateTextWithUsage(
+  params: GenerateTextParams,
+): Promise<{ text: string; usage: UsageStats; stopReason: string | null }> {
+  const client = getAnthropic()
+
+  const systemBlocks: Anthropic.TextBlockParam[] = [
+    {
+      type: 'text',
+      text: params.system,
+      cache_control: { type: 'ephemeral' },
+    },
+  ]
+  if (params.extraSystem) {
+    systemBlocks.push({
+      type: 'text',
+      text: params.extraSystem,
+      cache_control: { type: 'ephemeral' },
+    })
+  }
+
+  const stream = client.messages.stream(
+    {
+      model: CLAUDE_MODEL,
+      max_tokens: params.maxTokens ?? 8192,
+      thinking: { type: 'adaptive' },
+      system: systemBlocks,
+      messages: [{ role: 'user', content: [{ type: 'text', text: params.user }] }],
+    },
+    { signal: params.signal },
+  )
+
+  const message = await stream.finalMessage()
+  const text = message.content
+    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+    .map((b) => b.text)
+    .join('')
+    .trim()
+
+  if (!text) throw new Error('Claude devolvió respuesta vacía')
+
+  const usage = message.usage
+  const stats: UsageStats = {
+    inputTokens: usage?.input_tokens ?? 0,
+    outputTokens: usage?.output_tokens ?? 0,
+    cacheReadTokens: usage?.cache_read_input_tokens ?? 0,
+    cacheCreationTokens: usage?.cache_creation_input_tokens ?? 0,
+  }
+  log.info(params.logLabel || 'generateTextWithUsage', {
+    ...stats,
+    stopReason: message.stop_reason,
+  })
+  return { text, usage: stats, stopReason: message.stop_reason ?? null }
+}
+
 export interface StreamTextParams extends Omit<GenerateTextParams, 'logLabel'> {
   /** Mensajes previos del chat (opcional). El último user va en `user`. */
   history?: Array<{ role: 'user' | 'assistant'; content: string }>

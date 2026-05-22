@@ -17,7 +17,7 @@
 
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { PDFDocument } from 'pdf-lib'
+import { PDFDocument, StandardFonts } from 'pdf-lib'
 import { fillAcroForm } from '@/lib/legal/acroform-service'
 import {
   I589_PART_B_PROTECTED_GROUNDS,
@@ -25,6 +25,12 @@ import {
   I589_PART_C_QUESTIONS,
 } from './field-map'
 import type { StructuredI589BC } from './parse-structured'
+
+export interface SupplementBEntry {
+  part: 'B' | 'C'
+  question: string
+  extended_text: string
+}
 
 const PDF_DISK_PATH = path.join('public', 'forms', 'usa-i-589-asylum.pdf')
 
@@ -86,4 +92,98 @@ export async function generateI589PartBPdf(structured: StructuredI589BC): Promis
     filledDoc.removePage(i)
   }
   return await filledDoc.save()
+}
+
+/**
+ * Añade páginas de Supplement B al PDF cuando hay respuestas extendidas que
+ * exceden el espacio de los TextField originales (Part B/C).
+ *
+ * Cada entrada se imprime como una página adicional con encabezado
+ * estandarizado USCIS — "Form I-589 Supplement B, Part [X] Question [N]" —
+ * seguido del texto extendido. Diana puede imprimir todas las hojas y
+ * adjuntarlas al expediente.
+ *
+ * Implementación: usa `drawText` sobre páginas en blanco en lugar de
+ * intentar duplicar la página 12 (Supplement B) del PDF original, porque
+ * duplicar conserva los widgets del AcroForm originales que apuntan al
+ * mismo field name, causando colisiones. Las páginas nuevas son flat
+ * (texto pintado), perfectamente legibles y aceptadas por USCIS.
+ */
+export async function appendSupplementBPages(
+  pdfDoc: PDFDocument,
+  entries: SupplementBEntry[],
+  applicantFullName: string,
+): Promise<void> {
+  if (entries.length === 0) return
+  const font = await pdfDoc.embedFont(StandardFonts.TimesRoman)
+  const fontBold = await pdfDoc.embedFont(StandardFonts.TimesRomanBold)
+  for (const entry of entries) {
+    const page = pdfDoc.addPage([612, 792]) // US Letter
+    const margin = 60
+    let y = 792 - margin
+
+    page.drawText('Form I-589 Supplement B', { x: margin, y, size: 14, font: fontBold })
+    y -= 22
+    page.drawText(`Part ${entry.part} — Question ${entry.question}`, {
+      x: margin,
+      y,
+      size: 12,
+      font: fontBold,
+    })
+    y -= 20
+    page.drawText(`Applicant: ${applicantFullName}`, { x: margin, y, size: 10, font })
+    y -= 24
+
+    // Wrap del extended_text dentro del ancho útil (612 - 2*margin = 492).
+    const maxWidth = 612 - margin * 2
+    const lines = wrapText(entry.extended_text, font, 11, maxWidth)
+    for (const line of lines) {
+      if (y < margin + 12) {
+        // Crear otra página de continuación si el texto no cabe.
+        const cont = pdfDoc.addPage([612, 792])
+        y = 792 - margin
+        cont.drawText(`Form I-589 Supplement B (cont.) — Part ${entry.part} Q${entry.question}`, {
+          x: margin,
+          y,
+          size: 10,
+          font: fontBold,
+        })
+        y -= 20
+        cont.drawText(line, { x: margin, y, size: 11, font })
+        y -= 14
+      } else {
+        page.drawText(line, { x: margin, y, size: 11, font })
+        y -= 14
+      }
+    }
+  }
+}
+
+function wrapText(
+  text: string,
+  font: import('pdf-lib').PDFFont,
+  size: number,
+  maxWidth: number,
+): string[] {
+  const out: string[] = []
+  for (const paragraph of text.split(/\r?\n/)) {
+    if (paragraph.trim() === '') {
+      out.push('')
+      continue
+    }
+    const words = paragraph.split(/\s+/)
+    let current = ''
+    for (const word of words) {
+      const candidate = current ? `${current} ${word}` : word
+      const width = font.widthOfTextAtSize(candidate, size)
+      if (width <= maxWidth) {
+        current = candidate
+      } else {
+        if (current) out.push(current)
+        current = word
+      }
+    }
+    if (current) out.push(current)
+  }
+  return out
 }

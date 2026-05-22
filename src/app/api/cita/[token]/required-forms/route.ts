@@ -7,6 +7,11 @@ import { TOTAL_I360_FIELDS, countI360FilledFields } from '@/components/i360/i360
 import { TOTAL_I589_PART_A_FIELDS, countI589PartAFilledFields } from '@/components/i589/i589-part-a-questions'
 import type { CasePhase } from '@/types/database'
 import { isAsylumService } from '@/lib/services/asylum'
+import {
+  CREDIBLE_FEAR_QUESTIONNAIRE_SLUG,
+  calculateProgress as calculateCredibleFearProgress,
+  type CFAnswers,
+} from '@/lib/legal/asilo-miedo-creible-form-schema'
 
 /**
  * GET /api/cita/[token]/required-forms
@@ -45,6 +50,8 @@ interface FormSummary {
   is_special_i589?: boolean
   /** Form de URLs de noticias/evidencia (Asilo Político Fase 2). */
   is_special_evidence_urls?: boolean
+  /** Cuestionario de 11 módulos para generar Miedo Creíble (Asilo Político Fase 2). */
+  is_special_credible_fear_questionnaire?: boolean
   /** Carta de Cambio de Corte (6 págs custom, Cambio de Corte). */
   is_special_cc_carta?: boolean
   client_last_edit_at: string | null
@@ -352,28 +359,54 @@ export async function GET(
     })
   }
 
-  // Familia Asilo Político — Fase 2 (Reforzar): formulario para que el
-  // cliente pegue URLs de noticias / reportes que respalden su caso. La
-  // tabla `case_evidence_urls` ya guarda los links; este card abre el
-  // manager. Aplica TANTO a 'asilo-politico' (cuando avanza a Fase 2) como
-  // a 'reforzar-asilo' (donde es la fase única). Por eso usamos
-  // isAsylumService en lugar del flag local isAsiloPolitico — ese flag
-  // sigue siendo específico de 'asilo-politico' porque la Fase 1 (I-589
-  // Parte A) NO aplica a 'reforzar-asilo'.
+  // Asilo Político / Reforzar Asilo — Fase 2 (Reforzar): dos cards
+  // especiales viven aquí —
+  //   1. Cuestionario de 11 módulos para el Miedo Creíble (NUEVO, v5).
+  //      Reemplaza el viejo upload manual de "Declaración Jurada Personal".
+  //   2. URLs de evidencia (legacy quick-add). Sigue disponible para que el
+  //      cliente agregue enlaces fuera del M9 del cuestionario.
+  //
+  // Aplica TANTO a 'asilo-politico' como a 'reforzar-asilo' vía
+  // isAsylumService.
   if (isAsylumService(serviceSlug) && currentPhase === 'asilo_reforzar') {
+    // 1. Cuestionario Miedo Creíble (M1-M11)
+    const cfInstance = instances.find((i) => i.form_name === CREDIBLE_FEAR_QUESTIONNAIRE_SLUG)
+    const cfAnswers = (cfInstance?.filled_values as CFAnswers | undefined) ?? {}
+    const cfProgress = calculateCredibleFearProgress(cfAnswers)
+    summaries.unshift({
+      slug: '__credible_fear_questionnaire__',
+      form_name: 'Cuestionario Miedo Creíble (M1-M11)',
+      description_es:
+        '11 módulos guiados sobre tu historia, los hechos que te marcaron y tu miedo a regresar. La IA legal usa estas respuestas para redactar tu Declaración Jurada de Miedo Creíble y completar el I-589 Parte B/C.',
+      state: null,
+      packet_type: 'merits',
+      template_type: 'special',
+      icon: 'shield_person',
+      total_user_fields: cfProgress.totalRequired,
+      completed_user_fields: cfProgress.answeredRequired,
+      pct: cfProgress.pct,
+      instance_status: (cfInstance?.status as string | undefined) ?? null,
+      locked_for_client: Boolean(cfInstance?.locked_for_client),
+      is_mandatory: true,
+      is_special_credible_fear_questionnaire: true,
+      client_last_edit_at: (cfInstance?.client_last_edit_at as string | undefined) ?? null,
+      client_submitted_at: (cfInstance?.client_submitted_at as string | undefined) ?? null,
+    })
+
+    // 2. URLs de evidencia (legacy quick-add).
     const { count: urlsCount } = await supabase
       .from('case_evidence_urls')
       .select('id', { count: 'exact', head: true })
       .eq('case_id', tokenData.case_id)
 
-    const TARGET_URLS = 3 // sugerencia mínima para 100% de la barra
+    const TARGET_URLS = 3
     const filled = Math.min(urlsCount ?? 0, TARGET_URLS)
 
-    summaries.unshift({
+    summaries.push({
       slug: '__evidence_urls__',
       form_name: 'Enlaces de noticias y evidencia',
       description_es:
-        'Pega URLs de reportes, noticias o publicaciones que respalden tu caso. Sugerencia: al menos 3 fuentes confiables.',
+        'Atajo para agregar URLs sueltas. Si prefieres elegirlas con guía, ve al Módulo 9 del cuestionario.',
       state: null,
       packet_type: 'merits',
       template_type: 'special',
@@ -383,7 +416,7 @@ export async function GET(
       pct: Math.min(100, Math.round((filled / TARGET_URLS) * 100)),
       instance_status: filled >= TARGET_URLS ? 'submitted' : 'draft',
       locked_for_client: false,
-      is_mandatory: true,
+      is_mandatory: false,
       is_special_evidence_urls: true,
       client_last_edit_at: null,
       client_submitted_at: null,

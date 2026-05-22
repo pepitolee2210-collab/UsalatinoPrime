@@ -1,20 +1,37 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { EvidenceUrlsManager } from '../evidence-urls-manager'
-import { UploadButton } from '../documents/upload-button'
+import { CredibleFearQuestionnaireWizard } from '../forms/credible-fear-questionnaire-wizard'
 
 interface ReforzarScreenProps {
   token: string
   clientName: string
 }
 
-interface AffidavitDoc {
-  id: string
-  name: string
-  status: string
-  uploaded_at: string
+interface QuestionnaireSummary {
+  progress: {
+    pct: number
+    modulesComplete: number
+    modulesTotal: number
+    answeredRequired: number
+    totalRequired: number
+  }
+  status: string | null
+  locked_for_client: boolean
+}
+
+interface ValidationIssue {
+  severity: 'blocker' | 'warning'
+  module: string
+  message: string
+}
+
+interface ValidationData {
+  ready: boolean
+  blockers: ValidationIssue[]
+  warnings: ValidationIssue[]
 }
 
 interface CredibleFearDraft {
@@ -27,66 +44,80 @@ interface CredibleFearDraft {
 }
 
 interface ScreenContext {
-  affidavitDocTypeId: number | null
-  affidavitUploads: AffidavitDoc[]
+  questionnaire: QuestionnaireSummary | null
+  validation: ValidationData | null
   draft: CredibleFearDraft | null
+  documentsByCategory: Record<string, number>
+}
+
+const DOCUMENT_CATEGORY_LABELS: Record<string, string> = {
+  documentos_legales: 'Identificación e inmigración',
+  sobre_la_familia: 'Familia',
+  evidencia_situacion: 'Evidencia de persecución',
+  pruebas_membresia: 'Pruebas de mi identidad / grupo',
+  cartas_testigos: 'Cartas de testigos',
+  documentos_viaje: 'Viaje y tránsito',
 }
 
 /**
- * Screen del cliente para Fase 2 (Reforzar Asilo) del servicio Asilo Político.
+ * Pantalla de Fase 2 (Reforzar Asilo) del cliente.
  *
- * Tres bloques verticales:
- *   1. Subir declaración jurada personal (.docx/.pdf) — alimenta la IA del
- *      Miedo Creíble.
- *   2. Agregar URLs de noticias/reportes que sustenten el caso — referencias
- *      externas que la IA cita.
- *   3. Previsualización del relato de Miedo Creíble cuando Diana lo genera.
- *
- * Diana / Henry son quienes pulsan el botón "Generar" — el cliente solo ve
- * el resultado para revisarlo. Esto está alineado con la separación de
- * roles del sistema: el cliente provee evidencia, la firma redacta.
+ * El flujo v5 reemplaza el viejo upload manual del "affidavit personal" por
+ * un cuestionario guiado de 11 módulos. Esta pantalla ahora es un dashboard
+ * que muestra:
+ *   1. Progreso del cuestionario + CTA a la pestaña Formularios.
+ *   2. URLs de evidencia (quick-add legacy + alias del M9).
+ *   3. Resumen de documentos subidos por categoría.
+ *   4. Validación pre-generación (qué falta para que la firma pueda generar).
+ *   5. Preview del último Miedo Creíble generado.
  */
 export function ReforzarScreen({ token, clientName }: ReforzarScreenProps) {
   const [loading, setLoading] = useState(true)
+  const [wizardOpen, setWizardOpen] = useState(false)
   const [ctx, setCtx] = useState<ScreenContext>({
-    affidavitDocTypeId: null,
-    affidavitUploads: [],
+    questionnaire: null,
+    validation: null,
     draft: null,
+    documentsByCategory: {},
   })
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
-      // Cargar required-documents (devuelve doc_type_id de affidavit) y draft current.
-      const [reqRes, draftRes] = await Promise.all([
-        fetch(`/api/cita/${encodeURIComponent(token)}/required-documents`, { cache: 'no-store' }),
+      const [qRes, validationRes, draftRes, docsRes] = await Promise.all([
+        fetch(`/api/cita/${encodeURIComponent(token)}/asilo-miedo-creible`, { cache: 'no-store' }),
+        fetch(`/api/cita/${encodeURIComponent(token)}/asilo-miedo-creible/validation`, { cache: 'no-store' }),
         fetch(`/api/cita/${encodeURIComponent(token)}/credible-fear-current`, { cache: 'no-store' }),
+        fetch(`/api/cita/${encodeURIComponent(token)}/required-documents`, { cache: 'no-store' }),
       ])
-      const reqJson = await reqRes.json().catch(() => ({}))
-      const draftJson = await draftRes.json().catch(() => ({}))
 
-      // Localizar el docItem del affidavit personal (code='asylum_personal_affidavit').
-      type DocItem = {
-        type_id: number
-        code: string
-        uploads?: Record<string, AffidavitDoc[]>
-      }
-      const categories: Array<{ docs?: DocItem[] }> = reqJson.categories ?? []
-      let affidavitDocTypeId: number | null = null
-      let affidavitUploads: AffidavitDoc[] = []
-      for (const c of categories) {
-        for (const d of c.docs ?? []) {
-          if (d.code === 'asylum_personal_affidavit') {
-            affidavitDocTypeId = d.type_id
-            affidavitUploads = Object.values(d.uploads ?? {}).flat()
+      const qJson = qRes.ok ? await qRes.json() : null
+      const validationJson = validationRes.ok ? await validationRes.json() : null
+      const draftJson = draftRes.ok ? await draftRes.json() : null
+      const docsJson = docsRes.ok ? await docsRes.json() : null
+
+      const documentsByCategory: Record<string, number> = {}
+      if (docsJson?.categories) {
+        for (const cat of docsJson.categories as Array<{ category_code: string; docs?: Array<{ uploads?: Record<string, unknown[]> }> }>) {
+          let count = 0
+          for (const d of cat.docs ?? []) {
+            count += Object.values(d.uploads ?? {}).reduce((s, arr) => s + (Array.isArray(arr) ? arr.length : 0), 0)
           }
+          if (count > 0) documentsByCategory[cat.category_code] = count
         }
       }
 
       setCtx({
-        affidavitDocTypeId,
-        affidavitUploads,
-        draft: draftJson.draft ?? null,
+        questionnaire: qJson
+          ? {
+              progress: qJson.progress,
+              status: qJson.status,
+              locked_for_client: qJson.locked_for_client,
+            }
+          : null,
+        validation: validationJson,
+        draft: draftJson?.draft ?? null,
+        documentsByCategory,
       })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error cargando datos')
@@ -102,13 +133,15 @@ export function ReforzarScreen({ token, clientName }: ReforzarScreenProps) {
   if (loading) {
     return (
       <div className="ulp-screen px-6 py-6 max-w-2xl mx-auto space-y-4">
-        <div className="h-32 rounded-2xl animate-pulse bg-gray-100" />
-        <div className="h-48 rounded-2xl animate-pulse bg-gray-100" />
+        <div className="h-32 rounded-2xl animate-pulse" style={{ background: 'var(--color-ulp-surface-container-low)' }} />
+        <div className="h-48 rounded-2xl animate-pulse" style={{ background: 'var(--color-ulp-surface-container-low)' }} />
       </div>
     )
   }
 
-  const hasAffidavit = ctx.affidavitUploads.length > 0
+  const qPct = ctx.questionnaire?.progress.pct ?? 0
+  const modulesDone = ctx.questionnaire?.progress.modulesComplete ?? 0
+  const modulesTotal = ctx.questionnaire?.progress.modulesTotal ?? 11
 
   return (
     <div className="ulp-screen px-6 py-6 max-w-2xl mx-auto space-y-6">
@@ -120,77 +153,62 @@ export function ReforzarScreen({ token, clientName }: ReforzarScreenProps) {
           Reforzar Asilo
         </h1>
         <p className="ulp-body-md mt-2" style={{ color: 'var(--color-ulp-on-surface-variant)' }}>
-          Hola {clientName}. En esta fase recopilamos tu declaración personal y
-          evidencias externas. Con esa información, nuestra IA legal redacta el
-          relato formal de Miedo Creíble que va a USCIS.
+          Hola {clientName}. En esta fase tu equipo legal usará tus respuestas
+          y tu evidencia para redactar el relato formal del Miedo Creíble que
+          va a USCIS. Tú nos das la información, nosotros la organizamos.
         </p>
       </header>
 
-      {/* 1. Declaración jurada */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 space-y-3">
+      {/* 1. Cuestionario */}
+      <section className="rounded-2xl border bg-white p-5 space-y-3" style={{ borderColor: 'var(--color-ulp-outline-variant)' }}>
         <header className="flex items-start gap-3">
-          <span
-            className="material-symbols-outlined text-purple-700"
-            data-fill="1"
-            style={{ fontSize: 22 }}
-          >
-            description
+          <span className="material-symbols-outlined text-purple-700" data-fill="1" style={{ fontSize: 22 }}>
+            shield_person
           </span>
           <div className="flex-1">
             <h2 className="text-sm font-bold text-gray-900">
-              1. Declaración jurada personal
+              1. Cuestionario Miedo Creíble (M1-M11)
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Sube un Word o PDF con tu historia personal en detalle. La IA lee el
-              archivo para construir el relato formal.
+              11 módulos guiados sobre tu historia. La IA legal y tu abogada los usan para escribir tu declaración.
             </p>
           </div>
         </header>
 
-        {hasAffidavit ? (
-          <ul className="space-y-1.5">
-            {ctx.affidavitUploads.map((f) => (
-              <li
-                key={f.id}
-                className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200"
-              >
-                <span className="material-symbols-outlined text-emerald-700" style={{ fontSize: 16 }}>
-                  check_circle
-                </span>
-                <span className="flex-1 truncate text-emerald-900">{f.name}</span>
-                <span className="text-[10px] text-emerald-700 uppercase font-bold">
-                  {f.status}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg">
-            ⚠ Aún no has subido tu declaración. Sin este archivo no se puede
-            generar el Miedo Creíble.
-          </p>
-        )}
+        <div>
+          <div className="flex justify-between items-baseline mb-1.5">
+            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--color-ulp-outline)' }}>
+              Tu progreso
+            </p>
+            <p className="text-[11px] font-bold tabular-nums" style={{ color: 'var(--color-ulp-primary)' }}>
+              {modulesDone}/{modulesTotal} módulos · {qPct}%
+            </p>
+          </div>
+          <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--color-ulp-secondary-fixed-dim)' }}>
+            <div
+              className="h-full rounded-full transition-all"
+              style={{ width: `${qPct}%`, background: 'var(--color-ulp-primary)' }}
+            />
+          </div>
+        </div>
 
-        {ctx.affidavitDocTypeId !== null && (
-          <UploadButton
-            token={token}
-            documentTypeId={ctx.affidavitDocTypeId}
-            label={hasAffidavit ? 'Reemplazar declaración' : 'Subir declaración jurada'}
-            variant="primary"
-            onUploaded={fetchAll}
-            onError={(msg) => toast.error(msg)}
-          />
-        )}
+        <button
+          type="button"
+          onClick={() => setWizardOpen(true)}
+          className="w-full px-4 py-2.5 rounded-full text-sm font-bold"
+          style={{
+            background: qPct >= 100 ? 'var(--color-ulp-surface-container)' : 'var(--color-ulp-primary-container)',
+            color: qPct >= 100 ? 'var(--color-ulp-on-surface)' : 'var(--color-ulp-on-primary-container)',
+          }}
+        >
+          {qPct >= 100 ? 'Revisar mis respuestas' : 'Continuar cuestionario'}
+        </button>
       </section>
 
-      {/* 2. URLs de evidencias */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 space-y-3">
+      {/* 2. URLs de evidencia */}
+      <section className="rounded-2xl border bg-white p-5 space-y-3" style={{ borderColor: 'var(--color-ulp-outline-variant)' }}>
         <header className="flex items-start gap-3">
-          <span
-            className="material-symbols-outlined text-blue-700"
-            data-fill="1"
-            style={{ fontSize: 22 }}
-          >
+          <span className="material-symbols-outlined text-blue-700" data-fill="1" style={{ fontSize: 22 }}>
             link
           </span>
           <div className="flex-1">
@@ -198,31 +216,120 @@ export function ReforzarScreen({ token, clientName }: ReforzarScreenProps) {
               2. URLs de evidencia
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Agrega enlaces a noticias, reportes de DD.HH., publicaciones de
-              redes o cualquier fuente externa que respalde tu caso. Máximo 20.
+              Atajo para pegar URLs sueltas. Si prefieres elegirlas con guía, hazlo desde el Módulo 9 del cuestionario.
             </p>
           </div>
         </header>
         <EvidenceUrlsManager token={token} />
       </section>
 
-      {/* 3. Preview Miedo Creíble */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 space-y-3">
+      {/* 3. Documentos subidos */}
+      <section className="rounded-2xl border bg-white p-5 space-y-3" style={{ borderColor: 'var(--color-ulp-outline-variant)' }}>
         <header className="flex items-start gap-3">
-          <span
-            className="material-symbols-outlined text-amber-700"
-            data-fill="1"
-            style={{ fontSize: 22 }}
-          >
-            shield_person
+          <span className="material-symbols-outlined text-emerald-700" data-fill="1" style={{ fontSize: 22 }}>
+            folder
           </span>
           <div className="flex-1">
             <h2 className="text-sm font-bold text-gray-900">
-              3. Tu relato de Miedo Creíble
+              3. Tus documentos subidos
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Cuando la firma genere tu relato verás aquí la versión actual.
-              Pasa a tu próxima cita con Diana para revisarlo juntos.
+              La IA leerá los documentos que subiste en la pestaña &ldquo;Documentos&rdquo; para reforzar tu caso.
+            </p>
+          </div>
+        </header>
+        {Object.keys(ctx.documentsByCategory).length === 0 ? (
+          <p className="text-xs italic text-gray-500">Aún no has subido documentos.</p>
+        ) : (
+          <ul className="space-y-1.5">
+            {Object.entries(ctx.documentsByCategory).map(([cat, count]) => (
+              <li
+                key={cat}
+                className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg"
+                style={{ background: 'var(--color-ulp-surface-container-lowest)' }}
+              >
+                <span className="material-symbols-outlined text-emerald-700" style={{ fontSize: 16 }}>
+                  check_circle
+                </span>
+                <span className="flex-1">{DOCUMENT_CATEGORY_LABELS[cat] ?? cat}</span>
+                <span className="font-bold tabular-nums">{count}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* 4. Validación */}
+      {ctx.validation && (
+        <section
+          className="rounded-2xl border p-5 space-y-3"
+          style={{
+            background: ctx.validation.ready ? 'rgb(236 253 245)' : 'rgb(255 251 235)',
+            borderColor: ctx.validation.ready ? 'rgb(110 231 183)' : 'rgb(252 211 77)',
+          }}
+        >
+          <header className="flex items-start gap-3">
+            <span
+              className="material-symbols-outlined"
+              data-fill="1"
+              style={{
+                fontSize: 22,
+                color: ctx.validation.ready ? 'rgb(4 120 87)' : 'rgb(180 83 9)',
+              }}
+            >
+              {ctx.validation.ready ? 'task_alt' : 'pending_actions'}
+            </span>
+            <div className="flex-1">
+              <h2 className="text-sm font-bold text-gray-900">
+                4. {ctx.validation.ready ? 'Listo para generar' : 'Aún faltan datos'}
+              </h2>
+              <p className="text-xs text-gray-700 mt-0.5">
+                {ctx.validation.ready
+                  ? 'Tu cuestionario tiene todo lo necesario. Cuando tu equipo legal lo decida, la IA generará tu declaración.'
+                  : 'Resuelve los siguientes puntos para habilitar la generación del Miedo Creíble.'}
+              </p>
+            </div>
+          </header>
+          {ctx.validation.blockers.length > 0 && (
+            <ul className="space-y-1.5">
+              {ctx.validation.blockers.map((b, i) => (
+                <li key={i} className="flex items-start gap-2 text-xs">
+                  <span className="material-symbols-outlined" style={{ fontSize: 14, color: 'rgb(185 28 28)' }}>
+                    error
+                  </span>
+                  <span className="text-gray-800">{b.message}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {ctx.validation.warnings.length > 0 && (
+            <ul className="space-y-1.5 pt-1 border-t" style={{ borderColor: 'rgb(252 211 77)' }}>
+              {ctx.validation.warnings.map((w, i) => (
+                <li key={i} className="flex items-start gap-2 text-xs">
+                  <span className="material-symbols-outlined" style={{ fontSize: 14, color: 'rgb(180 83 9)' }}>
+                    lightbulb
+                  </span>
+                  <span className="text-gray-800">{w.message}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+
+      {/* 5. Preview del draft */}
+      <section className="rounded-2xl border bg-white p-5 space-y-3" style={{ borderColor: 'var(--color-ulp-outline-variant)' }}>
+        <header className="flex items-start gap-3">
+          <span className="material-symbols-outlined text-amber-700" data-fill="1" style={{ fontSize: 22 }}>
+            article
+          </span>
+          <div className="flex-1">
+            <h2 className="text-sm font-bold text-gray-900">
+              5. Tu relato de Miedo Creíble
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Cuando tu equipo legal genere tu declaración verás aquí la versión actual.
+              Revísala con Diana en tu próxima cita.
             </p>
           </div>
         </header>
@@ -258,11 +365,40 @@ export function ReforzarScreen({ token, clientName }: ReforzarScreenProps) {
           </div>
         ) : (
           <p className="text-xs text-gray-400 italic">
-            Aún no hay relato generado. Cuando subas tu declaración y URLs, la
-            firma lo generará en tu próxima sesión.
+            Aún no hay relato generado. Completa el cuestionario y tu equipo legal lo generará cuando esté listo.
           </p>
         )}
       </section>
+
+      {wizardOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex flex-col" onClick={() => { setWizardOpen(false); fetchAll() }}>
+          <div
+            className="mt-auto sm:mt-12 sm:mx-auto bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-3xl flex-1 sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="px-4 py-3 flex items-center gap-3 border-b" style={{ borderColor: 'var(--color-ulp-outline-variant)' }}>
+              <button
+                type="button"
+                onClick={() => { setWizardOpen(false); fetchAll() }}
+                className="w-9 h-9 rounded-full flex items-center justify-center"
+                style={{ background: 'var(--color-ulp-surface-container)' }}
+                aria-label="Cerrar"
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
+              </button>
+              <h2 className="ulp-body-md font-bold flex-1 truncate" style={{ color: 'var(--color-ulp-on-surface)' }}>
+                Cuestionario Miedo Creíble (M1-M11)
+              </h2>
+            </header>
+            <div className="flex-1 overflow-hidden">
+              <CredibleFearQuestionnaireWizard
+                token={token}
+                onClose={() => { setWizardOpen(false); fetchAll() }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
