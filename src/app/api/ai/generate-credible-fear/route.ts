@@ -372,7 +372,22 @@ export async function POST(request: NextRequest) {
     // ────────────────────────────────────────────────────────────────
     // 9. Persistir draft
     // ────────────────────────────────────────────────────────────────
-    if (result.output.status === 'DRAFT_COMPLETE') {
+    // is_current=true cuando:
+    //   - DRAFT_COMPLETE (caso ideal), o
+    //   - REQUIRES_REVIEW pero con declaration_en y declaration_es poblados.
+    //     Las flags legales (one-year, firm resettlement, etc.) son señales
+    //     para Diana, no razón para esconder el draft. La firma quiere ver
+    //     el material editable.
+    // is_current=false cuando:
+    //   - GAPS_FOUND (faltan datos, no hay declaración), o
+    //   - REQUIRES_REVIEW con declaration_en/es nulos (no hay nada que mostrar).
+    const willBeCurrent =
+      result.output.status === 'DRAFT_COMPLETE' ||
+      (result.output.status === 'REQUIRES_REVIEW' &&
+        !!result.output.declaration_en &&
+        !!result.output.declaration_es)
+
+    if (willBeCurrent) {
       await service
         .from('case_credible_fear_drafts')
         .update({ is_current: false })
@@ -402,7 +417,7 @@ export async function POST(request: NextRequest) {
         model_used: result.modelUsed,
         prompt_version: result.promptVersion,
         generated_by: user.id,
-        is_current: result.output.status === 'DRAFT_COMPLETE',
+        is_current: willBeCurrent,
         status: result.output.status,
         case_analysis_json: result.output.case_analysis,
         gaps_found_json: result.output.gaps_found ?? [],
