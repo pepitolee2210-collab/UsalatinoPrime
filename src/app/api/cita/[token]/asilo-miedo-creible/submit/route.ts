@@ -76,7 +76,8 @@ export async function POST(
   const { error } = await supabase
     .from('case_form_instances')
     .update({
-      status: 'submitted',
+      // CHECK constraint: pending|detecting|ready|partial|complete|downloaded|failed (no 'submitted')
+      status: 'complete',
       client_submitted_at: now,
       updated_at: now,
     })

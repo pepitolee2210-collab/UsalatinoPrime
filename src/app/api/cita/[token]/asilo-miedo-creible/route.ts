@@ -243,7 +243,7 @@ async function ensureFormInstance(
       is_mandatory: true,
       filled_values: {},
       acroform_schema: [],
-      schema_source: 'custom_typescript',
+      schema_source: 'custom',
       status: 'pending',
     })
     .select('id, filled_values, locked_for_client, status')
@@ -351,7 +351,8 @@ export async function PUT(
       filled_values: merged,
       client_last_edit_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      status: instance.status === 'submitted' ? 'submitted' : 'partial',
+      // CHECK constraint en case_form_instances.status: pending|detecting|ready|partial|complete|downloaded|failed
+      status: instance.status === 'complete' ? 'complete' : 'partial',
     })
     .eq('id', instance.id)
   if (error) {
