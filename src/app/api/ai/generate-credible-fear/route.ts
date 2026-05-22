@@ -642,6 +642,12 @@ async function persistAndReturn(args: {
  * Renderiza una Declaration V6 (estructura I-VI con roman_numeral y subpart)
  * como Markdown legible para el preview en el portal cliente y la descarga
  * .docx existente.
+ *
+ * **Defensa anti-duplicación**: aunque el prompt v6.1 (R11) instruye a Claude
+ * a NO incluir el cierre dentro de la sección VI Parte B, si alguna
+ * generación lo hiciera por error, eliminamos defensivamente el bloque del
+ * último párrafo para evitar que el cierre + firma + fecha aparezca dos
+ * veces en el documento final.
  */
 function renderDeclarationMarkdown(d: DeclarationV6 | null | undefined): string {
   if (!d) return ''
@@ -650,12 +656,18 @@ function renderDeclarationMarkdown(d: DeclarationV6 | null | undefined): string 
   lines.push('')
   lines.push(d.applicant_full_name_uppercase)
   lines.push('')
-  for (const section of d.sections) {
+  const lastSectionIdx = d.sections.length - 1
+  for (let i = 0; i < d.sections.length; i++) {
+    const section = d.sections[i]
     const subpart = section.subpart ? ` ${section.subpart}` : ''
     lines.push(`## ${section.roman_numeral}${subpart}. ${section.heading}`)
     lines.push('')
-    for (const p of section.paragraphs) {
-      lines.push(p.text)
+    const lastParaIdx = section.paragraphs.length - 1
+    for (let j = 0; j < section.paragraphs.length; j++) {
+      const p = section.paragraphs[j]
+      const isLastParaOfDeclaration = i === lastSectionIdx && j === lastParaIdx
+      const text = isLastParaOfDeclaration ? stripClosingArtifacts(p.text) : p.text
+      lines.push(text)
       lines.push('')
     }
   }
@@ -667,4 +679,28 @@ function renderDeclarationMarkdown(d: DeclarationV6 | null | undefined): string 
   lines.push('')
   lines.push(d.date_line)
   return lines.join('\n').trim()
+}
+
+/**
+ * Quita del final del texto cualquier ocurrencia de las variantes del cierre
+ * ("I declare under penalty of perjury...", "DECLARO BAJO PENALIDAD...",
+ * "Signature: ___", "Date: ___", "Firma: ___", "Fecha: ___", y los
+ * separadores horizontales "---"). Defensa contra regresiones del prompt.
+ */
+function stripClosingArtifacts(text: string): string {
+  if (!text) return text
+  // Patrón que matchea desde el primer signo del cierre hasta el final.
+  const closingRegex = new RegExp(
+    [
+      String.raw`\n*(?:[-_]{3,}\s*\n+)?`,
+      String.raw`(?:`,
+      String.raw`I\s+declare\s+under\s+penalty\s+of\s+perjury[\s\S]*$`,
+      String.raw`|DECLARO\s+BAJO\s+PENALIDAD[\s\S]*$`,
+      String.raw`|Signature\s*:\s*_+[\s\S]*$`,
+      String.raw`|Firma\s*:\s*_+[\s\S]*$`,
+      String.raw`)`,
+    ].join(''),
+    'i',
+  )
+  return text.replace(closingRegex, '').trimEnd()
 }

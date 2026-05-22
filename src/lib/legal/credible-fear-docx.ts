@@ -12,14 +12,21 @@ import {
  * Genera un archivo .docx (Word) a partir del markdown del Miedo Creíble
  * persistido en `case_credible_fear_drafts.body_md`.
  *
- * Estrategia: parseo línea-a-línea (no full markdown parser) porque el output
- * de Claude sigue una estructura predecible definida en
- * `CREDIBLE_FEAR_SYSTEM`: `# título`, `## sección`, `### subsección`,
- * bullets con `- ` o `1• `, párrafos planos. Las URLs entre `[FUENTE: ...]`
- * se transforman en hipervínculos.
+ * Estrategia: parseo línea-a-línea (no full markdown parser) porque el
+ * output de Claude sigue una estructura predecible: `# título`, `## sección`,
+ * `### subsección`, bullets con `- ` o `1• `, párrafos planos. URLs entre
+ * `[FUENTE: ...]` y `https://...` sueltas se transforman en hipervínculos.
+ *
+ * **Estilo v6.1 (2026-05-23)**: tipografía **Aptos** en todo el documento,
+ * **color negro** en TODOS los elementos (incluidos headings y URLs).
+ * Diana puede cambiar manualmente si quiere, pero el default es
+ * monocromático y formal — como lo pidió Henry.
  *
  * El output es un Uint8Array directamente streameable como respuesta HTTP.
  */
+
+const APTOS = 'Aptos'
+const BLACK = '000000'
 
 interface BuildOpts {
   applicantName: string
@@ -34,7 +41,7 @@ export async function buildCredibleFearDocx(opts: BuildOpts): Promise<Uint8Array
 
   const lines = opts.bodyMarkdown.split('\n')
   // Estado: si estamos dentro de un bloque HTML comment (<!-- ... -->)
-  // skipear líneas. El prompt v3 embebe un JSON estructurado para la
+  // skipear líneas. El prompt v3 embebía un JSON estructurado para la
   // Parte B/C del I-589 dentro de un comment; no debe aparecer en Word.
   let insideComment = false
   for (const raw of lines) {
@@ -44,22 +51,18 @@ export async function buildCredibleFearDocx(opts: BuildOpts): Promise<Uint8Array
       continue
     }
     if (line.includes('<!--')) {
-      // Si el comment cierra en la misma línea, no cambia el estado;
-      // si no, queda abierto hasta encontrar `-->`.
       if (!line.includes('-->')) insideComment = true
       continue
     }
     if (!line.trim()) {
-      // Línea vacía → párrafo en blanco para separar bloques visualmente
-      children.push(new Paragraph({ children: [new TextRun('')] }))
+      children.push(new Paragraph({ children: [run('')] }))
       continue
     }
 
     if (line.trim() === '---') {
-      // Separador horizontal (antes del DECLARO...)
       children.push(new Paragraph({
         border: { bottom: { style: 'single', size: 6, color: '999999', space: 1 } },
-        children: [new TextRun('')],
+        children: [run('')],
       }))
       continue
     }
@@ -74,6 +77,8 @@ export async function buildCredibleFearDocx(opts: BuildOpts): Promise<Uint8Array
             text: line.replace(/^#\s+/, ''),
             bold: true,
             size: 32, // half-points → 16pt
+            font: APTOS,
+            color: BLACK,
           }),
         ],
       }))
@@ -89,6 +94,8 @@ export async function buildCredibleFearDocx(opts: BuildOpts): Promise<Uint8Array
             text: line.replace(/^##\s+/, ''),
             bold: true,
             size: 26,
+            font: APTOS,
+            color: BLACK,
           }),
         ],
       }))
@@ -105,6 +112,8 @@ export async function buildCredibleFearDocx(opts: BuildOpts): Promise<Uint8Array
             bold: true,
             italics: true,
             size: 22,
+            font: APTOS,
+            color: BLACK,
           }),
         ],
       }))
@@ -130,7 +139,7 @@ export async function buildCredibleFearDocx(opts: BuildOpts): Promise<Uint8Array
           indent: { left: 360 },
           spacing: { after: 80 },
           children: [
-            new TextRun({ text: `${m[1]} `, bold: true }),
+            run(`${m[1]} `, { bold: true }),
             ...parseInlineRuns(m[2]),
           ],
         }))
@@ -147,65 +156,86 @@ export async function buildCredibleFearDocx(opts: BuildOpts): Promise<Uint8Array
 
   const doc = new Document({
     creator: 'UsaLatino Prime',
-    title: `Declaración de Miedo Creíble — ${opts.applicantName}`,
-    description: `Caso ${opts.caseNumber}`,
-    sections: [
-      {
-        properties: {},
-        children,
+    title: `Credible Fear Declaration — ${opts.applicantName}`,
+    description: `Case ${opts.caseNumber}`,
+    // Estilos default: Aptos + negro en todo el documento.
+    // Las TextRun ya tienen `font` y `color` explícitos como defensa, pero
+    // estos defaults aplican a cualquier run que no los especifique.
+    styles: {
+      default: {
+        document: { run: { font: APTOS, color: BLACK, size: 22 } },
+        title: { run: { font: APTOS, color: BLACK, bold: true, size: 32 } },
+        heading1: { run: { font: APTOS, color: BLACK, bold: true, size: 26 } },
+        heading2: { run: { font: APTOS, color: BLACK, bold: true, italics: true, size: 22 } },
+        hyperlink: { run: { font: APTOS, color: BLACK, underline: { type: 'single' } } },
       },
-    ],
+    },
+    sections: [{ properties: {}, children }],
   })
 
   const buffer = await Packer.toBuffer(doc)
   return new Uint8Array(buffer)
 }
 
+// ──────────────────────────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────────────────────────
+
+/** TextRun shorthand con Aptos+negro aplicado por default. */
+function run(text: string, opts: { bold?: boolean; italics?: boolean } = {}): TextRun {
+  return new TextRun({ text, font: APTOS, color: BLACK, ...opts })
+}
+
+/** Hyperlink negro subrayado (NO usa style: 'Hyperlink' built-in que es azul). */
+function hyperlinkRun(text: string, url: string): ExternalHyperlink {
+  return new ExternalHyperlink({
+    link: url,
+    children: [
+      new TextRun({
+        text,
+        font: APTOS,
+        color: BLACK,
+        underline: {},
+      }),
+    ],
+  })
+}
+
 /**
  * Convierte texto plano con tokens `[FUENTE: <url>]` (y URLs sueltas
  * `https://...`) a TextRuns alternados con ExternalHyperlinks. También
  * detecta `**bold**` y `*italic*` simples.
+ *
+ * Todos los runs salen en Aptos + negro (los hyperlinks subrayados pero
+ * también negros).
  */
 function parseInlineRuns(text: string): (TextRun | ExternalHyperlink)[] {
   const out: (TextRun | ExternalHyperlink)[] = []
-
-  // Patrones simultáneos: [FUENTE: url] | http(s)://... | **bold** | *italic*
   const combined = /\[FUENTE:\s*(https?:\/\/[^\s\]]+)\s*\]|(https?:\/\/\S+)|\*\*([^*]+)\*\*|\*([^*]+)\*/g
   let lastIdx = 0
   let m: RegExpExecArray | null
 
   while ((m = combined.exec(text)) !== null) {
     if (m.index > lastIdx) {
-      out.push(new TextRun(text.slice(lastIdx, m.index)))
+      out.push(run(text.slice(lastIdx, m.index)))
     }
     if (m[1]) {
-      // [FUENTE: url] → hipervínculo limpio
-      out.push(
-        new ExternalHyperlink({
-          link: m[1],
-          children: [new TextRun({ text: m[1], style: 'Hyperlink' })],
-        }),
-      )
+      out.push(hyperlinkRun(m[1], m[1]))
     } else if (m[2]) {
       const url = m[2].replace(/[.,;)]+$/, '')
-      out.push(
-        new ExternalHyperlink({
-          link: url,
-          children: [new TextRun({ text: url, style: 'Hyperlink' })],
-        }),
-      )
+      out.push(hyperlinkRun(url, url))
     } else if (m[3]) {
-      out.push(new TextRun({ text: m[3], bold: true }))
+      out.push(run(m[3], { bold: true }))
     } else if (m[4]) {
-      out.push(new TextRun({ text: m[4], italics: true }))
+      out.push(run(m[4], { italics: true }))
     }
     lastIdx = m.index + m[0].length
   }
   if (lastIdx < text.length) {
-    out.push(new TextRun(text.slice(lastIdx)))
+    out.push(run(text.slice(lastIdx)))
   }
   if (out.length === 0) {
-    out.push(new TextRun(text))
+    out.push(run(text))
   }
   return out
 }

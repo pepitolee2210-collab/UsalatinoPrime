@@ -252,6 +252,15 @@ export const declarationSectionV6Schema = z.object({
   paragraphs: z.array(declarationParagraphV6Schema),
 })
 
+/**
+ * Schema de la declaración v6 (estructura I-VI con roman_numeral y subpart).
+ *
+ * **Nota sobre el idioma**: a partir de v6.1 (2026-05-23) el CONTENIDO de
+ * esta declaración se genera en INGLÉS (USCIS standard). El campo se llama
+ * `declaration_es` por compatibilidad con drafts v5/v6 anteriores que sí
+ * estaban en español; no renombrar la columna BD evita una migración
+ * disruptiva. Las nuevas generaciones poblarán el campo con texto en inglés.
+ */
 export const declarationV6Schema = z.object({
   title: z.string(),
   applicant_full_name_uppercase: z.string(),
