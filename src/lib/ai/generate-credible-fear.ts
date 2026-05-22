@@ -90,9 +90,13 @@ export async function generateCredibleFear(
 
   const validation = credibleFearStructuredOutputSchema.safeParse(parsed)
   if (!validation.success) {
-    log.warn('Zod validation failed', { issues: validation.error.issues.slice(0, 6) })
+    const issues = validation.error.issues.slice(0, 10)
+    log.warn('Zod validation failed', { issues })
+    const issuesSummary = issues
+      .map((i) => `  • path=${i.path.join('.') || '(root)'} — ${i.message}`)
+      .join('\n')
     throw new CredibleFearGenerationError(
-      'La IA devolvió un JSON que no satisface el schema esperado',
+      `La IA devolvió un JSON que no satisface el schema esperado. Primeros ${issues.length} issues:\n${issuesSummary}`,
       text,
       usage,
       validation.error,

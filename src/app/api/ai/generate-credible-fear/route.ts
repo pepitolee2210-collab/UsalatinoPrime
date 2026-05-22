@@ -449,8 +449,31 @@ export async function POST(request: NextRequest) {
         caseId,
         message: err.message,
       })
-      // Persistir un draft con status REQUIRES_REVIEW para que la firma vea
-      // el output crudo y decida cómo proceder. No marcarlo is_current.
+      // Persistir un draft con status REQUIRES_REVIEW. Guardamos el raw output
+      // dentro de body_md envuelto con cabecera para que Diana pueda revisarlo,
+      // editarlo a mano y usarlo como punto de partida — el .docx generado
+      // desde este draft NO sale en blanco. Truncamos a 80k chars para no
+      // explotar la fila (Claude rara vez produce >50k).
+      const rawTruncated = err.raw.slice(0, 80_000)
+      const reviewBody = [
+        '# OUTPUT REQUIERE REVISIÓN MANUAL',
+        '',
+        'La IA devolvió un JSON que no satisface el schema esperado para esta versión del prompt.',
+        '',
+        `**Razón técnica:** ${err.message}`,
+        '',
+        '> Diana / Henry: pueden usar el texto crudo de abajo como punto de partida y editar lo necesario,',
+        '> o ajustar el cuestionario del cliente (faltó algún dato crítico) y volver a generar.',
+        '',
+        '---',
+        '',
+        '## Output crudo de la IA',
+        '',
+        '```',
+        rawTruncated,
+        '```',
+      ].join('\n')
+
       const { data: lastVer } = await service
         .from('case_credible_fear_drafts')
         .select('version')
@@ -464,7 +487,7 @@ export async function POST(request: NextRequest) {
         .insert({
           case_id: caseId,
           version: nextVersion,
-          body_md: '',
+          body_md: reviewBody,
           sources: [],
           model_used: CLAUDE_MODEL,
           prompt_version: CREDIBLE_FEAR_PROMPT_VERSION,
