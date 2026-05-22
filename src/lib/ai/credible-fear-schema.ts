@@ -176,27 +176,46 @@ export type SupplementBEntry = z.infer<typeof supplementBEntrySchema>
 // Evidence index
 // ──────────────────────────────────────────────────────────────────
 
+// String fields que pueden venir null/undefined cuando Claude no tiene el
+// dato (p.ej. fecha de un documento no detectada por OCR). Usamos
+// preprocess para convertir null → '' antes del enum/string check, y así
+// el schema no rechaza outputs por campos opcionales mal poblados.
+const nullableString = z.preprocess(
+  (v) => (v === null || v === undefined ? '' : v),
+  z.string().default(''),
+)
+
+const evidenceCategoryValues = [
+  'personal_id',
+  'membership_proof',
+  'witness_affidavit',
+  'medical_report',
+  'psychological_report',
+  'police_report',
+  'documented_threat',
+  'injury_photo',
+  'press_article',
+  'country_conditions_report',
+  'social_media',
+  'other',
+] as const
+
+const evidenceLanguageValues = ['es', 'en', 'other'] as const
+
 export const evidenceItemSchema = z.object({
-  exhibit_number: z.string(),
-  category: z.enum([
-    'personal_id',
-    'membership_proof',
-    'witness_affidavit',
-    'medical_report',
-    'psychological_report',
-    'police_report',
-    'documented_threat',
-    'injury_photo',
-    'press_article',
-    'country_conditions_report',
-    'social_media',
-    'other',
-  ]),
-  title: z.string(),
-  source: z.string(),
-  date: z.string(),
-  language: z.enum(['es', 'en', 'other']),
-  translation_required: z.boolean(),
+  exhibit_number: nullableString,
+  category: z.preprocess(
+    coerceEnum(evidenceCategoryValues, 'other'),
+    z.enum(evidenceCategoryValues),
+  ),
+  title: nullableString,
+  source: nullableString,
+  date: nullableString,
+  language: z.preprocess(
+    coerceEnum(evidenceLanguageValues, 'other'),
+    z.enum(evidenceLanguageValues),
+  ),
+  translation_required: z.boolean().default(false),
   supports_paragraphs: z.array(z.number().int().positive()).default([]),
 })
 export type EvidenceItem = z.infer<typeof evidenceItemSchema>
