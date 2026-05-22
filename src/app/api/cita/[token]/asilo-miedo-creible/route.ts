@@ -185,6 +185,20 @@ function inferCountryCode(name: string | null | undefined): string | null {
   return COUNTRY_TO_ISO[key] ?? null
 }
 
+/**
+ * Resuelve el código ISO del país preferentemente desde la respuesta
+ * `m2_country_of_birth` del cuestionario (lo que el cliente reportó), y si
+ * está vacío cae al perfil. Esto evita desfase cuando el contrato se firmó
+ * con un país y el cliente declara otro en M2.
+ */
+function resolveCountryCode(
+  answers: Record<string, unknown> | null | undefined,
+  profileCountry: string | null,
+): string | null {
+  const fromQuestionnaire = typeof answers?.m2_country_of_birth === 'string' ? answers.m2_country_of_birth : null
+  return inferCountryCode(fromQuestionnaire) ?? inferCountryCode(profileCountry)
+}
+
 async function loadCountryEvidenceOptions(
   supabase: ReturnType<typeof createServiceClient>,
   countryCode: string | null,
@@ -281,7 +295,8 @@ export async function GET(
   const instance = await ensureFormInstance(supabase, caseRow.id)
   const answers = instance.filled_values as CFAnswers
   const prefill = await buildPrefill(supabase, caseRow.id, caseRow.client)
-  const countryCode = inferCountryCode(
+  const countryCode = resolveCountryCode(
+    instance.filled_values as Record<string, unknown> | null,
     caseRow.client?.country_of_birth ?? caseRow.client?.nationality ?? null,
   )
   const countryEvidenceOptions = await loadCountryEvidenceOptions(supabase, countryCode)

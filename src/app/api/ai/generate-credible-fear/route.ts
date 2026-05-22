@@ -136,6 +136,9 @@ export async function POST(request: NextRequest) {
     )
   }
 
+  // El país viene preferentemente del M2 del cuestionario (lo que el cliente
+  // declaró en la pestaña Formularios) y cae al perfil si M2 está vacío.
+  // Pero como aún no cargamos `answers` aquí, ese override se hace más abajo.
   const country = caseRow.client?.country_of_birth ?? caseRow.client?.nationality ?? ''
   if (!country) {
     return NextResponse.json(
@@ -168,6 +171,13 @@ export async function POST(request: NextRequest) {
     .eq('form_name', CREDIBLE_FEAR_QUESTIONNAIRE_SLUG)
     .maybeSingle()
   const answers = (questionnaire?.filled_values as CFAnswers | undefined) ?? {}
+
+  // El M2 del cuestionario gana sobre el perfil para país de búsqueda Tavily
+  // y como referencia en el prompt.
+  const countryFromQuestionnaire = typeof answers['m2_country_of_birth'] === 'string'
+    ? (answers['m2_country_of_birth'] as string)
+    : null
+  const effectiveCountry = countryFromQuestionnaire || country
 
   // ──────────────────────────────────────────────────────────────────
   // 4. Cargar I-589 Parte A submissions (para applicantMetadata)
@@ -300,7 +310,7 @@ export async function POST(request: NextRequest) {
   }> = []
   if (totalLinks < 3) {
     try {
-      const tavily = await searchCountryConditions(country)
+      const tavily = await searchCountryConditions(effectiveCountry)
       tavilyLinks = tavily.map((r) => ({
         url: r.url,
         title: r.title,
@@ -310,7 +320,7 @@ export async function POST(request: NextRequest) {
         scraped_content: r.content ?? undefined,
       }))
     } catch (err) {
-      log.warn('Tavily fallback falló', { country, err: String(err) })
+      log.warn('Tavily fallback falló', { country: effectiveCountry, err: String(err) })
     }
   }
 
@@ -326,7 +336,7 @@ export async function POST(request: NextRequest) {
         full_name: fullName || 'Solicitante',
         a_number: caseRow.client?.a_number,
         date_of_birth: caseRow.client?.date_of_birth,
-        city_country_of_birth: caseRow.client?.country_of_birth,
+        city_country_of_birth: countryFromQuestionnaire || caseRow.client?.country_of_birth,
         current_nationality: caseRow.client?.nationality,
         date_entered_us: dateEnteredUs,
         port_of_entry: typeof i589Merged.port_of_entry === 'string' ? i589Merged.port_of_entry : null,
