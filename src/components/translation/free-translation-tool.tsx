@@ -12,7 +12,6 @@ import type {
 } from '@/lib/translation/free-translate'
 
 const MAX_BYTES = 16 * 1024 * 1024
-const SIGNATURE_PATH = '/translation-cert/signature.png'
 
 const BTN_PRIMARY =
   'inline-flex items-center gap-2 px-5 py-2.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50 ' +
@@ -79,18 +78,8 @@ export function FreeTranslationTool() {
     if (!result) return
     setGeneratingPdf(true)
     try {
-      const signatureDataUrl = await loadImageAsDataUrl(SIGNATURE_PATH)
       const { buildFreeTranslationPDF } = await import('@/lib/translation/build-free-pdf')
-      const certDate = new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-      })
-      const blob = buildFreeTranslationPDF({
-        result,
-        certDate,
-        signatureDataUrl,
-      })
+      const blob = buildFreeTranslationPDF({ result })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
@@ -429,21 +418,6 @@ function DirectionOption({
       </p>
     </button>
   )
-}
-
-async function loadImageAsDataUrl(src: string): Promise<string | null> {
-  try {
-    const res = await fetch(src, { cache: 'force-cache' })
-    if (!res.ok) return null
-    const blob = await res.blob()
-    return await new Promise<string>((resolve) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.readAsDataURL(blob)
-    })
-  } catch {
-    return null
-  }
 }
 
 function FreePreview({ result }: { result: FreeTranslationResult }) {

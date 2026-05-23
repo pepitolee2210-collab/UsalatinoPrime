@@ -5,192 +5,468 @@ import type { FreeTranslationResult } from './free-translate'
 
 interface BuildOptions {
   result: FreeTranslationResult
-  /** Fecha que va al lado de "Date:" en la página de Translation Certification. */
-  certDate: string
-  /** Firma del traductor como dataURL ("data:image/png;base64,..."). */
-  signatureDataUrl: string | null
+  /** @deprecated Ya no se usa — el flujo libre no tiene página de certificación con fecha.
+   *  Se mantiene en la interface para no romper a callers existentes. */
+  certDate?: string
+  /** @deprecated Ya no se usa — el flujo libre no tiene firma del traductor. La firma
+   *  sigue activa en el sistema de actas civiles (build-pdf.ts). */
+  signatureDataUrl?: string | null
 }
 
-const TEXT: [number, number, number] = [20, 20, 20]
-const MUTED: [number, number, number] = [110, 110, 110]
+// ────────────────────────────────────────────────────────────────────
+// Constantes de estilo
+// ────────────────────────────────────────────────────────────────────
+
+const BLACK: [number, number, number] = [0, 0, 0]
+const FOOTER_GRAY: [number, number, number] = [110, 110, 110]
+
+// Página letter (8.5" × 11") en milímetros
 const PAGE_W = 216
 const PAGE_H = 279
-const ML = 22
-const MR = 22
-const MT = 22
-const MB = 22
-const FONT = 'helvetica'
+// Márgenes de 1 pulgada (25.4 mm) en los 4 lados — estándar para traducciones legales
+const ML = 25.4
+const MR = 25.4
+const MT = 25.4
+const MB = 25.4
+const CONTENT_W = PAGE_W - ML - MR
 
-const HEADER_H = 12
-const FOOTER_H = 8
+const FONT = 'times' // serif estándar (Times-Roman) — apropiado para texto legal
+
+const TITLE_SIZE = 14       // "CERTIFIED ENGLISH TRANSLATION"
+const DOC_TITLE_SIZE = 12   // Título del documento original (puede ser multi-línea)
+const SUBTITLE_SIZE = 11    // Línea parentética bajo el título
+const BODY_SIZE = 11        // Cuerpo del texto
+const FOOTER_SIZE = 9       // Footer en cursiva
+const BODY_LINE_H = 5.2     // Altura de línea en mm para body
+const PARAGRAPH_GAP = 3.5   // Espacio entre párrafos
+const NUMBERED_GAP = 4.5    // Espacio extra antes de un párrafo numerado
+
+const FOOTER_TEXT_EN = 'English translation prepared from the scanned Spanish document provided.'
+const FOOTER_TEXT_ES = 'Traducción al español preparada a partir del documento escaneado en inglés.'
 
 /**
- * Arma el PDF descargable con SOLO la traducción (una columna). Una página
- * por cada página del documento original. Al final agrega la página de
- * Translation Certification firmada por Andrew Sonny Navarro.
+ * Arma el PDF descargable de traducción libre.
  *
- * El preview en pantalla muestra 2 columnas (original | traducción) para
- * que Diana revise — pero el PDF que entrega al cliente / corte / USCIS
- * solo tiene el texto traducido. Para el original, Diana entrega el archivo
- * fuente por separado.
+ * Estructura:
+ *  - Página 1: header "CERTIFIED ENGLISH TRANSLATION" + título del documento + subtítulo +
+ *    body justificado en Times.
+ *  - Páginas 2..N: solo body (sin repetir headers), separación por págines del documento
+ *    original tal como Gemini las devolvió.
+ *  - Cada página: footer en cursiva gris al pie indicando el origen de la traducción.
+ *  - No hay página final de certificación (esa lógica vive solo en build-pdf.ts para actas
+ *    civiles, donde sí se requiere firma del traductor).
+ *
+ * El preview en pantalla (componente FreePreview) sigue mostrando 2 columnas para que
+ * Diana revise — pero el PDF que se entrega solo tiene la traducción.
  */
-export function buildFreeTranslationPDF({
-  result, certDate, signatureDataUrl,
-}: BuildOptions): Blob {
+export function buildFreeTranslationPDF({ result }: BuildOptions): Blob {
   const pdf = new jsPDF('p', 'mm', 'letter')
-  pdf.setTextColor(...TEXT)
+  pdf.setTextColor(...BLACK)
 
-  const targetIsEnglish = result.target_language === 'en'
-  const targetLabel = targetIsEnglish ? 'Translation (English)' : 'Traducción (Español)'
+  const footerText = result.target_language === 'en' ? FOOTER_TEXT_EN : FOOTER_TEXT_ES
 
-  // ── Páginas 1..N: solo texto traducido ─────────────────────────
   for (let i = 0; i < result.pages.length; i++) {
     if (i > 0) pdf.addPage()
 
-    drawPageHeader(pdf, result.document_title, i + 1, result.pages.length, targetLabel)
+    let y = MT
+    if (i === 0) {
+      y = renderTitleBlock(pdf, result.document_title_lines, result.document_subtitle, y)
+    }
 
-    const startY = MT + HEADER_H + 4
-    const endY = PAGE_H - MB - FOOTER_H
-    const fullWidth = PAGE_W - ML - MR
-
-    drawBodyText(pdf, result.pages[i].translated, ML, startY, fullWidth, endY)
-
-    drawPageFooter(pdf)
+    renderBody(pdf, result.pages[i].translated, y, footerText)
+    renderFooter(pdf, footerText)
   }
-
-  // ── Última página: Translation Certification ───────────────────
-  // Bloque copiado tal cual del sistema de actas civiles para uniformidad
-  // legal — Andrew Sonny Navarro firma como traductor certificado de la
-  // misma forma en ambos sistemas.
-  pdf.addPage()
-  let y = MT + 8
-
-  pdf.setFont(FONT, 'normal')
-  pdf.setFontSize(13)
-  pdf.text('Translation Certification', PAGE_W / 2, y, { align: 'center' })
-  y += 14
-
-  pdf.setFont(FONT, 'normal')
-  pdf.setFontSize(11)
-  // Solo cambia la frase "from X into Y" según la dirección. El resto del
-  // texto y las etiquetas (Signature, Date) son idénticas al sistema de actas.
-  const fromInto = targetIsEnglish ? 'from Spanish into English' : 'from English into Spanish'
-  const certBody = `I, Andrew Sonny Navarro, hereby certify that I translated the attached document ${fromInto} and that, to the best of my ability, it is a true and correct translation. I further certify that I am competent in both Spanish and English to render and certify such translation.`
-
-  const wrapW = PAGE_W - ML - MR
-  const lines = pdf.splitTextToSize(certBody, wrapW)
-  for (const line of lines) {
-    pdf.text(line, ML, y)
-    y += 6
-  }
-  y += 10
-
-  // "Signature:" + firma incrustada como imagen — mismo formato que el
-  // sistema de actas (55x13 mm, offset y-9 para cruzar la línea base).
-  pdf.text('Signature:', ML, y)
-  const sigLabelW = pdf.getTextWidth('Signature: ')
-  if (signatureDataUrl) {
-    const sigW = 55
-    const sigH = 13
-    pdf.addImage(signatureDataUrl, 'PNG', ML + sigLabelW, y - 9, sigW, sigH)
-  }
-  y += 14
-
-  pdf.text(`Date: ${certDate}`, ML, y)
 
   return pdf.output('blob')
 }
 
 // ────────────────────────────────────────────────────────────────────
+// Renderizado de bloques
+// ────────────────────────────────────────────────────────────────────
 
-function drawPageHeader(
+/**
+ * Página 1: bloque superior con CERTIFIED ENGLISH TRANSLATION + título del documento +
+ * subtítulo opcional. Retorna el Y donde empieza el body.
+ */
+function renderTitleBlock(
   pdf: jsPDF,
-  docTitle: string,
-  pageIdx: number,
-  totalPages: number,
-  targetLabel: string,
-) {
-  const wrapW = PAGE_W - ML - MR
-  pdf.setFont(FONT, 'bold')
-  pdf.setFontSize(11)
-  pdf.setTextColor(...TEXT)
+  titleLines: string[],
+  subtitle: string | null,
+  startY: number,
+): number {
+  let y = startY
 
-  const titleLines = pdf.splitTextToSize(docTitle || 'Translated Document', wrapW)
-  let titleY = MT
+  pdf.setFont(FONT, 'bold')
+  pdf.setFontSize(TITLE_SIZE)
+  pdf.setTextColor(...BLACK)
+  pdf.text('CERTIFIED ENGLISH TRANSLATION', PAGE_W / 2, y, { align: 'center' })
+  y += 9
+
+  pdf.setFontSize(DOC_TITLE_SIZE)
   for (const line of titleLines) {
-    pdf.text(line, ML, titleY)
-    titleY += 5
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    // Wrap manual: si el título es más ancho que el contenido, dividir
+    const wrapped = pdf.splitTextToSize(trimmed.toUpperCase(), CONTENT_W)
+    for (const sub of wrapped) {
+      pdf.text(sub, PAGE_W / 2, y, { align: 'center' })
+      y += 6
+    }
   }
 
-  pdf.setFont(FONT, 'normal')
-  pdf.setFontSize(8.5)
-  pdf.setTextColor(...MUTED)
-  pdf.text(`Page ${pageIdx} of ${totalPages}`, PAGE_W - MR, MT, { align: 'right' })
+  if (subtitle && subtitle.trim()) {
+    y += 1
+    pdf.setFont(FONT, 'normal')
+    pdf.setFontSize(SUBTITLE_SIZE)
+    const wrapped = pdf.splitTextToSize(subtitle.trim(), CONTENT_W)
+    for (const sub of wrapped) {
+      pdf.text(sub, PAGE_W / 2, y, { align: 'center' })
+      y += 5.5
+    }
+  }
 
-  // Etiqueta del idioma destino
-  pdf.setFont(FONT, 'bold')
-  pdf.setFontSize(8.5)
-  pdf.text(targetLabel.toUpperCase(), ML, MT + 6)
-
-  // Línea divisoria
-  pdf.setDrawColor(180, 180, 180)
-  pdf.setLineWidth(0.2)
-  pdf.line(ML, MT + 9, PAGE_W - MR, MT + 9)
-  pdf.setTextColor(...TEXT)
+  y += 4
+  return y
 }
 
-function drawPageFooter(pdf: jsPDF) {
+function renderFooter(pdf: jsPDF, text: string) {
+  pdf.setFont(FONT, 'italic')
+  pdf.setFontSize(FOOTER_SIZE)
+  pdf.setTextColor(...FOOTER_GRAY)
+  pdf.text(text, PAGE_W / 2, PAGE_H - MB + 8, { align: 'center' })
+  pdf.setTextColor(...BLACK)
   pdf.setFont(FONT, 'normal')
-  pdf.setFontSize(7.5)
-  pdf.setTextColor(...MUTED)
-  pdf.text(
-    'Translated by UsaLatino Prime — see Translation Certification on final page.',
-    PAGE_W / 2,
-    PAGE_H - MB + 3,
-    { align: 'center' },
-  )
-  pdf.setTextColor(...TEXT)
 }
 
 /**
- * Dibuja el cuerpo de la traducción ocupando todo el ancho de la página.
- * Si el texto excede la altura disponible, recorta con un indicador (la
- * división por página la define Gemini upstream — respetamos su corte).
+ * Renderiza el cuerpo del texto traducido. Detecta:
+ *  - Párrafos numerados (1. ..., 2. ...) → número en bold, gap extra antes
+ *  - Headings ALL-CAPS que terminan en ":" (e.g., "I DECLARE AND STATE:") → bold completo
+ *  - Resto: párrafo normal justificado
+ *
+ * No agrega nuevas páginas — si el texto excede, se trunca con un marcador. La división
+ * en páginas físicas ya viene de Gemini en result.pages[].
  */
-function drawBodyText(
-  pdf: jsPDF,
-  text: string,
-  x: number,
-  startY: number,
-  width: number,
-  endY: number,
-) {
+function renderBody(pdf: jsPDF, text: string, startY: number, footerText: string) {
   pdf.setFont(FONT, 'normal')
-  pdf.setFontSize(11)
-  pdf.setTextColor(...TEXT)
+  pdf.setFontSize(BODY_SIZE)
+  pdf.setTextColor(...BLACK)
 
-  const lineH = 5.5
-  const paragraphs = (text || '').split(/\n\n+/)
+  // Espacio reservado para el footer + un poco de margen para que el texto no toque el footer
+  const endY = PAGE_H - MB - 4
+  // Ancho disponible para body
+  const bodyWidth = CONTENT_W
+
+  // Split por dobles saltos de línea para separar párrafos. Gemini usa \n para líneas
+  // dentro de un mismo párrafo y \n\n para separar párrafos.
+  const paragraphs = (text || '').split(/\n{2,}/).map((p) => p.trim()).filter((p) => p.length > 0)
+
   let y = startY
 
   for (let pi = 0; pi < paragraphs.length; pi++) {
     const paragraph = paragraphs[pi]
-    const subLines = paragraph.split(/\n/).flatMap((sub) =>
-      pdf.splitTextToSize(sub, width)
-    )
+    const trimmed = paragraph.trim()
 
-    for (const line of subLines) {
-      if (y + lineH > endY) {
-        pdf.setTextColor(...MUTED)
-        pdf.setFontSize(9)
-        pdf.text('[continúa en la siguiente página…]', x, endY)
-        pdf.setTextColor(...TEXT)
-        pdf.setFontSize(11)
-        return
-      }
-      pdf.text(line, x, y)
-      y += lineH
+    // ¿Es un heading ALL-CAPS? Sin letras minúsculas en absoluto, mínimo 3 caracteres,
+    // y empieza con letra. Captura tanto "I DECLARE AND STATE:" como
+    // "ACKNOWLEDGMENT OF SIGNATURE AND CONTENT OF PRIVATE DOCUMENT" (sin colon).
+    const isAllCapsHeading =
+      /^[A-Z][A-Z0-9\s,.'"():/\-—–]{2,}$/.test(trimmed) &&
+      // Excluir párrafos largos para evitar falsos positivos (un párrafo todo en mayúsculas
+      // de 500 caracteres probablemente no es un heading sino contenido enfatizado)
+      trimmed.length <= 200
+
+    // ¿Es un párrafo numerado (e.g., "1. That I am the biological father...")?
+    const numberedMatch = paragraph.match(/^(\d+)\.\s+([\s\S]+)$/)
+
+    // ¿Empieza con prefijo ALL-CAPS + coma (e.g., "THEREFORE, I sign...", "WHEREAS, ...")?
+    // Render del prefijo en bold + el resto normal justificado.
+    const allCapsPrefixMatch = paragraph.match(/^([A-Z]{2,}),\s+([\s\S]+)$/)
+
+    if (numberedMatch) {
+      // Gap extra antes de párrafos numerados
+      if (pi > 0) y += NUMBERED_GAP - PARAGRAPH_GAP
+      y = renderNumberedParagraph(pdf, numberedMatch[1], numberedMatch[2], y, bodyWidth, endY, footerText)
+    } else if (isAllCapsHeading) {
+      y = renderHeading(pdf, paragraph, y, bodyWidth, endY, footerText)
+    } else if (allCapsPrefixMatch) {
+      y = renderAllCapsPrefixParagraph(pdf, allCapsPrefixMatch[1], allCapsPrefixMatch[2], y, bodyWidth, endY, footerText)
+    } else {
+      y = renderRegularParagraph(pdf, paragraph, y, bodyWidth, endY, footerText)
     }
-    if (pi < paragraphs.length - 1) y += lineH * 0.7
+
+    // Gap entre párrafos
+    if (pi < paragraphs.length - 1) y += PARAGRAPH_GAP
+
+    // Si nos pasamos del límite, abrir nueva página
+    if (y > endY) {
+      renderFooter(pdf, footerText)
+      pdf.addPage()
+      pdf.setFont(FONT, 'normal')
+      pdf.setFontSize(BODY_SIZE)
+      pdf.setTextColor(...BLACK)
+      y = MT
+    }
+  }
+}
+
+function renderHeading(
+  pdf: jsPDF,
+  text: string,
+  startY: number,
+  width: number,
+  endY: number,
+  footerText: string,
+): number {
+  pdf.setFont(FONT, 'bold')
+  pdf.setFontSize(BODY_SIZE)
+  let y = startY
+  // Pequeño gap antes del heading para separarlo del párrafo anterior
+  y += 1
+  const lines = pdf.splitTextToSize(text, width)
+  for (const line of lines) {
+    if (y > endY) {
+      renderFooter(pdf, footerText)
+      pdf.addPage()
+      pdf.setFont(FONT, 'bold')
+      pdf.setFontSize(BODY_SIZE)
+      pdf.setTextColor(...BLACK)
+      y = MT
+    }
+    // Centrado — match al estilo de las traducciones notariales certificadas
+    pdf.text(line, PAGE_W / 2, y, { align: 'center' })
+    y += BODY_LINE_H
+  }
+  pdf.setFont(FONT, 'normal')
+  return y
+}
+
+/**
+ * Párrafo que empieza con prefijo ALL-CAPS + coma (e.g., "THEREFORE, I sign this..."):
+ * el prefijo en bold y el resto en normal justificado, fluyendo en líneas continuas.
+ */
+function renderAllCapsPrefixParagraph(
+  pdf: jsPDF,
+  prefix: string,
+  rest: string,
+  startY: number,
+  width: number,
+  endY: number,
+  footerText: string,
+): number {
+  pdf.setFont(FONT, 'bold')
+  pdf.setFontSize(BODY_SIZE)
+  const prefixWithComma = `${prefix}, `
+  const prefixW = pdf.getTextWidth(prefixWithComma)
+
+  if (startY > endY) {
+    renderFooter(pdf, footerText)
+    pdf.addPage()
+    pdf.setFont(FONT, 'bold')
+    pdf.setFontSize(BODY_SIZE)
+    pdf.setTextColor(...BLACK)
+    startY = MT
+  }
+  pdf.text(`${prefix},`, ML, startY)
+
+  pdf.setFont(FONT, 'normal')
+  let y = startY
+  const initialWidth = width - prefixW
+  const restLines = wrapWithFirstLineIndent(pdf, rest, width, initialWidth)
+  for (let i = 0; i < restLines.length; i++) {
+    if (y > endY) {
+      renderFooter(pdf, footerText)
+      pdf.addPage()
+      pdf.setFont(FONT, 'normal')
+      pdf.setFontSize(BODY_SIZE)
+      pdf.setTextColor(...BLACK)
+      y = MT
+    }
+    const isFirst = i === 0
+    const isLast = i === restLines.length - 1
+    const x = isFirst ? ML + prefixW : ML
+    const lineWidth = isFirst ? initialWidth : width
+    drawLine(pdf, restLines[i], x, y, lineWidth, !isLast)
+    y += BODY_LINE_H
+  }
+  return y
+}
+
+function renderRegularParagraph(
+  pdf: jsPDF,
+  text: string,
+  startY: number,
+  width: number,
+  endY: number,
+  footerText: string,
+): number {
+  pdf.setFont(FONT, 'normal')
+  pdf.setFontSize(BODY_SIZE)
+  let y = startY
+  // Respetar saltos de línea simples dentro del párrafo (raro pero posible)
+  const subLines = text.split('\n').flatMap((sub) => pdf.splitTextToSize(sub, width))
+  for (let i = 0; i < subLines.length; i++) {
+    if (y > endY) {
+      renderFooter(pdf, footerText)
+      pdf.addPage()
+      pdf.setFont(FONT, 'normal')
+      pdf.setFontSize(BODY_SIZE)
+      pdf.setTextColor(...BLACK)
+      y = MT
+    }
+    const isLast = i === subLines.length - 1
+    drawLine(pdf, subLines[i], ML, y, width, /*justify*/ !isLast)
+    y += BODY_LINE_H
+  }
+  return y
+}
+
+/**
+ * Renderiza un párrafo numerado tipo "1. That I am the biological father..." con el número
+ * en bold y el resto en peso normal, justificado. Las líneas envueltas continúan flush
+ * left (sin hanging indent) — coincide con el estilo de las traducciones certificadas
+ * que ya circulan en el despacho.
+ */
+function renderNumberedParagraph(
+  pdf: jsPDF,
+  number: string,
+  rest: string,
+  startY: number,
+  width: number,
+  endY: number,
+  footerText: string,
+): number {
+  pdf.setFont(FONT, 'bold')
+  pdf.setFontSize(BODY_SIZE)
+  const prefix = `${number}.`
+  const prefixW = pdf.getTextWidth(`${prefix} `)
+
+  // Render del número en bold
+  if (startY > endY) {
+    renderFooter(pdf, footerText)
+    pdf.addPage()
+    pdf.setFont(FONT, 'bold')
+    pdf.setFontSize(BODY_SIZE)
+    pdf.setTextColor(...BLACK)
+    startY = MT
+  }
+  pdf.text(prefix, ML, startY)
+
+  // Render del resto en normal — partir en líneas considerando que la primera línea
+  // tiene menos ancho (porque empieza tras el prefijo).
+  pdf.setFont(FONT, 'normal')
+  let y = startY
+
+  // Estrategia: dividir el texto restante en líneas usando el ancho COMPLETO, luego
+  // ajustar la primera línea para que quepa en (width - prefixW). En la práctica, dado
+  // que el prefijo es muy corto ("1. ", "10. "), basta con tratar la primera palabra/frase
+  // como cabe en el espacio restante de la línea, y el resto fluye normal.
+  //
+  // Implementación simple: dividir el resto con maxWidth = width (igual que el resto del
+  // body) y renderizar la primera línea desplazada por prefixW. Si la primera línea es
+  // más ancha que (width - prefixW), recortar palabras del final y mandarlas a la línea 2.
+
+  const initialWidth = width - prefixW
+  const restLines = wrapWithFirstLineIndent(pdf, rest, width, initialWidth)
+
+  for (let i = 0; i < restLines.length; i++) {
+    if (y > endY) {
+      renderFooter(pdf, footerText)
+      pdf.addPage()
+      pdf.setFont(FONT, 'normal')
+      pdf.setFontSize(BODY_SIZE)
+      pdf.setTextColor(...BLACK)
+      y = MT
+    }
+    const isFirst = i === 0
+    const isLast = i === restLines.length - 1
+    const x = isFirst ? ML + prefixW : ML
+    const lineWidth = isFirst ? initialWidth : width
+    drawLine(pdf, restLines[i], x, y, lineWidth, /*justify*/ !isLast)
+    y += BODY_LINE_H
+  }
+  return y
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Helpers de layout
+// ────────────────────────────────────────────────────────────────────
+
+/**
+ * Divide un texto en líneas donde la PRIMERA línea tiene un ancho diferente (menor) que
+ * las subsecuentes. Útil para párrafos numerados donde la primera línea cabe tras "1. ".
+ */
+function wrapWithFirstLineIndent(
+  pdf: jsPDF,
+  text: string,
+  fullWidth: number,
+  firstLineWidth: number,
+): string[] {
+  const words = text.split(/\s+/).filter((w) => w.length > 0)
+  if (words.length === 0) return ['']
+
+  const lines: string[] = []
+  let current = ''
+  let widthForThisLine = firstLineWidth
+
+  for (const word of words) {
+    const candidate = current.length === 0 ? word : `${current} ${word}`
+    if (pdf.getTextWidth(candidate) <= widthForThisLine) {
+      current = candidate
+    } else {
+      if (current.length > 0) lines.push(current)
+      current = word
+      widthForThisLine = fullWidth
+    }
+  }
+  if (current.length > 0) lines.push(current)
+  return lines.length > 0 ? lines : ['']
+}
+
+/**
+ * Renderiza una línea de texto en (x, y). Si justify=true, distribuye los espacios entre
+ * palabras para que la línea alcance exactamente targetWidth. La última línea de cada
+ * párrafo NO se justifica (queda flush left).
+ *
+ * jsPDF no tiene soporte nativo de justified word-based, así que renderizamos palabra
+ * por palabra con offsets calculados manualmente.
+ */
+function drawLine(pdf: jsPDF, line: string, x: number, y: number, targetWidth: number, justify: boolean) {
+  if (!justify) {
+    pdf.text(line, x, y)
+    return
+  }
+  const words = line.split(' ').filter((w) => w.length > 0)
+  if (words.length <= 1) {
+    pdf.text(line, x, y)
+    return
+  }
+
+  const wordWidths = words.map((w) => pdf.getTextWidth(w))
+  const totalWordsW = wordWidths.reduce((a, b) => a + b, 0)
+  const naturalSpaceW = pdf.getTextWidth(' ')
+  const spaceCount = words.length - 1
+  const naturalTotalW = totalWordsW + naturalSpaceW * spaceCount
+
+  // Si la línea ya es más ancha que el target (raro pero posible con palabras largas),
+  // no estirar — render normal.
+  if (naturalTotalW >= targetWidth) {
+    pdf.text(line, x, y)
+    return
+  }
+
+  const extraPerSpace = (targetWidth - naturalTotalW) / spaceCount
+  // Sanity check: si el espacio extra es absurdo (>3x el espacio natural), no justificar
+  // — es una línea con muy pocas palabras y se vería rara estirada.
+  if (extraPerSpace > naturalSpaceW * 3) {
+    pdf.text(line, x, y)
+    return
+  }
+
+  let cursorX = x
+  for (let i = 0; i < words.length; i++) {
+    pdf.text(words[i], cursorX, y)
+    cursorX += wordWidths[i]
+    if (i < words.length - 1) cursorX += naturalSpaceW + extraPerSpace
   }
 }

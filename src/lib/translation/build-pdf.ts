@@ -21,11 +21,15 @@ const MB = 25
 const CONTENT_W = PAGE_W - ML - MR
 const FONT = 'helvetica'
 
-// Bloque fijo de la certificación — el experto de Henry (Andrew Sonny Navarro)
-// es el traductor oficial. Henry pidió que aparezca igual en TODOS los PDFs.
+// Nombre del traductor certificado. Configurable vía env var para permitir cambio sin
+// tocar código si en el futuro hay otro certificador. Default: Andrew Sonny Navarro
+// (el traductor histórico del despacho de Henry).
+const TRANSLATOR_NAME =
+  process.env.NEXT_PUBLIC_TRANSLATOR_NAME?.trim() || 'Andrew Sonny Navarro'
+
 const CERT_BLOCK = {
   title: 'Translation Certification',
-  body: 'I, Andrew Sonny Navarro, hereby certify that I translated the attached document from Spanish into English and that, to the best of my ability, it is a true and correct translation. I further certify that I am competent in both Spanish and English to render and certify such translation.',
+  body: `I, ${TRANSLATOR_NAME}, hereby certify that I translated the attached document from Spanish into English and that, to the best of my ability, it is a true and correct translation. I further certify that I am competent in both Spanish and English to render and certify such translation.`,
 }
 
 export function buildTranslationPDF({ doc, certDate, signatureDataUrl }: BuildOptions): Blob {
