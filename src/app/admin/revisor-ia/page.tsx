@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import {
   Loader2, Send, Paperclip, X, FileText, Plus, Trash2, MessageSquare,
@@ -29,7 +28,7 @@ interface PendingAttachment {
   filename: string
   mime_type: string
   size_bytes: number
-  data: string // base64
+  data: string
 }
 
 const MAX_FILE_MB = 20
@@ -54,31 +53,23 @@ async function fileToBase64(file: File): Promise<string> {
 }
 
 function renderMarkdown(text: string): string {
-  // Minimal markdown renderer — just enough for Gemini's output
-  // Headers, bold, code, lists, line breaks. No external deps.
   const escaped = text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
 
   return escaped
-    // Headers
-    .replace(/^### (.+)$/gm, '<h3 class="text-sm font-bold text-gray-900 mt-5 mb-2">$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2 class="text-base font-bold text-gray-900 mt-5 mb-2">$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1 class="text-lg font-bold text-gray-900 mt-5 mb-3">$1</h1>')
-    // Bold
-    .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-gray-900">$1</strong>')
-    // Inline code
-    .replace(/`(.+?)`/g, '<code class="bg-gray-100 text-[#002855] rounded px-1 py-0.5 text-[13px] font-mono">$1</code>')
-    // Bullets
-    .replace(/^[-*] (.+)$/gm, '<li class="ml-5 list-disc text-gray-800 mb-0.5">$1</li>')
-    // Numbered lists
-    .replace(/^(\d+)\. (.+)$/gm, '<li class="ml-5 list-decimal text-gray-800 mb-0.5">$2</li>')
-    // Paragraphs (double line break → new block)
+    .replace(/^### (.+)$/gm, '<h3 class="text-[13px] font-bold text-white mt-5 mb-2">$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2 class="text-[14px] font-bold text-white mt-5 mb-2">$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1 class="text-[15px] font-bold text-white mt-5 mb-3">$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-white">$1</strong>')
+    .replace(/`(.+?)`/g, '<code class="rounded px-1 py-0.5 text-[12px]" style="background:rgba(255,255,255,0.08);color:#FACC15;font-family:var(--font-mono-tech);border:0.5px solid rgba(255,255,255,0.1)">$1</code>')
+    .replace(/^[-*] (.+)$/gm, '<li class="ml-5 list-disc mb-0.5" style="color:#D4D4D8">$1</li>')
+    .replace(/^(\d+)\. (.+)$/gm, '<li class="ml-5 list-decimal mb-0.5" style="color:#D4D4D8">$2</li>')
     .split(/\n\n+/)
     .map(block => {
       if (block.startsWith('<h') || block.startsWith('<li')) return block
-      return `<p class="text-gray-800 leading-relaxed mb-2">${block.replace(/\n/g, '<br />')}</p>`
+      return `<p class="leading-relaxed mb-2" style="color:#D4D4D8">${block.replace(/\n/g, '<br />')}</p>`
     })
     .join('\n')
 }
@@ -132,7 +123,6 @@ export default function RevisorIAPage() {
   }, [messages, streamingText])
 
   useEffect(() => {
-    // Auto-resize textarea
     const ta = textareaRef.current
     if (!ta) return
     ta.style.height = 'auto'
@@ -242,7 +232,6 @@ export default function RevisorIAPage() {
         }
       }
 
-      // Commit final assistant message to list
       if (fullText.trim()) {
         const assistantMsg: Message = {
           id: `assistant-${Date.now()}`,
@@ -255,7 +244,6 @@ export default function RevisorIAPage() {
       }
       setStreamingText('')
 
-      // Refresh sessions list (new session might have been created, or updated_at changed)
       await loadSessions()
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') {
@@ -297,21 +285,51 @@ export default function RevisorIAPage() {
   }
 
   return (
-    <div className="flex -mt-6 -mx-6 h-[calc(100vh-var(--sidebar-top,0px))] min-h-[calc(100vh-3rem)] bg-gray-50">
-      {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-72' : 'w-0'} border-r border-gray-200 bg-white flex flex-col transition-all overflow-hidden`}>
-        <div className="p-3 border-b border-gray-100">
-          <Button onClick={handleNewSession} className="w-full bg-[#F2A900] hover:bg-[#D4940A] text-[#001020] font-bold">
-            <Plus className="w-4 h-4 mr-1.5" />
+    <div
+      className="flex -mt-6 -mx-6 h-[calc(100vh-var(--sidebar-top,0px))] min-h-[calc(100vh-3rem)]"
+      style={{ background: '#000000' }}
+    >
+      {/* Sessions sidebar */}
+      <aside
+        className={`${sidebarOpen ? 'w-72' : 'w-0'} flex flex-col transition-all overflow-hidden`}
+        style={{
+          background: 'linear-gradient(180deg, rgba(15,15,15,0.95), rgba(8,8,8,0.95))',
+          borderRight: '0.5px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        <div className="p-3" style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
+          <button
+            onClick={handleNewSession}
+            className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95"
+            style={{
+              background: '#FFFFFF',
+              color: '#000000',
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: '-0.005em',
+              boxShadow: '0 4px 18px rgba(255,255,255,0.18), 0 0 0 0.5px rgba(255,255,255,0.4) inset',
+            }}
+          >
+            <Plus className="w-3.5 h-3.5" />
             Nueva conversación
-          </Button>
+          </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto admin-scroll p-2">
           {loading ? (
-            <div className="flex justify-center py-8"><Loader2 className="w-4 h-4 animate-spin text-gray-400" /></div>
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-4 h-4 animate-spin" style={{ color: '#A1A1A1' }} />
+            </div>
           ) : sessions.length === 0 ? (
-            <p className="text-xs text-gray-400 text-center py-8 px-4">
-              Aún no hay conversaciones. Empieza una nueva.
+            <p
+              className="py-8 px-4 text-center"
+              style={{
+                fontFamily: 'var(--font-mono-tech)',
+                fontSize: 10,
+                color: '#525252',
+                letterSpacing: '0.15em',
+              }}
+            >
+              SIN CONVERSACIONES
             </p>
           ) : (
             <div className="space-y-0.5">
@@ -319,22 +337,49 @@ export default function RevisorIAPage() {
                 <div
                   key={s.id}
                   onClick={() => loadSession(s.id)}
-                  className={`group cursor-pointer rounded-lg px-2.5 py-2 transition-colors flex items-start gap-2 ${
-                    activeSessionId === s.id ? 'bg-[#002855]/10' : 'hover:bg-gray-50'
-                  }`}
+                  className="group cursor-pointer rounded-lg px-2.5 py-2 transition-colors flex items-start gap-2"
+                  style={{
+                    background: activeSessionId === s.id ? 'rgba(255,255,255,0.08)' : 'transparent',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (activeSessionId !== s.id) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activeSessionId !== s.id) e.currentTarget.style.background = 'transparent'
+                  }}
                 >
-                  <MessageSquare className="w-3.5 h-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+                  <MessageSquare
+                    className="w-3.5 h-3.5 mt-0.5 flex-shrink-0"
+                    style={{ color: activeSessionId === s.id ? '#FACC15' : '#525252' }}
+                  />
                   <div className="flex-1 min-w-0">
-                    <p className={`text-xs font-medium truncate ${activeSessionId === s.id ? 'text-[#002855]' : 'text-gray-800'}`}>
+                    <p
+                      className="truncate"
+                      style={{
+                        fontSize: 12,
+                        fontWeight: activeSessionId === s.id ? 600 : 500,
+                        color: activeSessionId === s.id ? '#FFFFFF' : '#A1A1A1',
+                        letterSpacing: '-0.005em',
+                      }}
+                    >
                       {s.title}
                     </p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">
-                      {formatDistanceToNow(new Date(s.updated_at), { locale: es, addSuffix: true })}
+                    <p
+                      style={{
+                        fontFamily: 'var(--font-mono-tech)',
+                        fontSize: 9,
+                        color: '#525252',
+                        marginTop: 2,
+                        letterSpacing: '0.05em',
+                      }}
+                    >
+                      {formatDistanceToNow(new Date(s.updated_at), { locale: es, addSuffix: true }).toUpperCase()}
                     </p>
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDeleteSession(s.id) }}
-                    className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-opacity"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ color: '#FCA5A5' }}
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>
@@ -348,28 +393,73 @@ export default function RevisorIAPage() {
       {/* Main chat */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <div className="border-b border-gray-200 bg-white px-5 py-3 flex items-center justify-between">
+        <div
+          className="px-5 py-3 flex items-center justify-between"
+          style={{
+            background: 'rgba(10,10,10,0.85)',
+            backdropFilter: 'blur(20px)',
+            borderBottom: '0.5px solid rgba(255,255,255,0.08)',
+          }}
+        >
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="text-gray-400 hover:text-gray-700"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-white/10"
+              style={{ color: '#A1A1A1', border: '0.5px solid rgba(255,255,255,0.1)' }}
             >
-              <ChevronRight className={`w-4 h-4 transition-transform ${sidebarOpen ? 'rotate-180' : ''}`} />
+              <ChevronRight
+                className="w-3.5 h-3.5 transition-transform"
+                style={{ transform: sidebarOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+              />
             </button>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#002855] to-[#001d3d] flex items-center justify-center">
-                <Scale className="w-4 h-4 text-[#F2A900]" />
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center relative"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(250,204,21,0.18), rgba(250,204,21,0.04))',
+                  border: '0.5px solid rgba(250,204,21,0.3)',
+                }}
+              >
+                <Scale className="w-4 h-4" style={{ color: '#FACC15' }} />
               </div>
               <div>
-                <h1 className="text-sm font-bold text-gray-900 flex items-center gap-1.5 font-mono tracking-wide">
+                <p
+                  className="flex items-center gap-1.5"
+                  style={{
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: '#FFFFFF',
+                    letterSpacing: '0.02em',
+                  }}
+                >
                   LEX
-                  <span className="text-[10px] font-mono font-medium text-[#F2A900] bg-[#F2A900]/10 px-1.5 py-0.5 rounded border border-[#F2A900]/20">
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-mono-tech)',
+                      fontSize: 9,
+                      fontWeight: 700,
+                      color: '#FACC15',
+                      background: 'rgba(250,204,21,0.10)',
+                      border: '0.5px solid rgba(250,204,21,0.3)',
+                      padding: '2px 5px',
+                      borderRadius: 4,
+                      letterSpacing: '0.1em',
+                    }}
+                  >
                     v1
                   </span>
-                </h1>
-                <p className="text-[10px] text-gray-400 flex items-center gap-1 font-mono">
-                  <span className="text-[#F2A900]">▸</span>
-                  Sistema legal · UsaLatino Prime
+                </p>
+                <p
+                  style={{
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 9,
+                    color: '#525252',
+                    letterSpacing: '0.15em',
+                    marginTop: 1,
+                  }}
+                >
+                  <span style={{ color: '#FACC15' }}>▸</span> SISTEMA LEGAL · USA LATINO PRIME
                 </p>
               </div>
             </div>
@@ -377,38 +467,73 @@ export default function RevisorIAPage() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto admin-scroll">
           {messages.length === 0 && !streaming ? (
             <div className="flex flex-col items-center justify-center h-full px-6 max-w-2xl mx-auto text-center">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#002855] to-[#001d3d] flex items-center justify-center mb-5">
-                <Scale className="w-8 h-8 text-[#F2A900]" />
+              <div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(250,204,21,0.18), rgba(250,204,21,0.04))',
+                  border: '0.5px solid rgba(250,204,21,0.3)',
+                  boxShadow: '0 0 24px rgba(250,204,21,0.15)',
+                }}
+              >
+                <Scale className="w-8 h-8" style={{ color: '#FACC15' }} />
               </div>
-              <h2 className="text-3xl font-mono font-bold text-gray-900 mb-1 tracking-wide">
-                <span className="text-[#F2A900]">LEX</span><span className="text-gray-300">.</span>
+              <h2
+                style={{
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 36,
+                  fontWeight: 700,
+                  letterSpacing: '0.02em',
+                  marginBottom: 4,
+                }}
+              >
+                <span style={{ color: '#FACC15' }}>LEX</span>
+                <span style={{ color: '#525252' }}>.</span>
               </h2>
-              <p className="text-[11px] font-mono text-gray-400 uppercase tracking-[0.2em] mb-5">
-                Sistema legal · UsaLatino Prime
+              <p
+                style={{
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  color: '#525252',
+                  letterSpacing: '0.2em',
+                  marginBottom: 24,
+                }}
+              >
+                SISTEMA LEGAL · USA LATINO PRIME
               </p>
-              <p className="text-sm text-gray-500 mb-8 max-w-md leading-relaxed">
+              <p
+                className="max-w-md mb-8"
+                style={{ fontSize: 13, color: '#A1A1A1', lineHeight: 1.55 }}
+              >
                 Revisa formularios, declaraciones o evidencia. Detecta fallas antes de que lleguen al juez.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full">
                 {[
-                  { icon: FileText, title: 'Revisar un formulario I-485', hint: 'Sube el PDF y te doy feedback completo' },
-                  { icon: FileText, title: 'Evaluar declaración jurada', hint: 'Checkeo narrativa, inconsistencias y requisitos' },
-                  { icon: FileText, title: 'Checklist de evidencia SIJS', hint: 'Qué documentos te faltan para corte' },
-                  { icon: FileText, title: 'Revisar renuncia de padre', hint: 'Valido voluntariedad y formato legal' },
+                  { title: 'Revisar un formulario I-485', hint: 'Sube el PDF y te doy feedback completo' },
+                  { title: 'Evaluar declaración jurada', hint: 'Checkeo narrativa, inconsistencias y requisitos' },
+                  { title: 'Checklist de evidencia SIJS', hint: 'Qué documentos te faltan para corte' },
+                  { title: 'Revisar renuncia de padre', hint: 'Valido voluntariedad y formato legal' },
                 ].map((ex, i) => (
                   <button
                     key={i}
                     onClick={() => setInput(ex.title)}
-                    className="text-left p-3 rounded-xl border border-gray-200 bg-white hover:border-[#F2A900] hover:bg-amber-50/30 transition-all"
+                    className="text-left p-3.5 rounded-2xl transition-all duration-300 hover:-translate-y-0.5"
+                    style={{
+                      background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+                      border: '0.5px solid rgba(255,255,255,0.1)',
+                    }}
                   >
                     <div className="flex items-start gap-2.5">
-                      <ex.icon className="w-4 h-4 text-[#F2A900] mt-0.5 flex-shrink-0" />
+                      <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#FACC15' }} />
                       <div>
-                        <p className="text-sm font-medium text-gray-900">{ex.title}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{ex.hint}</p>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                          {ex.title}
+                        </p>
+                        <p style={{ fontSize: 11, color: '#A1A1A1', marginTop: 3, lineHeight: 1.5 }}>
+                          {ex.hint}
+                        </p>
                       </div>
                     </div>
                   </button>
@@ -433,9 +558,17 @@ export default function RevisorIAPage() {
                 />
               )}
               {streaming && !streamingText && (
-                <div className="flex items-center gap-2 text-xs text-gray-400 pl-11 font-mono">
+                <div
+                  className="flex items-center gap-2 pl-11"
+                  style={{
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 11,
+                    color: '#A1A1A1',
+                    letterSpacing: '0.05em',
+                  }}
+                >
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span className="text-[#F2A900]">▸</span> LEX analizando...
+                  <span style={{ color: '#FACC15' }}>▸</span> LEX ANALIZANDO…
                 </div>
               )}
               <div ref={messagesEndRef} />
@@ -444,19 +577,36 @@ export default function RevisorIAPage() {
         </div>
 
         {/* Input area */}
-        <div className="border-t border-gray-200 bg-white p-4">
+        <div
+          className="p-4"
+          style={{
+            background: 'rgba(10,10,10,0.85)',
+            backdropFilter: 'blur(20px)',
+            borderTop: '0.5px solid rgba(255,255,255,0.08)',
+          }}
+        >
           <div className="max-w-3xl mx-auto">
-            {/* Pending attachments */}
             {pendingAttachments.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-2">
                 {pendingAttachments.map((a, i) => (
-                  <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 border border-gray-200 text-xs">
-                    <FileIcon className="w-3.5 h-3.5 text-gray-500" />
-                    <span className="font-medium text-gray-800 truncate max-w-[180px]">{a.filename}</span>
-                    <span className="text-gray-400">{formatFileSize(a.size_bytes)}</span>
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
+                    style={{
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '0.5px solid rgba(255,255,255,0.1)',
+                      fontSize: 11,
+                    }}
+                  >
+                    <FileIcon className="w-3 h-3" style={{ color: '#A1A1A1' }} />
+                    <span style={{ fontWeight: 600, color: '#FFFFFF', maxWidth: 180 }} className="truncate">{a.filename}</span>
+                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: '#525252' }}>
+                      {formatFileSize(a.size_bytes)}
+                    </span>
                     <button
                       onClick={() => setPendingAttachments(prev => prev.filter((_, idx) => idx !== i))}
-                      className="text-gray-400 hover:text-red-500"
+                      style={{ color: '#A1A1A1' }}
+                      className="hover:text-red-300 transition-colors"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -465,12 +615,19 @@ export default function RevisorIAPage() {
               </div>
             )}
 
-            <div className="flex items-end gap-2 rounded-2xl border border-gray-200 bg-white shadow-sm p-2 focus-within:border-[#F2A900] transition-colors">
+            <div
+              className="flex items-end gap-2 rounded-2xl p-2 transition-colors"
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '0.5px solid rgba(255,255,255,0.1)',
+              }}
+            >
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={streaming || pendingAttachments.length >= 5}
-                className="flex-shrink-0 w-9 h-9 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 flex items-center justify-center disabled:opacity-40 transition-colors"
-                title="Adjuntar archivo (PDF, imagen, doc)"
+                className="flex-shrink-0 w-9 h-9 rounded-lg transition-colors hover:bg-white/10 flex items-center justify-center disabled:opacity-40"
+                style={{ color: '#A1A1A1' }}
+                title="Adjuntar archivo"
               >
                 <Paperclip className="w-4 h-4" />
               </button>
@@ -493,16 +650,22 @@ export default function RevisorIAPage() {
                     handleSend()
                   }
                 }}
-                placeholder="Consulta a LEX o sube un documento..."
+                placeholder="Consulta a LEX o sube un documento…"
                 rows={1}
                 disabled={streaming}
-                className="flex-1 bg-transparent border-none outline-none resize-none text-sm text-gray-900 placeholder-gray-400 px-2 py-2 max-h-60"
+                className="flex-1 bg-transparent border-none outline-none resize-none px-2 py-2 max-h-60"
+                style={{
+                  fontSize: 13,
+                  color: '#FFFFFF',
+                  letterSpacing: '-0.005em',
+                }}
               />
 
               {streaming ? (
                 <button
                   onClick={handleStopStream}
-                  className="flex-shrink-0 w-9 h-9 rounded-lg bg-red-500 hover:bg-red-600 text-white flex items-center justify-center"
+                  className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-opacity hover:opacity-90"
+                  style={{ background: '#EF4444', color: '#FFFFFF' }}
                   title="Detener"
                 >
                   <div className="w-3 h-3 bg-white rounded-sm" />
@@ -511,15 +674,28 @@ export default function RevisorIAPage() {
                 <button
                   onClick={handleSend}
                   disabled={!input.trim() && pendingAttachments.length === 0}
-                  className="flex-shrink-0 w-9 h-9 rounded-lg bg-[#F2A900] hover:bg-[#D4940A] text-[#001020] flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{
+                    background: '#FACC15',
+                    color: '#000000',
+                    boxShadow: '0 0 16px rgba(250,204,21,0.3)',
+                  }}
                 >
                   <Send className="w-4 h-4" />
                 </button>
               )}
             </div>
 
-            <p className="text-[10px] text-gray-400 text-center mt-2">
-              Máx 5 archivos · 20 MB c/u · PDF, Word, imágenes
+            <p
+              className="text-center mt-2"
+              style={{
+                fontFamily: 'var(--font-mono-tech)',
+                fontSize: 9,
+                color: '#525252',
+                letterSpacing: '0.15em',
+              }}
+            >
+              MÁX 5 ARCHIVOS · 20 MB C/U · PDF · WORD · IMÁGENES
             </p>
           </div>
         </div>
@@ -533,38 +709,91 @@ function MessageBubble({ message, isStreaming = false }: { message: Message; isS
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : ''}`}>
       {!isUser && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-[#002855] to-[#001d3d] flex items-center justify-center ring-1 ring-[#F2A900]/20 shadow-[0_0_12px_-2px_rgba(242,169,0,0.3)]">
-          <Scale className="w-4 h-4 text-[#F2A900]" />
+        <div
+          className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
+          style={{
+            background: 'linear-gradient(135deg, rgba(250,204,21,0.18), rgba(250,204,21,0.04))',
+            border: '0.5px solid rgba(250,204,21,0.3)',
+            boxShadow: '0 0 12px rgba(250,204,21,0.18)',
+          }}
+        >
+          <Scale className="w-4 h-4" style={{ color: '#FACC15' }} />
         </div>
       )}
       <div className={`max-w-[78%] ${isUser ? 'order-1' : ''}`}>
-        <div className={`rounded-2xl ${isUser ? 'bg-[#002855] text-white px-4 py-3' : 'bg-white border border-gray-200 px-5 py-4'}`}>
+        <div
+          className="rounded-2xl"
+          style={
+            isUser
+              ? {
+                  background: '#FFFFFF',
+                  color: '#000000',
+                  padding: '12px 16px',
+                  boxShadow: '0 4px 18px rgba(255,255,255,0.12)',
+                }
+              : {
+                  background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+                  border: '0.5px solid rgba(255,255,255,0.1)',
+                  padding: '16px 20px',
+                  backdropFilter: 'blur(20px)',
+                }
+          }
+        >
           {message.attachments.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-2">
               {message.attachments.map((a, i) => (
-                <div key={i} className={`flex items-center gap-1.5 px-2 py-1 rounded text-[11px] ${isUser ? 'bg-white/10' : 'bg-gray-100'}`}>
+                <div
+                  key={i}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded"
+                  style={{
+                    background: isUser ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)',
+                    fontSize: 10,
+                    color: isUser ? '#000000' : '#FFFFFF',
+                  }}
+                >
                   <FileIcon className="w-3 h-3" />
-                  <span className="truncate max-w-[140px]">{a.filename}</span>
+                  <span className="truncate" style={{ maxWidth: 140 }}>{a.filename}</span>
                 </div>
               ))}
             </div>
           )}
           {isUser ? (
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+            <p style={{ fontSize: 13, lineHeight: 1.55, whiteSpace: 'pre-wrap', letterSpacing: '-0.005em' }}>
+              {message.content}
+            </p>
           ) : (
             <div
-              className="text-sm"
-              dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) + (isStreaming ? '<span class="inline-block w-1.5 h-4 bg-gray-400 ml-0.5 animate-pulse" />' : '') }}
+              style={{ fontSize: 13 }}
+              dangerouslySetInnerHTML={{
+                __html:
+                  renderMarkdown(message.content) +
+                  (isStreaming ? '<span class="inline-block w-1.5 h-4 ml-0.5 animate-pulse" style="background:#FACC15;vertical-align:middle" />' : ''),
+              }}
             />
           )}
         </div>
-        <p className="text-[10px] text-gray-400 mt-1 px-1">
+        <p
+          className="mt-1 px-1"
+          style={{
+            fontFamily: 'var(--font-mono-tech)',
+            fontSize: 9,
+            color: '#525252',
+            letterSpacing: '0.05em',
+            textAlign: isUser ? 'right' : 'left',
+          }}
+        >
           {format(new Date(message.created_at), 'HH:mm', { locale: es })}
         </p>
       </div>
       {isUser && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center">
-          <User className="w-4 h-4 text-gray-600" />
+        <div
+          className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
+          style={{
+            background: 'rgba(255,255,255,0.06)',
+            border: '0.5px solid rgba(255,255,255,0.1)',
+          }}
+        >
+          <User className="w-4 h-4" style={{ color: '#A1A1A1' }} />
         </div>
       )}
     </div>

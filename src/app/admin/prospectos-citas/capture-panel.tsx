@@ -1,8 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Button } from '@/components/ui/button'
-import { X, Save, PhoneCall, Info, UserPlus, CheckCircle, XCircle } from 'lucide-react'
+import { X, Save, PhoneCall, Info, UserPlus, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Prospecto } from './prospectos-view'
 
@@ -59,7 +58,6 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
     }
   }
 
-  // Autoguardado cada 15s si hay cambios
   useEffect(() => {
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
     if (!dirtyRef.current) return
@@ -69,9 +67,6 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
     return () => {
       if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current)
     }
-    // `save` cierra sobre todos los deps listados — agregarlo daría loop
-    // infinito. Pattern intencional: refrescar el timer solo cuando cambia
-    // el contenido a guardar, no cuando cambia la closure.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, probability, decision, notes])
 
@@ -91,35 +86,87 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex">
-      {/* Overlay */}
-      <div className="flex-1 bg-black/40" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex">
+      {/* Overlay con backdrop blur */}
+      <div
+        className="flex-1"
+        onClick={onClose}
+        style={{
+          background: 'rgba(0,0,0,0.65)',
+          backdropFilter: 'blur(8px)',
+        }}
+      />
 
       {/* Panel lateral */}
-      <div className="w-full max-w-2xl bg-white h-full overflow-y-auto shadow-2xl">
+      <div
+        className="w-full max-w-2xl h-full overflow-y-auto admin-scroll"
+        style={{
+          background: 'linear-gradient(180deg, #0B0B0E 0%, #050505 100%)',
+          borderLeft: '0.5px solid rgba(255,255,255,0.1)',
+          boxShadow: '-40px 0 80px rgba(0,0,0,0.5)',
+          color: '#FAFAFA',
+        }}
+      >
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b z-10 px-6 py-4 flex items-center justify-between">
+        <div
+          className="sticky top-0 z-10 px-6 py-4 flex items-center justify-between"
+          style={{
+            background: 'rgba(10,10,10,0.85)',
+            backdropFilter: 'blur(20px)',
+            borderBottom: '0.5px solid rgba(255,255,255,0.08)',
+          }}
+        >
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <PhoneCall className="w-5 h-5 text-blue-600" />
-              <h2 className="text-lg font-bold text-gray-900">Evaluación en vivo</h2>
-              {saving && <span className="text-xs text-gray-400">Guardando…</span>}
+              <span
+                className="inline-flex items-center justify-center w-9 h-9 rounded-xl"
+                style={{
+                  background: 'rgba(96,165,250,0.12)',
+                  border: '0.5px solid rgba(96,165,250,0.3)',
+                }}
+              >
+                <PhoneCall className="w-4 h-4" style={{ color: '#60A5FA' }} />
+              </span>
+              <div>
+                <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.2em', color: '#525252' }}>
+                  EVALUACIÓN · EN VIVO
+                </p>
+                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.02em', color: '#FFFFFF', lineHeight: 1.2 }}>
+                  {prospecto.guest_name || 'Sin nombre'}
+                </h2>
+              </div>
+              {saving && (
+                <span className="inline-flex items-center gap-1 ml-2" style={{ fontSize: 10, color: '#A1A1A1', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.1em' }}>
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  GUARDANDO…
+                </span>
+              )}
             </div>
-            <p className="text-sm text-gray-500">
-              {prospecto.guest_name} · {prospecto.guest_phone || 'sin teléfono'}
+            <p style={{ fontSize: 12, color: '#A1A1A1', marginLeft: 44, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em' }}>
+              {prospecto.guest_phone || 'sin teléfono'}
             </p>
           </div>
-          <button onClick={onClose} className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center">
-            <X className="w-5 h-5 text-gray-500" />
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full transition-colors hover:bg-white/10 flex items-center justify-center"
+            style={{ color: '#A1A1A1', border: '0.5px solid rgba(255,255,255,0.1)' }}
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-7">
           {/* Disclaimer */}
-          <div className="rounded-lg bg-blue-50 border border-blue-100 p-3 flex gap-2">
-            <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-            <div className="text-xs text-blue-900 leading-relaxed">
-              <strong>Recordatorio:</strong> UsaLatino Prime es una plataforma que guía al usuario a organizar su propio expediente. Tu rol es acompañar al cliente, evaluar viabilidad y capturar los datos clave. No das asesoría legal.
+          <div
+            className="rounded-xl p-3.5 flex gap-2.5"
+            style={{
+              background: 'rgba(96,165,250,0.06)',
+              border: '0.5px solid rgba(96,165,250,0.2)',
+            }}
+          >
+            <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#60A5FA' }} />
+            <div style={{ fontSize: 12, color: '#93C5FD', lineHeight: 1.55 }}>
+              <strong style={{ color: '#FFFFFF' }}>Recordatorio:</strong> UsaLatino Prime es una plataforma que guía al usuario a organizar su propio expediente. Tu rol es acompañar al cliente, evaluar viabilidad y capturar los datos clave. No das asesoría legal.
             </div>
           </div>
 
@@ -133,7 +180,7 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
               <Field label="País de origen" value={data.menor_pais_origen || ''} onChange={v => update('menor_pais_origen', v)} />
               <Field label="Estado donde vive" value={data.menor_estado || ''} onChange={v => update('menor_estado', v)} />
             </Row>
-            <Field label="Fecha aproximada de llegada a EE.UU." value={data.menor_fecha_llegada || ''} onChange={v => update('menor_fecha_llegada', v)} placeholder="ej: marzo 2022" />
+            <Field label="Fecha aprox. de llegada a EE.UU." value={data.menor_fecha_llegada || ''} onChange={v => update('menor_fecha_llegada', v)} placeholder="ej: marzo 2022" />
           </Section>
 
           {/* Abandono */}
@@ -192,8 +239,16 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
               value={notes}
               onChange={(e) => { setNotes(e.target.value); markDirty() }}
               rows={4}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none resize-none"
-              placeholder="Escribe cualquier detalle del caso que sea relevante..."
+              placeholder="Escribe cualquier detalle del caso que sea relevante…"
+              className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 resize-y"
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '0.5px solid rgba(255,255,255,0.1)',
+                color: '#FAFAFA',
+                fontSize: 13,
+                letterSpacing: '-0.005em',
+                minHeight: 100,
+              }}
             />
           </Section>
 
@@ -224,34 +279,43 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
         </div>
 
         {/* Footer con acciones */}
-        <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex flex-wrap gap-2 justify-between">
-          <Button variant="outline" size="sm" onClick={() => save().then(() => toast.success('Guardado'))} disabled={saving}>
-            <Save className="w-4 h-4 mr-1" /> Guardar borrador
-          </Button>
+        <div
+          className="sticky bottom-0 px-6 py-4 flex flex-wrap gap-2 justify-between"
+          style={{
+            background: 'rgba(10,10,10,0.92)',
+            backdropFilter: 'blur(20px)',
+            borderTop: '0.5px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          <button
+            onClick={() => save().then(() => toast.success('Guardado'))}
+            disabled={saving}
+            className={BTN_GHOST}
+          >
+            <Save className="w-3.5 h-3.5" /> Guardar borrador
+          </button>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => finalize('no_contesta')} disabled={saving}>
+            <button onClick={() => finalize('no_contesta')} disabled={saving} className={BTN_GHOST}>
               No contestó
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => finalize('no_procede')} disabled={saving}>
-              <XCircle className="w-4 h-4 mr-1" /> No procede
-            </Button>
-            <Button
-              size="sm"
-              className="bg-green-600 hover:bg-green-700 text-white"
+            </button>
+            <button onClick={() => finalize('no_procede')} disabled={saving} className={BTN_DANGER}>
+              <XCircle className="w-3.5 h-3.5" /> No procede
+            </button>
+            <button
               onClick={() => finalize('completada')}
               disabled={saving}
+              className={BTN_SUCCESS}
             >
-              <CheckCircle className="w-4 h-4 mr-1" /> Finalizar llamada
-            </Button>
+              <CheckCircle className="w-3.5 h-3.5" /> Finalizar
+            </button>
             {decision === 'acepta' && (
-              <Button
-                size="sm"
-                className="bg-[#002855] hover:bg-[#001d3d] text-white"
+              <button
                 onClick={async () => { await save({ call_status: 'completada' } as Partial<Prospecto>); onConvert() }}
                 disabled={saving}
+                className={BTN_PRIMARY}
               >
-                <UserPlus className="w-4 h-4 mr-1" /> Pasar a contratos
-              </Button>
+                <UserPlus className="w-3.5 h-3.5" /> Pasar a contratos
+              </button>
             )}
           </div>
         </div>
@@ -260,11 +324,47 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
   )
 }
 
+// ════════════════════════════════════════════════════════════════════
+// Helpers
+// ════════════════════════════════════════════════════════════════════
+
+const BTN_GHOST =
+  'inline-flex items-center gap-1.5 px-3 py-2 rounded-full transition-all duration-200 ' +
+  'hover:bg-white/10 active:scale-95 text-[12px] font-semibold tracking-tight ' +
+  'bg-white/[0.04] border border-white/10 text-white disabled:opacity-50'
+
+const BTN_DANGER =
+  'inline-flex items-center gap-1.5 px-3 py-2 rounded-full transition-all duration-200 ' +
+  'hover:bg-red-500/15 active:scale-95 text-[12px] font-semibold tracking-tight ' +
+  'bg-red-500/10 border border-red-500/30 text-red-300 disabled:opacity-50'
+
+const BTN_SUCCESS =
+  'inline-flex items-center gap-1.5 px-3 py-2 rounded-full transition-all duration-200 ' +
+  'hover:bg-emerald-500/15 active:scale-95 text-[12px] font-semibold tracking-tight ' +
+  'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 disabled:opacity-50'
+
+const BTN_PRIMARY =
+  'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 ' +
+  'hover:opacity-90 active:scale-95 text-[12px] font-semibold tracking-tight ' +
+  'bg-white text-black shadow-[0_4px_18px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset] disabled:opacity-50'
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-1">{title}</h3>
-      {children}
+      <h3
+        className="pb-1.5"
+        style={{
+          fontFamily: 'var(--font-mono-tech)',
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: '0.2em',
+          color: '#FFFFFF',
+          borderBottom: '0.5px solid rgba(255,255,255,0.1)',
+        }}
+      >
+        {title.toUpperCase()}
+      </h3>
+      <div className="space-y-3 pt-1">{children}</div>
     </div>
   )
 }
@@ -275,14 +375,31 @@ function Row({ children }: { children: React.ReactNode }) {
 
 function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
-    <label className="block">
-      <span className="text-xs text-gray-500 font-medium block mb-1">{label}</span>
+    <label className="block space-y-1.5">
+      <span
+        style={{
+          fontFamily: 'var(--font-mono-tech)',
+          fontSize: 9,
+          fontWeight: 500,
+          letterSpacing: '0.18em',
+          color: '#A1A1A1',
+        }}
+      >
+        {label.toUpperCase()}
+      </span>
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+        className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30"
+        style={{
+          background: 'rgba(255,255,255,0.04)',
+          border: '0.5px solid rgba(255,255,255,0.1)',
+          color: '#FAFAFA',
+          fontSize: 13,
+          letterSpacing: '-0.005em',
+        }}
       />
     </label>
   )
@@ -297,23 +414,41 @@ function RadioGroup({
   onChange: (v: string) => void
 }) {
   return (
-    <div>
-      <span className="text-xs text-gray-500 font-medium block mb-1.5">{label}</span>
-      <div className="flex flex-wrap gap-2">
-        {options.map(opt => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => onChange(opt.value)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-              value === opt.value
-                ? 'bg-[#002855] text-white border-[#002855]'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
+    <div className="space-y-2">
+      <span
+        style={{
+          fontFamily: 'var(--font-mono-tech)',
+          fontSize: 9,
+          fontWeight: 500,
+          letterSpacing: '0.18em',
+          color: '#A1A1A1',
+        }}
+      >
+        {label.toUpperCase()}
+      </span>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map(opt => {
+          const isActive = value === opt.value
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange(opt.value)}
+              className="px-3 py-1.5 rounded-full transition-all duration-200"
+              style={{
+                background: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.04)',
+                color: isActive ? '#000000' : '#A1A1A1',
+                border: isActive ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.1)',
+                fontSize: 12,
+                fontWeight: isActive ? 700 : 500,
+                letterSpacing: '-0.005em',
+                boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.15)' : 'none',
+              }}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
       </div>
     </div>
   )

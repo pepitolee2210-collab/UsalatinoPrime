@@ -1,12 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
 import { Briefcase, Upload, FileText, Trash2, Loader2, Send, FolderOpen, Plus } from 'lucide-react'
 
@@ -17,6 +12,27 @@ interface ActiveCase {
   client: { first_name: string; last_name: string } | null
   service: { name: string } | null
 }
+
+const DARK_INPUT_CLS =
+  'w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 ' +
+  'bg-white/[0.04] border border-white/10 text-white placeholder:text-white/30'
+
+const LABEL_STYLE: React.CSSProperties = {
+  fontFamily: 'var(--font-mono-tech)',
+  fontSize: 9,
+  fontWeight: 500,
+  letterSpacing: '0.18em',
+  color: '#A1A1A1',
+}
+
+const DARK_DIALOG_CLS =
+  'bg-[#0A0A0A] border border-white/10 text-white shadow-2xl backdrop-blur-xl max-w-lg max-h-[90vh] overflow-y-auto admin-scroll ' +
+  '[&>button]:text-white/60 [&>button]:hover:text-white'
+
+const BTN_TRIGGER =
+  'inline-flex items-center gap-2 px-4 py-2.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 ' +
+  'bg-white text-black text-[12px] font-semibold tracking-tight ' +
+  'shadow-[0_4px_18px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset]'
 
 export function AssignTaskButton({ services, employees, activeCases = [] }: {
   services: Service[]; employees: Employee[]; activeCases?: ActiveCase[]
@@ -79,48 +95,80 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
   return (
     <Dialog open={open} onOpenChange={v => { setOpen(v); if (!v) reset() }}>
       <DialogTrigger asChild>
-        <Button className="bg-[#F2A900] hover:bg-[#D4940A] text-[#001020] font-bold gap-2">
-          <Briefcase className="w-4 h-4" /> Asignar Trabajo
-        </Button>
+        <button className={BTN_TRIGGER}>
+          <Briefcase className="w-3.5 h-3.5" /> Asignar Trabajo
+        </button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className={DARK_DIALOG_CLS}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Briefcase className="w-5 h-5 text-[#F2A900]" /> Asignar Trabajo
+          <DialogTitle
+            className="flex items-center gap-2 text-white"
+            style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.018em' }}
+          >
+            <Briefcase className="w-4 h-4" style={{ color: '#FACC15' }} /> Asignar Trabajo
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-2">
           {employees.length > 1 && (
-            <div className="space-y-2">
-              <Label>Empleado</Label>
-              <Select value={employee} onValueChange={setEmployee}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
+            <div className="space-y-1.5">
+              <label style={LABEL_STYLE}>EMPLEADO</label>
+              <div className="relative">
+                <select
+                  value={employee}
+                  onChange={e => setEmployee(e.target.value)}
+                  className={DARK_INPUT_CLS + ' appearance-none pr-9 cursor-pointer'}
+                  style={{ colorScheme: 'dark' }}
+                >
                   {employees.map(emp => (
-                    <SelectItem key={emp.id} value={emp.id}>{emp.first_name} {emp.last_name}</SelectItem>
+                    <option key={emp.id} value={emp.id} style={{ background: '#0A0A0A', color: '#FAFAFA' }}>
+                      {emp.first_name} {emp.last_name}
+                    </option>
                   ))}
-                </SelectContent>
-              </Select>
+                </select>
+                <span aria-hidden className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#525252', fontSize: 10 }}>▾</span>
+              </div>
             </div>
           )}
 
           {/* Mode selector */}
           {!mode && (
             <div className="space-y-3">
-              <p className="text-sm font-medium text-gray-700">¿Qué desea asignar?</p>
+              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', color: '#A1A1A1' }}>
+                ¿QUÉ DESEA ASIGNAR?
+              </p>
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setMode('case')}
-                  className="p-4 rounded-2xl border-2 border-gray-200 hover:border-[#002855] hover:bg-[#002855]/5 transition-all text-center">
-                  <FolderOpen className="w-8 h-8 text-[#002855] mx-auto mb-2" />
-                  <p className="text-sm font-bold text-gray-900">Caso existente</p>
-                  <p className="text-xs text-gray-500 mt-1">Con todos sus documentos</p>
+                <button
+                  onClick={() => setMode('case')}
+                  className="p-5 rounded-2xl text-center transition-all duration-300 hover:-translate-y-0.5"
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(96,165,250,0.06), rgba(20,20,20,0.92))',
+                    border: '0.5px solid rgba(96,165,250,0.25)',
+                  }}
+                >
+                  <FolderOpen className="w-8 h-8 mx-auto mb-2" style={{ color: '#60A5FA' }} />
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                    Caso existente
+                  </p>
+                  <p style={{ fontSize: 11, color: '#A1A1A1', marginTop: 4, lineHeight: 1.4 }}>
+                    Con todos sus documentos
+                  </p>
                 </button>
-                <button onClick={() => setMode('standalone')}
-                  className="p-4 rounded-2xl border-2 border-gray-200 hover:border-[#F2A900] hover:bg-[#F2A900]/5 transition-all text-center">
-                  <Plus className="w-8 h-8 text-[#F2A900] mx-auto mb-2" />
-                  <p className="text-sm font-bold text-gray-900">Tarea nueva</p>
-                  <p className="text-xs text-gray-500 mt-1">Subir documentos manualmente</p>
+                <button
+                  onClick={() => setMode('standalone')}
+                  className="p-5 rounded-2xl text-center transition-all duration-300 hover:-translate-y-0.5"
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(250,204,21,0.06), rgba(20,20,20,0.92))',
+                    border: '0.5px solid rgba(250,204,21,0.25)',
+                  }}
+                >
+                  <Plus className="w-8 h-8 mx-auto mb-2" style={{ color: '#FACC15' }} />
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                    Tarea nueva
+                  </p>
+                  <p style={{ fontSize: 11, color: '#A1A1A1', marginTop: 4, lineHeight: 1.4 }}>
+                    Subir documentos manualmente
+                  </p>
                 </button>
               </div>
             </div>
@@ -129,34 +177,109 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
           {/* Existing case */}
           {mode === 'case' && (
             <div className="space-y-3">
-              <button onClick={() => setMode(null)} className="text-xs text-gray-500 hover:text-gray-700">← Cambiar tipo</button>
-              <div className="space-y-2">
-                <Label>Buscar caso</Label>
-                <Input value={caseSearch} onChange={e => setCaseSearch(e.target.value)}
-                  placeholder="Buscar por nombre, # caso o servicio..." className="h-11" />
+              <button
+                onClick={() => setMode(null)}
+                style={{
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: '#A1A1A1',
+                  letterSpacing: '0.15em',
+                }}
+                className="transition-opacity hover:opacity-80"
+              >
+                ← CAMBIAR TIPO
+              </button>
+              <div className="space-y-1.5">
+                <label style={LABEL_STYLE}>BUSCAR CASO</label>
+                <input
+                  value={caseSearch}
+                  onChange={e => setCaseSearch(e.target.value)}
+                  placeholder="Buscar por nombre, # caso o servicio…"
+                  className={DARK_INPUT_CLS}
+                />
               </div>
-              <div className="max-h-48 overflow-y-auto space-y-1.5 border border-gray-200 rounded-xl p-2">
+              <div
+                className="max-h-48 overflow-y-auto admin-scroll rounded-xl p-2 space-y-1"
+                style={{
+                  background: 'rgba(255,255,255,0.025)',
+                  border: '0.5px solid rgba(255,255,255,0.08)',
+                }}
+              >
                 {filteredCases.length === 0 && (
-                  <p className="text-xs text-gray-400 text-center py-4">No se encontraron casos</p>
+                  <p
+                    className="text-center py-4"
+                    style={{
+                      fontFamily: 'var(--font-mono-tech)',
+                      fontSize: 10,
+                      color: '#525252',
+                      letterSpacing: '0.15em',
+                    }}
+                  >
+                    NO SE ENCONTRARON CASOS
+                  </p>
                 )}
-                {filteredCases.map(c => (
-                  <button key={c.id} onClick={() => setSelectedCase(c.id)}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors ${
-                      selectedCase === c.id ? 'bg-[#002855] text-white' : 'hover:bg-gray-50'
-                    }`}>
-                    <div className="flex items-center justify-between">
-                      <span className={`text-sm font-medium ${selectedCase === c.id ? 'text-white' : 'text-gray-900'}`}>
-                        {c.client?.first_name} {c.client?.last_name}
-                      </span>
-                      <span className={`text-xs ${selectedCase === c.id ? 'text-white/70' : 'text-gray-400'}`}>#{c.case_number}</span>
-                    </div>
-                    <p className={`text-xs ${selectedCase === c.id ? 'text-white/60' : 'text-gray-500'}`}>{c.service?.name || '—'}</p>
-                  </button>
-                ))}
+                {filteredCases.map(c => {
+                  const isActive = selectedCase === c.id
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelectedCase(c.id)}
+                      className="w-full text-left px-3 py-2.5 rounded-lg transition-colors"
+                      style={{
+                        background: isActive ? '#FFFFFF' : 'transparent',
+                        boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.18)' : 'none',
+                      }}
+                      onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
+                      onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: isActive ? '#000000' : '#FFFFFF',
+                            letterSpacing: '-0.005em',
+                          }}
+                        >
+                          {c.client?.first_name} {c.client?.last_name}
+                        </span>
+                        <span
+                          style={{
+                            fontFamily: 'var(--font-mono-tech)',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: isActive ? 'rgba(0,0,0,0.6)' : '#525252',
+                            letterSpacing: '0.05em',
+                          }}
+                        >
+                          #{c.case_number}
+                        </span>
+                      </div>
+                      <p
+                        style={{
+                          fontSize: 11,
+                          color: isActive ? 'rgba(0,0,0,0.55)' : '#A1A1A1',
+                          marginTop: 2,
+                        }}
+                      >
+                        {c.service?.name || '—'}
+                      </p>
+                    </button>
+                  )
+                })}
               </div>
               {selectedCase && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <p className="text-xs text-green-700">Diana recibirá el caso con todos los documentos ya subidos.</p>
+                <div
+                  className="p-3 rounded-xl"
+                  style={{
+                    background: 'rgba(34,197,94,0.06)',
+                    border: '0.5px solid rgba(34,197,94,0.25)',
+                  }}
+                >
+                  <p style={{ fontSize: 12, color: '#86EFAC', lineHeight: 1.5 }}>
+                    Diana recibirá el caso con todos los documentos ya subidos.
+                  </p>
                 </div>
               )}
             </div>
@@ -165,37 +288,87 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
           {/* Standalone */}
           {mode === 'standalone' && (
             <div className="space-y-3">
-              <button onClick={() => setMode(null)} className="text-xs text-gray-500 hover:text-gray-700">← Cambiar tipo</button>
-              <div className="space-y-2">
-                <Label>Tipo de Servicio</Label>
-                <Select value={service} onValueChange={setService}>
-                  <SelectTrigger><SelectValue placeholder="Seleccionar..." /></SelectTrigger>
-                  <SelectContent>
-                    {services.map(s => (<SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>))}
-                    <SelectItem value="Apelación">Apelación</SelectItem>
-                    <SelectItem value="Permiso de Trabajo">Permiso de Trabajo</SelectItem>
-                    <SelectItem value="Otro">Otro</SelectItem>
-                  </SelectContent>
-                </Select>
+              <button
+                onClick={() => setMode(null)}
+                style={{
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: '#A1A1A1',
+                  letterSpacing: '0.15em',
+                }}
+                className="transition-opacity hover:opacity-80"
+              >
+                ← CAMBIAR TIPO
+              </button>
+              <div className="space-y-1.5">
+                <label style={LABEL_STYLE}>TIPO DE SERVICIO</label>
+                <div className="relative">
+                  <select
+                    value={service}
+                    onChange={e => setService(e.target.value)}
+                    className={DARK_INPUT_CLS + ' appearance-none pr-9 cursor-pointer'}
+                    style={{ colorScheme: 'dark' }}
+                  >
+                    <option value="" style={{ background: '#0A0A0A', color: '#525252' }}>Seleccionar…</option>
+                    {services.map(s => (
+                      <option key={s.id} value={s.name} style={{ background: '#0A0A0A', color: '#FAFAFA' }}>{s.name}</option>
+                    ))}
+                    <option value="Apelación" style={{ background: '#0A0A0A', color: '#FAFAFA' }}>Apelación</option>
+                    <option value="Permiso de Trabajo" style={{ background: '#0A0A0A', color: '#FAFAFA' }}>Permiso de Trabajo</option>
+                    <option value="Otro" style={{ background: '#0A0A0A', color: '#FAFAFA' }}>Otro</option>
+                  </select>
+                  <span aria-hidden className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#525252', fontSize: 10 }}>▾</span>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Nombre del Cliente</Label>
-                <Input value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Ej: Juan Pérez" className="h-11" />
+              <div className="space-y-1.5">
+                <label style={LABEL_STYLE}>NOMBRE DEL CLIENTE</label>
+                <input
+                  value={clientName}
+                  onChange={e => setClientName(e.target.value)}
+                  placeholder="Ej: Juan Pérez"
+                  className={DARK_INPUT_CLS}
+                />
               </div>
-              <div className="space-y-2">
-                <Label>Documentos</Label>
+              <div className="space-y-1.5">
+                <label style={LABEL_STYLE}>DOCUMENTOS</label>
                 {files.map((f, i) => (
-                  <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200">
-                    <FileText className="w-4 h-4 text-blue-500 shrink-0" />
-                    <span className="text-sm text-blue-700 truncate flex-1">{f.name}</span>
-                    <button onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))}><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                    style={{
+                      background: 'rgba(96,165,250,0.06)',
+                      border: '0.5px solid rgba(96,165,250,0.25)',
+                    }}
+                  >
+                    <FileText className="w-3.5 h-3.5 shrink-0" style={{ color: '#60A5FA' }} />
+                    <span style={{ fontSize: 12, color: '#93C5FD' }} className="truncate flex-1">{f.name}</span>
+                    <button onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))}>
+                      <Trash2 className="w-3 h-3" style={{ color: '#FCA5A5' }} />
+                    </button>
                   </div>
                 ))}
-                <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" multiple className="hidden"
-                  onChange={e => { setFiles(prev => [...prev, ...Array.from(e.target.files || [])]); if (fileRef.current) fileRef.current.value = '' }} />
-                <button onClick={() => fileRef.current?.click()}
-                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-gray-300 text-sm text-gray-500 hover:border-[#F2A900] hover:text-[#F2A900] transition-colors">
-                  <Upload className="w-4 h-4" /> Subir documentos
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  multiple
+                  className="hidden"
+                  onChange={e => { setFiles(prev => [...prev, ...Array.from(e.target.files || [])]); if (fileRef.current) fileRef.current.value = '' }}
+                />
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-xl transition-all duration-200"
+                  style={{
+                    background: 'rgba(255,255,255,0.02)',
+                    border: '2px dashed rgba(255,255,255,0.12)',
+                    color: '#A1A1A1',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    letterSpacing: '-0.005em',
+                  }}
+                >
+                  <Upload className="w-3.5 h-3.5" /> Subir documentos
                 </button>
               </div>
             </div>
@@ -203,17 +376,33 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
 
           {mode && (
             <>
-              <div className="space-y-2">
-                <Label>Instrucciones para el empleado</Label>
-                <Textarea value={instructions} onChange={e => setInstructions(e.target.value)}
-                  placeholder="Ej: Revisar documentos y redactar proyección..." rows={3} />
+              <div className="space-y-1.5">
+                <label style={LABEL_STYLE}>INSTRUCCIONES PARA EL EMPLEADO</label>
+                <textarea
+                  value={instructions}
+                  onChange={e => setInstructions(e.target.value)}
+                  placeholder="Ej: Revisar documentos y redactar proyección…"
+                  rows={3}
+                  className={DARK_INPUT_CLS + ' resize-y'}
+                  style={{ minHeight: 80 }}
+                />
               </div>
-              <Button className="w-full bg-[#002855] hover:bg-[#001d3d] h-12"
+              <button
                 disabled={loading || !employee || (mode === 'case' && !selectedCase) || (mode === 'standalone' && !service)}
-                onClick={handleSubmit}>
-                {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                onClick={handleSubmit}
+                className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+                style={{
+                  background: '#FFFFFF',
+                  color: '#000000',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  letterSpacing: '-0.005em',
+                  boxShadow: '0 4px 24px rgba(255,255,255,0.2), 0 0 0 0.5px rgba(255,255,255,0.5) inset',
+                }}
+              >
+                {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 Asignar Trabajo
-              </Button>
+              </button>
             </>
           )}
         </div>

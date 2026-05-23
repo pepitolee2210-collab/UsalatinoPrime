@@ -2,37 +2,16 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import {
   DollarSign, Clock, AlertTriangle, CheckCircle,
-  Plus, CreditCard, Loader2,
+  Plus, CreditCard, Loader2, Search,
 } from 'lucide-react'
-
-const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  completed: 'bg-green-100 text-green-800',
-  failed: 'bg-red-100 text-red-800',
-  overdue: 'bg-red-100 text-red-800',
-  processing: 'bg-blue-100 text-blue-800',
-  refunded: 'bg-gray-100 text-gray-800',
-}
 
 const statusLabels: Record<string, string> = {
   pending: 'Pendiente',
@@ -46,9 +25,11 @@ const statusLabels: Record<string, string> = {
 interface AdminPaymentsDashboardProps {
   initialPayments: any[]
   cases: any[]
+  /** Cuando true, oculta el h1 interno (el padre renderiza un PageHeader). */
+  hideHeader?: boolean
 }
 
-export function AdminPaymentsDashboard({ initialPayments, cases }: AdminPaymentsDashboardProps) {
+export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: AdminPaymentsDashboardProps) {
   const [payments] = useState(initialPayments)
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterMethod, setFilterMethod] = useState<string>('all')
@@ -203,66 +184,62 @@ export function AdminPaymentsDashboard({ initialPayments, cases }: AdminPayments
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Pagos</h1>
+        {!hideHeader && <h1 className="text-2xl font-bold text-gray-900">Pagos</h1>}
+        {hideHeader && <span />}
         <div className="flex gap-2">
           {/* Register Single Payment */}
           <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Plus className="w-4 h-4 mr-1" /> Registrar Pago
-              </Button>
+              <button className={DARK_BTN_GHOST}>
+                <Plus className="w-3.5 h-3.5" /> Registrar Pago
+              </button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className={DARK_DIALOG_CLS}>
               <DialogHeader>
-                <DialogTitle>Registrar Pago Manual</DialogTitle>
+                <DialogTitle className="text-white" style={DARK_DIALOG_TITLE}>Registrar Pago Manual</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>Caso</Label>
-                  <Select value={registerForm.case_id} onValueChange={(v) => setRegisterForm({ ...registerForm, case_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar caso" /></SelectTrigger>
-                    <SelectContent>
-                      {cases.map((c: any) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          #{c.case_number} - {c.client?.first_name} {c.client?.last_name} ({c.service?.name})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Monto ($)</Label>
-                  <Input
+              <div className="space-y-4 pt-2">
+                <Field label="Caso">
+                  <DarkSelect
+                    value={registerForm.case_id}
+                    onChange={(v) => setRegisterForm({ ...registerForm, case_id: v })}
+                    placeholder="Seleccionar caso"
+                    options={cases.map((c: any) => ({
+                      value: c.id,
+                      label: `#${c.case_number} · ${c.client?.first_name} ${c.client?.last_name} (${c.service?.name})`,
+                    }))}
+                  />
+                </Field>
+                <Field label="Monto ($)">
+                  <DarkInput
                     type="number"
                     placeholder="0.00"
                     value={registerForm.amount}
-                    onChange={(e) => setRegisterForm({ ...registerForm, amount: e.target.value })}
+                    onChange={(v) => setRegisterForm({ ...registerForm, amount: v })}
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Metodo de pago</Label>
-                  <Select value={registerForm.payment_method} onValueChange={(v) => setRegisterForm({ ...registerForm, payment_method: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="manual">Manual</SelectItem>
-                      <SelectItem value="zelle">Zelle</SelectItem>
-                      <SelectItem value="efectivo">Efectivo</SelectItem>
-                      <SelectItem value="transferencia">Transferencia</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Notas (opcional)</Label>
-                  <Textarea
-                    placeholder="Notas sobre el pago..."
+                </Field>
+                <Field label="Método de pago">
+                  <DarkSelect
+                    value={registerForm.payment_method}
+                    onChange={(v) => setRegisterForm({ ...registerForm, payment_method: v })}
+                    options={[
+                      { value: 'manual', label: 'Manual' },
+                      { value: 'zelle', label: 'Zelle' },
+                      { value: 'efectivo', label: 'Efectivo' },
+                      { value: 'transferencia', label: 'Transferencia' },
+                    ]}
+                  />
+                </Field>
+                <Field label="Notas (opcional)">
+                  <DarkTextarea
+                    placeholder="Notas sobre el pago…"
                     value={registerForm.notes}
-                    onChange={(e) => setRegisterForm({ ...registerForm, notes: e.target.value })}
+                    onChange={(v) => setRegisterForm({ ...registerForm, notes: v })}
                   />
-                </div>
-                <Button onClick={handleRegisterPayment} disabled={registerLoading} className="w-full">
-                  {registerLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+                </Field>
+                <DarkSubmit onClick={handleRegisterPayment} loading={registerLoading}>
                   Registrar Pago
-                </Button>
+                </DarkSubmit>
               </div>
             </DialogContent>
           </Dialog>
@@ -270,87 +247,80 @@ export function AdminPaymentsDashboard({ initialPayments, cases }: AdminPayments
           {/* Create Payment Plan */}
           <Dialog open={planOpen} onOpenChange={setPlanOpen}>
             <DialogTrigger asChild>
-              <Button size="sm">
-                <CreditCard className="w-4 h-4 mr-1" /> Crear Plan de Cuotas
-              </Button>
+              <button className={DARK_BTN_SOLID}>
+                <CreditCard className="w-3.5 h-3.5" /> Crear Plan de Cuotas
+              </button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className={DARK_DIALOG_CLS}>
               <DialogHeader>
-                <DialogTitle>Crear Plan de Cuotas</DialogTitle>
+                <DialogTitle className="text-white" style={DARK_DIALOG_TITLE}>Crear Plan de Cuotas</DialogTitle>
               </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label>Caso</Label>
-                  <Select value={planForm.case_id} onValueChange={(v) => setPlanForm({ ...planForm, case_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar caso" /></SelectTrigger>
-                    <SelectContent>
-                      {cases.map((c: any) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          #{c.case_number} - {c.client?.first_name} {c.client?.last_name} ({c.service?.name})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Monto Total ($)</Label>
-                  <Input
+              <div className="space-y-4 pt-2">
+                <Field label="Caso">
+                  <DarkSelect
+                    value={planForm.case_id}
+                    onChange={(v) => setPlanForm({ ...planForm, case_id: v })}
+                    placeholder="Seleccionar caso"
+                    options={cases.map((c: any) => ({
+                      value: c.id,
+                      label: `#${c.case_number} · ${c.client?.first_name} ${c.client?.last_name} (${c.service?.name})`,
+                    }))}
+                  />
+                </Field>
+                <Field label="Monto Total ($)">
+                  <DarkInput
                     type="number"
                     placeholder="Ej: 1500"
                     value={planForm.total_amount}
-                    onChange={(e) => setPlanForm({ ...planForm, total_amount: e.target.value })}
+                    onChange={(v) => setPlanForm({ ...planForm, total_amount: v })}
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Numero de cuotas</Label>
-                  <Select value={planForm.num_installments} onValueChange={(v) => setPlanForm({ ...planForm, num_installments: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 (pago unico)</SelectItem>
-                      <SelectItem value="3">3 cuotas</SelectItem>
-                      <SelectItem value="5">5 cuotas</SelectItem>
-                      <SelectItem value="10">10 cuotas</SelectItem>
-                    </SelectContent>
-                  </Select>
+                </Field>
+                <Field label="Número de cuotas">
+                  <DarkSelect
+                    value={planForm.num_installments}
+                    onChange={(v) => setPlanForm({ ...planForm, num_installments: v })}
+                    options={[
+                      { value: '1', label: '1 (pago único)' },
+                      { value: '3', label: '3 cuotas' },
+                      { value: '5', label: '5 cuotas' },
+                      { value: '10', label: '10 cuotas' },
+                    ]}
+                  />
                   {planForm.total_amount && Number(planForm.num_installments) > 1 && (
-                    <p className="text-xs text-gray-500">
-                      Cuota mensual: ${Math.round(Number(planForm.total_amount) / Number(planForm.num_installments)).toLocaleString()}
+                    <p style={{ fontSize: 11, color: '#A1A1A1', marginTop: 6, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+                      CUOTA MENSUAL: ${Math.round(Number(planForm.total_amount) / Number(planForm.num_installments)).toLocaleString()}
                     </p>
                   )}
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Fecha del primer pago</Label>
-                  <Input
+                </Field>
+                <Field label="Fecha del primer pago" hint="Las cuotas siguientes se calculan mensualmente desde esta fecha">
+                  <DarkInput
                     type="date"
                     value={planForm.first_payment_date}
-                    onChange={(e) => setPlanForm({ ...planForm, first_payment_date: e.target.value })}
+                    onChange={(v) => setPlanForm({ ...planForm, first_payment_date: v })}
                   />
-                  <p className="text-xs text-gray-500">Las cuotas siguientes se calculan mensualmente desde esta fecha</p>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Metodo de pago del primer pago</Label>
-                  <Select value={planForm.payment_method} onValueChange={(v) => setPlanForm({ ...planForm, payment_method: v })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="manual">Manual</SelectItem>
-                      <SelectItem value="zelle">Zelle</SelectItem>
-                      <SelectItem value="efectivo">Efectivo</SelectItem>
-                      <SelectItem value="transferencia">Transferencia</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Notas (opcional)</Label>
-                  <Textarea
-                    placeholder="Notas..."
+                </Field>
+                <Field label="Método de pago del primer pago">
+                  <DarkSelect
+                    value={planForm.payment_method}
+                    onChange={(v) => setPlanForm({ ...planForm, payment_method: v })}
+                    options={[
+                      { value: 'manual', label: 'Manual' },
+                      { value: 'zelle', label: 'Zelle' },
+                      { value: 'efectivo', label: 'Efectivo' },
+                      { value: 'transferencia', label: 'Transferencia' },
+                    ]}
+                  />
+                </Field>
+                <Field label="Notas (opcional)">
+                  <DarkTextarea
+                    placeholder="Notas…"
                     value={planForm.notes}
-                    onChange={(e) => setPlanForm({ ...planForm, notes: e.target.value })}
+                    onChange={(v) => setPlanForm({ ...planForm, notes: v })}
                   />
-                </div>
-                <Button onClick={handleCreatePlan} disabled={planLoading} className="w-full">
-                  {planLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+                </Field>
+                <DarkSubmit onClick={handleCreatePlan} loading={planLoading}>
                   Crear Plan de Cuotas
-                </Button>
+                </DarkSubmit>
               </div>
             </DialogContent>
           </Dialog>
@@ -359,166 +329,493 @@ export function AdminPaymentsDashboard({ initialPayments, cases }: AdminPayments
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-green-100">
-              <DollarSign className="w-5 h-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Total Cobrado</p>
-              <p className="text-xl font-bold text-gray-900">${totalCollected.toLocaleString()}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-yellow-100">
-              <Clock className="w-5 h-5 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Pagos Pendientes</p>
-              <p className="text-xl font-bold text-gray-900">{pendingPayments.length}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-red-100">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Pagos Vencidos</p>
-              <p className="text-xl font-bold text-gray-900">{overduePayments.length}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-blue-100">
-              <CheckCircle className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Cobrado Este Mes</p>
-              <p className="text-xl font-bold text-gray-900">${thisMonth.toLocaleString()}</p>
-            </div>
-          </CardContent>
-        </Card>
+        <DarkStat
+          icon={<DollarSign className="w-4 h-4" />}
+          label="Total Cobrado"
+          value={`$${totalCollected.toLocaleString()}`}
+          tone="success"
+        />
+        <DarkStat
+          icon={<Clock className="w-4 h-4" />}
+          label="Pendientes"
+          value={pendingPayments.length}
+          tone="warning"
+        />
+        <DarkStat
+          icon={<AlertTriangle className="w-4 h-4" />}
+          label="Vencidos"
+          value={overduePayments.length}
+          tone="danger"
+        />
+        <DarkStat
+          icon={<CheckCircle className="w-4 h-4" />}
+          label="Cobrado Este Mes"
+          value={`$${thisMonth.toLocaleString()}`}
+          tone="info"
+        />
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <Input
-          placeholder="Buscar por cliente o caso..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-64"
+      <div className="flex flex-wrap gap-2 items-center">
+        <div className="relative w-72">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: '#525252' }} />
+          <input
+            type="text"
+            placeholder="Buscar por cliente o caso…"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-3 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/25"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '0.5px solid rgba(255,255,255,0.1)',
+              color: '#FAFAFA',
+              fontSize: 13,
+              letterSpacing: '-0.005em',
+            }}
+          />
+        </div>
+        <FilterChips
+          value={filterStatus}
+          onChange={setFilterStatus}
+          options={[
+            { value: 'all', label: 'Todos' },
+            { value: 'pending', label: 'Pendiente' },
+            { value: 'completed', label: 'Completado' },
+            { value: 'overdue', label: 'Vencido' },
+            { value: 'failed', label: 'Fallido' },
+          ]}
         />
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Estado" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="pending">Pendiente</SelectItem>
-            <SelectItem value="completed">Completado</SelectItem>
-            <SelectItem value="overdue">Vencido</SelectItem>
-            <SelectItem value="failed">Fallido</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={filterMethod} onValueChange={setFilterMethod}>
-          <SelectTrigger className="w-40"><SelectValue placeholder="Metodo" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="stripe">Stripe</SelectItem>
-            <SelectItem value="manual">Manual</SelectItem>
-          </SelectContent>
-        </Select>
+        <FilterChips
+          value={filterMethod}
+          onChange={setFilterMethod}
+          options={[
+            { value: 'all', label: 'Método: Todos' },
+            { value: 'stripe', label: 'Stripe' },
+            { value: 'manual', label: 'Manual' },
+          ]}
+        />
       </div>
 
-      {/* Payments Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Caso</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Servicio</TableHead>
-                <TableHead>Cuota</TableHead>
-                <TableHead>Monto</TableHead>
-                <TableHead>Metodo</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Vencimiento</TableHead>
-                <TableHead>Pagado</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPayments.map((p: any) => {
+      {/* Payments Table — dark techno */}
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{
+          background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+          border: '0.5px solid rgba(255,255,255,0.1)',
+          backdropFilter: 'blur(20px)',
+        }}
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
+                <DarkTh>Caso</DarkTh>
+                <DarkTh>Cliente</DarkTh>
+                <DarkTh>Servicio</DarkTh>
+                <DarkTh>Cuota</DarkTh>
+                <DarkTh>Monto</DarkTh>
+                <DarkTh>Método</DarkTh>
+                <DarkTh>Estado</DarkTh>
+                <DarkTh>Vencimiento</DarkTh>
+                <DarkTh>Pagado</DarkTh>
+                <DarkTh></DarkTh>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredPayments.map((p: any, idx: number) => {
                 const isOverdue = p.status === 'pending' && p.due_date && new Date(p.due_date) < new Date()
                 const displayStatus = isOverdue ? 'overdue' : p.status
                 return (
-                  <TableRow key={p.id} className={isOverdue ? 'bg-red-50/50' : ''}>
-                    <TableCell className="text-sm">#{p.case?.case_number}</TableCell>
-                    <TableCell className="text-sm">
-                      {p.client?.first_name} {p.client?.last_name}
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-500">
-                      {p.case?.service?.name || '—'}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {p.installment_number}/{p.total_installments}
-                    </TableCell>
-                    <TableCell className="text-sm font-semibold">
-                      ${Number(p.amount).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-500">
-                      {p.payment_method || '—'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={statusColors[displayStatus] || ''}>
-                        {statusLabels[displayStatus] || displayStatus}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-500">
-                      {p.due_date
-                        ? format(new Date(p.due_date), 'd MMM yyyy', { locale: es })
-                        : '—'}
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-500">
-                      {p.paid_at
-                        ? format(new Date(p.paid_at), 'd MMM yyyy', { locale: es })
-                        : '—'}
-                    </TableCell>
-                    <TableCell>
+                  <tr
+                    key={p.id}
+                    style={{
+                      borderBottom: idx < filteredPayments.length - 1 ? '0.5px solid rgba(255,255,255,0.04)' : 'none',
+                      background: isOverdue ? 'rgba(248,113,113,0.04)' : 'transparent',
+                      transition: 'background 0.2s',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = isOverdue ? 'rgba(248,113,113,0.07)' : 'rgba(255,255,255,0.025)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = isOverdue ? 'rgba(248,113,113,0.04)' : 'transparent')}
+                  >
+                    <DarkTd>
+                      <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 12, fontWeight: 700, color: '#FFFFFF', letterSpacing: '0.02em' }}>
+                        #{p.case?.case_number}
+                      </span>
+                    </DarkTd>
+                    <DarkTd>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                        {p.client?.first_name} {p.client?.last_name}
+                      </span>
+                    </DarkTd>
+                    <DarkTd>
+                      <span style={{ fontSize: 12, color: '#A1A1A1' }}>{p.case?.service?.name || '—'}</span>
+                    </DarkTd>
+                    <DarkTd>
+                      <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 11, fontWeight: 700, color: '#A1A1A1' }}>
+                        {p.installment_number}/{p.total_installments}
+                      </span>
+                    </DarkTd>
+                    <DarkTd>
+                      <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 13, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                        ${Number(p.amount).toLocaleString()}
+                      </span>
+                    </DarkTd>
+                    <DarkTd>
+                      <span style={{ fontSize: 11, color: '#A1A1A1', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+                        {(p.payment_method || '—').toUpperCase()}
+                      </span>
+                    </DarkTd>
+                    <DarkTd>
+                      <PaymentStatusBadge status={displayStatus} label={statusLabels[displayStatus] || displayStatus} />
+                    </DarkTd>
+                    <DarkTd>
+                      <span style={{ fontSize: 11, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+                        {p.due_date ? format(new Date(p.due_date), 'd MMM yyyy', { locale: es }).toUpperCase() : '—'}
+                      </span>
+                    </DarkTd>
+                    <DarkTd>
+                      <span style={{ fontSize: 11, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+                        {p.paid_at ? format(new Date(p.paid_at), 'd MMM yyyy', { locale: es }).toUpperCase() : '—'}
+                      </span>
+                    </DarkTd>
+                    <DarkTd>
                       {p.status === 'pending' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
+                        <button
                           onClick={() => handleMarkPaid(p.id)}
                           disabled={markPaidLoading === p.id}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95"
+                          style={{
+                            background: '#FFFFFF',
+                            color: '#000000',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            letterSpacing: '-0.005em',
+                            boxShadow: '0 0 12px rgba(255,255,255,0.18)',
+                          }}
                         >
                           {markPaidLoading === p.id ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
                           ) : (
-                            <CheckCircle className="w-3 h-3 mr-1" />
+                            <CheckCircle className="w-3 h-3" />
                           )}
                           Pagado
-                        </Button>
+                        </button>
                       )}
-                    </TableCell>
-                  </TableRow>
+                    </DarkTd>
+                  </tr>
                 )
               })}
               {filteredPayments.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={10} className="text-center py-8 text-gray-500">
-                    No hay pagos que coincidan con los filtros
-                  </TableCell>
-                </TableRow>
+                <tr>
+                  <td colSpan={10} className="text-center py-12">
+                    <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+                      SIN PAGOS QUE COINCIDAN CON LOS FILTROS
+                    </p>
+                  </td>
+                </tr>
               )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Dark techno helpers
+// ════════════════════════════════════════════════════════════════════
+
+type StatTone = 'success' | 'warning' | 'danger' | 'info'
+
+const TONE_STYLES: Record<StatTone, { bg: string; border: string; iconColor: string; valueColor: string }> = {
+  success: { bg: 'rgba(34,197,94,0.10)',  border: 'rgba(34,197,94,0.3)',  iconColor: '#4ADE80', valueColor: '#FFFFFF' },
+  warning: { bg: 'rgba(250,204,21,0.10)', border: 'rgba(250,204,21,0.3)', iconColor: '#FACC15', valueColor: '#FFFFFF' },
+  danger:  { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', iconColor: '#F87171', valueColor: '#FFFFFF' },
+  info:    { bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.3)', iconColor: '#60A5FA', valueColor: '#FFFFFF' },
+}
+
+function DarkStat({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string | number; tone: StatTone }) {
+  const s = TONE_STYLES[tone]
+  return (
+    <div
+      className="group relative rounded-2xl p-5 overflow-hidden transition-transform duration-300 hover:-translate-y-0.5"
+      style={{
+        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        border: '0.5px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(20px)',
+      }}
+    >
+      <span
+        aria-hidden
+        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+        style={{ background: `radial-gradient(circle at top, ${s.bg}, transparent 60%)` }}
+      />
+      <div className="relative flex items-start gap-3">
+        <div
+          className="flex items-center justify-center w-10 h-10 rounded-xl shrink-0"
+          style={{
+            background: s.bg,
+            border: `0.5px solid ${s.border}`,
+            color: s.iconColor,
+          }}
+        >
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#525252' }}>
+            {label.toUpperCase()}
+          </p>
+          <p style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.025em', color: s.valueColor, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+            {value}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DarkTh({ children }: { children?: React.ReactNode }) {
+  return (
+    <th
+      className="px-4 py-3 text-left"
+      style={{
+        fontFamily: 'var(--font-mono-tech)',
+        fontSize: 10,
+        fontWeight: 500,
+        letterSpacing: '0.18em',
+        color: '#525252',
+      }}
+    >
+      {typeof children === 'string' ? children.toUpperCase() : children}
+    </th>
+  )
+}
+
+function DarkTd({ children }: { children?: React.ReactNode }) {
+  return (
+    <td className="px-4 py-3" style={{ verticalAlign: 'middle' }}>
+      {children}
+    </td>
+  )
+}
+
+function FilterChips({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
+  return (
+    <div
+      className="inline-flex items-center gap-1 p-1 rounded-full"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: '0.5px solid rgba(255,255,255,0.08)',
+      }}
+    >
+      {options.map((opt) => {
+        const isActive = value === opt.value
+        return (
+          <button
+            key={opt.value}
+            onClick={() => onChange(opt.value)}
+            className="px-3 py-1.5 rounded-full transition-all duration-200"
+            style={{
+              background: isActive ? '#FFFFFF' : 'transparent',
+              color: isActive ? '#000000' : '#A1A1A1',
+              fontSize: 11,
+              fontWeight: isActive ? 700 : 500,
+              letterSpacing: '-0.005em',
+              boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.15)' : 'none',
+            }}
+          >
+            {opt.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+const PAY_STATUS_COLORS: Record<string, { bg: string; border: string; dot: string; text: string }> = {
+  pending:   { bg: 'rgba(250,204,21,0.10)', border: 'rgba(250,204,21,0.3)', dot: '#FACC15', text: '#FDE68A' },
+  completed: { bg: 'rgba(34,197,94,0.10)',  border: 'rgba(34,197,94,0.3)',  dot: '#4ADE80', text: '#86EFAC' },
+  failed:    { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', dot: '#F87171', text: '#FCA5A5' },
+  overdue:   { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', dot: '#F87171', text: '#FCA5A5' },
+  processing:{ bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.3)', dot: '#60A5FA', text: '#93C5FD' },
+  refunded:  { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)', dot: '#A1A1A1', text: '#A1A1A1' },
+}
+
+function PaymentStatusBadge({ status, label }: { status: string; label: string }) {
+  const s = PAY_STATUS_COLORS[status] || PAY_STATUS_COLORS.refunded
+  const pulse = status === 'overdue' || status === 'processing'
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full"
+      style={{
+        background: s.bg,
+        border: `0.5px solid ${s.border}`,
+        fontFamily: 'var(--font-mono-tech)',
+        fontSize: 9,
+        fontWeight: 700,
+        letterSpacing: '0.1em',
+        color: s.text,
+      }}
+    >
+      <span className="relative flex items-center justify-center" style={{ width: 5, height: 5 }}>
+        {pulse && (
+          <span
+            className="absolute inset-0 rounded-full"
+            style={{ background: s.dot, animation: 'ulp-ping 2s ease-in-out infinite' }}
+          />
+        )}
+        <span
+          className="relative rounded-full"
+          style={{ width: 5, height: 5, background: s.dot, boxShadow: pulse ? `0 0 6px ${s.dot}` : 'none' }}
+        />
+      </span>
+      {label.toUpperCase()}
+    </span>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Dark dialog form helpers
+// ════════════════════════════════════════════════════════════════════
+
+const DARK_DIALOG_CLS =
+  'bg-[#0A0A0A] border border-white/10 text-white shadow-2xl backdrop-blur-xl ' +
+  '[&>button]:text-white/60 [&>button]:hover:text-white'
+
+const DARK_DIALOG_TITLE: React.CSSProperties = {
+  fontSize: 20,
+  fontWeight: 600,
+  letterSpacing: '-0.022em',
+  color: '#FFFFFF',
+}
+
+const DARK_BTN_GHOST =
+  'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 ' +
+  'hover:opacity-90 active:scale-95 text-[12px] font-semibold tracking-tight ' +
+  'bg-white/[0.06] border border-white/15 text-white'
+
+const DARK_BTN_SOLID =
+  'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 ' +
+  'hover:opacity-90 active:scale-95 text-[12px] font-semibold tracking-tight ' +
+  'bg-white text-black shadow-[0_4px_20px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset]'
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2">
+      <label
+        style={{
+          fontFamily: 'var(--font-mono-tech)',
+          fontSize: 10,
+          fontWeight: 500,
+          letterSpacing: '0.18em',
+          color: '#A1A1A1',
+        }}
+      >
+        {label.toUpperCase()}
+      </label>
+      {children}
+      {hint && (
+        <p style={{ fontSize: 11, color: '#525252', marginTop: 4, lineHeight: 1.4 }}>
+          {hint}
+        </p>
+      )}
+    </div>
+  )
+}
+
+function DarkInput({ type = 'text', value, onChange, placeholder }: { type?: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <input
+      type={type}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: '0.5px solid rgba(255,255,255,0.1)',
+        color: '#FAFAFA',
+        fontSize: 13,
+        letterSpacing: '-0.005em',
+        colorScheme: 'dark',
+      }}
+    />
+  )
+}
+
+function DarkTextarea({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      rows={3}
+      className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 resize-y"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: '0.5px solid rgba(255,255,255,0.1)',
+        color: '#FAFAFA',
+        fontSize: 13,
+        letterSpacing: '-0.005em',
+        minHeight: 80,
+      }}
+    />
+  )
+}
+
+interface DarkSelectOption { value: string; label: string }
+
+function DarkSelect({ value, onChange, options, placeholder }: { value: string; onChange: (v: string) => void; options: DarkSelectOption[]; placeholder?: string }) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full appearance-none px-3.5 py-2.5 pr-9 rounded-xl text-sm outline-none transition-colors focus:border-white/30 cursor-pointer"
+        style={{
+          background: 'rgba(255,255,255,0.04)',
+          border: '0.5px solid rgba(255,255,255,0.1)',
+          color: value ? '#FAFAFA' : '#525252',
+          fontSize: 13,
+          letterSpacing: '-0.005em',
+        }}
+      >
+        {placeholder && <option value="" style={{ background: '#0A0A0A', color: '#525252' }}>{placeholder}</option>}
+        {options.map((o) => (
+          <option key={o.value} value={o.value} style={{ background: '#0A0A0A', color: '#FAFAFA' }}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <span
+        aria-hidden
+        className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+        style={{ color: '#525252', fontSize: 10 }}
+      >
+        ▾
+      </span>
+    </div>
+  )
+}
+
+function DarkSubmit({ onClick, loading, children }: { onClick: () => void; loading?: boolean; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+      style={{
+        background: '#FFFFFF',
+        color: '#000000',
+        fontSize: 13,
+        fontWeight: 600,
+        letterSpacing: '-0.005em',
+        boxShadow: '0 4px 24px rgba(255,255,255,0.2), 0 0 0 0.5px rgba(255,255,255,0.5) inset',
+        marginTop: 8,
+      }}
+    >
+      {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+      {children}
+    </button>
   )
 }

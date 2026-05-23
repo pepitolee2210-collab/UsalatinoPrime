@@ -1,9 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import {
@@ -38,13 +35,22 @@ interface Assignment {
   docs: { id: string; name: string; file_url: string; file_size: number }[]
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  assigned:         { label: 'Asignado',           color: 'bg-blue-100 text-blue-700',     icon: Clock },
-  in_progress:      { label: 'En progreso',        color: 'bg-yellow-100 text-yellow-700', icon: FileText },
-  submitted:        { label: 'Enviado a revisión',  color: 'bg-purple-100 text-purple-700', icon: Send },
-  needs_correction: { label: 'Correcciones',       color: 'bg-red-100 text-red-700',       icon: AlertTriangle },
-  approved:         { label: 'Aprobado',            color: 'bg-green-100 text-green-700',   icon: CheckCircle },
-  completed:        { label: 'Completado',          color: 'bg-gray-100 text-gray-600',     icon: CheckCircle },
+interface StatusStyle {
+  label: string
+  bg: string
+  border: string
+  text: string
+  dot: string
+  icon: typeof Clock
+}
+
+const STATUS_STYLES: Record<string, StatusStyle> = {
+  assigned:         { label: 'Asignado',           bg: 'rgba(96,165,250,0.10)',  border: 'rgba(96,165,250,0.3)',  text: '#93C5FD', dot: '#60A5FA', icon: Clock },
+  in_progress:      { label: 'En progreso',         bg: 'rgba(250,204,21,0.10)',  border: 'rgba(250,204,21,0.3)',  text: '#FDE68A', dot: '#FACC15', icon: FileText },
+  submitted:        { label: 'Enviado a revisión',  bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.3)', text: '#C4B5FD', dot: '#A78BFA', icon: Send },
+  needs_correction: { label: 'Correcciones',        bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', text: '#FCA5A5', dot: '#F87171', icon: AlertTriangle },
+  approved:         { label: 'Aprobado',            bg: 'rgba(34,197,94,0.10)',   border: 'rgba(34,197,94,0.3)',   text: '#86EFAC', dot: '#4ADE80', icon: CheckCircle },
+  completed:        { label: 'Completado',          bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)', text: '#A1A1A1', dot: '#A1A1A1', icon: CheckCircle },
 }
 
 interface Service { id: string; name: string }
@@ -53,6 +59,15 @@ interface ActiveCase {
   client: { first_name: string; last_name: string } | null
   service: { name: string } | null
 }
+
+const BTN_PRIMARY =
+  'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50 ' +
+  'bg-white text-black text-[12px] font-semibold tracking-tight ' +
+  'shadow-[0_4px_18px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset]'
+
+const BTN_GHOST =
+  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-white/10 active:scale-95 disabled:opacity-50 ' +
+  'bg-white/[0.04] border border-white/10 text-white text-[11px] font-semibold tracking-tight'
 
 export function EmployeeTasksView({ employees, assignments: initial, services, activeCases }: {
   employees: Employee[]
@@ -73,7 +88,6 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
       const fd = new FormData()
       fd.append('assignment_id', assignmentId)
       fd.append('file', file)
-
       const res = await fetch('/api/admin/upload-task-file', { method: 'POST', body: fd })
       if (!res.ok) throw new Error()
       toast.success(`"${file.name}" subido — Diana lo verá en su portal`)
@@ -84,9 +98,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
     }
   }
 
-  const filtered = filter === 'all'
-    ? assignments
-    : assignments.filter(a => a.status === filter)
+  const filtered = filter === 'all' ? assignments : assignments.filter(a => a.status === filter)
 
   const pendingReview = assignments.filter(a => a.status === 'submitted').length
   const inProgress = assignments.filter(a => a.status === 'in_progress' || a.status === 'assigned').length
@@ -101,11 +113,9 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
         body: JSON.stringify({ assignment_id: assignmentId, task_description: editNotes }),
       })
       if (!res.ok) throw new Error()
-      setAssignments(prev => prev.map(a =>
-        a.id === assignmentId ? { ...a, task_description: editNotes } : a
-      ))
+      setAssignments(prev => prev.map(a => a.id === assignmentId ? { ...a, task_description: editNotes } : a))
       setEditingId(null)
-      toast.success('Notas actualizadas — Diana verá los cambios')
+      toast.success('Notas actualizadas')
     } catch {
       toast.error('Error al guardar')
     } finally {
@@ -122,9 +132,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
         body: JSON.stringify({ assignment_id: assignmentId, status: newStatus }),
       })
       if (!res.ok) throw new Error()
-      setAssignments(prev => prev.map(a =>
-        a.id === assignmentId ? { ...a, status: newStatus } : a
-      ))
+      setAssignments(prev => prev.map(a => a.id === assignmentId ? { ...a, status: newStatus } : a))
       toast.success('Estado actualizado')
     } catch {
       toast.error('Error al actualizar')
@@ -143,44 +151,83 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-3">
-        <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
-          <p className="text-2xl font-bold text-gray-900">{assignments.length}</p>
-          <p className="text-xs text-gray-500">Total tareas</p>
-        </div>
-        <div className="bg-white rounded-xl border border-blue-200 p-4 text-center">
-          <p className="text-2xl font-bold text-blue-600">{inProgress}</p>
-          <p className="text-xs text-gray-500">En progreso</p>
-        </div>
-        <div className="bg-white rounded-xl border border-purple-200 p-4 text-center">
-          <p className="text-2xl font-bold text-purple-600">{pendingReview}</p>
-          <p className="text-xs text-gray-500">Por revisar</p>
-        </div>
-        <div className="bg-white rounded-xl border border-green-200 p-4 text-center">
-          <p className="text-2xl font-bold text-green-600">{completed}</p>
-          <p className="text-xs text-gray-500">Completados</p>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard label="Total tareas" value={assignments.length} tone="white" />
+        <StatCard label="En progreso" value={inProgress} tone="info" />
+        <StatCard label="Por revisar" value={pendingReview} tone="purple" />
+        <StatCard label="Completados" value={completed} tone="success" />
       </div>
 
       {/* Employees */}
       {employees.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Equipo</p>
+        <div
+          className="rounded-2xl p-5"
+          style={{
+            background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+            border: '0.5px solid rgba(255,255,255,0.1)',
+            backdropFilter: 'blur(20px)',
+          }}
+        >
+          <p
+            className="mb-4"
+            style={{
+              fontFamily: 'var(--font-mono-tech)',
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.2em',
+              color: '#525252',
+            }}
+          >
+            EQUIPO
+          </p>
           <div className="flex flex-wrap gap-3">
             {employees.map(emp => {
               const empTasks = assignments.filter(a => a.employee?.id === emp.id)
               const empPending = empTasks.filter(a => a.status === 'submitted').length
               return (
-                <div key={emp.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-100">
-                  <div className="w-10 h-10 rounded-xl bg-[#002855] flex items-center justify-center text-white font-bold text-sm">
+                <div
+                  key={emp.id}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl"
+                  style={{
+                    background: 'rgba(255,255,255,0.025)',
+                    border: '0.5px solid rgba(255,255,255,0.08)',
+                  }}
+                >
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.04))',
+                      border: '0.5px solid rgba(255,255,255,0.18)',
+                      color: '#FFFFFF',
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
+                  >
                     {emp.first_name[0]}{emp.last_name[0]}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">{emp.first_name} {emp.last_name}</p>
-                    <p className="text-xs text-gray-500">{empTasks.length} tarea{empTasks.length !== 1 ? 's' : ''}</p>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                      {emp.first_name} {emp.last_name}
+                    </p>
+                    <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: '#525252', letterSpacing: '0.05em' }}>
+                      {empTasks.length} TAREA{empTasks.length !== 1 ? 'S' : ''}
+                    </p>
                   </div>
                   {empPending > 0 && (
-                    <Badge className="bg-purple-100 text-purple-700 ml-auto">{empPending} por revisar</Badge>
+                    <span
+                      className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                      style={{
+                        background: 'rgba(167,139,250,0.10)',
+                        border: '0.5px solid rgba(167,139,250,0.3)',
+                        fontFamily: 'var(--font-mono-tech)',
+                        fontSize: 9,
+                        fontWeight: 700,
+                        color: '#C4B5FD',
+                        letterSpacing: '0.05em',
+                      }}
+                    >
+                      {empPending} POR REVISAR
+                    </span>
                   )}
                 </div>
               )
@@ -190,36 +237,64 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
       )}
 
       {/* Filter */}
-      <div className="flex items-center gap-2">
-        <Filter className="w-4 h-4 text-gray-400" />
-        {[
-          { value: 'all', label: 'Todas' },
-          { value: 'submitted', label: 'Por revisar' },
-          { value: 'assigned', label: 'Asignadas' },
-          { value: 'needs_correction', label: 'Correcciones' },
-          { value: 'approved', label: 'Aprobadas' },
-        ].map(f => (
-          <button key={f.value} onClick={() => setFilter(f.value)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              filter === f.value ? 'bg-[#002855] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}>
-            {f.label}
-          </button>
-        ))}
+      <div className="flex items-center gap-2 flex-wrap">
+        <Filter className="w-3.5 h-3.5" style={{ color: '#525252' }} />
+        <div
+          className="inline-flex items-center gap-1 p-1 rounded-full"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '0.5px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          {[
+            { value: 'all', label: 'Todas' },
+            { value: 'submitted', label: 'Por revisar' },
+            { value: 'assigned', label: 'Asignadas' },
+            { value: 'needs_correction', label: 'Correcciones' },
+            { value: 'approved', label: 'Aprobadas' },
+          ].map(f => {
+            const isActive = filter === f.value
+            return (
+              <button
+                key={f.value}
+                onClick={() => setFilter(f.value)}
+                className="px-3 py-1.5 rounded-full transition-all duration-300"
+                style={{
+                  background: isActive ? '#FFFFFF' : 'transparent',
+                  color: isActive ? '#000000' : '#A1A1A1',
+                  fontSize: 11.5,
+                  fontWeight: isActive ? 700 : 500,
+                  letterSpacing: '-0.005em',
+                  boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.15)' : 'none',
+                }}
+              >
+                {f.label}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Task list */}
       <div className="space-y-3">
         {filtered.length === 0 && (
-          <div className="text-center py-12">
-            <Briefcase className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-            <p className="text-gray-400">No hay tareas {filter !== 'all' ? 'con este filtro' : 'asignadas'}</p>
+          <div
+            className="rounded-2xl py-16 text-center"
+            style={{
+              background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
+              border: '0.5px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <Briefcase className="w-10 h-10 mx-auto mb-3" style={{ color: '#525252' }} />
+            <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+              SIN TAREAS {filter !== 'all' ? 'CON ESTE FILTRO' : 'ASIGNADAS'}
+            </p>
           </div>
         )}
 
         {filtered.map(a => {
-          const config = STATUS_CONFIG[a.status] || STATUS_CONFIG.assigned
-          const StatusIcon = config.icon
+          const s = STATUS_STYLES[a.status] || STATUS_STYLES.assigned
+          const StatusIcon = s.icon
           const clientLabel = a.case
             ? `${a.case.client?.first_name || ''} ${a.case.client?.last_name || ''}`
             : a.client_name || 'Sin cliente'
@@ -228,131 +303,280 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
           const isEditing = editingId === a.id
 
           return (
-            <div key={a.id} className="bg-white rounded-xl border border-gray-200 p-5">
+            <div
+              key={a.id}
+              className="rounded-2xl p-5"
+              style={{
+                background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+                border: '0.5px solid rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(20px)',
+              }}
+            >
               {/* Header */}
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="font-bold text-gray-900 text-sm">{clientLabel}</span>
-                    {a.case && <span className="text-xs text-gray-400">#{a.case.case_number}</span>}
-                    <Badge className={config.color}>
-                      <StatusIcon className="w-3 h-3 mr-1" />
-                      {config.label}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-gray-500">
-                    <span>{serviceLabel}</span>
-                    <span>·</span>
-                    <span className="flex items-center gap-1">
-                      <User className="w-3 h-3" />
-                      {a.employee?.first_name} {a.employee?.last_name}
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <span style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                      {clientLabel}
                     </span>
-                    <span>·</span>
-                    <span>{new Date(a.assigned_at).toLocaleDateString('es-US', { day: 'numeric', month: 'short' })}</span>
+                    {a.case && (
+                      <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 11, fontWeight: 700, color: '#525252', letterSpacing: '0.05em' }}>
+                        #{a.case.case_number}
+                      </span>
+                    )}
+                    <span
+                      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full"
+                      style={{
+                        background: s.bg,
+                        border: `0.5px solid ${s.border}`,
+                        fontFamily: 'var(--font-mono-tech)',
+                        fontSize: 9,
+                        fontWeight: 700,
+                        color: s.text,
+                        letterSpacing: '0.1em',
+                      }}
+                    >
+                      <StatusIcon className="w-2.5 h-2.5" />
+                      {s.label.toUpperCase()}
+                    </span>
+                  </div>
+                  <div
+                    className="flex items-center gap-3 flex-wrap"
+                    style={{
+                      fontFamily: 'var(--font-mono-tech)',
+                      fontSize: 10,
+                      color: '#A1A1A1',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    <span>{serviceLabel.toUpperCase()}</span>
+                    <span style={{ color: '#3F3F46' }}>·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <User className="w-3 h-3" />
+                      {a.employee ? `${a.employee.first_name} ${a.employee.last_name}`.toUpperCase() : 'SIN ASIGNAR'}
+                    </span>
+                    <span style={{ color: '#3F3F46' }}>·</span>
+                    <span>{new Date(a.assigned_at).toLocaleDateString('es-US', { day: 'numeric', month: 'short' }).toUpperCase()}</span>
                   </div>
                 </div>
                 {caseLink && (
-                  <Link href={caseLink}>
-                    <Button variant="outline" size="sm"><ChevronRight className="w-3 h-3" /> Ver caso</Button>
+                  <Link href={caseLink} className={BTN_GHOST}>
+                    <ChevronRight className="w-3 h-3" /> Ver caso
                   </Link>
                 )}
               </div>
 
               {/* Notes — editable */}
-              <div className="p-3 rounded-xl bg-[#F2A900]/5 border border-[#F2A900]/20 mb-3">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-bold text-[#9a6500] flex items-center gap-1">
-                    <MessageSquare className="w-3 h-3" /> Instrucciones / Notas
+              <div
+                className="p-3.5 rounded-xl mb-3"
+                style={{
+                  background: 'rgba(250,204,21,0.06)',
+                  border: '0.5px solid rgba(250,204,21,0.25)',
+                }}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span
+                    className="inline-flex items-center gap-1.5"
+                    style={{
+                      fontFamily: 'var(--font-mono-tech)',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: '#FACC15',
+                      letterSpacing: '0.18em',
+                    }}
+                  >
+                    <MessageSquare className="w-3 h-3" /> INSTRUCCIONES
                   </span>
                   {!isEditing && (
-                    <button onClick={() => { setEditingId(a.id); setEditNotes(a.task_description || '') }}
-                      className="text-xs text-[#9a6500] hover:text-[#F2A900] flex items-center gap-1">
-                      <Pencil className="w-3 h-3" /> Editar
+                    <button
+                      onClick={() => { setEditingId(a.id); setEditNotes(a.task_description || '') }}
+                      className="inline-flex items-center gap-1 transition-opacity hover:opacity-80"
+                      style={{
+                        fontFamily: 'var(--font-mono-tech)',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: '#FACC15',
+                        letterSpacing: '0.1em',
+                      }}
+                    >
+                      <Pencil className="w-3 h-3" /> EDITAR
                     </button>
                   )}
                 </div>
                 {isEditing ? (
                   <div className="space-y-2">
-                    <Textarea value={editNotes} onChange={e => setEditNotes(e.target.value)}
-                      placeholder="Escribe instrucciones, feedback, correcciones..." rows={4} />
+                    <textarea
+                      value={editNotes}
+                      onChange={e => setEditNotes(e.target.value)}
+                      placeholder="Escribe instrucciones, feedback, correcciones…"
+                      rows={4}
+                      className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 resize-y"
+                      style={{
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '0.5px solid rgba(255,255,255,0.1)',
+                        color: '#FAFAFA',
+                        fontSize: 13,
+                        minHeight: 90,
+                      }}
+                    />
                     <div className="flex gap-2">
-                      <Button size="sm" className="bg-[#002855]" disabled={savingId === a.id}
-                        onClick={() => saveNotes(a.id)}>
-                        {savingId === a.id ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Save className="w-3 h-3 mr-1" />}
+                      <button
+                        disabled={savingId === a.id}
+                        onClick={() => saveNotes(a.id)}
+                        className={BTN_PRIMARY}
+                      >
+                        {savingId === a.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                         Guardar
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Cancelar</Button>
+                      </button>
+                      <button onClick={() => setEditingId(null)} className={BTN_GHOST + ' !px-4 !py-2'}>
+                        Cancelar
+                      </button>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {a.task_description || <span className="text-gray-400 italic">Sin notas — toca Editar para agregar</span>}
+                  <p style={{ fontSize: 13, color: '#FDE68A', whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>
+                    {a.task_description || (
+                      <span style={{ color: '#525252', fontStyle: 'italic' }}>Sin notas — toca Editar para agregar</span>
+                    )}
                   </p>
                 )}
               </div>
 
               {/* Documents section */}
-              <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 mb-3">
+              <div
+                className="p-3.5 rounded-xl mb-3"
+                style={{
+                  background: 'rgba(255,255,255,0.025)',
+                  border: '0.5px solid rgba(255,255,255,0.06)',
+                }}
+              >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-gray-500 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5" />
-                    Documentos enviados a Diana ({a.docs.length})
+                  <span
+                    className="inline-flex items-center gap-1.5"
+                    style={{
+                      fontFamily: 'var(--font-mono-tech)',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: '#A1A1A1',
+                      letterSpacing: '0.18em',
+                    }}
+                  >
+                    <FileText className="w-3 h-3" />
+                    DOCUMENTOS ({a.docs.length})
                   </span>
-                  <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#002855] text-[#F2A900] cursor-pointer text-[11px] font-bold hover:opacity-90 transition-opacity">
+                  <label
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-opacity hover:opacity-90 cursor-pointer"
+                    style={{
+                      background: '#FFFFFF',
+                      color: '#000000',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      letterSpacing: '-0.005em',
+                      boxShadow: '0 0 12px rgba(255,255,255,0.15)',
+                    }}
+                  >
                     {uploadingId === a.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-                    {uploadingId === a.id ? 'Subiendo...' : 'Subir PDF'}
-                    <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" className="hidden"
+                    {uploadingId === a.id ? 'Subiendo…' : 'Subir PDF'}
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      className="hidden"
                       disabled={uploadingId !== null}
                       onChange={e => {
                         const file = e.target.files?.[0]
                         if (file) uploadFileToTask(a.id, file)
                         e.target.value = ''
-                      }} />
+                      }}
+                    />
                   </label>
                 </div>
                 {a.docs.length > 0 ? (
                   <div className="space-y-1.5">
                     {a.docs.map(doc => (
-                      <div key={doc.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-gray-100">
-                        <FileText className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
-                        <span className="text-xs font-medium text-gray-800 truncate flex-1">{doc.name}</span>
-                        <span className="text-[10px] text-gray-400 flex-shrink-0">{(doc.file_size / 1024 / 1024).toFixed(1)} MB</span>
-                        <a href={doc.file_url} target="_blank" rel="noopener noreferrer"
-                          className="text-[10px] text-blue-600 hover:underline flex-shrink-0">Ver</a>
+                      <div
+                        key={doc.id}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                        style={{
+                          background: 'rgba(255,255,255,0.03)',
+                          border: '0.5px solid rgba(255,255,255,0.06)',
+                        }}
+                      >
+                        <FileText className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#60A5FA' }} />
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }} className="truncate flex-1">
+                          {doc.name}
+                        </span>
+                        <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: '#525252', letterSpacing: '0.05em' }}>
+                          {(doc.file_size / 1024 / 1024).toFixed(1)} MB
+                        </span>
+                        <a
+                          href={doc.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            fontFamily: 'var(--font-mono-tech)',
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: '#60A5FA',
+                            letterSpacing: '0.1em',
+                          }}
+                          className="hover:underline"
+                        >
+                          VER
+                        </a>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-400 text-center py-2">Sin documentos — sube un PDF para Diana</p>
+                  <p style={{ fontSize: 11, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.1em', textAlign: 'center', padding: '8px 0' }}>
+                    SIN DOCUMENTOS · SUBE UN PDF PARA DIANA
+                  </p>
                 )}
               </div>
 
               {/* Submission stats */}
               {a.submissionStats.total > 0 && (
-                <div className="flex items-center gap-3 text-xs mb-3">
-                  <span className="text-gray-400">{a.submissionStats.total} envío{a.submissionStats.total !== 1 ? 's' : ''}</span>
+                <div className="flex items-center gap-3 flex-wrap mb-3">
+                  <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: '#525252', letterSpacing: '0.05em' }}>
+                    {a.submissionStats.total} ENVÍO{a.submissionStats.total !== 1 ? 'S' : ''}
+                  </span>
                   {a.submissionStats.submitted > 0 && (
-                    <span className="text-purple-600 font-medium">{a.submissionStats.submitted} pendiente{a.submissionStats.submitted !== 1 ? 's' : ''}</span>
+                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, color: '#C4B5FD', letterSpacing: '0.05em' }}>
+                      {a.submissionStats.submitted} PENDIENTE{a.submissionStats.submitted !== 1 ? 'S' : ''}
+                    </span>
                   )}
                   {a.submissionStats.approved > 0 && (
-                    <span className="text-green-600">{a.submissionStats.approved} aprobado{a.submissionStats.approved !== 1 ? 's' : ''}</span>
+                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, color: '#86EFAC', letterSpacing: '0.05em' }}>
+                      {a.submissionStats.approved} APROBADO{a.submissionStats.approved !== 1 ? 'S' : ''}
+                    </span>
                   )}
                 </div>
               )}
 
-              {/* Status controls for Henry */}
-              <div className="flex items-center gap-2 pt-3 border-t border-gray-100">
-                <span className="text-xs text-gray-400 mr-1">Estado:</span>
-                {['assigned', 'in_progress', 'needs_correction', 'approved', 'completed'].map(s => {
-                  const sc = STATUS_CONFIG[s]
-                  const isActive = a.status === s
+              {/* Status controls */}
+              <div className="flex items-center gap-2 flex-wrap pt-3" style={{ borderTop: '0.5px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: '#525252', letterSpacing: '0.18em' }}>
+                  ESTADO ·
+                </span>
+                {['assigned', 'in_progress', 'needs_correction', 'approved', 'completed'].map(stKey => {
+                  const sc = STATUS_STYLES[stKey]
+                  const isActive = a.status === stKey
                   return (
-                    <button key={s} onClick={() => !isActive && updateTaskStatus(a.id, s)}
+                    <button
+                      key={stKey}
+                      onClick={() => !isActive && updateTaskStatus(a.id, stKey)}
                       disabled={savingId === a.id}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
-                        isActive ? sc.color + ' ring-1 ring-offset-1 ring-gray-300' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
-                      }`}>
-                      {sc.label}
+                      className="px-2.5 py-1 rounded-full transition-all duration-200"
+                      style={{
+                        background: isActive ? sc.bg : 'rgba(255,255,255,0.025)',
+                        border: isActive ? `0.5px solid ${sc.border}` : '0.5px solid rgba(255,255,255,0.06)',
+                        color: isActive ? sc.text : '#525252',
+                        fontFamily: 'var(--font-mono-tech)',
+                        fontSize: 9,
+                        fontWeight: isActive ? 700 : 500,
+                        letterSpacing: '0.1em',
+                      }}
+                    >
+                      {sc.label.toUpperCase()}
                     </button>
                   )
                 })}
@@ -373,15 +597,65 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                     finally { setSavingId(null) }
                   }}
                   disabled={savingId === a.id}
-                  className="ml-auto px-2.5 py-1 rounded-lg text-[11px] font-medium text-red-500 bg-red-50 hover:bg-red-100 transition-colors"
+                  className="ml-auto inline-flex items-center gap-1 px-3 py-1 rounded-full transition-all duration-200 hover:bg-red-500/15"
+                  style={{
+                    background: 'rgba(248,113,113,0.10)',
+                    border: '0.5px solid rgba(248,113,113,0.25)',
+                    color: '#FCA5A5',
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: '0.1em',
+                  }}
                 >
-                  Eliminar
+                  ELIMINAR
                 </button>
               </div>
             </div>
           )
         })}
       </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+// StatCard
+// ════════════════════════════════════════════════════════════════════
+
+const STAT_TONE = {
+  white:   { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)',  valueColor: '#FFFFFF' },
+  info:    { bg: 'rgba(96,165,250,0.10)',  border: 'rgba(96,165,250,0.3)',   valueColor: '#93C5FD' },
+  purple:  { bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.3)',  valueColor: '#C4B5FD' },
+  success: { bg: 'rgba(34,197,94,0.10)',   border: 'rgba(34,197,94,0.3)',    valueColor: '#86EFAC' },
+} as const
+
+function StatCard({ label, value, tone }: { label: string; value: number; tone: keyof typeof STAT_TONE }) {
+  const t = STAT_TONE[tone]
+  return (
+    <div
+      className="rounded-2xl p-4 text-center transition-transform duration-300 hover:-translate-y-0.5"
+      style={{
+        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        border: '0.5px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(20px)',
+      }}
+    >
+      <p style={{ fontSize: 28, fontWeight: 600, color: t.valueColor, letterSpacing: '-0.025em', fontVariantNumeric: 'tabular-nums' }}>
+        {value}
+      </p>
+      <p
+        className="mt-1"
+        style={{
+          fontFamily: 'var(--font-mono-tech)',
+          fontSize: 9,
+          fontWeight: 500,
+          letterSpacing: '0.18em',
+          color: '#525252',
+        }}
+      >
+        {label.toUpperCase()}
+      </p>
     </div>
   )
 }

@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, Loader2 } from 'lucide-react'
-import { Input } from '@/components/ui/input'
 import { createClient } from '@/lib/supabase/client'
 
 interface SearchResult {
@@ -70,37 +69,70 @@ export function ClientSearch() {
   return (
     <div ref={containerRef} className="relative">
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <Input
-          placeholder="Buscar cliente..."
+        <Search
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
+          style={{ color: '#525252' }}
+        />
+        <input
+          type="text"
+          placeholder="Buscar cliente…"
           value={query}
           onChange={(e) => handleSearch(e.target.value)}
           onFocus={() => results.length > 0 && setOpen(true)}
-          className="pl-9 h-9 text-sm bg-gray-50 border-gray-200"
+          className="w-full pl-9 pr-3 h-9 rounded-lg text-sm outline-none transition-colors focus:border-white/25"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '0.5px solid rgba(255,255,255,0.1)',
+            color: '#FAFAFA',
+            fontSize: 13,
+            letterSpacing: '-0.005em',
+          }}
         />
         {loading && (
-          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 animate-spin" style={{ color: '#A1A1A1' }} />
         )}
       </div>
       {open && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
-          {results.map((r) => (
+        <div
+          className="absolute top-full left-0 right-0 mt-2 rounded-xl z-50 max-h-64 overflow-y-auto admin-scroll"
+          style={{
+            background: 'linear-gradient(180deg, rgba(15,15,15,0.98), rgba(8,8,8,0.98))',
+            border: '0.5px solid rgba(255,255,255,0.12)',
+            backdropFilter: 'blur(20px)',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(255,255,255,0.04) inset',
+          }}
+        >
+          {results.map((r, idx) => (
             <button
               key={r.id}
               onClick={() => handleSelect(r.id)}
-              className="w-full text-left px-3 py-2 hover:bg-gray-50 transition-colors border-b last:border-b-0"
+              className="w-full text-left px-3 py-2.5 transition-colors hover:bg-white/5"
+              style={{
+                borderBottom: idx < results.length - 1 ? '0.5px solid rgba(255,255,255,0.06)' : 'none',
+              }}
             >
-              <p className="text-sm font-medium text-gray-900">
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
                 {r.first_name} {r.last_name}
               </p>
-              <p className="text-xs text-gray-500">{r.email} {r.phone ? `| ${r.phone}` : ''}</p>
+              <p style={{ fontSize: 11, color: '#A1A1A1', marginTop: 1 }}>
+                {r.email} {r.phone ? `· ${r.phone}` : ''}
+              </p>
             </button>
           ))}
         </div>
       )}
       {open && query.length >= 2 && results.length === 0 && !loading && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-lg shadow-lg z-50 p-3">
-          <p className="text-sm text-gray-500 text-center">Sin resultados</p>
+        <div
+          className="absolute top-full left-0 right-0 mt-2 rounded-xl z-50 p-4"
+          style={{
+            background: 'linear-gradient(180deg, rgba(15,15,15,0.98), rgba(8,8,8,0.98))',
+            border: '0.5px solid rgba(255,255,255,0.12)',
+            backdropFilter: 'blur(20px)',
+          }}
+        >
+          <p style={{ fontSize: 12, color: '#525252', textAlign: 'center', letterSpacing: '0.05em' }}>
+            Sin resultados
+          </p>
         </div>
       )}
     </div>

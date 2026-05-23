@@ -2,18 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import {
   Users, Video, Pin, PinOff,
-  Trash2, Plus, Link2, Save, Loader2, DollarSign, CalendarClock, Clock
+  Trash2, Plus, Link2, Save, Loader2, DollarSign, CalendarClock, Clock,
 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { PageHeader, AdminKeyframes } from '@/components/admin-ui'
 
 const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
@@ -43,13 +38,29 @@ type Post = {
   created_at: string
 }
 
+const DARK_INPUT_CLS =
+  'w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 ' +
+  'bg-white/[0.04] border border-white/10 text-white placeholder:text-white/30'
+
+const LABEL_STYLE: React.CSSProperties = {
+  fontFamily: 'var(--font-mono-tech)',
+  fontSize: 9,
+  fontWeight: 500,
+  letterSpacing: '0.18em',
+  color: '#A1A1A1',
+}
+
+const BTN_PRIMARY =
+  'inline-flex items-center gap-2 px-4 py-2.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50 ' +
+  'bg-white text-black text-[12px] font-semibold tracking-tight ' +
+  'shadow-[0_4px_18px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset]'
+
 export default function AdminComunidadPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [stats, setStats] = useState({ total: 0, active: 0, free: 0, zellePending: 0 })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
-  // New post form
   const [newPost, setNewPost] = useState({
     type: 'text' as string,
     title: '',
@@ -58,11 +69,9 @@ export default function AdminComunidadPage() {
     zoom_url: '',
   })
 
-  // Zoom config
   const [zoomUrl, setZoomUrl] = useState('')
   const [zoomTitle, setZoomTitle] = useState('Sesión en Vivo con Henry')
 
-  // Schedule config
   const [scheduleConfig, setScheduleConfig] = useState<DayConfig[]>(
     DAYS.map((_, i) => ({ day_of_week: i, start_hour: 9, end_hour: 18, is_available: false }))
   )
@@ -73,16 +82,12 @@ export default function AdminComunidadPage() {
   const loadData = useCallback(async () => {
     setLoading(true)
 
-    // Stats
-    const { data: memberships } = await supabase
-      .from('community_memberships')
-      .select('status')
+    const { data: memberships } = await supabase.from('community_memberships').select('status')
 
     const total = memberships?.length || 0
     const active = memberships?.filter(m => m.status === 'active').length || 0
     const free = memberships?.filter(m => m.status === 'free').length || 0
 
-    // Zelle pending count
     const { count: zellePending } = await supabase
       .from('zelle_payments')
       .select('*', { count: 'exact', head: true })
@@ -90,7 +95,6 @@ export default function AdminComunidadPage() {
 
     setStats({ total, active, free, zellePending: zellePending || 0 })
 
-    // Posts
     const { data: postsData } = await supabase
       .from('community_posts')
       .select('*')
@@ -100,7 +104,6 @@ export default function AdminComunidadPage() {
 
     setPosts(postsData || [])
 
-    // Current zoom config
     const { data: zoom } = await supabase
       .from('community_posts')
       .select('zoom_url, title, content')
@@ -114,7 +117,6 @@ export default function AdminComunidadPage() {
       setZoomTitle(zoom.title || 'Sesión en Vivo con Henry')
     }
 
-    // Schedule config
     const { data: schedData } = await supabase
       .from('scheduling_config')
       .select('day_of_week, start_hour, end_hour, is_available')
@@ -168,21 +170,15 @@ export default function AdminComunidadPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    // Delete old zoom posts and create new one
-    await supabase
-      .from('community_posts')
-      .delete()
-      .eq('type', 'zoom')
+    await supabase.from('community_posts').delete().eq('type', 'zoom')
 
     if (zoomUrl.trim()) {
-      await supabase
-        .from('community_posts')
-        .insert({
-          author_id: user.id,
-          type: 'zoom',
-          title: zoomTitle,
-          zoom_url: zoomUrl.trim(),
-        })
+      await supabase.from('community_posts').insert({
+        author_id: user.id,
+        type: 'zoom',
+        title: zoomTitle,
+        zoom_url: zoomUrl.trim(),
+      })
     }
 
     toast.success('Link de Zoom actualizado')
@@ -192,15 +188,13 @@ export default function AdminComunidadPage() {
   async function handleSaveSchedule() {
     setSavingSchedule(true)
     const updates = scheduleConfig.map(day =>
-      supabase
-        .from('scheduling_config')
-        .upsert(
-          { day_of_week: day.day_of_week, start_hour: day.start_hour, end_hour: day.end_hour, is_available: day.is_available },
-          { onConflict: 'day_of_week' }
-        )
+      supabase.from('scheduling_config').upsert(
+        { day_of_week: day.day_of_week, start_hour: day.start_hour, end_hour: day.end_hour, is_available: day.is_available },
+        { onConflict: 'day_of_week' }
+      )
     )
     await Promise.all(updates)
-    toast.success('Horarios guardados — se reflejan en el portal del cliente')
+    toast.success('Horarios guardados')
     setSavingSchedule(false)
   }
 
@@ -209,334 +203,537 @@ export default function AdminComunidadPage() {
   }
 
   async function togglePin(postId: string, currentPinned: boolean) {
-    await supabase
-      .from('community_posts')
-      .update({ pinned: !currentPinned })
-      .eq('id', postId)
-
-    setPosts(prev => prev.map(p =>
-      p.id === postId ? { ...p, pinned: !currentPinned } : p
-    ))
+    await supabase.from('community_posts').update({ pinned: !currentPinned }).eq('id', postId)
+    setPosts(prev => prev.map(p => p.id === postId ? { ...p, pinned: !currentPinned } : p))
   }
 
   async function deletePost(postId: string) {
     if (!confirm('¿Eliminar esta publicación?')) return
-
-    await supabase
-      .from('community_posts')
-      .delete()
-      .eq('id', postId)
-
+    await supabase.from('community_posts').delete().eq('id', postId)
     setPosts(prev => prev.filter(p => p.id !== postId))
     toast.success('Publicación eliminada')
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="w-5 h-5 animate-spin" style={{ color: '#A1A1A1' }} />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Comunidad</h1>
+      <AdminKeyframes />
+      <PageHeader
+        eyebrow="Sistema · Comunidad"
+        title="Comunidad"
+        accentDot
+        description="Gestiona membresías, sesiones de Zoom en vivo, publicaciones, horarios disponibles y pagos Zelle."
+        telemetry={[
+          { label: 'Miembros', value: stats.total.toLocaleString() },
+          { label: 'Activos', value: stats.active.toString() },
+          { label: 'Gratis', value: stats.free.toString() },
+          ...(stats.zellePending > 0 ? [{ label: 'Zelle Pend.', value: stats.zellePending.toString() }] : []),
+        ]}
+      />
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-5 text-center">
-            <Users className="w-6 h-6 text-[#002855] mx-auto mb-1" />
-            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-            <p className="text-sm text-gray-500">Total miembros</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-5 text-center">
-            <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-1">
-              <div className="w-2.5 h-2.5 rounded-full bg-green-500" />
-            </div>
-            <p className="text-2xl font-bold text-green-600">{stats.active}</p>
-            <p className="text-sm text-gray-500">Activos ($25)</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-5 text-center">
-            <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-1">
-              <div className="w-2.5 h-2.5 rounded-full bg-gray-400" />
-            </div>
-            <p className="text-2xl font-bold text-gray-600">{stats.free}</p>
-            <p className="text-sm text-gray-500">Gratis</p>
-          </CardContent>
-        </Card>
+      {/* Stats grid */}
+      <div className="grid grid-cols-3 gap-3">
+        <StatCard icon={<Users className="w-4 h-4" />} label="Total miembros" value={stats.total} tone="white" />
+        <StatCard label="Activos · $25" value={stats.active} tone="success" />
+        <StatCard label="Gratis" value={stats.free} tone="neutral" />
       </div>
 
       {/* Zelle Payments Link */}
       <Link href="/admin/comunidad/zelle">
-        <Card className={`cursor-pointer transition-colors ${stats.zellePending > 0 ? 'border-[#F2A900] bg-[#F2A900]/5 hover:bg-[#F2A900]/10' : 'hover:bg-gray-50'}`}>
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${stats.zellePending > 0 ? 'bg-[#F2A900]/20' : 'bg-gray-100'}`}>
-                  <DollarSign className={`w-5 h-5 ${stats.zellePending > 0 ? 'text-[#F2A900]' : 'text-gray-500'}`} />
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900">Pagos Zelle</p>
-                  <p className="text-sm text-gray-500">
-                    {stats.zellePending > 0
-                      ? `${stats.zellePending} comprobante${stats.zellePending > 1 ? 's' : ''} pendiente${stats.zellePending > 1 ? 's' : ''} de revisión`
-                      : 'No hay pagos pendientes'
-                    }
-                  </p>
-                </div>
+        <div
+          className="rounded-2xl p-4 transition-all duration-300 cursor-pointer hover:-translate-y-0.5"
+          style={{
+            background: stats.zellePending > 0
+              ? 'linear-gradient(180deg, rgba(250,204,21,0.10), rgba(20,20,20,0.92))'
+              : 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+            border: stats.zellePending > 0
+              ? '0.5px solid rgba(250,204,21,0.3)'
+              : '0.5px solid rgba(255,255,255,0.1)',
+            backdropFilter: 'blur(20px)',
+            boxShadow: stats.zellePending > 0 ? '0 0 24px rgba(250,204,21,0.15)' : 'none',
+          }}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center"
+                style={{
+                  background: stats.zellePending > 0 ? 'rgba(250,204,21,0.15)' : 'rgba(255,255,255,0.06)',
+                  border: stats.zellePending > 0 ? '0.5px solid rgba(250,204,21,0.3)' : '0.5px solid rgba(255,255,255,0.1)',
+                  color: stats.zellePending > 0 ? '#FACC15' : '#A1A1A1',
+                }}
+              >
+                <DollarSign className="w-5 h-5" />
               </div>
-              {stats.zellePending > 0 && (
-                <Badge className="bg-[#F2A900] text-white text-sm px-3">
-                  {stats.zellePending} &rarr;
-                </Badge>
-              )}
-              {stats.zellePending === 0 && (
-                <span className="text-sm text-gray-400">Ver todos &rarr;</span>
-              )}
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                  Pagos Zelle
+                </p>
+                <p style={{ fontSize: 12, color: '#A1A1A1', marginTop: 2 }}>
+                  {stats.zellePending > 0
+                    ? `${stats.zellePending} comprobante${stats.zellePending > 1 ? 's' : ''} pendiente${stats.zellePending > 1 ? 's' : ''} de revisión`
+                    : 'No hay pagos pendientes'}
+                </p>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+            {stats.zellePending > 0 ? (
+              <span
+                className="inline-flex items-center gap-1 px-3 py-1 rounded-full"
+                style={{
+                  background: '#FACC15',
+                  color: '#000000',
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: '0.05em',
+                  boxShadow: '0 0 16px rgba(250,204,21,0.4)',
+                }}
+              >
+                {stats.zellePending} →
+              </span>
+            ) : (
+              <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, color: '#525252', letterSpacing: '0.15em' }}>
+                VER TODOS →
+              </span>
+            )}
+          </div>
+        </div>
       </Link>
 
       {/* Zoom Config */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Video className="w-5 h-5 text-[#F2A900]" />
-            Link de Zoom
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-2">
-            <Label>URL de Zoom</Label>
-            <Input
-              value={zoomUrl}
-              onChange={(e) => setZoomUrl(e.target.value)}
-              placeholder="https://zoom.us/j/..."
-              className="h-11"
-            />
+      <Panel icon={<Video className="w-4 h-4" />} title="Link de Zoom" iconTone="yellow">
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <label style={LABEL_STYLE}>URL DE ZOOM</label>
+            <input value={zoomUrl} onChange={(e) => setZoomUrl(e.target.value)} placeholder="https://zoom.us/j/…" className={DARK_INPUT_CLS} />
           </div>
-          <div className="space-y-2">
-            <Label>Título de la sesión</Label>
-            <Input
-              value={zoomTitle}
-              onChange={(e) => setZoomTitle(e.target.value)}
-              className="h-11"
-            />
+          <div className="space-y-1.5">
+            <label style={LABEL_STYLE}>TÍTULO DE LA SESIÓN</label>
+            <input value={zoomTitle} onChange={(e) => setZoomTitle(e.target.value)} className={DARK_INPUT_CLS} />
           </div>
-          <Button onClick={handleSaveZoom} disabled={saving} className="bg-[#002855]">
-            <Save className="w-4 h-4 mr-2" />
-            Guardar Zoom
-          </Button>
-        </CardContent>
-      </Card>
+          <button onClick={handleSaveZoom} disabled={saving} className={BTN_PRIMARY}>
+            <Save className="w-3.5 h-3.5" /> Guardar Zoom
+          </button>
+        </div>
+      </Panel>
 
       {/* Schedule Config */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <CalendarClock className="w-5 h-5 text-[#F2A900]" />
-            Horarios de Sesiones
-          </CardTitle>
-          <p className="text-sm text-gray-500 mt-1">
-            Los días y horas activados se muestran automáticamente en el portal del cliente (/cita → Comunidad).
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-2">
+      <Panel
+        icon={<CalendarClock className="w-4 h-4" />}
+        title="Horarios de Sesiones"
+        description="Los días y horas activados se muestran automáticamente en el portal del cliente (/cita → Comunidad)."
+        iconTone="yellow"
+      >
+        <div className="space-y-2">
           {scheduleConfig.map(day => (
             <div
               key={day.day_of_week}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${
-                day.is_available
-                  ? 'border-[#F2A900]/40 bg-[#F2A900]/5'
-                  : 'border-gray-200 bg-gray-50'
-              }`}
+              className="flex items-center gap-3 px-4 py-3 rounded-xl"
+              style={{
+                background: day.is_available ? 'rgba(250,204,21,0.06)' : 'rgba(255,255,255,0.025)',
+                border: day.is_available ? '0.5px solid rgba(250,204,21,0.25)' : '0.5px solid rgba(255,255,255,0.08)',
+              }}
             >
-              {/* Toggle */}
               <button
                 type="button"
                 onClick={() => updateDay(day.day_of_week, { is_available: !day.is_available })}
-                className={`relative w-10 h-5.5 rounded-full transition-colors flex-shrink-0 ${
-                  day.is_available ? 'bg-[#F2A900]' : 'bg-gray-300'
-                }`}
-                style={{ height: '22px', width: '40px' }}
+                className="relative shrink-0 transition-all duration-200"
+                style={{
+                  width: 40,
+                  height: 22,
+                  borderRadius: 11,
+                  background: day.is_available ? '#FACC15' : 'rgba(255,255,255,0.08)',
+                  border: day.is_available ? '0.5px solid #FACC15' : '0.5px solid rgba(255,255,255,0.15)',
+                  boxShadow: day.is_available ? '0 0 12px rgba(250,204,21,0.3)' : 'none',
+                }}
               >
                 <span
-                  className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                    day.is_available ? 'translate-x-5' : 'translate-x-0.5'
-                  }`}
+                  className="absolute top-0.5 rounded-full transition-transform"
+                  style={{
+                    width: 16,
+                    height: 16,
+                    background: day.is_available ? '#000000' : '#A1A1A1',
+                    transform: `translateX(${day.is_available ? '20px' : '2px'})`,
+                  }}
                 />
               </button>
 
-              {/* Day name */}
-              <span className={`w-24 text-sm font-semibold ${day.is_available ? 'text-gray-900' : 'text-gray-400'}`}>
+              <span
+                style={{
+                  width: 96,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: day.is_available ? '#FFFFFF' : '#525252',
+                  letterSpacing: '-0.005em',
+                }}
+              >
                 {DAYS[day.day_of_week]}
               </span>
 
-              {/* Time range — only visible when enabled */}
               {day.is_available ? (
                 <div className="flex items-center gap-2 flex-1">
-                  <Clock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
-                  <select
+                  <Clock className="w-3 h-3 shrink-0" style={{ color: '#FACC15' }} />
+                  <HourSelect
                     value={day.start_hour}
-                    onChange={e => updateDay(day.day_of_week, { start_hour: Number(e.target.value) })}
-                    className="text-sm border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#F2A900]"
-                  >
-                    {HOURS.filter(h => h < day.end_hour).map(h => (
-                      <option key={h} value={h}>{fmtHour(h)}</option>
-                    ))}
-                  </select>
-                  <span className="text-gray-400 text-sm">–</span>
-                  <select
+                    onChange={(v) => updateDay(day.day_of_week, { start_hour: v })}
+                    filter={(h) => h < day.end_hour}
+                  />
+                  <span style={{ color: '#525252', fontSize: 12, fontFamily: 'var(--font-mono-tech)' }}>–</span>
+                  <HourSelect
                     value={day.end_hour}
-                    onChange={e => updateDay(day.day_of_week, { end_hour: Number(e.target.value) })}
-                    className="text-sm border border-gray-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-[#F2A900]"
-                  >
-                    {HOURS.filter(h => h > day.start_hour).map(h => (
-                      <option key={h} value={h}>{fmtHour(h)}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => updateDay(day.day_of_week, { end_hour: v })}
+                    filter={(h) => h > day.start_hour}
+                  />
                 </div>
               ) : (
-                <span className="text-xs text-gray-400 flex-1">Sin sesión este día</span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 10,
+                    color: '#525252',
+                    letterSpacing: '0.1em',
+                    flex: 1,
+                  }}
+                >
+                  SIN SESIÓN ESTE DÍA
+                </span>
               )}
             </div>
           ))}
 
           <div className="pt-2">
-            <Button
-              onClick={handleSaveSchedule}
-              disabled={savingSchedule}
-              className="bg-[#002855] hover:bg-[#001d3d]"
-            >
-              {savingSchedule
-                ? <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                : <Save className="w-4 h-4 mr-2" />
-              }
+            <button onClick={handleSaveSchedule} disabled={savingSchedule} className={BTN_PRIMARY}>
+              {savingSchedule ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               Guardar horarios
-            </Button>
+            </button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </Panel>
 
       {/* Create Post */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Plus className="w-5 h-5 text-[#F2A900]" />
-            Nueva Publicación
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleCreatePost} className="space-y-3">
-            <div className="flex gap-2">
-              {(['text', 'video', 'announcement'] as const).map(type => (
+      <Panel icon={<Plus className="w-4 h-4" />} title="Nueva Publicación" iconTone="yellow">
+        <form onSubmit={handleCreatePost} className="space-y-3">
+          <div className="flex gap-1 p-1 rounded-full" style={{ background: 'rgba(255,255,255,0.04)', border: '0.5px solid rgba(255,255,255,0.08)', display: 'inline-flex' }}>
+            {(['text', 'video', 'announcement'] as const).map(type => {
+              const isActive = newPost.type === type
+              return (
                 <button
                   key={type}
                   type="button"
                   onClick={() => setNewPost({ ...newPost, type })}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    newPost.type === type
-                      ? 'bg-[#002855] text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                  className="px-3 py-1.5 rounded-full transition-all duration-300"
+                  style={{
+                    background: isActive ? '#FFFFFF' : 'transparent',
+                    color: isActive ? '#000000' : '#A1A1A1',
+                    fontSize: 11.5,
+                    fontWeight: isActive ? 700 : 500,
+                    letterSpacing: '-0.005em',
+                    boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.15)' : 'none',
+                  }}
                 >
                   {type === 'text' && '📝 Texto'}
                   {type === 'video' && '🎬 Video'}
                   {type === 'announcement' && '📢 Anuncio'}
                 </button>
-              ))}
+              )
+            })}
+          </div>
+          <input
+            value={newPost.title}
+            onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
+            placeholder="Título (opcional)"
+            className={DARK_INPUT_CLS}
+          />
+          <textarea
+            value={newPost.content}
+            onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
+            placeholder="¿Qué quiere compartir con la comunidad?"
+            rows={3}
+            className={DARK_INPUT_CLS + ' resize-y'}
+            style={{ minHeight: 80 }}
+          />
+          {newPost.type === 'video' && (
+            <div className="flex items-center gap-2">
+              <Link2 className="w-3.5 h-3.5 shrink-0" style={{ color: '#A1A1A1' }} />
+              <input
+                value={newPost.video_url}
+                onChange={(e) => setNewPost({ ...newPost, video_url: e.target.value })}
+                placeholder="URL del video (YouTube o TikTok)"
+                className={DARK_INPUT_CLS}
+              />
             </div>
-            <Input
-              value={newPost.title}
-              onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
-              placeholder="Título (opcional)"
-              className="h-11"
-            />
-            <textarea
-              value={newPost.content}
-              onChange={(e) => setNewPost({ ...newPost, content: e.target.value })}
-              placeholder="¿Qué quiere compartir con la comunidad?"
-              rows={3}
-              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40 resize-none"
-            />
-            {newPost.type === 'video' && (
-              <div className="flex items-center gap-2">
-                <Link2 className="w-4 h-4 text-gray-400" />
-                <Input
-                  value={newPost.video_url}
-                  onChange={(e) => setNewPost({ ...newPost, video_url: e.target.value })}
-                  placeholder="URL del video (YouTube o TikTok)"
-                  className="h-11"
-                />
-              </div>
-            )}
-            <Button type="submit" disabled={saving} className="bg-[#F2A900] hover:bg-[#D4940A] text-white">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Publicar'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Separator />
+          )}
+          <button type="submit" disabled={saving} className={BTN_PRIMARY}>
+            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+            Publicar
+          </button>
+        </form>
+      </Panel>
 
       {/* Posts List */}
       <div>
-        <h2 className="text-lg font-bold text-gray-900 mb-3">
-          Publicaciones ({posts.length})
+        <h2
+          className="mb-3"
+          style={{
+            fontFamily: 'var(--font-mono-tech)',
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: '0.2em',
+            color: '#A1A1A1',
+          }}
+        >
+          PUBLICACIONES ({posts.length})
         </h2>
         <div className="space-y-3">
           {posts.map(post => (
-            <div key={post.id} className="bg-white rounded-xl border p-4">
+            <div
+              key={post.id}
+              className="rounded-2xl p-4"
+              style={{
+                background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+                border: post.pinned ? '0.5px solid rgba(250,204,21,0.3)' : '0.5px solid rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(20px)',
+              }}
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="secondary" className="text-xs">
-                      {post.type === 'text' && '📝 Texto'}
-                      {post.type === 'video' && '🎬 Video'}
-                      {post.type === 'announcement' && '📢 Anuncio'}
-                    </Badge>
-                    {post.pinned && <Badge className="bg-[#F2A900] text-xs">📌 Fijado</Badge>}
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                      style={{
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '0.5px solid rgba(255,255,255,0.12)',
+                        fontFamily: 'var(--font-mono-tech)',
+                        fontSize: 9,
+                        fontWeight: 700,
+                        color: '#A1A1A1',
+                        letterSpacing: '0.1em',
+                      }}
+                    >
+                      {post.type === 'text' && '📝 TEXTO'}
+                      {post.type === 'video' && '🎬 VIDEO'}
+                      {post.type === 'announcement' && '📢 ANUNCIO'}
+                    </span>
+                    {post.pinned && (
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                        style={{
+                          background: 'rgba(250,204,21,0.12)',
+                          border: '0.5px solid rgba(250,204,21,0.3)',
+                          fontFamily: 'var(--font-mono-tech)',
+                          fontSize: 9,
+                          fontWeight: 700,
+                          color: '#FDE68A',
+                          letterSpacing: '0.1em',
+                        }}
+                      >
+                        📌 FIJADO
+                      </span>
+                    )}
                   </div>
-                  {post.title && <p className="font-semibold text-gray-900">{post.title}</p>}
-                  {post.content && <p className="text-sm text-gray-600 line-clamp-2">{post.content}</p>}
-                  {post.video_url && <p className="text-xs text-blue-500 truncate mt-1">{post.video_url}</p>}
-                  <p className="text-xs text-gray-400 mt-1">
-                    {new Date(post.created_at).toLocaleDateString('es-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  {post.title && (
+                    <p style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                      {post.title}
+                    </p>
+                  )}
+                  {post.content && (
+                    <p style={{ fontSize: 13, color: '#A1A1A1', marginTop: 4, lineHeight: 1.5 }} className="line-clamp-2">
+                      {post.content}
+                    </p>
+                  )}
+                  {post.video_url && (
+                    <p
+                      className="truncate mt-2"
+                      style={{
+                        fontFamily: 'var(--font-mono-tech)',
+                        fontSize: 11,
+                        color: '#60A5FA',
+                        letterSpacing: '0.02em',
+                      }}
+                    >
+                      {post.video_url}
+                    </p>
+                  )}
+                  <p
+                    className="mt-2"
+                    style={{
+                      fontFamily: 'var(--font-mono-tech)',
+                      fontSize: 10,
+                      color: '#525252',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    {new Date(post.created_at).toLocaleDateString('es-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).toUpperCase()}
                   </p>
                 </div>
                 <div className="flex items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
+                  <button
                     onClick={() => togglePin(post.id, post.pinned)}
                     title={post.pinned ? 'Desfijar' : 'Fijar'}
+                    className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-white/10"
+                    style={{ color: post.pinned ? '#FACC15' : '#A1A1A1' }}
                   >
-                    {post.pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
+                    {post.pinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
+                  </button>
+                  <button
                     onClick={() => deletePost(post.id)}
-                    className="text-red-500 hover:text-red-700"
+                    className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/10"
+                    style={{ color: '#FCA5A5' }}
                   >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             </div>
           ))}
           {posts.length === 0 && (
-            <p className="text-center text-gray-400 py-8">No hay publicaciones aún</p>
+            <div
+              className="rounded-2xl py-16 text-center"
+              style={{
+                background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
+                border: '0.5px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+                NO HAY PUBLICACIONES AÚN
+              </p>
+            </div>
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Helpers
+// ════════════════════════════════════════════════════════════════════
+
+function Panel({
+  icon, title, description, children, iconTone = 'white',
+}: {
+  icon: React.ReactNode
+  title: string
+  description?: string
+  children: React.ReactNode
+  iconTone?: 'white' | 'yellow'
+}) {
+  const tone = iconTone === 'yellow'
+    ? { bg: 'rgba(250,204,21,0.12)', border: 'rgba(250,204,21,0.3)', color: '#FACC15' }
+    : { bg: 'rgba(255,255,255,0.06)', border: 'rgba(255,255,255,0.12)', color: '#FFFFFF' }
+
+  return (
+    <div
+      className="relative rounded-2xl p-5 overflow-hidden"
+      style={{
+        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        border: '0.5px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(20px)',
+      }}
+    >
+      <span
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse at top, rgba(255,255,255,0.03), transparent 60%)' }}
+      />
+      <div className="relative">
+        <div className="flex items-start gap-3 mb-4">
+          <span
+            className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
+            style={{
+              background: tone.bg,
+              border: `0.5px solid ${tone.border}`,
+              color: tone.color,
+            }}
+          >
+            {icon}
+          </span>
+          <div>
+            <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.018em', color: '#FFFFFF' }}>{title}</h2>
+            {description && (
+              <p style={{ fontSize: 12, color: '#A1A1A1', marginTop: 3, lineHeight: 1.55 }}>{description}</p>
+            )}
+          </div>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+const STAT_TONE = {
+  white:   { valueColor: '#FFFFFF' },
+  success: { valueColor: '#86EFAC' },
+  neutral: { valueColor: '#CBD5E1' },
+} as const
+
+function StatCard({ icon, label, value, tone }: { icon?: React.ReactNode; label: string; value: number; tone: keyof typeof STAT_TONE }) {
+  const t = STAT_TONE[tone]
+  return (
+    <div
+      className="rounded-2xl p-4 text-center transition-transform duration-300 hover:-translate-y-0.5"
+      style={{
+        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        border: '0.5px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(20px)',
+      }}
+    >
+      {icon && (
+        <div className="mb-2 inline-flex items-center justify-center w-8 h-8 rounded-lg" style={{ background: 'rgba(255,255,255,0.06)', border: '0.5px solid rgba(255,255,255,0.12)', color: '#FFFFFF' }}>
+          {icon}
+        </div>
+      )}
+      <p style={{ fontSize: 28, fontWeight: 600, color: t.valueColor, letterSpacing: '-0.025em', fontVariantNumeric: 'tabular-nums' }}>
+        {value}
+      </p>
+      <p
+        className="mt-1"
+        style={{
+          fontFamily: 'var(--font-mono-tech)',
+          fontSize: 9,
+          fontWeight: 500,
+          letterSpacing: '0.18em',
+          color: '#525252',
+        }}
+      >
+        {label.toUpperCase()}
+      </p>
+    </div>
+  )
+}
+
+function HourSelect({ value, onChange, filter }: { value: number; onChange: (v: number) => void; filter: (h: number) => boolean }) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="appearance-none px-2.5 py-1 pr-6 rounded-lg outline-none cursor-pointer transition-colors focus:border-white/30"
+        style={{
+          background: 'rgba(255,255,255,0.04)',
+          border: '0.5px solid rgba(255,255,255,0.1)',
+          color: '#FAFAFA',
+          fontFamily: 'var(--font-mono-tech)',
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: '0.02em',
+          colorScheme: 'dark',
+        }}
+      >
+        {HOURS.filter(filter).map(h => (
+          <option key={h} value={h} style={{ background: '#0A0A0A', color: '#FAFAFA' }}>
+            {fmtHour(h)}
+          </option>
+        ))}
+      </select>
+      <span aria-hidden className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#525252', fontSize: 9 }}>▾</span>
     </div>
   )
 }

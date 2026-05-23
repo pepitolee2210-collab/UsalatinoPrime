@@ -1,9 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
 import { toast } from 'sonner'
 import {
   Loader2, CheckCircle, XCircle, Clock, Send, RefreshCw, Eye, FileText,
@@ -12,6 +9,7 @@ import {
 import { format, formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { INTERNAL_CATEGORY_LABELS } from '@/components/internal-docs/upload-modal'
+import { PageHeader, AdminKeyframes } from '@/components/admin-ui'
 
 interface DocumentRow {
   id: string
@@ -35,6 +33,26 @@ interface DocumentRow {
 }
 
 type TabKey = 'pending_review' | 'approved' | 'rejected' | 'published' | 'all'
+
+const BTN_GHOST =
+  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ' +
+  'hover:bg-white/10 active:scale-95 text-[11px] font-semibold tracking-tight ' +
+  'bg-white/[0.04] border border-white/10 text-white disabled:opacity-50'
+
+const BTN_SUCCESS =
+  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ' +
+  'hover:bg-emerald-500/15 active:scale-95 text-[11px] font-semibold tracking-tight ' +
+  'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 disabled:opacity-50'
+
+const BTN_DANGER =
+  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ' +
+  'hover:bg-red-500/15 active:scale-95 text-[11px] font-semibold tracking-tight ' +
+  'bg-red-500/10 border border-red-500/30 text-red-300 disabled:opacity-50'
+
+const BTN_DANGER_PRIMARY =
+  'inline-flex items-center gap-1.5 px-4 py-2 rounded-full transition-all duration-200 ' +
+  'hover:opacity-90 active:scale-95 text-[12px] font-semibold tracking-tight ' +
+  'bg-red-500 text-white shadow-[0_4px_18px_rgba(248,113,113,0.3)] disabled:opacity-50'
 
 export default function RevisionInternaAdminPage() {
   const [docs, setDocs] = useState<DocumentRow[]>([])
@@ -133,77 +151,128 @@ export default function RevisionInternaAdminPage() {
   }
 
   return (
-    <div className="space-y-5 max-w-6xl">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <FileText className="w-6 h-6 text-[#002855]" />
-            Revisión Interna
-          </h1>
-          <p className="text-sm text-gray-500">
-            Documentos que el equipo (Diana, Andrium) sube para tu aprobación antes de entregarlos al cliente.
-          </p>
-        </div>
-        <Button size="sm" variant="outline" onClick={() => load()}>
-          <RefreshCw className="w-3.5 h-3.5 mr-1" /> Actualizar
-        </Button>
-      </div>
+    <div className="space-y-6 max-w-6xl">
+      <AdminKeyframes />
+      <PageHeader
+        eyebrow="Documentos · Revisión Interna"
+        title="Revisión Interna"
+        accentDot
+        description="Documentos que el equipo (Diana, Andrium) sube para tu aprobación antes de entregarlos al cliente."
+        action={
+          <button onClick={() => load()} className={BTN_GHOST}>
+            <RefreshCw className="w-3.5 h-3.5" /> Actualizar
+          </button>
+        }
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard icon={<Clock className="w-4 h-4 text-amber-600" />} label="Esperando revisión" value={counts.pending_review} accent="amber" active={tab === 'pending_review'} onClick={() => setTab('pending_review')} />
-        <StatCard icon={<CheckCircle className="w-4 h-4 text-emerald-600" />} label="Aprobados" value={counts.approved} hint="esperando publicar" accent="emerald" active={tab === 'approved'} onClick={() => setTab('approved')} />
-        <StatCard icon={<XCircle className="w-4 h-4 text-red-600" />} label="Rechazados" value={counts.rejected} accent="red" active={tab === 'rejected'} onClick={() => setTab('rejected')} />
-        <StatCard icon={<Send className="w-4 h-4 text-blue-600" />} label="Publicados" value={counts.published} accent="blue" active={tab === 'published'} onClick={() => setTab('published')} />
+        <StatCard icon={<Clock className="w-4 h-4" />} label="Esperando revisión" value={counts.pending_review} tone="warning" active={tab === 'pending_review'} onClick={() => setTab('pending_review')} />
+        <StatCard icon={<CheckCircle className="w-4 h-4" />} label="Aprobados" value={counts.approved} hint="esperando publicar" tone="success" active={tab === 'approved'} onClick={() => setTab('approved')} />
+        <StatCard icon={<XCircle className="w-4 h-4" />} label="Rechazados" value={counts.rejected} tone="danger" active={tab === 'rejected'} onClick={() => setTab('rejected')} />
+        <StatCard icon={<Send className="w-4 h-4" />} label="Publicados" value={counts.published} tone="info" active={tab === 'published'} onClick={() => setTab('published')} />
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant={tab === 'all' ? 'default' : 'outline'} onClick={() => setTab('all')}>
-          Todos ({docs.length})
-        </Button>
-      </div>
+      <button
+        onClick={() => setTab('all')}
+        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition-all duration-200"
+        style={{
+          background: tab === 'all' ? '#FFFFFF' : 'rgba(255,255,255,0.04)',
+          color: tab === 'all' ? '#000000' : '#A1A1A1',
+          border: tab === 'all' ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.1)',
+          fontSize: 11.5,
+          fontWeight: tab === 'all' ? 700 : 500,
+          letterSpacing: '-0.005em',
+          boxShadow: tab === 'all' ? '0 0 12px rgba(255,255,255,0.18)' : 'none',
+        }}
+      >
+        Todos
+        <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, opacity: 0.7 }}>({docs.length})</span>
+      </button>
 
       {loading ? (
-        <Card><CardContent className="p-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" /></CardContent></Card>
+        <div
+          className="rounded-2xl p-12 text-center"
+          style={{
+            background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
+            border: '0.5px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          <Loader2 className="w-5 h-5 animate-spin mx-auto" style={{ color: '#A1A1A1' }} />
+        </div>
       ) : groupedByClient.length === 0 ? (
-        <Card>
-          <CardContent className="p-10 text-center">
-            <Sparkles className="w-10 h-10 text-gray-200 mx-auto mb-2" />
-            <p className="text-sm text-gray-500">
-              {tab === 'pending_review' && 'Sin documentos esperando tu revisión 🎉'}
-              {tab === 'approved' && 'Sin documentos aprobados pendientes de publicar.'}
-              {tab === 'rejected' && 'Sin documentos rechazados.'}
-              {tab === 'published' && 'Aún nada publicado.'}
-              {tab === 'all' && 'El equipo aún no ha subido documentos.'}
-            </p>
-          </CardContent>
-        </Card>
+        <div
+          className="rounded-2xl py-16 text-center"
+          style={{
+            background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
+            border: '0.5px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          <Sparkles className="w-10 h-10 mx-auto mb-2" style={{ color: '#525252' }} />
+          <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+            {tab === 'pending_review' && 'SIN DOCUMENTOS PARA REVISAR'}
+            {tab === 'approved' && 'SIN DOCUMENTOS APROBADOS PENDIENTES'}
+            {tab === 'rejected' && 'SIN DOCUMENTOS RECHAZADOS'}
+            {tab === 'published' && 'AÚN NADA PUBLICADO'}
+            {tab === 'all' && 'EL EQUIPO AÚN NO HA SUBIDO DOCUMENTOS'}
+          </p>
+        </div>
       ) : (
         <div className="space-y-4">
           {groupedByClient.map(g => (
-            <Card key={g.client_id}>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
-                  <User className="w-4 h-4 text-[#002855]" />
-                  <p className="text-sm font-bold text-gray-900">
-                    {g.client ? `${g.client.first_name} ${g.client.last_name}` : 'Cliente sin nombre'}
-                  </p>
-                  <Badge className="bg-gray-100 text-gray-700">{g.case_number || '—'}</Badge>
-                  <span className="text-[11px] text-gray-400 ml-auto">{g.docs.length} documento{g.docs.length !== 1 ? 's' : ''}</span>
-                </div>
-                <div className="space-y-2">
-                  {g.docs.map(d => (
-                    <DocRow
-                      key={d.id}
-                      doc={d}
-                      acting={acting === d.id}
-                      onPreview={() => openPreview(d)}
-                      onApprove={() => approve(d)}
-                      onReject={() => { setRejecting(d); setRejectComment('') }}
-                    />
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <div
+              key={g.client_id}
+              className="relative rounded-2xl p-5 overflow-hidden"
+              style={{
+                background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+                border: '0.5px solid rgba(255,255,255,0.1)',
+                backdropFilter: 'blur(20px)',
+              }}
+            >
+              <div className="flex items-center gap-2 mb-4 pb-3" style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
+                <User className="w-4 h-4" style={{ color: '#FFFFFF' }} />
+                <p style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                  {g.client ? `${g.client.first_name} ${g.client.last_name}` : 'Cliente sin nombre'}
+                </p>
+                <span
+                  className="inline-flex items-center px-2 py-0.5 rounded-full"
+                  style={{
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '0.5px solid rgba(255,255,255,0.12)',
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: '#FFFFFF',
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  {g.case_number || '—'}
+                </span>
+                <span
+                  className="ml-auto"
+                  style={{
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 10,
+                    fontWeight: 500,
+                    letterSpacing: '0.15em',
+                    color: '#525252',
+                  }}
+                >
+                  {g.docs.length} DOC{g.docs.length !== 1 ? 'S' : ''}
+                </span>
+              </div>
+              <div className="space-y-2">
+                {g.docs.map(d => (
+                  <DocRow
+                    key={d.id}
+                    doc={d}
+                    acting={acting === d.id}
+                    onPreview={() => openPreview(d)}
+                    onApprove={() => approve(d)}
+                    onReject={() => { setRejecting(d); setRejectComment('') }}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       )}
@@ -217,72 +286,137 @@ export default function RevisionInternaAdminPage() {
       )}
 
       {rejecting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <Card className="w-full max-w-md">
-            <CardContent className="p-5 space-y-3">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-                <h3 className="text-base font-bold text-gray-900">Rechazar documento</h3>
-              </div>
-              <p className="text-sm text-gray-600">
-                Diana verá el motivo y podrá subir una versión corregida.
-              </p>
-              <textarea
-                value={rejectComment}
-                onChange={e => setRejectComment(e.target.value)}
-                placeholder="Ej: faltan los nombres del padre ausente. Corregir y volver a enviar."
-                rows={4}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none"
-                autoFocus
-              />
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <Button size="sm" variant="outline" onClick={() => { setRejecting(null); setRejectComment('') }}>
-                  Cancelar
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={reject}
-                  disabled={!rejectComment.trim() || acting === rejecting.id}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                >
-                  {acting === rejecting.id
-                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin mr-1" /> Rechazando…</>
-                    : <><XCircle className="w-3.5 h-3.5 mr-1" /> Rechazar</>}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)' }}
+          onClick={() => { setRejecting(null); setRejectComment('') }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-2xl p-6 space-y-3"
+            style={{
+              background: 'linear-gradient(180deg, rgba(20,20,20,0.98), rgba(8,8,8,0.98))',
+              border: '0.5px solid rgba(255,255,255,0.12)',
+              backdropFilter: 'blur(20px)',
+              boxShadow: '0 32px 64px rgba(0,0,0,0.6)',
+            }}
+          >
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5" style={{ color: '#F87171' }} />
+              <h3 style={{ fontSize: 17, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.018em' }}>
+                Rechazar documento
+              </h3>
+            </div>
+            <p style={{ fontSize: 12.5, color: '#A1A1A1', lineHeight: 1.55 }}>
+              Diana verá el motivo y podrá subir una versión corregida.
+            </p>
+            <textarea
+              value={rejectComment}
+              onChange={e => setRejectComment(e.target.value)}
+              placeholder="Ej: faltan los nombres del padre ausente. Corregir y volver a enviar."
+              rows={4}
+              autoFocus
+              className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 resize-y"
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                border: '0.5px solid rgba(255,255,255,0.1)',
+                color: '#FAFAFA',
+                fontSize: 13,
+                letterSpacing: '-0.005em',
+                minHeight: 100,
+              }}
+            />
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button onClick={() => { setRejecting(null); setRejectComment('') }} className={BTN_GHOST}>
+                Cancelar
+              </button>
+              <button onClick={reject} disabled={!rejectComment.trim() || acting === rejecting.id} className={BTN_DANGER_PRIMARY}>
+                {acting === rejecting.id
+                  ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Rechazando…</>
+                  : <><XCircle className="w-3.5 h-3.5" /> Rechazar</>}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   )
 }
 
+// ════════════════════════════════════════════════════════════════════
+// StatCard
+// ════════════════════════════════════════════════════════════════════
+
+type StatTone = 'warning' | 'success' | 'danger' | 'info'
+const TONE_MAP: Record<StatTone, { bg: string; border: string; activeBorder: string; iconColor: string }> = {
+  warning: { bg: 'rgba(250,204,21,0.10)', border: 'rgba(250,204,21,0.3)', activeBorder: '#FACC15', iconColor: '#FACC15' },
+  success: { bg: 'rgba(34,197,94,0.10)',  border: 'rgba(34,197,94,0.3)',  activeBorder: '#4ADE80', iconColor: '#4ADE80' },
+  danger:  { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', activeBorder: '#F87171', iconColor: '#F87171' },
+  info:    { bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.3)', activeBorder: '#60A5FA', iconColor: '#60A5FA' },
+}
+
 function StatCard({
-  icon, label, value, hint, accent, active, onClick,
+  icon, label, value, hint, tone, active, onClick,
 }: {
   icon: React.ReactNode
   label: string
   value: number
   hint?: string
-  accent: 'amber' | 'emerald' | 'red' | 'blue'
+  tone: StatTone
   active: boolean
   onClick: () => void
 }) {
-  const accentClass = {
-    amber: active ? 'border-amber-400 ring-2 ring-amber-300/50 bg-amber-50' : 'border-amber-100 bg-amber-50/30 hover:border-amber-200',
-    emerald: active ? 'border-emerald-400 ring-2 ring-emerald-300/50 bg-emerald-50' : 'border-emerald-100 bg-emerald-50/30 hover:border-emerald-200',
-    red: active ? 'border-red-400 ring-2 ring-red-300/50 bg-red-50' : 'border-red-100 bg-red-50/30 hover:border-red-200',
-    blue: active ? 'border-blue-400 ring-2 ring-blue-300/50 bg-blue-50' : 'border-blue-100 bg-blue-50/30 hover:border-blue-200',
-  }[accent]
+  const t = TONE_MAP[tone]
   return (
-    <button onClick={onClick} className={`text-left rounded-xl border ${accentClass} p-3 transition-all`}>
-      <div className="flex items-center gap-2 mb-1">{icon}<span className="text-xs font-medium text-gray-700">{label}</span></div>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-      {hint && <p className="text-[10px] text-gray-500 mt-0.5">{hint}</p>}
+    <button
+      onClick={onClick}
+      className="text-left rounded-2xl p-4 transition-all duration-300 hover:-translate-y-0.5"
+      style={{
+        background: active
+          ? `linear-gradient(180deg, ${t.bg}, rgba(20,20,20,0.92))`
+          : 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        border: active ? `0.5px solid ${t.activeBorder}` : `0.5px solid rgba(255,255,255,0.1)`,
+        boxShadow: active ? `0 0 24px ${t.bg}` : 'none',
+        backdropFilter: 'blur(20px)',
+      }}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <span
+          className="inline-flex items-center justify-center w-7 h-7 rounded-lg"
+          style={{
+            background: t.bg,
+            border: `0.5px solid ${t.border}`,
+            color: t.iconColor,
+          }}
+        >
+          {icon}
+        </span>
+        <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#525252' }}>
+          {label.toUpperCase()}
+        </span>
+      </div>
+      <p style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.025em', color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>
+        {value}
+      </p>
+      {hint && (
+        <p style={{ fontSize: 10, color: '#525252', marginTop: 2, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+          {hint.toUpperCase()}
+        </p>
+      )}
     </button>
   )
 }
+
+// ════════════════════════════════════════════════════════════════════
+// DocRow
+// ════════════════════════════════════════════════════════════════════
+
+const DOC_STATUS_STYLES = {
+  pending_review: { bg: 'rgba(250,204,21,0.10)', border: 'rgba(250,204,21,0.3)', text: '#FDE68A', dot: '#FACC15', label: 'Esperando revisión' },
+  approved:       { bg: 'rgba(34,197,94,0.10)',  border: 'rgba(34,197,94,0.3)',  text: '#86EFAC', dot: '#4ADE80', label: 'Aprobado' },
+  rejected:       { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', text: '#FCA5A5', dot: '#F87171', label: 'Rechazado' },
+  published:      { bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.3)', text: '#93C5FD', dot: '#60A5FA', label: 'Publicado' },
+} as const
 
 function DocRow({
   doc, acting, onPreview, onApprove, onReject,
@@ -293,74 +427,113 @@ function DocRow({
   onApprove: () => void
   onReject: () => void
 }) {
-  const STATUS_META = {
-    pending_review: { label: 'Esperando revisión', color: 'bg-amber-100 text-amber-800', icon: Clock },
-    approved: { label: 'Aprobado', color: 'bg-emerald-100 text-emerald-800', icon: CheckCircle },
-    rejected: { label: 'Rechazado', color: 'bg-red-100 text-red-800', icon: XCircle },
-    published: { label: 'Publicado al cliente', color: 'bg-blue-100 text-blue-800', icon: Send },
-  }
-  const meta = STATUS_META[doc.status]
-  const Icon = meta.icon
+  const meta = DOC_STATUS_STYLES[doc.status]
   const uploaderName = doc.uploader ? `${doc.uploader.first_name} ${doc.uploader.last_name}` : 'Empleado'
 
   return (
-    <div className="rounded-lg border border-gray-100 hover:border-gray-200 p-3 transition-colors">
+    <div
+      className="rounded-xl p-3.5 transition-colors"
+      style={{
+        background: 'rgba(255,255,255,0.025)',
+        border: '0.5px solid rgba(255,255,255,0.06)',
+      }}
+    >
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap mb-0.5">
-            <p className="text-sm font-semibold text-gray-900 truncate">{doc.file_name}</p>
-            <Badge className={meta.color}>
-              <Icon className="w-3 h-3 mr-1" /> {meta.label}
-            </Badge>
-            {doc.version > 1 && <Badge className="bg-gray-100 text-gray-700">v{doc.version}</Badge>}
+          <div className="flex items-center gap-2 flex-wrap mb-1.5">
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }} className="truncate">
+              {doc.file_name}
+            </p>
+            <span
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full"
+              style={{
+                background: meta.bg,
+                border: `0.5px solid ${meta.border}`,
+                fontFamily: 'var(--font-mono-tech)',
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                color: meta.text,
+              }}
+            >
+              <span className="rounded-full" style={{ width: 5, height: 5, background: meta.dot }} />
+              {meta.label.toUpperCase()}
+            </span>
+            {doc.version > 1 && (
+              <span
+                style={{
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '0.5px solid rgba(255,255,255,0.12)',
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  color: '#A1A1A1',
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                }}
+              >
+                V{doc.version}
+              </span>
+            )}
           </div>
-          <p className="text-[11px] text-gray-600">
-            {INTERNAL_CATEGORY_LABELS[doc.category] || doc.category} · subido por {uploaderName} {formatDistanceToNow(new Date(doc.created_at), { locale: es, addSuffix: true })}
+          <p style={{ fontSize: 11, color: '#A1A1A1' }}>
+            {INTERNAL_CATEGORY_LABELS[doc.category] || doc.category} · {uploaderName}
+            <span style={{ color: '#525252', fontFamily: 'var(--font-mono-tech)', fontSize: 10, marginLeft: 6, letterSpacing: '0.05em' }}>
+              · {formatDistanceToNow(new Date(doc.created_at), { locale: es, addSuffix: true }).toUpperCase()}
+            </span>
           </p>
 
           {doc.upload_notes && (
-            <p className="text-[11px] text-gray-700 mt-1 bg-blue-50 border border-blue-100 rounded p-1.5">
-              <span className="font-semibold">Nota: </span>{doc.upload_notes}
-            </p>
+            <div
+              className="mt-2 px-3 py-2 rounded-lg"
+              style={{
+                background: 'rgba(96,165,250,0.06)',
+                border: '0.5px solid rgba(96,165,250,0.2)',
+              }}
+            >
+              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: '#60A5FA', marginBottom: 2 }}>
+                NOTA
+              </p>
+              <p style={{ fontSize: 11.5, color: '#93C5FD', lineHeight: 1.5 }}>{doc.upload_notes}</p>
+            </div>
           )}
 
           {doc.status === 'rejected' && doc.review_comment && (
-            <p className="text-[11px] text-red-700 mt-1 bg-red-50 border border-red-100 rounded p-1.5">
-              <span className="font-semibold">Tu motivo: </span>{doc.review_comment}
-            </p>
+            <div
+              className="mt-2 px-3 py-2 rounded-lg"
+              style={{
+                background: 'rgba(248,113,113,0.06)',
+                border: '0.5px solid rgba(248,113,113,0.2)',
+              }}
+            >
+              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: '#F87171', marginBottom: 2 }}>
+                MOTIVO
+              </p>
+              <p style={{ fontSize: 11.5, color: '#FCA5A5', lineHeight: 1.5 }}>{doc.review_comment}</p>
+            </div>
           )}
 
           {doc.status === 'published' && doc.published_at && (
-            <p className="text-[11px] text-blue-700 mt-1">
-              📤 {uploaderName} lo entregó el {format(new Date(doc.published_at), "d MMM yyyy, HH:mm", { locale: es })}
+            <p style={{ fontSize: 11, color: '#93C5FD', marginTop: 6, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+              ENTREGADO · {uploaderName.toUpperCase()} · {format(new Date(doc.published_at), 'd MMM yyyy · HH:mm', { locale: es }).toUpperCase()}
             </p>
           )}
         </div>
 
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <Button size="sm" variant="outline" onClick={onPreview} className="h-7 text-[11px]">
-            <Eye className="w-3 h-3 mr-1" /> Ver
-          </Button>
+          <button onClick={onPreview} className={BTN_GHOST}>
+            <Eye className="w-3 h-3" /> Ver
+          </button>
           {doc.status === 'pending_review' && (
             <>
-              <Button
-                size="sm"
-                onClick={onApprove}
-                disabled={acting}
-                className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                {acting ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <CheckCircle className="w-3 h-3 mr-1" />}
+              <button onClick={onApprove} disabled={acting} className={BTN_SUCCESS}>
+                {acting ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCircle className="w-3 h-3" />}
                 Aprobar
-              </Button>
-              <Button
-                size="sm"
-                onClick={onReject}
-                disabled={acting}
-                variant="outline"
-                className="h-7 text-[11px] text-red-600 hover:bg-red-50"
-              >
-                <XCircle className="w-3 h-3 mr-1" /> Rechazar
-              </Button>
+              </button>
+              <button onClick={onReject} disabled={acting} className={BTN_DANGER}>
+                <XCircle className="w-3 h-3" /> Rechazar
+              </button>
             </>
           )}
         </div>
@@ -369,22 +542,45 @@ function DocRow({
   )
 }
 
+// ════════════════════════════════════════════════════════════════════
+// PreviewModal
+// ════════════════════════════════════════════════════════════════════
+
 function PreviewModal({ doc, url, onClose }: { doc: DocumentRow; url: string | null; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'rgba(0,0,0,0.85)' }} onClick={onClose}>
-      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
-        <p className="text-white font-semibold text-sm truncate flex-1 mr-4">{doc.file_name}</p>
-        <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.12)' }}>
-          <span className="text-white">×</span>
+    <div
+      className="fixed inset-0 z-50 flex flex-col"
+      style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(8px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="flex items-center justify-between px-5 py-3 flex-shrink-0"
+        onClick={e => e.stopPropagation()}
+        style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}
+      >
+        <div className="flex items-center gap-2.5 flex-1 min-w-0 mr-4">
+          <FileText className="w-4 h-4 shrink-0" style={{ color: '#A1A1A1' }} />
+          <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }} className="truncate">
+            {doc.file_name}
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          className="w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-white/10"
+          style={{ background: 'rgba(255,255,255,0.06)', color: '#FFFFFF', border: '0.5px solid rgba(255,255,255,0.1)' }}
+        >
+          ×
         </button>
       </div>
-      <div className="flex-1 flex items-stretch justify-center px-4 pb-4" onClick={e => e.stopPropagation()}>
+      <div className="flex-1 flex items-stretch justify-center p-4" onClick={e => e.stopPropagation()}>
         {url ? (
           <iframe src={url} className="w-full h-full rounded-xl bg-white" title={doc.file_name} />
         ) : (
-          <div className="text-white text-center">
+          <div className="text-center" style={{ color: '#A1A1A1' }}>
             <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-            <p className="text-sm">Cargando preview…</p>
+            <p style={{ fontSize: 12, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+              CARGANDO PREVIEW…
+            </p>
           </div>
         )}
       </div>

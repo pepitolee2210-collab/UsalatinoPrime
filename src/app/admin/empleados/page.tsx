@@ -1,16 +1,18 @@
 import { createClient } from '@/lib/supabase/server'
 import { EmployeeTasksView } from './employee-tasks-view'
+import { PageHeader, AdminKeyframes } from '@/components/admin-ui'
+
+// Supabase nested joins arrive as deeply-mixed shapes; we narrow inline below.
+type AnyAssignment = any
 
 export default async function AdminEmpleadosPage() {
   const supabase = await createClient()
 
-  // Get all employees
   const { data: employees } = await supabase
     .from('profiles')
     .select('id, first_name, last_name, phone')
     .eq('role', 'employee')
 
-  // Get ALL assignments with their submissions
   const { data: assignments } = await supabase
     .from('employee_case_assignments')
     .select(`
@@ -21,32 +23,27 @@ export default async function AdminEmpleadosPage() {
     `)
     .order('assigned_at', { ascending: false })
 
-  // Get services for the assign button
   const { data: services } = await supabase
     .from('service_catalog')
     .select('id, name')
     .order('name')
 
-  // Get active cases for case assignment
   const { data: activeCases } = await supabase
     .from('cases')
     .select('id, case_number, client:profiles(first_name, last_name), service:service_catalog(name)')
     .not('intake_status', 'eq', 'archived')
     .order('created_at', { ascending: false })
 
-  // Get submissions for each assignment
   const { data: submissions } = await supabase
     .from('employee_submissions')
     .select('id, assignment_id, title, status, created_at')
     .order('created_at', { ascending: false })
 
-  // Get documents for each assignment
   const { data: taskDocs } = await supabase
     .from('employee_assignment_documents')
     .select('id, assignment_id, name, file_url, file_size')
     .order('uploaded_at', { ascending: false })
 
-  // Build submission count map
   const subMap = new Map<string, { total: number; submitted: number; approved: number }>()
   for (const s of submissions || []) {
     const cur = subMap.get(s.assignment_id) || { total: 0, submitted: 0, approved: 0 }
@@ -56,7 +53,6 @@ export default async function AdminEmpleadosPage() {
     subMap.set(s.assignment_id, cur)
   }
 
-  // Build docs map
   const docsMap = new Map<string, Array<{ id: string; name: string; file_url: string; file_size: number }>>()
   for (const d of taskDocs || []) {
     const cur = docsMap.get(d.assignment_id) || []
@@ -64,8 +60,7 @@ export default async function AdminEmpleadosPage() {
     docsMap.set(d.assignment_id, cur)
   }
 
-  // Normalize nested relations
-  const normalized = (assignments || []).map((a: any) => ({
+  const normalized = (assignments || []).map((a: AnyAssignment) => ({
     ...a,
     employee: Array.isArray(a.employee) ? a.employee[0] : a.employee,
     case: a.case ? {
@@ -77,14 +72,30 @@ export default async function AdminEmpleadosPage() {
     docs: docsMap.get(a.id) || [],
   }))
 
+  const totalTasks = normalized.length
+  const pendingReview = normalized.filter((a: AnyAssignment) => a.status === 'submitted').length
+  const completed = normalized.filter((a: AnyAssignment) => a.status === 'approved' || a.status === 'completed').length
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Empleados y Tareas</h1>
+      <AdminKeyframes />
+      <PageHeader
+        eyebrow="Sistema · Empleados"
+        title="Empleados y Tareas"
+        accentDot
+        description="Asigna trabajos a Diana, Andrium o Vanessa. Revisa documentos enviados, edita instrucciones y monitorea el progreso de cada tarea."
+        telemetry={[
+          { label: 'Tareas', value: totalTasks.toString() },
+          { label: 'Equipo', value: (employees?.length || 0).toString() },
+          { label: 'Por revisar', value: pendingReview.toString() },
+          { label: 'Completadas', value: completed.toString() },
+        ]}
+      />
       <EmployeeTasksView
         employees={employees || []}
         assignments={normalized}
         services={services || []}
-        activeCases={(activeCases || []).map((c: any) => ({
+        activeCases={(activeCases || []).map((c: AnyAssignment) => ({
           ...c,
           client: Array.isArray(c.client) ? c.client[0] : c.client,
           service: Array.isArray(c.service) ? c.service[0] : c.service,

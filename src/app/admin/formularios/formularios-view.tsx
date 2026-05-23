@@ -2,10 +2,7 @@
 
 import { useState } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { ClipboardList, Baby, FileText, Plus, Copy, Check, ExternalLink, Link2, Sparkles, Eye } from 'lucide-react'
+import { Baby, FileText, Plus, Copy, Check, ExternalLink, Link2, Sparkles, Eye } from 'lucide-react'
 import { VisaJuvenilRow } from '@/components/admin/VisaJuvenilRow'
 import { AsiloRow } from '@/components/admin/AsiloRow'
 import { AjusteRow } from '@/components/admin/AjusteRow'
@@ -28,12 +25,12 @@ const STATUS_FILTERS = ['all', 'pending', 'reviewed', 'archived'] as const
 const RENUNCIA_STATUS_FILTERS = ['all', 'nuevo', 'en_revision', 'aprobado', 'rechazado'] as const
 
 interface FormulariosViewProps {
-  visaJuvenil: any[]
-  asilo: any[]
-  ajuste: any[]
-  renuncia: any[]
-  cambioCorte: any[]
-  aiDocuments: any[]
+  visaJuvenil: Record<string, unknown>[]
+  asilo: Record<string, unknown>[]
+  ajuste: Record<string, unknown>[]
+  renuncia: Record<string, unknown>[]
+  cambioCorte: Record<string, unknown>[]
+  aiDocuments: Record<string, unknown>[]
   baseUrl: string
 }
 
@@ -80,14 +77,14 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
   function getFilteredSubmissions() {
     const subs = getSubmissions()
     if (statusFilter === 'all') return subs
-    return subs.filter(s => s.status === statusFilter)
+    return subs.filter((s) => (s as Record<string, unknown>).status === statusFilter)
   }
 
-  function getPendingCount(subs: any[], tab: TabKey) {
+  function getPendingCount(subs: Record<string, unknown>[], tab: TabKey) {
     if (tab === 'renuncia' || tab === 'cambio-corte') {
-      return subs.filter(s => s.status === 'nuevo').length
+      return subs.filter((s) => s.status === 'nuevo').length
     }
-    return subs.filter(s => s.status === 'pending').length
+    return subs.filter((s) => s.status === 'pending').length
   }
 
   const isRenunciaStyle = activeTab === 'renuncia' || activeTab === 'cambio-corte'
@@ -107,80 +104,118 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <ClipboardList className="w-6 h-6 text-[#002855]" />
-            Formularios
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Todos los formularios recibidos de clientes
-          </p>
-        </div>
-        {activeTab === 'cambio-corte' && (
+      {/* Action button para cambio-corte */}
+      {activeTab === 'cambio-corte' && (
+        <div className="flex justify-end">
           <Link
             href="/admin/cambio-corte/nuevo"
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium bg-[#002855] text-white rounded-lg hover:bg-[#001d3d] transition-colors"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95"
+            style={{
+              background: '#FFFFFF',
+              color: '#000000',
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: '-0.005em',
+              boxShadow: '0 4px 18px rgba(255,255,255,0.18), 0 0 0 0.5px rgba(255,255,255,0.4) inset',
+            }}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" />
             Nuevo Cambio de Corte
           </Link>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Links de Formularios Públicos */}
-      <Card className="border-[#002855]/10 bg-[#002855]/[0.02]">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Link2 className="w-4 h-4 text-[#002855]" />
-            <span className="text-sm font-semibold text-gray-900">Links de Formularios</span>
-            <span className="text-xs text-gray-400">— copia y comparte por WhatsApp</span>
+      <div
+        className="rounded-2xl p-5 relative overflow-hidden"
+        style={{
+          background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+          border: '0.5px solid rgba(255,255,255,0.1)',
+          backdropFilter: 'blur(20px)',
+        }}
+      >
+        <div className="flex items-center gap-2 mb-4">
+          <span
+            className="inline-flex items-center justify-center w-8 h-8 rounded-xl"
+            style={{
+              background: 'rgba(255,255,255,0.06)',
+              border: '0.5px solid rgba(255,255,255,0.12)',
+            }}
+          >
+            <Link2 className="w-3.5 h-3.5" style={{ color: '#FFFFFF' }} />
+          </span>
+          <div>
+            <p
+              style={{
+                fontFamily: 'var(--font-mono-tech)',
+                fontSize: 10,
+                fontWeight: 500,
+                letterSpacing: '0.2em',
+                color: '#A1A1A1',
+              }}
+            >
+              LINKS PÚBLICOS · COMPARTIR POR WHATSAPP
+            </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {FORM_LINKS.map((fl) => (
-              <div
-                key={fl.key}
-                className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-white border border-gray-100 hover:border-[#002855]/20 transition-colors"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{fl.label}</p>
-                  <p className="text-xs text-gray-400 font-mono truncate">{fl.path}</p>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <a
-                    href={fl.path}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="p-1.5 text-gray-400 hover:text-[#002855] hover:bg-[#002855]/5 rounded transition-colors"
-                    title="Abrir formulario"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                  <button
-                    onClick={() => handleCopyLink(fl.path)}
-                    className={`p-1.5 rounded transition-colors ${
-                      copiedLink === fl.path
-                        ? 'text-green-600 bg-green-50'
-                        : 'text-gray-400 hover:text-[#002855] hover:bg-[#002855]/5'
-                    }`}
-                    title="Copiar link"
-                  >
-                    {copiedLink === fl.path ? (
-                      <Check className="w-3.5 h-3.5" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 overflow-x-auto pb-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {FORM_LINKS.map((fl) => (
+            <div
+              key={fl.key}
+              className="group flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl transition-all duration-300 hover:bg-white/5"
+              style={{
+                background: 'rgba(255,255,255,0.025)',
+                border: '0.5px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <div className="min-w-0">
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }} className="truncate">
+                  {fl.label}
+                </p>
+                <p
+                  className="truncate"
+                  style={{
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 10,
+                    color: '#525252',
+                    letterSpacing: '0.02em',
+                    marginTop: 2,
+                  }}
+                >
+                  {fl.path}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <a
+                  href={fl.path}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-white/10"
+                  style={{ color: '#A1A1A1' }}
+                  title="Abrir formulario"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                </a>
+                <button
+                  onClick={() => handleCopyLink(fl.path)}
+                  className="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors"
+                  style={{
+                    color: copiedLink === fl.path ? '#4ADE80' : '#A1A1A1',
+                    background: copiedLink === fl.path ? 'rgba(34,197,94,0.10)' : 'transparent',
+                  }}
+                  title="Copiar link"
+                >
+                  {copiedLink === fl.path ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Service tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
         {TABS.map((tab) => {
           const subs = tab.key === 'visa-juvenil' ? visaJuvenil
             : tab.key === 'asilo' ? asilo
@@ -189,29 +224,47 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
             : tab.key === 'docs-ia' ? aiDocuments
             : cambioCorte
           const pendingCount = tab.key === 'docs-ia'
-            ? subs.filter((s: any) => s.status === 'draft').length
+            ? subs.filter((s: Record<string, unknown>) => s.status === 'draft').length
             : getPendingCount(subs, tab.key)
           const Icon = tab.icon
+          const isActive = activeTab === tab.key
           return (
             <button
               key={tab.key}
               onClick={() => handleTabChange(tab.key)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                activeTab === tab.key
-                  ? 'bg-[#002855] text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-300 whitespace-nowrap"
+              style={{
+                background: isActive
+                  ? 'linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04))'
+                  : 'rgba(255,255,255,0.025)',
+                border: isActive ? '0.5px solid rgba(255,255,255,0.3)' : '0.5px solid rgba(255,255,255,0.08)',
+                color: isActive ? '#FFFFFF' : '#A1A1A1',
+                fontSize: 13,
+                fontWeight: isActive ? 600 : 500,
+                letterSpacing: '-0.005em',
+                boxShadow: isActive ? '0 4px 16px rgba(255,255,255,0.12), 0 0 0 0.5px rgba(255,255,255,0.05) inset' : 'none',
+              }}
             >
-              <Icon className="w-4 h-4" />
+              <Icon className="w-3.5 h-3.5" />
               {tab.label}
               {pendingCount > 0 && (
-                <Badge className={`ml-1 text-xs ${
-                  activeTab === tab.key
-                    ? 'bg-white/20 text-white'
-                    : 'bg-amber-100 text-amber-800'
-                }`}>
+                <span
+                  className="inline-flex items-center justify-center"
+                  style={{
+                    background: isActive ? '#FFFFFF' : 'rgba(250,204,21,0.15)',
+                    color: isActive ? '#000000' : '#FDE68A',
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    minWidth: 18,
+                    height: 18,
+                    padding: '0 5px',
+                    borderRadius: 9,
+                    border: isActive ? 'none' : '0.5px solid rgba(250,204,21,0.3)',
+                  }}
+                >
                   {pendingCount}
-                </Badge>
+                </span>
               )}
             </button>
           )
@@ -219,131 +272,255 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
       </div>
 
       {/* Status filter */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {filters.map((f) => (
-          <Button
-            key={f}
-            variant={statusFilter === f ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setStatusFilter(f)}
-            className={statusFilter === f ? 'bg-[#002855]' : ''}
-          >
-            {filterLabels[f]}
-          </Button>
-        ))}
-        <span className="text-sm text-gray-500 ml-2">
-          {submissions.length} resultado{submissions.length !== 1 ? 's' : ''}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div
+          className="inline-flex items-center gap-1 p-1 rounded-full"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '0.5px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          {filters.map((f) => {
+            const isActive = statusFilter === f
+            return (
+              <button
+                key={f}
+                onClick={() => setStatusFilter(f)}
+                className="px-3.5 py-1.5 rounded-full transition-all duration-300"
+                style={{
+                  background: isActive ? '#FFFFFF' : 'transparent',
+                  color: isActive ? '#000000' : '#A1A1A1',
+                  fontSize: 11.5,
+                  fontWeight: isActive ? 700 : 500,
+                  letterSpacing: '-0.005em',
+                  boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.18)' : 'none',
+                }}
+              >
+                {filterLabels[f]}
+              </button>
+            )
+          })}
+        </div>
+        <span
+          style={{
+            fontFamily: 'var(--font-mono-tech)',
+            fontSize: 10,
+            fontWeight: 500,
+            letterSpacing: '0.18em',
+            color: '#525252',
+          }}
+        >
+          {submissions.length} RESULTADO{submissions.length !== 1 ? 'S' : ''}
         </span>
       </div>
 
       {/* Submissions */}
       {submissions.length > 0 ? (
         <div className="space-y-3">
-          {submissions.map((sub: any) => {
+          {submissions.map((sub: Record<string, unknown>) => {
+            const id = sub.id as string
             switch (activeTab) {
               case 'visa-juvenil':
-                return <VisaJuvenilRow key={sub.id} submission={sub} />
+                return <VisaJuvenilRow key={id} submission={sub as unknown as Parameters<typeof VisaJuvenilRow>[0]['submission']} />
               case 'asilo':
-                return <AsiloRow key={sub.id} submission={sub} />
+                return <AsiloRow key={id} submission={sub as unknown as Parameters<typeof AsiloRow>[0]['submission']} />
               case 'ajuste':
-                return <AjusteRow key={sub.id} submission={sub} />
+                return <AjusteRow key={id} submission={sub as unknown as Parameters<typeof AjusteRow>[0]['submission']} />
               case 'renuncia':
-                return <RenunciaRow key={sub.id} submission={sub} />
+                return <RenunciaRow key={id} submission={sub as unknown as Parameters<typeof RenunciaRow>[0]['submission']} />
               case 'cambio-corte':
-                return <CambioCorteRow key={sub.id} submission={sub} />
+                return <CambioCorteRow key={id} submission={sub as unknown as Parameters<typeof CambioCorteRow>[0]['submission']} />
               case 'docs-ia':
-                return <AiDocRow key={sub.id} submission={sub} />
+                return <AiDocRow key={id} submission={sub} />
             }
           })}
         </div>
       ) : (
-        <Card>
-          <CardContent className="p-8 text-center text-gray-500 text-sm">
-            No hay formularios {statusFilter !== 'all' ? `con estado "${filterLabels[statusFilter]}"` : ''} en esta categoría
-          </CardContent>
-        </Card>
+        <div
+          className="rounded-2xl py-16 text-center"
+          style={{
+            background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
+            border: '0.5px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+            SIN FORMULARIOS {statusFilter !== 'all' ? `· ${filterLabels[statusFilter].toUpperCase()}` : ''}
+          </p>
+        </div>
       )}
     </div>
   )
 }
 
-// === AI Document Row ===
-const AI_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  draft: { label: 'Borrador', color: 'bg-gray-100 text-gray-600' },
-  submitted: { label: 'Enviado', color: 'bg-blue-100 text-blue-700' },
-  reviewed: { label: 'Revisado', color: 'bg-purple-100 text-purple-700' },
-  needs_correction: { label: 'Correcciones', color: 'bg-orange-100 text-orange-700' },
-  approved: { label: 'Aprobado', color: 'bg-green-100 text-green-700' },
+// === AI Document Row — dark techno ===
+const AI_STATUS_STYLES: Record<string, { bg: string; border: string; dot: string; text: string; label: string }> = {
+  draft:            { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)', dot: '#A1A1A1', text: '#A1A1A1', label: 'Borrador' },
+  submitted:        { bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.3)', dot: '#60A5FA', text: '#93C5FD', label: 'Enviado' },
+  reviewed:         { bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.3)', dot: '#A78BFA', text: '#C4B5FD', label: 'Revisado' },
+  needs_correction: { bg: 'rgba(251,146,60,0.10)', border: 'rgba(251,146,60,0.3)', dot: '#FB923C', text: '#FDBA74', label: 'Correcciones' },
+  approved:         { bg: 'rgba(34,197,94,0.10)', border: 'rgba(34,197,94,0.3)', dot: '#4ADE80', text: '#86EFAC', label: 'Aprobado' },
 }
 
-function AiDocRow({ submission }: { submission: any }) {
+function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
   const [expanded, setExpanded] = useState(false)
-  const caseInfo = submission.case
-  const clientInfo = Array.isArray(caseInfo?.client) ? caseInfo.client[0] : caseInfo?.client
-  const formData = submission.form_data || {}
-  const agentLabel = formData.agent === 'sij' ? 'Declaracion SIJ'
-    : formData.agent === 'credible_fear' ? 'Miedo Creible'
-    : formData.agent === 'witness' ? 'Testimonio'
-    : submission.form_type
-  const statusConfig = AI_STATUS_CONFIG[submission.status] || AI_STATUS_CONFIG.draft
-  const generatedDoc = formData.generated_document || ''
+  const caseInfo = submission.case as Record<string, unknown> | null
+  const clientInfo = Array.isArray(caseInfo?.client) ? caseInfo.client[0] : (caseInfo?.client as Record<string, unknown> | null)
+  const formData = (submission.form_data as Record<string, unknown>) || {}
+  const agent = formData.agent as string | undefined
+  const agentLabel = agent === 'sij' ? 'Declaración SIJ'
+    : agent === 'credible_fear' ? 'Miedo Creíble'
+    : agent === 'witness' ? 'Testimonio'
+    : (submission.form_type as string)
+  const status = (submission.status as string) || 'draft'
+  const statusStyle = AI_STATUS_STYLES[status] || AI_STATUS_STYLES.draft
+  const generatedDoc = (formData.generated_document as string) || ''
+  const input = formData.input as Record<string, unknown> | undefined
 
   return (
-    <Card className="border-l-4 border-l-[#F2A900]">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <Sparkles className="w-4 h-4 text-[#F2A900]" />
-              <span className="font-semibold text-gray-900 text-sm">{agentLabel}</span>
-              <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
-              {caseInfo?.case_number && (
-                <span className="text-xs text-gray-400">Caso #{caseInfo.case_number}</span>
-              )}
-            </div>
-            <p className="text-sm text-gray-600">
-              {clientInfo ? `${clientInfo.first_name} ${clientInfo.last_name}` : 'Cliente'}
-              {' — '}
-              <span className="text-xs text-gray-400">
-                {new Date(submission.updated_at).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </p>
-            {formData.input?.minor_full_name && (
-              <p className="text-xs text-gray-400 mt-0.5">Menor: {formData.input.minor_full_name}</p>
-            )}
-            {formData.input?.applicant_full_name && formData.agent === 'credible_fear' && (
-              <p className="text-xs text-gray-400 mt-0.5">Solicitante: {formData.input.applicant_full_name}</p>
-            )}
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setExpanded(!expanded)}
-          >
-            <Eye className="w-3.5 h-3.5 mr-1" />
-            {expanded ? 'Cerrar' : 'Ver'}
-          </Button>
-        </div>
+    <div
+      className="relative rounded-2xl p-5 overflow-hidden transition-all duration-300"
+      style={{
+        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        border: '0.5px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(20px)',
+      }}
+    >
+      {/* Left accent line */}
+      <span
+        aria-hidden
+        className="absolute top-0 left-0 bottom-0 w-[2px]"
+        style={{
+          background: 'linear-gradient(180deg, transparent, #F2A900 30%, #F2A900 70%, transparent)',
+          opacity: 0.6,
+        }}
+      />
 
-        {expanded && generatedDoc && (
-          <div className="mt-4 border rounded-lg overflow-hidden">
-            <div className="bg-gray-50 px-3 py-2 border-b flex justify-between items-center">
-              <span className="text-xs font-medium text-gray-600">Documento generado con {formData.model || 'IA'}</span>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 text-xs"
-                onClick={() => { navigator.clipboard.writeText(generatedDoc); }}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <Sparkles className="w-3.5 h-3.5" style={{ color: '#F2A900' }} />
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+              {agentLabel}
+            </span>
+            <span
+              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full"
+              style={{
+                background: statusStyle.bg,
+                border: `0.5px solid ${statusStyle.border}`,
+                fontFamily: 'var(--font-mono-tech)',
+                fontSize: 9,
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                color: statusStyle.text,
+              }}
+            >
+              <span className="rounded-full" style={{ width: 5, height: 5, background: statusStyle.dot }} />
+              {statusStyle.label.toUpperCase()}
+            </span>
+            {(caseInfo?.case_number as string | undefined) && (
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: '#525252',
+                  letterSpacing: '0.05em',
+                }}
               >
-                <Copy className="w-3 h-3 mr-1" /> Copiar
-              </Button>
-            </div>
-            <div className="p-4 max-h-96 overflow-y-auto bg-white">
-              <pre className="text-sm text-gray-800 whitespace-pre-wrap font-serif leading-relaxed">{generatedDoc}</pre>
-            </div>
+                #{caseInfo!.case_number as string}
+              </span>
+            )}
           </div>
-        )}
-      </CardContent>
-    </Card>
+          <p style={{ fontSize: 12.5, color: '#A1A1A1' }}>
+            {clientInfo ? `${(clientInfo as Record<string, unknown>).first_name} ${(clientInfo as Record<string, unknown>).last_name}` : 'Cliente'}
+            <span style={{ color: '#525252', fontFamily: 'var(--font-mono-tech)', fontSize: 10, marginLeft: 8, letterSpacing: '0.05em' }}>
+              {' · '}
+              {new Date(submission.updated_at as string).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).toUpperCase()}
+            </span>
+          </p>
+          {(input?.minor_full_name as string | undefined) && (
+            <p style={{ fontSize: 11, color: '#525252', marginTop: 4 }}>
+              Menor: <span style={{ color: '#A1A1A1' }}>{input!.minor_full_name as string}</span>
+            </p>
+          )}
+          {(input?.applicant_full_name as string | undefined) && agent === 'credible_fear' && (
+            <p style={{ fontSize: 11, color: '#525252', marginTop: 4 }}>
+              Solicitante: <span style={{ color: '#A1A1A1' }}>{input!.applicant_full_name as string}</span>
+            </p>
+          )}
+        </div>
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-white/10 active:scale-95"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '0.5px solid rgba(255,255,255,0.1)',
+            color: '#FFFFFF',
+            fontSize: 11,
+            fontWeight: 600,
+            letterSpacing: '-0.005em',
+          }}
+        >
+          <Eye className="w-3 h-3" />
+          {expanded ? 'Cerrar' : 'Ver'}
+        </button>
+      </div>
+
+      {expanded && generatedDoc && (
+        <div
+          className="mt-4 rounded-xl overflow-hidden"
+          style={{
+            background: 'rgba(255,255,255,0.02)',
+            border: '0.5px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          <div
+            className="px-3.5 py-2 flex justify-between items-center"
+            style={{
+              background: 'rgba(255,255,255,0.025)',
+              borderBottom: '0.5px solid rgba(255,255,255,0.06)',
+            }}
+          >
+            <span
+              style={{
+                fontFamily: 'var(--font-mono-tech)',
+                fontSize: 10,
+                fontWeight: 500,
+                letterSpacing: '0.15em',
+                color: '#A1A1A1',
+              }}
+            >
+              GENERADO CON {((formData.model as string) || 'IA').toUpperCase()}
+            </span>
+            <button
+              onClick={() => { navigator.clipboard.writeText(generatedDoc) }}
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded transition-colors hover:bg-white/5"
+              style={{
+                fontFamily: 'var(--font-mono-tech)',
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                color: '#A1A1A1',
+              }}
+            >
+              <Copy className="w-2.5 h-2.5" /> COPIAR
+            </button>
+          </div>
+          <div className="p-4 max-h-96 overflow-y-auto admin-scroll">
+            <pre
+              className="whitespace-pre-wrap"
+              style={{
+                fontSize: 12.5,
+                color: '#A1A1A1',
+                fontFamily: 'Georgia, serif',
+                lineHeight: 1.65,
+              }}
+            >
+              {generatedDoc}
+            </pre>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

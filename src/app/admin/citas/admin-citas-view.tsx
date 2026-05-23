@@ -1,16 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from '@/components/ui/table'
 import {
   CalendarClock, Settings, ChevronDown, ChevronUp,
   CheckCircle, XCircle, AlertTriangle, Trash2, Plus, RefreshCw, UserPlus, Loader2, Clock,
@@ -29,18 +20,27 @@ import type { SchedulingConfig, SchedulingSettings, BlockedDate } from '@/types/
 
 const TZ_STORAGE_KEY = 'ulp:admin-citas:viewTz'
 
-const statusColors: Record<string, string> = {
-  scheduled: 'bg-blue-100 text-blue-800',
-  completed: 'bg-green-100 text-green-800',
-  cancelled: 'bg-gray-100 text-gray-800',
-  no_show: 'bg-red-100 text-red-800',
-}
-
 const statusLabels: Record<string, string> = {
   scheduled: 'Agendada',
   completed: 'Completada',
   cancelled: 'Cancelada',
   no_show: 'No se presentó',
+}
+
+type StatusKind = 'active' | 'success' | 'warning' | 'danger' | 'neutral'
+const STATUS_KIND: Record<string, StatusKind> = {
+  scheduled: 'active',
+  completed: 'success',
+  cancelled: 'neutral',
+  no_show: 'danger',
+}
+
+const STATUS_STYLES: Record<StatusKind, { bg: string; border: string; dot: string; text: string }> = {
+  active:    { bg: 'rgba(96,165,250,0.10)',  border: 'rgba(96,165,250,0.3)',  dot: '#60A5FA', text: '#93C5FD' },
+  success:   { bg: 'rgba(34,197,94,0.10)',   border: 'rgba(34,197,94,0.3)',   dot: '#4ADE80', text: '#86EFAC' },
+  warning:   { bg: 'rgba(250,204,21,0.10)',  border: 'rgba(250,204,21,0.3)',  dot: '#FACC15', text: '#FDE68A' },
+  danger:    { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', dot: '#F87171', text: '#FCA5A5' },
+  neutral:   { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)', dot: '#A1A1A1', text: '#A1A1A1' },
 }
 
 const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
@@ -67,10 +67,8 @@ interface AdminCitasViewProps {
   activeCases: ActiveCase[]
 }
 
-// Count completed appointments per client_id (auto-calculated)
 function buildVisitCounts(appointments: AdminCitasViewProps['appointments']): Map<string, number> {
   const counts = new Map<string, number>()
-  // Sort by date ascending to count in order
   const sorted = [...appointments]
     .filter(a => a.status === 'completed' && a.client_id)
     .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime())
@@ -88,6 +86,52 @@ function visitLabel(count: number): string {
   return `${count + 1}ta visita`
 }
 
+// ════════════════════════════════════════════════════════════════════
+// Style constants — dark techno
+// ════════════════════════════════════════════════════════════════════
+
+const BTN_GHOST =
+  'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 ' +
+  'hover:bg-white/10 active:scale-95 text-[12px] font-semibold tracking-tight ' +
+  'bg-white/[0.04] border border-white/10 text-white disabled:opacity-50'
+
+const BTN_PRIMARY =
+  'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 ' +
+  'hover:opacity-90 active:scale-95 text-[12px] font-semibold tracking-tight ' +
+  'bg-white text-black shadow-[0_4px_18px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset] disabled:opacity-50'
+
+const BTN_SUCCESS =
+  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ' +
+  'hover:bg-emerald-500/15 active:scale-95 text-[11px] font-semibold tracking-tight ' +
+  'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 disabled:opacity-50'
+
+const BTN_DANGER =
+  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ' +
+  'hover:bg-red-500/15 active:scale-95 text-[11px] font-semibold tracking-tight ' +
+  'bg-red-500/10 border border-red-500/30 text-red-300 disabled:opacity-50'
+
+const BTN_INFO =
+  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ' +
+  'hover:bg-blue-500/15 active:scale-95 text-[11px] font-semibold tracking-tight ' +
+  'bg-blue-500/10 border border-blue-500/30 text-blue-300 disabled:opacity-50'
+
+const BTN_WARNING =
+  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ' +
+  'hover:bg-yellow-500/15 active:scale-95 text-[11px] font-semibold tracking-tight ' +
+  'bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 disabled:opacity-50'
+
+const DARK_DIALOG_CLS =
+  'bg-[#0A0A0A] border border-white/10 text-white shadow-2xl backdrop-blur-xl ' +
+  '[&>button]:text-white/60 [&>button]:hover:text-white'
+
+const DARK_INPUT_CLS =
+  'w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 ' +
+  'bg-white/[0.04] border border-white/10 text-white placeholder:text-white/30'
+
+// ════════════════════════════════════════════════════════════════════
+// Main view
+// ════════════════════════════════════════════════════════════════════
+
 export function AdminCitasView({ appointments, config, settings, blockedDates, activeCases }: AdminCitasViewProps) {
   const [filter, setFilter] = useState<string>('all')
   const [search, setSearch] = useState('')
@@ -95,9 +139,6 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
   const [showConfig, setShowConfig] = useState(false)
   const [bookDialogOpen, setBookDialogOpen] = useState(false)
   const [guestDialogOpen, setGuestDialogOpen] = useState(false)
-  // Persistencia local de la TZ con la que el operador ve las citas.
-  // Default = MT para preservar la experiencia de Henry; cualquier admin
-  // puede cambiarlo a su zona local sin afectar a otros (per-browser).
   const [viewTz, changeViewTz] = usePersistedTimezone(TZ_STORAGE_KEY, OFFICE_TIMEZONE)
 
   const filtered = appointments.filter(a => {
@@ -106,8 +147,8 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
     if (!search.trim()) return true
     const q = search.toLowerCase()
     const clientName = `${a.client?.first_name || ''} ${a.client?.last_name || ''}`.toLowerCase()
-    const caseNumber = ((a.case as any)?.case_number || '').toLowerCase()
-    const guestName = ((a as any).guest_name || '').toLowerCase()
+    const caseNumber = ((a.case as Record<string, unknown> | null)?.case_number as string || '').toLowerCase()
+    const guestName = ((a as Record<string, unknown>).guest_name as string || '').toLowerCase()
     const notes = (a.notes || '').toLowerCase()
     return clientName.includes(q) || caseNumber.includes(q) || guestName.includes(q) || notes.includes(q)
   })
@@ -117,53 +158,87 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
       {/* Search + TZ selector */}
       <div className="flex gap-2 flex-wrap items-center">
         <div className="relative flex-1 min-w-[240px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: '#525252' }} />
           <input
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por nombre, caso o notas..."
-            className="w-full pl-9 pr-9 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40 focus:border-[#F2A900]/30"
+            placeholder="Buscar por nombre, caso o notas…"
+            className="w-full pl-10 pr-9 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/25"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '0.5px solid rgba(255,255,255,0.1)',
+              color: '#FAFAFA',
+              fontSize: 13,
+              letterSpacing: '-0.005em',
+            }}
           />
           {search && (
-            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              <X className="w-4 h-4" />
+            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70" style={{ color: '#A1A1A1' }}>
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
-        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-2 py-1">
-          <Globe className="w-3.5 h-3.5 text-gray-400" />
-          <span className="text-xs text-gray-500 hidden md:inline">Ver en</span>
+        <div
+          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl"
+          style={{
+            background: 'rgba(255,255,255,0.03)',
+            border: '0.5px solid rgba(255,255,255,0.1)',
+          }}
+        >
+          <Globe className="w-3.5 h-3.5" style={{ color: '#525252' }} />
+          <span className="hidden md:inline" style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#525252' }}>
+            VER EN
+          </span>
           <div className="w-56">
             <TimezoneSelector value={viewTz} onChange={changeViewTz} size="sm" hideAuto />
           </div>
         </div>
       </div>
 
-      {/* Filtros + Botones agendar */}
-      <div className="flex flex-wrap items-center gap-2">
-        {['all', 'scheduled', 'completed', 'cancelled', 'no_show'].map(s => (
-          <Button
-            key={s}
-            variant={filter === s ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setFilter(s)}
-            className={filter === s ? 'bg-[#002855]' : ''}
-          >
-            {s === 'all' ? 'Todas' : statusLabels[s]}
-          </Button>
-        ))}
+      {/* Filtros + Botones */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div
+          className="inline-flex items-center gap-1 p-1 rounded-full"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '0.5px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          {['all', 'scheduled', 'completed', 'cancelled', 'no_show'].map(s => {
+            const isActive = filter === s
+            return (
+              <button
+                key={s}
+                onClick={() => setFilter(s)}
+                className="px-3.5 py-1.5 rounded-full transition-all duration-300"
+                style={{
+                  background: isActive ? '#FFFFFF' : 'transparent',
+                  color: isActive ? '#000000' : '#A1A1A1',
+                  fontSize: 12,
+                  fontWeight: isActive ? 700 : 500,
+                  letterSpacing: '-0.005em',
+                  boxShadow: isActive ? '0 0 16px rgba(255,255,255,0.18)' : 'none',
+                }}
+              >
+                {s === 'all' ? 'Todas' : statusLabels[s]}
+              </button>
+            )
+          })}
+        </div>
         <div className="ml-auto flex gap-2">
           <Dialog open={guestDialogOpen} onOpenChange={setGuestDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="border-[#F2A900] text-[#002855] hover:bg-[#F2A900]/10">
-                <UserRound className="w-4 h-4 mr-2" />
+              <button className={BTN_GHOST}>
+                <UserRound className="w-3.5 h-3.5" />
                 Agendar No-Cliente
-              </Button>
+              </button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className={`sm:max-w-md ${DARK_DIALOG_CLS}`}>
               <DialogHeader>
-                <DialogTitle>Agendar Visita — No Cliente</DialogTitle>
+                <DialogTitle className="text-white" style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.022em' }}>
+                  Agendar Visita · No Cliente
+                </DialogTitle>
               </DialogHeader>
               <GuestBookForm
                 viewTimezone={viewTz}
@@ -173,14 +248,16 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
           </Dialog>
           <Dialog open={bookDialogOpen} onOpenChange={setBookDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-[#002855] hover:bg-[#003570]">
-                <UserPlus className="w-4 h-4 mr-2" />
+              <button className={BTN_PRIMARY}>
+                <UserPlus className="w-3.5 h-3.5" />
                 Agendar para Cliente
-              </Button>
+              </button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className={`sm:max-w-md ${DARK_DIALOG_CLS}`}>
               <DialogHeader>
-                <DialogTitle>Agendar Cita para Cliente</DialogTitle>
+                <DialogTitle className="text-white" style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.022em' }}>
+                  Agendar Cita para Cliente
+                </DialogTitle>
               </DialogHeader>
               <ClientBookForm
                 activeCases={activeCases}
@@ -193,59 +270,100 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
       </div>
 
       {/* Tabla de citas */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CalendarClock className="w-5 h-5" />
-            Citas ({filtered.length})
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Fecha / Hora</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Caso / Servicio</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{
+          background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+          border: '0.5px solid rgba(255,255,255,0.1)',
+          backdropFilter: 'blur(20px)',
+        }}
+      >
+        <div className="px-5 py-4 flex items-center gap-2.5" style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
+          <CalendarClock className="w-4 h-4" style={{ color: '#FFFFFF' }} />
+          <h2 style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.012em' }}>
+            Citas
+          </h2>
+          <span
+            className="inline-flex items-center justify-center px-2 py-0.5 rounded-full"
+            style={{
+              background: 'rgba(255,255,255,0.06)',
+              border: '0.5px solid rgba(255,255,255,0.12)',
+              fontFamily: 'var(--font-mono-tech)',
+              fontSize: 10,
+              fontWeight: 700,
+              color: '#FFFFFF',
+              letterSpacing: '0.05em',
+            }}
+          >
+            {filtered.length}
+          </span>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
+                <Th>Fecha / Hora</Th>
+                <Th>Cliente</Th>
+                <Th>Caso / Servicio</Th>
+                <Th>Estado</Th>
+                <Th>Acciones</Th>
+              </tr>
+            </thead>
+            <tbody>
               {filtered.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                    No hay citas para este filtro
-                  </TableCell>
-                </TableRow>
+                <tr>
+                  <td colSpan={5} className="text-center py-12">
+                    <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+                      SIN CITAS PARA ESTE FILTRO
+                    </p>
+                  </td>
+                </tr>
               ) : (
-                filtered.map(apt => (
+                filtered.map((apt, idx) => (
                   <AppointmentRow
                     key={apt.id}
                     appointment={apt}
                     completedCount={apt.client_id ? (completedCounts.get(apt.client_id) || 0) : 0}
                     viewTz={viewTz}
+                    isLast={idx === filtered.length - 1}
                   />
                 ))
               )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-      {/* Toggle configuración */}
-      <Button
-        variant="outline"
+      {/* Toggle config */}
+      <button
         onClick={() => setShowConfig(!showConfig)}
-        className="w-full"
+        className="w-full inline-flex items-center justify-between px-5 py-3 rounded-2xl transition-colors hover:bg-white/[0.04]"
+        style={{
+          background: 'rgba(255,255,255,0.025)',
+          border: '0.5px solid rgba(255,255,255,0.1)',
+          color: '#FFFFFF',
+        }}
       >
-        <Settings className="w-4 h-4 mr-2" />
-        Configuración de Horarios
-        {showConfig ? <ChevronUp className="w-4 h-4 ml-2" /> : <ChevronDown className="w-4 h-4 ml-2" />}
-      </Button>
+        <span className="inline-flex items-center gap-2.5">
+          <span
+            className="inline-flex items-center justify-center w-8 h-8 rounded-xl"
+            style={{
+              background: 'rgba(255,255,255,0.06)',
+              border: '0.5px solid rgba(255,255,255,0.12)',
+            }}
+          >
+            <Settings className="w-4 h-4" />
+          </span>
+          <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '-0.005em' }}>
+            Configuración de horarios
+          </span>
+        </span>
+        {showConfig ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </button>
 
       {showConfig && (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <ScheduleConfigPanel config={config} settings={settings} />
           <BlockedDatesPanel blockedDates={blockedDates} />
         </div>
@@ -254,15 +372,68 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
   )
 }
 
-// ── Fila de cita ──
+// ════════════════════════════════════════════════════════════════════
+// Table helpers
+// ════════════════════════════════════════════════════════════════════
+
+function Th({ children }: { children?: React.ReactNode }) {
+  return (
+    <th
+      className="px-4 py-3 text-left"
+      style={{
+        fontFamily: 'var(--font-mono-tech)',
+        fontSize: 10,
+        fontWeight: 500,
+        letterSpacing: '0.18em',
+        color: '#525252',
+      }}
+    >
+      {typeof children === 'string' ? children.toUpperCase() : children}
+    </th>
+  )
+}
+
+function Td({ children, colSpan, className }: { children?: React.ReactNode; colSpan?: number; className?: string }) {
+  return (
+    <td className={`px-4 py-3 ${className || ''}`} colSpan={colSpan} style={{ verticalAlign: 'middle' }}>
+      {children}
+    </td>
+  )
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const kind = STATUS_KIND[status] ?? 'neutral'
+  const s = STATUS_STYLES[kind]
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full"
+      style={{
+        background: s.bg,
+        border: `0.5px solid ${s.border}`,
+        fontFamily: 'var(--font-mono-tech)',
+        fontSize: 9,
+        fontWeight: 700,
+        letterSpacing: '0.1em',
+        color: s.text,
+      }}
+    >
+      <span className="rounded-full" style={{ width: 5, height: 5, background: s.dot }} />
+      {(statusLabels[status] || status).toUpperCase()}
+    </span>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+// AppointmentRow
+// ════════════════════════════════════════════════════════════════════
+
 function AppointmentRow({
-  appointment,
-  completedCount,
-  viewTz,
+  appointment, completedCount, viewTz, isLast,
 }: {
   appointment: AdminCitasViewProps['appointments'][0]
   completedCount: number
   viewTz: string
+  isLast: boolean
 }) {
   const tzIsOffice = viewTz === OFFICE_TIMEZONE
   const [updating, setUpdating] = useState(false)
@@ -325,10 +496,10 @@ function AppointmentRow({
         toast.error(data.error || 'Error')
         return
       }
-      toast.success('Penalizacion levantada. El cliente puede reagendar.')
+      toast.success('Penalización levantada')
       window.location.reload()
     } catch {
-      toast.error('Error de conexion')
+      toast.error('Error de conexión')
     } finally {
       setWaiving(false)
     }
@@ -376,193 +547,230 @@ function AppointmentRow({
   }
 
   const today = new Date().toISOString().split('T')[0]
+  const guestName = (appointment as Record<string, unknown>).guest_name as string | undefined
 
   return (
     <>
-    <TableRow>
-      <TableCell>
-        <div>
-          <p className="text-sm font-medium">{formatDate(appointment.scheduled_at, viewTz)}</p>
-          <p className="text-xs text-gray-500">
-            {formatTime(appointment.scheduled_at, viewTz)} {tzShortLabel(viewTz)}
-            {!tzIsOffice && (
-              <span className="text-gray-300"> · {formatTime(appointment.scheduled_at, OFFICE_TIMEZONE)} MT</span>
-            )}
-          </p>
-        </div>
-      </TableCell>
-      <TableCell>
-        {client ? (
+      <tr
+        style={{
+          borderBottom: !isLast ? '0.5px solid rgba(255,255,255,0.04)' : 'none',
+          transition: 'background 0.2s',
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
+        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+      >
+        <Td>
           <div>
-            <p className="text-sm font-medium">{client.first_name} {client.last_name}</p>
-            <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-0.5 ${
-              completedCount === 0
-                ? 'bg-blue-100 text-blue-700'
-                : 'bg-gray-100 text-gray-600'
-            }`}>
-              {visitLabel(completedCount)}
-            </span>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+              {formatDate(appointment.scheduled_at, viewTz)}
+            </p>
+            <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 11, color: '#A1A1A1', marginTop: 2, letterSpacing: '0.02em' }}>
+              {formatTime(appointment.scheduled_at, viewTz)} {tzShortLabel(viewTz)}
+              {!tzIsOffice && (
+                <span style={{ color: '#525252' }}> · {formatTime(appointment.scheduled_at, OFFICE_TIMEZONE)} MT</span>
+              )}
+            </p>
           </div>
-        ) : (
-          <div>
-            <p className="text-sm font-medium text-amber-700">{(appointment as any).guest_name || 'Sin nombre'}</p>
-            <p className="text-[10px] text-amber-500 font-medium">No cliente</p>
-          </div>
-        )}
-      </TableCell>
-      <TableCell>
-        {caseInfo ? (
-          <>
-            <p className="text-sm">#{caseInfo.case_number}</p>
-            <p className="text-xs text-gray-500">{service?.name || '—'}</p>
-          </>
-        ) : (
-          <p className="text-xs text-gray-400 italic">Visita presencial</p>
-        )}
-      </TableCell>
-      <TableCell>
-        <Badge className={statusColors[appointment.status] || ''}>
-          {statusLabels[appointment.status] || appointment.status}
-        </Badge>
-      </TableCell>
-      <TableCell>
-        {appointment.status === 'scheduled' && (
-          <div className="flex gap-1 flex-wrap">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShowReschedule(!showReschedule)}
-              className="text-blue-600 border-blue-200 hover:bg-blue-50"
-            >
-              <CalendarClock className="w-3 h-3 mr-1" />
-              Reprogramar
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => updateStatus('completed')}
-              disabled={updating}
-              className="text-green-600 border-green-200 hover:bg-green-50"
-            >
-              <CheckCircle className="w-3 h-3 mr-1" />
-              Completada
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => updateStatus('no_show')}
-              disabled={updating}
-              className="text-red-600 border-red-200 hover:bg-red-50"
-            >
-              <XCircle className="w-3 h-3 mr-1" />
-              No Show
-            </Button>
-          </div>
-        )}
-        {(appointment.status === 'cancelled' || appointment.status === 'no_show') && (
-          <div className="space-y-1">
-            {appointment.cancellation_reason && (
-              <p className="text-[11px] text-gray-500 italic">{appointment.cancellation_reason}</p>
-            )}
-            {appointment.penalty_waived ? (
-              <Badge className="bg-green-100 text-green-700 text-[10px]">Reagendamiento habilitado</Badge>
-            ) : (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleWaivePenalty()}
-                disabled={waiving}
-                className="text-amber-700 border-amber-200 hover:bg-amber-50"
+        </Td>
+        <Td>
+          {client ? (
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                {client.first_name} {client.last_name}
+              </p>
+              <span
+                className="inline-block mt-1"
+                style={{
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: '0.15em',
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  background: completedCount === 0 ? 'rgba(96,165,250,0.10)' : 'rgba(255,255,255,0.05)',
+                  color: completedCount === 0 ? '#93C5FD' : '#A1A1A1',
+                  border: completedCount === 0 ? '0.5px solid rgba(96,165,250,0.3)' : '0.5px solid rgba(255,255,255,0.1)',
+                }}
               >
-                <RefreshCw className={`w-3 h-3 mr-1 ${waiving ? 'animate-spin' : ''}`} />
-                Permitir Reagendar
-              </Button>
-            )}
-          </div>
-        )}
-      </TableCell>
-    </TableRow>
-    {showReschedule && appointment.status === 'scheduled' && (
-      <TableRow>
-        <TableCell colSpan={5} className="bg-blue-50/50 border-l-4 border-l-blue-400">
-          <div className="p-3 space-y-3">
-            <p className="text-sm font-medium text-[#002855]">Reprogramar cita de {client?.first_name} {client?.last_name}</p>
-            <div className="flex items-end gap-3 flex-wrap">
-              <div className="space-y-1">
-                <Label className="text-xs">Nueva fecha</Label>
-                <Input
-                  type="date"
-                  min={today}
-                  value={rescheduleDate}
-                  onChange={e => {
-                    setRescheduleDate(e.target.value)
-                    if (e.target.value) loadRescheduleSlots(e.target.value)
+                {visitLabel(completedCount).toUpperCase()}
+              </span>
+            </div>
+          ) : (
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#FDE68A', letterSpacing: '-0.005em' }}>
+                {guestName || 'Sin nombre'}
+              </p>
+              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', color: '#FACC15', marginTop: 2 }}>
+                NO CLIENTE
+              </p>
+            </div>
+          )}
+        </Td>
+        <Td>
+          {caseInfo ? (
+            <div>
+              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 12, fontWeight: 700, color: '#FFFFFF', letterSpacing: '0.02em' }}>
+                #{caseInfo.case_number}
+              </p>
+              <p style={{ fontSize: 11, color: '#A1A1A1', marginTop: 2 }}>{service?.name || '—'}</p>
+            </div>
+          ) : (
+            <p style={{ fontSize: 11, color: '#525252', fontStyle: 'italic' }}>Visita presencial</p>
+          )}
+        </Td>
+        <Td>
+          <StatusBadge status={appointment.status} />
+        </Td>
+        <Td>
+          {appointment.status === 'scheduled' && (
+            <div className="flex gap-1.5 flex-wrap">
+              <button onClick={() => setShowReschedule(!showReschedule)} className={BTN_INFO}>
+                <CalendarClock className="w-3 h-3" />
+                Reprogramar
+              </button>
+              <button onClick={() => updateStatus('completed')} disabled={updating} className={BTN_SUCCESS}>
+                <CheckCircle className="w-3 h-3" />
+                Completada
+              </button>
+              <button onClick={() => updateStatus('no_show')} disabled={updating} className={BTN_DANGER}>
+                <XCircle className="w-3 h-3" />
+                No Show
+              </button>
+            </div>
+          )}
+          {(appointment.status === 'cancelled' || appointment.status === 'no_show') && (
+            <div className="space-y-1.5">
+              {appointment.cancellation_reason && (
+                <p style={{ fontSize: 11, color: '#525252', fontStyle: 'italic' }}>{appointment.cancellation_reason}</p>
+              )}
+              {appointment.penalty_waived ? (
+                <span
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full"
+                  style={{
+                    background: 'rgba(34,197,94,0.10)',
+                    border: '0.5px solid rgba(34,197,94,0.3)',
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 9,
+                    fontWeight: 700,
+                    color: '#86EFAC',
+                    letterSpacing: '0.1em',
                   }}
-                  className="w-44 h-9"
-                />
-              </div>
-              {rescheduleDate && (
-                loadingRescheduleSlots ? (
-                  <div className="flex items-center gap-2 text-sm text-gray-500 pb-1">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Cargando...
-                  </div>
-                ) : rescheduleBlocked ? (
-                  <p className="text-sm text-red-600 pb-1">Fecha bloqueada</p>
-                ) : rescheduleSlots.length === 0 ? (
-                  <p className="text-sm text-gray-500 pb-1">Sin horarios disponibles</p>
-                ) : (
-                  <div className="flex gap-1.5 flex-wrap">
-                    {rescheduleSlots.map(slot => (
-                      <Button
-                        key={slot}
-                        variant={rescheduleSlot === slot ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setRescheduleSlot(slot)}
-                        className={`flex-col h-auto py-1.5 ${rescheduleSlot === slot ? 'bg-[#002855]' : ''}`}
-                      >
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {formatTime(slot, viewTz)}
-                        </span>
-                        {!tzIsOffice && (
-                          <span className={`text-[10px] mt-0.5 ${rescheduleSlot === slot ? 'text-white/70' : 'text-gray-400'}`}>
-                            {formatTime(slot, OFFICE_TIMEZONE)} MT
-                          </span>
-                        )}
-                      </Button>
-                    ))}
-                  </div>
-                )
+                >
+                  REAGENDAMIENTO HABILITADO
+                </span>
+              ) : (
+                <button onClick={handleWaivePenalty} disabled={waiving} className={BTN_WARNING}>
+                  <RefreshCw className={`w-3 h-3 ${waiving ? 'animate-spin' : ''}`} />
+                  Permitir Reagendar
+                </button>
               )}
             </div>
-            {rescheduleSlot && (
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  className="bg-[#002855] hover:bg-[#003570]"
-                  disabled={rescheduling}
-                  onClick={handleReschedule}
-                >
-                  {rescheduling ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5 mr-1" />}
-                  Confirmar nueva fecha
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => { setShowReschedule(false); setRescheduleDate(''); setRescheduleSlot('') }}>
-                  Cancelar
-                </Button>
+          )}
+        </Td>
+      </tr>
+      {showReschedule && appointment.status === 'scheduled' && (
+        <tr>
+          <Td colSpan={5} className="!p-0">
+            <div
+              className="px-5 py-4 space-y-4"
+              style={{
+                background: 'rgba(96,165,250,0.04)',
+                borderLeft: '2px solid #60A5FA',
+              }}
+            >
+              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', color: '#93C5FD' }}>
+                REPROGRAMAR · {(client?.first_name || guestName || '').toUpperCase()} {(client?.last_name || '').toUpperCase()}
+              </p>
+              <div className="flex items-end gap-3 flex-wrap">
+                <div className="space-y-1.5">
+                  <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#A1A1A1' }}>
+                    NUEVA FECHA
+                  </label>
+                  <input
+                    type="date"
+                    min={today}
+                    value={rescheduleDate}
+                    onChange={e => {
+                      setRescheduleDate(e.target.value)
+                      if (e.target.value) loadRescheduleSlots(e.target.value)
+                    }}
+                    className="w-44 h-9 px-3 rounded-lg outline-none transition-colors focus:border-white/30"
+                    style={{
+                      background: 'rgba(255,255,255,0.04)',
+                      border: '0.5px solid rgba(255,255,255,0.1)',
+                      color: '#FAFAFA',
+                      fontSize: 12,
+                      colorScheme: 'dark',
+                    }}
+                  />
+                </div>
+                {rescheduleDate && (
+                  loadingRescheduleSlots ? (
+                    <div className="inline-flex items-center gap-2 pb-1.5" style={{ fontSize: 12, color: '#A1A1A1' }}>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando…
+                    </div>
+                  ) : rescheduleBlocked ? (
+                    <p style={{ fontSize: 12, color: '#FCA5A5' }}>Fecha bloqueada</p>
+                  ) : rescheduleSlots.length === 0 ? (
+                    <p style={{ fontSize: 12, color: '#525252' }}>Sin horarios disponibles</p>
+                  ) : (
+                    <div className="flex gap-1.5 flex-wrap">
+                      {rescheduleSlots.map(slot => {
+                        const isActive = rescheduleSlot === slot
+                        return (
+                          <button
+                            key={slot}
+                            onClick={() => setRescheduleSlot(slot)}
+                            className="flex flex-col items-center px-3 py-1.5 rounded-xl transition-all duration-200"
+                            style={{
+                              background: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.04)',
+                              border: isActive ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.1)',
+                              color: isActive ? '#000000' : '#FAFAFA',
+                              boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.18)' : 'none',
+                            }}
+                          >
+                            <span className="inline-flex items-center gap-1" style={{ fontSize: 12, fontWeight: 700 }}>
+                              <Clock className="w-3 h-3" />
+                              {formatTime(slot, viewTz)}
+                            </span>
+                            {!tzIsOffice && (
+                              <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, marginTop: 1, color: isActive ? 'rgba(0,0,0,0.6)' : '#525252' }}>
+                                {formatTime(slot, OFFICE_TIMEZONE)} MT
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )
+                )}
               </div>
-            )}
-          </div>
-        </TableCell>
-      </TableRow>
-    )}
+              {rescheduleSlot && (
+                <div className="flex gap-2">
+                  <button disabled={rescheduling} onClick={handleReschedule} className={BTN_PRIMARY}>
+                    {rescheduling ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+                    Confirmar nueva fecha
+                  </button>
+                  <button
+                    onClick={() => { setShowReschedule(false); setRescheduleDate(''); setRescheduleSlot('') }}
+                    className={BTN_GHOST}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
+            </div>
+          </Td>
+        </tr>
+      )}
     </>
   )
 }
 
-// AdminBookForm y GuestBookForm fueron extraídos a
-// src/components/appointments/{client,guest}-book-form.tsx para reusarse
-// también desde el panel de empleado.
-// ── Panel de configuración de horarios ──
+// ════════════════════════════════════════════════════════════════════
+// ScheduleConfigPanel
+// ════════════════════════════════════════════════════════════════════
+
 function formatHour(h: number): string {
   if (h === 0) return '12 AM'
   if (h < 12) return `${h} AM`
@@ -662,117 +870,114 @@ function ScheduleConfigPanel({
         }),
       })
       if (!res.ok) throw new Error()
-      toast.success('Configuracion guardada')
+      toast.success('Configuración guardada')
     } catch {
-      toast.error('Error al guardar configuracion')
+      toast.error('Error al guardar configuración')
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">Horarios por Dia</CardTitle>
-        <p className="text-xs text-gray-500">Puede agregar multiples bloques horarios por dia (ej: manana y tarde)</p>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <Panel icon={<CalendarClock className="w-4 h-4" />} title="Horarios por día" description="Puede agregar múltiples bloques horarios por día (mañana y tarde)">
+      <div className="space-y-2">
         {config.map(day => (
-          <div key={day.day_of_week} className="border rounded-lg p-3">
-            <div className="flex items-center gap-3 mb-2">
-              <Switch
-                checked={day.is_available}
-                onCheckedChange={v => toggleDay(day.day_of_week, v)}
-              />
-              <span className={`text-sm font-medium ${day.is_available ? 'text-gray-900' : 'text-gray-400'}`}>
+          <div
+            key={day.day_of_week}
+            className="rounded-xl p-4"
+            style={{
+              background: day.is_available ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.015)',
+              border: '0.5px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <div className="flex items-center gap-3">
+              <DarkSwitch checked={day.is_available} onChange={v => toggleDay(day.day_of_week, v)} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: day.is_available ? '#FFFFFF' : '#525252', letterSpacing: '-0.005em' }}>
                 {DAY_NAMES[day.day_of_week]}
               </span>
               {day.is_available && (
-                <span className="text-xs text-gray-400">
-                  {day.time_blocks.map(b => `${formatHour(b.start_hour)}-${formatHour(b.end_hour)}`).join(' | ')}
+                <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: '#525252', letterSpacing: '0.1em', marginLeft: 4 }}>
+                  {day.time_blocks.map(b => `${formatHour(b.start_hour)}–${formatHour(b.end_hour)}`).join(' · ')}
                 </span>
               )}
             </div>
             {day.is_available && (
-              <div className="ml-10 space-y-2">
+              <div className="mt-3 ml-12 space-y-2">
                 {day.time_blocks.map((block, idx) => (
                   <div key={idx} className="flex items-center gap-2">
-                    <span className="text-xs text-gray-500 w-16">Bloque {idx + 1}</span>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={23}
+                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.15em', color: '#A1A1A1', width: 70 }}>
+                      BLOQUE {idx + 1}
+                    </span>
+                    <HourInput
                       value={block.start_hour}
-                      onChange={e => updateBlock(day.day_of_week, idx, 'start_hour', Number(e.target.value))}
-                      className="w-16 text-center h-8 text-sm"
+                      onChange={v => updateBlock(day.day_of_week, idx, 'start_hour', v)}
                     />
-                    <span className="text-xs text-gray-500">a</span>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={23}
+                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: '#525252', letterSpacing: '0.2em' }}>A</span>
+                    <HourInput
                       value={block.end_hour}
-                      onChange={e => updateBlock(day.day_of_week, idx, 'end_hour', Number(e.target.value))}
-                      className="w-16 text-center h-8 text-sm"
+                      onChange={v => updateBlock(day.day_of_week, idx, 'end_hour', v)}
                     />
-                    <span className="text-xs text-gray-400">hrs</span>
+                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: '#525252', letterSpacing: '0.05em' }}>HRS</span>
                     {day.time_blocks.length > 1 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 w-7 p-0 text-red-400 hover:text-red-600"
+                      <button
                         onClick={() => removeBlock(day.day_of_week, idx)}
+                        className="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-red-500/10"
+                        style={{ color: '#FCA5A5' }}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                     )}
                   </div>
                 ))}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs text-blue-600 hover:text-blue-800 h-7"
-                  onClick={() => addBlock(day.day_of_week)}
-                >
-                  <Plus className="w-3 h-3 mr-1" /> Agregar bloque
-                </Button>
+                <button onClick={() => addBlock(day.day_of_week)} className={BTN_GHOST + ' !px-3 !py-1.5'} style={{ fontSize: 11 }}>
+                  <Plus className="w-3 h-3" /> Agregar bloque
+                </button>
               </div>
             )}
           </div>
         ))}
 
-        <div className="border-t pt-4 space-y-3">
-          <div>
-            <label className="text-sm font-medium text-gray-700">Zoom Link</label>
-            <Input
+        <div className="space-y-3 pt-4" style={{ borderTop: '0.5px solid rgba(255,255,255,0.08)' }}>
+          <div className="space-y-1.5">
+            <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#A1A1A1' }}>
+              ZOOM LINK
+            </label>
+            <input
               value={zoomLink}
               onChange={e => setZoomLink(e.target.value)}
-              placeholder="https://zoom.us/j/..."
-              className="mt-1"
+              placeholder="https://zoom.us/j/…"
+              className={DARK_INPUT_CLS}
             />
           </div>
-          <div>
-            <label className="text-sm font-medium text-gray-700">Duracion de slot (minutos)</label>
-            <Input
+          <div className="space-y-1.5">
+            <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#A1A1A1' }}>
+              DURACIÓN DE SLOT (MIN)
+            </label>
+            <input
               type="number"
               min={15}
               max={180}
               value={slotDuration}
               onChange={e => setSlotDuration(Number(e.target.value))}
-              className="mt-1 w-24"
+              className={DARK_INPUT_CLS}
+              style={{ width: 120 }}
             />
           </div>
         </div>
 
-        <Button onClick={handleSave} disabled={saving} className="bg-[#002855]">
-          {saving ? 'Guardando...' : 'Guardar Configuracion'}
-        </Button>
-      </CardContent>
-    </Card>
+        <button onClick={handleSave} disabled={saving} className={BTN_PRIMARY + ' mt-3'}>
+          {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+          {saving ? 'Guardando…' : 'Guardar configuración'}
+        </button>
+      </div>
+    </Panel>
   )
 }
 
-// ── Panel de días bloqueados ──
+// ════════════════════════════════════════════════════════════════════
+// BlockedDatesPanel
+// ════════════════════════════════════════════════════════════════════
+
 function BlockedDatesPanel({ blockedDates: initial }: { blockedDates: BlockedDate[] }) {
   const [dates, setDates] = useState(initial)
   const [newDate, setNewDate] = useState('')
@@ -806,9 +1011,7 @@ function BlockedDatesPanel({ blockedDates: initial }: { blockedDates: BlockedDat
 
   async function handleDelete(id: string) {
     try {
-      const res = await fetch(`/api/admin/appointments/blocked-dates?id=${id}`, {
-        method: 'DELETE',
-      })
+      const res = await fetch(`/api/admin/appointments/blocked-dates?id=${id}`, { method: 'DELETE' })
       if (!res.ok) {
         toast.error('Error al eliminar')
         return
@@ -821,70 +1024,173 @@ function BlockedDatesPanel({ blockedDates: initial }: { blockedDates: BlockedDat
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <AlertTriangle className="w-4 h-4" />
-          Días Bloqueados
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Agregar nuevo */}
-        <div className="flex gap-2 flex-wrap">
-          <Input
-            type="date"
-            value={newDate}
-            onChange={e => setNewDate(e.target.value)}
-            className="w-40"
-          />
-          <Input
-            value={newReason}
-            onChange={e => setNewReason(e.target.value)}
-            placeholder="Razón (opcional)"
-            className="flex-1 min-w-[150px]"
-          />
-          <Button
-            onClick={handleAdd}
-            disabled={adding || !newDate}
-            size="sm"
-            className="bg-[#002855]"
-          >
-            <Plus className="w-4 h-4 mr-1" />
+    <Panel icon={<AlertTriangle className="w-4 h-4" />} title="Días bloqueados" description="Días que no aceptan citas (vacaciones, eventos, etc.)">
+      <div className="space-y-4">
+        <div className="flex gap-2 flex-wrap items-end">
+          <div className="space-y-1.5">
+            <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#A1A1A1' }}>
+              FECHA
+            </label>
+            <input
+              type="date"
+              value={newDate}
+              onChange={e => setNewDate(e.target.value)}
+              className={DARK_INPUT_CLS}
+              style={{ width: 170, colorScheme: 'dark' }}
+            />
+          </div>
+          <div className="space-y-1.5 flex-1 min-w-[180px]">
+            <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#A1A1A1' }}>
+              RAZÓN (OPCIONAL)
+            </label>
+            <input
+              value={newReason}
+              onChange={e => setNewReason(e.target.value)}
+              placeholder="Ej: Vacaciones"
+              className={DARK_INPUT_CLS}
+            />
+          </div>
+          <button onClick={handleAdd} disabled={adding || !newDate} className={BTN_PRIMARY}>
+            {adding ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
             Bloquear
-          </Button>
+          </button>
         </div>
 
-        {/* Lista */}
         {dates.length === 0 ? (
-          <p className="text-sm text-gray-500">No hay días bloqueados</p>
+          <p style={{ fontSize: 11, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em', fontStyle: 'italic' }}>
+            NO HAY DÍAS BLOQUEADOS
+          </p>
         ) : (
           <div className="space-y-2">
             {dates.map(d => (
-              <div key={d.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+              <div
+                key={d.id}
+                className="flex items-center justify-between p-3 rounded-xl"
+                style={{
+                  background: 'rgba(248,113,113,0.06)',
+                  border: '0.5px solid rgba(248,113,113,0.2)',
+                }}
+              >
                 <div>
-                  <p className="text-sm font-medium">
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#FCA5A5' }}>
                     {new Date(d.blocked_date + 'T12:00:00').toLocaleDateString('es-US', {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
+                      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
                     })}
                   </p>
-                  {d.reason && <p className="text-xs text-gray-500">{d.reason}</p>}
+                  {d.reason && (
+                    <p style={{ fontSize: 11, color: '#A1A1A1', marginTop: 2 }}>{d.reason}</p>
+                  )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <button
                   onClick={() => handleDelete(d.id)}
-                  className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/15"
+                  style={{ color: '#FCA5A5' }}
                 >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </div>
             ))}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </Panel>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Shared widgets
+// ════════════════════════════════════════════════════════════════════
+
+function Panel({
+  icon, title, description, children,
+}: { icon: React.ReactNode; title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <div
+      className="relative rounded-2xl p-5 overflow-hidden"
+      style={{
+        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        border: '0.5px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(20px)',
+      }}
+    >
+      <span
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse at top, rgba(255,255,255,0.03), transparent 60%)' }}
+      />
+      <div className="relative">
+        <div className="flex items-start gap-3 mb-4">
+          <span
+            className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
+              border: '0.5px solid rgba(255,255,255,0.15)',
+              color: '#FFFFFF',
+            }}
+          >
+            {icon}
+          </span>
+          <div>
+            <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.018em', color: '#FFFFFF' }}>{title}</h2>
+            {description && (
+              <p style={{ fontSize: 12, color: '#A1A1A1', marginTop: 3, letterSpacing: '-0.005em' }}>{description}</p>
+            )}
+          </div>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function DarkSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="relative inline-flex items-center transition-all duration-300"
+      style={{
+        width: 36,
+        height: 20,
+        borderRadius: 10,
+        background: checked ? '#FFFFFF' : 'rgba(255,255,255,0.08)',
+        border: checked ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.15)',
+        boxShadow: checked ? '0 0 12px rgba(255,255,255,0.18)' : 'none',
+      }}
+    >
+      <span
+        className="inline-block rounded-full transition-all duration-300"
+        style={{
+          width: 14,
+          height: 14,
+          background: checked ? '#000000' : '#A1A1A1',
+          transform: `translateX(${checked ? 18 : 3}px)`,
+        }}
+      />
+    </button>
+  )
+}
+
+function HourInput({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <input
+      type="number"
+      min={0}
+      max={23}
+      value={value}
+      onChange={e => onChange(Number(e.target.value))}
+      className="w-16 text-center px-2 py-1.5 rounded-lg outline-none transition-colors focus:border-white/30"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: '0.5px solid rgba(255,255,255,0.1)',
+        color: '#FAFAFA',
+        fontFamily: 'var(--font-mono-tech)',
+        fontSize: 12,
+        fontWeight: 700,
+        letterSpacing: '0.02em',
+      }}
+    />
   )
 }

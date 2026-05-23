@@ -1,10 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { CasesView } from '@/components/admin/CasesView'
+import { PageHeader, AdminKeyframes } from '@/components/admin-ui'
 
-// Defensive cap — the CasesView component needs the full list for kanban /
-// alphabet filtering, but we never load the entire table unbounded. 1000 is
-// ~10× current volume, enough margin for years of growth.
 const MAX_CASES = 1000
 
 export default async function AdminCasesPage() {
@@ -21,16 +19,10 @@ export default async function AdminCasesPage() {
       .select('*, service:service_catalog(name), client:profiles(first_name, last_name, email)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .limit(MAX_CASES),
-    service
-      .from('documents')
-      .select('case_id'),
-    service
-      .from('case_form_submissions')
-      .select('case_id, status')
-      .neq('status', 'draft'),
+    service.from('documents').select('case_id'),
+    service.from('case_form_submissions').select('case_id, status').neq('status', 'draft'),
   ])
 
-  // Build lookup maps: case_id -> counts
   const docCounts = new Map<string, number>()
   for (const d of documents || []) {
     docCounts.set(d.case_id, (docCounts.get(d.case_id) || 0) + 1)
@@ -44,7 +36,6 @@ export default async function AdminCasesPage() {
     submissionMap.set(s.case_id, current)
   }
 
-  // Enrich cases with counts
   const enrichedCases = (cases || []).map((c: Record<string, unknown>) => ({
     ...c,
     doc_count: docCounts.get(c.id as string) || 0,
@@ -56,15 +47,41 @@ export default async function AdminCasesPage() {
   const total = totalCases ?? loaded
   const truncated = total > loaded
 
+  // Telemetry — calcular activos / completados
+  const activos = enrichedCases.filter((c) => {
+    const status = (c as Record<string, unknown>).intake_status
+    return status !== 'completed' && status !== 'archived'
+  }).length
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Todos los Casos</h1>
+      <AdminKeyframes />
+      <PageHeader
+        eyebrow="Operación · Casos"
+        title="Casos"
+        accentDot
+        description="Lista completa de expedientes activos. Búsqueda por nombre, servicio o número de caso."
+        telemetry={[
+          { label: 'Total', value: total.toLocaleString() },
+          { label: 'Activos', value: activos.toLocaleString() },
+          { label: 'Servicios', value: new Set(enrichedCases.map((c) => (c as Record<string, unknown>).service_id)).size.toString() },
+        ]}
+      />
+
       {truncated && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
-          Mostrando {loaded.toLocaleString()} de {total.toLocaleString()} casos (los más recientes).
-          Usa la búsqueda para encontrar un caso específico.
+        <div
+          className="rounded-xl px-4 py-3 text-sm flex items-center gap-3"
+          style={{
+            background: 'rgba(250,204,21,0.06)',
+            border: '0.5px solid rgba(250,204,21,0.2)',
+            color: '#FDE68A',
+          }}
+        >
+          <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, letterSpacing: '0.18em', fontWeight: 700 }}>⚠ TRUNCATED</span>
+          <span>Mostrando {loaded.toLocaleString()} de {total.toLocaleString()} casos. Usa la búsqueda para encontrar uno específico.</span>
         </div>
       )}
+
       <CasesView cases={enrichedCases} />
     </div>
   )

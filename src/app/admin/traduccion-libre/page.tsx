@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { FreeTranslationTool } from '@/components/translation/free-translation-tool'
+import { PageHeader, AdminKeyframes } from '@/components/admin-ui'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,14 +19,14 @@ export default async function AdminTraduccionLibrePage() {
   if (profile?.role !== 'admin') redirect('/login')
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Traducción Libre</h1>
-        <p className="text-sm text-gray-500">
-          Traduce cualquier documento (PDF o imagen) entre español e inglés. Diferente del traductor de actas civiles —
-          este es para declaraciones, court orders, cartas, anexos.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <AdminKeyframes />
+      <PageHeader
+        eyebrow="Documentos · Traducción Libre"
+        title="Traducción Libre"
+        accentDot
+        description="Traduce cualquier documento (PDF o imagen) entre español e inglés. Para declaraciones, court orders, cartas y anexos — no para actas civiles."
+      />
       <FreeTranslationTool />
     </div>
   )

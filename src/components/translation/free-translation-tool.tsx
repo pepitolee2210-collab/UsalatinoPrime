@@ -5,7 +5,6 @@ import {
   BookOpenText, FileUp, FileText, Trash2, Loader2, Download, Sparkles,
   AlertTriangle, ArrowRight, ArrowLeftRight,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import type {
   FreeTranslationResult,
@@ -14,6 +13,15 @@ import type {
 
 const MAX_BYTES = 16 * 1024 * 1024
 const SIGNATURE_PATH = '/translation-cert/signature.png'
+
+const BTN_PRIMARY =
+  'inline-flex items-center gap-2 px-5 py-2.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50 ' +
+  'bg-white text-black text-[13px] font-semibold tracking-tight ' +
+  'shadow-[0_4px_20px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset]'
+
+const BTN_SUCCESS =
+  'inline-flex items-center gap-2 px-5 py-2.5 rounded-full transition-all duration-200 hover:bg-emerald-500/15 active:scale-95 disabled:opacity-50 ' +
+  'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[13px] font-semibold tracking-tight'
 
 export function FreeTranslationTool() {
   const [file, setFile] = useState<File | null>(null)
@@ -107,21 +115,51 @@ export function FreeTranslationTool() {
   return (
     <div className="space-y-5 max-w-5xl">
       {/* Hero */}
-      <div className="rounded-2xl border border-purple-100 bg-gradient-to-br from-purple-50 to-white p-5">
-        <div className="flex items-start gap-3">
-          <div className="w-11 h-11 rounded-xl bg-purple-600 flex items-center justify-center flex-shrink-0">
-            <BookOpenText className="w-5 h-5 text-white" />
+      <div
+        className="relative rounded-2xl p-5 overflow-hidden"
+        style={{
+          background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+          border: '0.5px solid rgba(255,255,255,0.1)',
+          backdropFilter: 'blur(20px)',
+        }}
+      >
+        <span
+          aria-hidden
+          className="absolute top-0 left-0 right-0 h-px"
+          style={{ background: 'linear-gradient(90deg, transparent, rgba(167,139,250,0.4), transparent)' }}
+        />
+        <div className="relative flex items-start gap-3">
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, rgba(167,139,250,0.18), rgba(167,139,250,0.04))',
+              border: '0.5px solid rgba(167,139,250,0.3)',
+            }}
+          >
+            <BookOpenText className="w-5 h-5" style={{ color: '#A78BFA' }} />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Traducción libre de documentos</h2>
-            <p className="text-sm text-gray-600 mt-0.5">
-              Sube cualquier PDF (declaraciones, cartas, anexos, court orders, etc.) y obtén una traducción
-              en formato de 2 columnas (original ↔ traducción). El sello, firma o código del original
-              se menciona descriptivamente en la traducción — el original no se altera y se entrega como
-              archivo separado.
+            <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: '#525252' }}>
+              TRADUCCIÓN · LIBRE
             </p>
-            <p className="text-[11px] text-gray-500 mt-1.5">
-              <span className="font-semibold">PDF</span>: hasta 10 páginas · <span className="font-semibold">Tamaño</span>: máx. 16 MB
+            <h2 style={{ fontSize: 17, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.018em', marginTop: 2 }}>
+              Traducción libre de documentos
+            </h2>
+            <p style={{ fontSize: 13, color: '#A1A1A1', marginTop: 6, lineHeight: 1.55 }}>
+              Sube cualquier PDF (declaraciones, cartas, anexos, court orders, etc.) y obtén una traducción
+              en formato de 2 columnas (original ↔ traducción). El sello, firma o código del original se
+              menciona descriptivamente en la traducción — el original no se altera.
+            </p>
+            <p
+              style={{
+                fontSize: 10,
+                color: '#525252',
+                marginTop: 8,
+                fontFamily: 'var(--font-mono-tech)',
+                letterSpacing: '0.05em',
+              }}
+            >
+              PDF · HASTA 10 PÁGINAS · TAMAÑO MÁX 16 MB
             </p>
           </div>
         </div>
@@ -129,7 +167,18 @@ export function FreeTranslationTool() {
 
       {/* Direction selector */}
       <div>
-        <p className="text-xs font-medium text-gray-700 block mb-2">Dirección de la traducción</p>
+        <p
+          className="block mb-2"
+          style={{
+            fontFamily: 'var(--font-mono-tech)',
+            fontSize: 10,
+            fontWeight: 500,
+            letterSpacing: '0.18em',
+            color: '#A1A1A1',
+          }}
+        >
+          DIRECCIÓN DE LA TRADUCCIÓN
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <DirectionOption
             active={direction === 'es-to-en'}
@@ -147,17 +196,33 @@ export function FreeTranslationTool() {
         <button
           type="button"
           onClick={() => setDirection((d) => (d === 'es-to-en' ? 'en-to-es' : 'es-to-en'))}
-          className="text-[11px] text-purple-600 hover:underline mt-1.5 inline-flex items-center gap-1"
+          className="inline-flex items-center gap-1.5 mt-2 transition-opacity hover:opacity-80"
+          style={{
+            fontFamily: 'var(--font-mono-tech)',
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.15em',
+            color: '#A78BFA',
+          }}
         >
           <ArrowLeftRight className="w-3 h-3" />
-          Invertir dirección
+          INVERTIR DIRECCIÓN
         </button>
       </div>
 
       {/* Upload */}
       <div>
-        <label className="text-xs font-medium text-gray-700 block mb-2">
-          Documento (PDF o imagen, máx. 10 páginas / 16 MB)
+        <label
+          className="block mb-2"
+          style={{
+            fontFamily: 'var(--font-mono-tech)',
+            fontSize: 10,
+            fontWeight: 500,
+            letterSpacing: '0.18em',
+            color: '#A1A1A1',
+          }}
+        >
+          DOCUMENTO (PDF O IMAGEN · MÁX 10 PÁGINAS · 16 MB)
         </label>
 
         <input
@@ -183,27 +248,72 @@ export function FreeTranslationTool() {
               setDragOver(false)
               handleFile(e.dataTransfer.files?.[0])
             }}
-            className={`w-full flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed py-10 px-4 transition-colors text-center ${
-              dragOver
-                ? 'border-purple-500 bg-purple-50'
-                : 'border-gray-300 bg-gray-50 hover:border-purple-400 hover:bg-purple-50/30'
-            }`}
+            className="w-full flex flex-col items-center justify-center gap-3 rounded-2xl py-12 px-4 text-center transition-all duration-300"
+            style={{
+              background: dragOver ? 'rgba(167,139,250,0.06)' : 'rgba(255,255,255,0.02)',
+              border: dragOver ? '2px dashed rgba(167,139,250,0.5)' : '2px dashed rgba(255,255,255,0.12)',
+            }}
           >
-            <FileUp className="w-9 h-9 text-purple-500" />
+            <div
+              className="inline-flex items-center justify-center w-12 h-12 rounded-2xl"
+              style={{
+                background: 'rgba(167,139,250,0.12)',
+                border: '0.5px solid rgba(167,139,250,0.25)',
+              }}
+            >
+              <FileUp className="w-5 h-5" style={{ color: '#A78BFA' }} />
+            </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">Haz click para seleccionar el documento</p>
-              <p className="text-[11px] text-gray-500 mt-0.5">o arrastra y suelta aquí · PDF o imagen · hasta 10 páginas · máx. 16 MB</p>
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                Click para seleccionar el documento
+              </p>
+              <p
+                style={{
+                  fontSize: 11,
+                  color: '#525252',
+                  marginTop: 4,
+                  fontFamily: 'var(--font-mono-tech)',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                O ARRASTRA Y SUELTA · PDF O IMAGEN · MÁX 10 PÁGINAS / 16 MB
+              </p>
             </div>
           </button>
         ) : (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-white border border-emerald-200 flex items-center justify-center flex-shrink-0">
-              <FileText className="w-5 h-5 text-emerald-700" />
+          <div
+            className="rounded-xl p-3 flex items-center gap-3"
+            style={{
+              background: 'rgba(34,197,94,0.06)',
+              border: '0.5px solid rgba(34,197,94,0.25)',
+            }}
+          >
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{
+                background: 'rgba(34,197,94,0.12)',
+                border: '0.5px solid rgba(34,197,94,0.25)',
+              }}
+            >
+              <FileText className="w-4 h-4" style={{ color: '#4ADE80' }} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-gray-900 truncate">{file.name}</p>
-              <p className="text-[11px] text-gray-500">
-                {(file.size / 1024).toFixed(0)} KB · {file.type || 'archivo'}
+              <p
+                className="truncate"
+                style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}
+              >
+                {file.name}
+              </p>
+              <p
+                style={{
+                  fontSize: 10,
+                  color: '#86EFAC',
+                  fontFamily: 'var(--font-mono-tech)',
+                  letterSpacing: '0.05em',
+                  marginTop: 2,
+                }}
+              >
+                {(file.size / 1024).toFixed(0)} KB · {(file.type || 'ARCHIVO').toUpperCase()}
               </p>
             </div>
             <button
@@ -213,58 +323,60 @@ export function FreeTranslationTool() {
                 setResult(null)
                 if (inputRef.current) inputRef.current.value = ''
               }}
-              className="w-8 h-8 rounded-lg hover:bg-red-50 flex items-center justify-center text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
+              className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-red-500/10"
+              style={{ color: '#FCA5A5' }}
               title="Quitar archivo"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
       </div>
 
       {/* Aviso de sello */}
-      <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 flex items-start gap-3">
-        <Sparkles className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-        <div className="text-xs text-gray-700 space-y-1">
-          <p className="font-semibold text-gray-900">¿Qué pasa con sellos, firmas y códigos QR?</p>
-          <p>
-            La traducción NO toca el documento original. Si el doc original tiene sello del notario,
-            firma manuscrita, código QR o sello apostillado, en la traducción se cita
-            descriptivamente (ej. <em className="not-italic">[Sello del Notario]</em>,
-            <em className="not-italic"> [Firma de Juan Pérez]</em>) y el original se entrega
-            junto con la traducción — el receptor verá ambos.
+      <div
+        className="rounded-xl p-4 flex items-start gap-3"
+        style={{
+          background: 'rgba(250,204,21,0.06)',
+          border: '0.5px solid rgba(250,204,21,0.25)',
+        }}
+      >
+        <Sparkles className="w-4 h-4 mt-0.5 shrink-0" style={{ color: '#FACC15' }} />
+        <div className="space-y-1">
+          <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: '#FACC15' }}>
+            CÓMO SE MANEJAN SELLOS Y FIRMAS
+          </p>
+          <p style={{ fontSize: 13, fontWeight: 600, color: '#FDE68A' }}>
+            La traducción NO toca el documento original
+          </p>
+          <p style={{ fontSize: 12, color: '#A1A1A1', lineHeight: 1.55 }}>
+            Si el original tiene sello del notario, firma manuscrita, código QR o sello apostillado, en la traducción se cita
+            descriptivamente (ej. <span style={{ color: '#D4D4D8', fontStyle: 'italic' }}>[Sello del Notario]</span>,{' '}
+            <span style={{ color: '#D4D4D8', fontStyle: 'italic' }}>[Firma de Juan Pérez]</span>) y el original se entrega
+            junto con la traducción.
           </p>
         </div>
       </div>
 
       {/* Acciones */}
       <div className="flex items-center gap-2 flex-wrap">
-        <Button
-          onClick={handleTranslate}
-          disabled={!file || translating}
-          className="bg-purple-600 hover:bg-purple-700 text-white font-bold"
-        >
+        <button onClick={handleTranslate} disabled={!file || translating} className={BTN_PRIMARY}>
           {translating ? (
-            <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Traduciendo con Gemini...</>
+            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Traduciendo con Gemini…</>
           ) : result ? (
-            <><Sparkles className="w-4 h-4 mr-1.5" /> Volver a traducir</>
+            <><Sparkles className="w-3.5 h-3.5" /> Volver a traducir</>
           ) : (
-            <><Sparkles className="w-4 h-4 mr-1.5" /> Traducir documento</>
+            <><Sparkles className="w-3.5 h-3.5" /> Traducir documento</>
           )}
-        </Button>
+        </button>
         {result && (
-          <Button
-            onClick={handleDownload}
-            disabled={generatingPdf}
-            variant="outline"
-            className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-          >
+          <button onClick={handleDownload} disabled={generatingPdf} className={BTN_SUCCESS}>
             {generatingPdf ? (
-              <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Generando PDF...</>
+              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generando PDF…</>
             ) : (
-              <><Download className="w-4 h-4 mr-1.5" /> Descargar PDF traducido</>
+              <><Download className="w-3.5 h-3.5" /> Descargar PDF traducido</>
             )}
-          </Button>
+          </button>
         )}
       </div>
 
@@ -287,16 +399,34 @@ function DirectionOption({
     <button
       type="button"
       onClick={onClick}
-      className={`text-left rounded-xl border-2 p-3 transition-colors ${
-        active
-          ? 'border-purple-500 bg-purple-50'
-          : 'border-gray-200 bg-white hover:border-purple-300 hover:bg-purple-50/30'
-      }`}
+      className="text-left rounded-2xl p-4 transition-all duration-300 hover:-translate-y-0.5"
+      style={{
+        background: active
+          ? 'linear-gradient(180deg, rgba(167,139,250,0.12), rgba(167,139,250,0.04))'
+          : 'rgba(255,255,255,0.025)',
+        border: active ? '0.5px solid rgba(167,139,250,0.4)' : '0.5px solid rgba(255,255,255,0.08)',
+        boxShadow: active ? '0 0 16px rgba(167,139,250,0.15)' : 'none',
+      }}
     >
-      <p className={`text-sm font-semibold ${active ? 'text-purple-900' : 'text-gray-900'}`}>
+      <p
+        style={{
+          fontSize: 14,
+          fontWeight: 600,
+          color: active ? '#C4B5FD' : '#FFFFFF',
+          letterSpacing: '-0.005em',
+        }}
+      >
         {label}
       </p>
-      <p className="text-[11px] text-gray-500 mt-0.5">{sub}</p>
+      <p
+        style={{
+          fontSize: 11,
+          color: '#A1A1A1',
+          marginTop: 3,
+        }}
+      >
+        {sub}
+      </p>
     </button>
   )
 }
@@ -321,29 +451,72 @@ function FreePreview({ result }: { result: FreeTranslationResult }) {
   const targetLabel = result.target_language === 'es' ? 'Traducción (Español)' : 'Translation (English)'
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-      <div className="px-5 py-3 border-b bg-gray-50 flex items-center justify-between gap-3 flex-wrap">
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{
+        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        border: '0.5px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(20px)',
+      }}
+    >
+      <div
+        className="px-5 py-3 flex items-center justify-between gap-3 flex-wrap"
+        style={{
+          background: 'rgba(255,255,255,0.02)',
+          borderBottom: '0.5px solid rgba(255,255,255,0.08)',
+        }}
+      >
         <div>
-          <p className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">
-            Vista previa
+          <p
+            style={{
+              fontFamily: 'var(--font-mono-tech)',
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.2em',
+              color: '#525252',
+            }}
+          >
+            VISTA PREVIA
           </p>
-          <h3 className="text-sm font-bold text-gray-900 leading-tight mt-0.5">
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.005em', marginTop: 2 }}>
             {result.document_title}
           </h3>
         </div>
-        <div className="text-[11px] text-gray-400 italic flex items-center gap-1.5">
-          <AlertTriangle className="w-3.5 h-3.5" />
-          {result.pages.length} {result.pages.length === 1 ? 'página' : 'páginas'} · revisa antes de descargar
+        <div
+          className="inline-flex items-center gap-1.5"
+          style={{
+            fontFamily: 'var(--font-mono-tech)',
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: '0.15em',
+            color: '#FDE68A',
+          }}
+        >
+          <AlertTriangle className="w-3 h-3" />
+          {result.pages.length} {result.pages.length === 1 ? 'PÁGINA' : 'PÁGINAS'} · REVISA ANTES DE DESCARGAR
         </div>
       </div>
 
-      <div className="divide-y">
+      <div>
         {result.pages.map((p, i) => (
-          <div key={i} className="px-5 py-4">
-            <div className="flex items-center gap-2 text-[11px] text-gray-500 mb-3">
-              <span className="font-semibold text-gray-700">Página {i + 1}</span>
-              <span>de {result.pages.length}</span>
-              <ArrowRight className="w-3 h-3" />
+          <div
+            key={i}
+            className="px-5 py-4"
+            style={{ borderBottom: i < result.pages.length - 1 ? '0.5px solid rgba(255,255,255,0.06)' : 'none' }}
+          >
+            <div
+              className="flex items-center gap-2 mb-3"
+              style={{
+                fontFamily: 'var(--font-mono-tech)',
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.15em',
+                color: '#A1A1A1',
+              }}
+            >
+              <span style={{ color: '#FFFFFF' }}>PÁGINA {i + 1}</span>
+              <span style={{ color: '#525252' }}>/ {result.pages.length}</span>
+              <ArrowRight className="w-3 h-3" style={{ color: '#A78BFA' }} />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <ColumnPreview label={sourceLabel} text={p.original} />
@@ -359,15 +532,32 @@ function FreePreview({ result }: { result: FreeTranslationResult }) {
 function ColumnPreview({ label, text, highlight }: { label: string; text: string; highlight?: boolean }) {
   return (
     <div>
-      <p className={`text-[10px] uppercase tracking-wider font-bold mb-1.5 ${
-        highlight ? 'text-purple-700' : 'text-gray-500'
-      }`}>
-        {label}
+      <p
+        style={{
+          fontFamily: 'var(--font-mono-tech)',
+          fontSize: 9,
+          fontWeight: 700,
+          letterSpacing: '0.2em',
+          color: highlight ? '#A78BFA' : '#525252',
+          marginBottom: 6,
+        }}
+      >
+        {label.toUpperCase()}
       </p>
-      <div className={`rounded-lg border p-3 text-xs whitespace-pre-wrap leading-relaxed font-serif ${
-        highlight ? 'border-purple-100 bg-purple-50/30 text-gray-900' : 'border-gray-200 bg-gray-50 text-gray-800'
-      }`}>
-        {text || <span className="italic text-gray-400">[vacío]</span>}
+      <div
+        className="rounded-xl p-3 whitespace-pre-wrap"
+        style={{
+          background: highlight ? 'rgba(167,139,250,0.06)' : 'rgba(255,255,255,0.03)',
+          border: highlight ? '0.5px solid rgba(167,139,250,0.2)' : '0.5px solid rgba(255,255,255,0.08)',
+          fontSize: 12,
+          color: '#D4D4D8',
+          fontFamily: 'Georgia, serif',
+          lineHeight: 1.6,
+        }}
+      >
+        {text || (
+          <span style={{ color: '#525252', fontStyle: 'italic' }}>[vacío]</span>
+        )}
       </div>
     </div>
   )
