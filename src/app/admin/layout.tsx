@@ -129,7 +129,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   function toggleGroup(heading: string, e?: React.MouseEvent) {
     setCollapsedGroups((prev) => {
-      const next = { ...prev, [heading]: !prev[heading] }
+      const currentlyCollapsed = prev[heading] ?? true
+      const next = { ...prev, [heading]: !currentlyCollapsed }
       try { localStorage.setItem(COLLAPSED_STORAGE_KEY, JSON.stringify(next)) } catch {}
       return next
     })
@@ -237,7 +238,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {navGroups.map((group, groupIdx) => {
           // Showcase nunca se colapsa — es el highlight permanente
           const canCollapse = group.heading !== 'Showcase' && group.heading !== null
-          const isCollapsed = canCollapse && !!collapsedGroups[group.heading!]
+          const isCollapsed = canCollapse && (collapsedGroups[group.heading!] ?? true)
           // Calcular badge total del grupo cuando colapsado
           const groupBadgeTotal = group.items.reduce((acc, it) => acc + (it.badgeKey ? counts[it.badgeKey] : 0), 0)
           return (
