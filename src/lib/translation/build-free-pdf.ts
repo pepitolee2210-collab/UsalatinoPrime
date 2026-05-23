@@ -73,7 +73,20 @@ export function buildFreeTranslationPDF({ result }: BuildOptions): Blob {
       y = renderTitleBlock(pdf, result.document_title_lines, result.document_subtitle, y)
     }
 
-    renderBody(pdf, result.pages[i].translated, y, footerText)
+    const bodyText = result.pages[i].translated || ''
+    if (bodyText.trim().length > 0) {
+      renderBody(pdf, bodyText, y, footerText)
+    } else if (i > 0) {
+      // Página intencionalmente en blanco (e.g., reverso de una hoja). Si Gemini
+      // no devolvió ni "[blank page]", agregar un marcador centrado para que el
+      // usuario sepa que la página está vacía a propósito y no es un bug.
+      pdf.setFont(FONT, 'italic')
+      pdf.setFontSize(BODY_SIZE)
+      pdf.setTextColor(...FOOTER_GRAY)
+      pdf.text('[blank page]', PAGE_W / 2, PAGE_H / 2, { align: 'center' })
+      pdf.setTextColor(...BLACK)
+      pdf.setFont(FONT, 'normal')
+    }
     renderFooter(pdf, footerText)
   }
 
@@ -176,17 +189,25 @@ function renderBody(pdf: jsPDF, text: string, startY: number, footerText: string
       // de 500 caracteres probablemente no es un heading sino contenido enfatizado)
       trimmed.length <= 200
 
-    // ¿Es un párrafo numerado (e.g., "1. That I am the biological father...")?
+    // ¿Es un párrafo numerado? Acepta dos formas:
+    //  - Dígitos: "1. That I am the biological father..."
+    //  - Ordinales en palabra (algunos docs legales usan estos en lugar de dígitos):
+    //    "FIRST. That I am the biological father..." / "SECOND. ..." / "THEREFORE. ..."
+    // Ambos se renderizan con el prefijo en bold y el resto normal justificado.
     const numberedMatch = paragraph.match(/^(\d+)\.\s+([\s\S]+)$/)
+    const ordinalWordMatch = !numberedMatch
+      ? paragraph.match(/^([A-Z]{2,})\.\s+([\s\S]+)$/)
+      : null
 
     // ¿Empieza con prefijo ALL-CAPS + coma (e.g., "THEREFORE, I sign...", "WHEREAS, ...")?
-    // Render del prefijo en bold + el resto normal justificado.
     const allCapsPrefixMatch = paragraph.match(/^([A-Z]{2,}),\s+([\s\S]+)$/)
 
     if (numberedMatch) {
-      // Gap extra antes de párrafos numerados
       if (pi > 0) y += NUMBERED_GAP - PARAGRAPH_GAP
       y = renderNumberedParagraph(pdf, numberedMatch[1], numberedMatch[2], y, bodyWidth, endY, footerText)
+    } else if (ordinalWordMatch) {
+      if (pi > 0) y += NUMBERED_GAP - PARAGRAPH_GAP
+      y = renderNumberedParagraph(pdf, ordinalWordMatch[1], ordinalWordMatch[2], y, bodyWidth, endY, footerText)
     } else if (isAllCapsHeading) {
       y = renderHeading(pdf, paragraph, y, bodyWidth, endY, footerText)
     } else if (allCapsPrefixMatch) {
