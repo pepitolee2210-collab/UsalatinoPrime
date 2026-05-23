@@ -1,8 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { ClientsList } from './clients-list'
+import { PageHeader, AdminKeyframes } from '@/components/admin-ui'
 
-// Same defensive cap pattern as cases: load up to MAX and surface a banner if
-// the real count exceeds it. In practice Henry has ~100 clients today.
 const MAX_CLIENTS = 1000
 
 export default async function AdminClientsPage() {
@@ -15,34 +14,53 @@ export default async function AdminClientsPage() {
     .order('created_at', { ascending: false })
     .limit(MAX_CLIENTS)
 
-  const clients = (data || []).map((c: any) => ({
-    id: c.id,
-    first_name: c.first_name,
-    last_name: c.last_name,
-    email: c.email,
-    phone: c.phone || '',
-    created_at: c.created_at,
-    case_count: c.cases?.[0]?.count ?? 0,
-  }))
+  const clients = (data || []).map((c: Record<string, unknown>) => {
+    const cases = c.cases as Array<{ count?: number }> | undefined
+    return {
+      id: c.id as string,
+      first_name: c.first_name as string,
+      last_name: c.last_name as string,
+      email: c.email as string,
+      phone: (c.phone as string) || '',
+      created_at: c.created_at as string,
+      case_count: cases?.[0]?.count ?? 0,
+    }
+  })
 
   const loaded = clients.length
   const total = totalClients ?? loaded
   const truncated = total > loaded
+  const withCases = clients.filter((c) => c.case_count > 0).length
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
-        <span className="text-sm text-gray-500">
-          {truncated ? `${loaded} de ${total}` : `${total} registrados`}
-        </span>
-      </div>
+      <AdminKeyframes />
+      <PageHeader
+        eyebrow="Operación · Clientes"
+        title="Clientes"
+        accentDot
+        description="Base de clientes registrados. Busca, filtra y abre el detalle para ver historial completo."
+        telemetry={[
+          { label: 'Total', value: total.toLocaleString() },
+          { label: 'Con casos', value: withCases.toLocaleString() },
+          { label: 'Recientes', value: loaded.toLocaleString() },
+        ]}
+      />
+
       {truncated && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
-          Mostrando {loaded.toLocaleString()} de {total.toLocaleString()} clientes (los más recientes).
-          Usa la búsqueda para encontrar a un cliente específico.
+        <div
+          className="rounded-xl px-4 py-3 text-sm flex items-center gap-3"
+          style={{
+            background: 'rgba(250,204,21,0.06)',
+            border: '0.5px solid rgba(250,204,21,0.2)',
+            color: '#FDE68A',
+          }}
+        >
+          <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, letterSpacing: '0.18em', fontWeight: 700 }}>⚠ TRUNCATED</span>
+          <span>Mostrando {loaded.toLocaleString()} de {total.toLocaleString()} clientes. Usa la búsqueda para encontrar uno específico.</span>
         </div>
       )}
+
       <ClientsList initialClients={clients} />
     </div>
   )

@@ -1,9 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { X, Save, Loader2, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -21,14 +18,18 @@ interface Props {
   onSaved: () => void
 }
 
-/**
- * Editor de menores existentes de un contrato firmado.
- *
- * Solo correcciones: cambiar nombre, fecha, passport, lugar de nacimiento.
- * NO permite agregar ni borrar — para añadir un hijo se debe crear un
- * contrato nuevo (regla de integridad legal: la firma del cliente quedó
- * anclada a la lista original).
- */
+const DARK_INPUT_CLS =
+  'w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 ' +
+  'bg-white/[0.04] border border-white/10 text-white placeholder:text-white/30'
+
+const LABEL_STYLE: React.CSSProperties = {
+  fontFamily: 'var(--font-mono-tech)',
+  fontSize: 9,
+  fontWeight: 500,
+  letterSpacing: '0.18em',
+  color: '#A1A1A1',
+}
+
 export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props) {
   const [draft, setDraft] = useState<MinorRecord[]>(() =>
     minors.map((m) => ({
@@ -82,34 +83,71 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.6)' }}
+      style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(8px)' }}
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
+        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto admin-scroll rounded-2xl"
         onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'linear-gradient(180deg, rgba(15,15,15,0.98), rgba(8,8,8,0.98))',
+          border: '0.5px solid rgba(255,255,255,0.12)',
+          backdropFilter: 'blur(20px)',
+          boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
+        }}
       >
-        <header className="flex items-start justify-between px-5 py-4 border-b sticky top-0 bg-white">
+        <header
+          className="sticky top-0 z-10 flex items-start justify-between px-6 py-4"
+          style={{
+            background: 'rgba(15,15,15,0.95)',
+            backdropFilter: 'blur(20px)',
+            borderBottom: '0.5px solid rgba(255,255,255,0.08)',
+          }}
+        >
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Editar menores del contrato</h2>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p
+              style={{
+                fontFamily: 'var(--font-mono-tech)',
+                fontSize: 10,
+                fontWeight: 500,
+                letterSpacing: '0.2em',
+                color: '#525252',
+              }}
+            >
+              EDICIÓN · CORRECCIONES
+            </p>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.018em', marginTop: 2 }}>
+              Editar menores del contrato
+            </h2>
+            <p style={{ fontSize: 12, color: '#A1A1A1', marginTop: 4, lineHeight: 1.5 }}>
               Solo correcciones de campos existentes. Para agregar un hijo, crear contrato nuevo.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-gray-100"
             aria-label="Cerrar"
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-white/10"
+            style={{
+              background: 'rgba(255,255,255,0.04)',
+              border: '0.5px solid rgba(255,255,255,0.1)',
+              color: '#A1A1A1',
+            }}
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-4 h-4" />
           </button>
         </header>
 
-        <div className="p-5 space-y-5">
+        <div className="p-6 space-y-5">
           {draft.length === 0 && (
-            <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-amber-900">
+            <div
+              className="rounded-xl p-4 flex items-start gap-3"
+              style={{
+                background: 'rgba(250,204,21,0.06)',
+                border: '0.5px solid rgba(250,204,21,0.25)',
+              }}
+            >
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#FACC15' }} />
+              <p style={{ fontSize: 13, color: '#FDE68A' }}>
                 Este contrato no tiene menores registrados.
               </p>
             </div>
@@ -118,65 +156,85 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
           {draft.map((m, idx) => (
             <section
               key={idx}
-              className="border border-gray-200 rounded-xl p-4 space-y-3"
+              className="rounded-2xl p-5 space-y-4"
+              style={{
+                background: 'rgba(255,255,255,0.025)',
+                border: '0.5px solid rgba(255,255,255,0.08)',
+              }}
             >
-              <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                Menor #{idx + 1}
+              <p
+                style={{
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.2em',
+                  color: '#FFFFFF',
+                }}
+              >
+                MENOR #{(idx + 1).toString().padStart(2, '0')}
               </p>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor={`fullName-${idx}`}>Nombre completo</Label>
-                  <Input
+                  <label htmlFor={`fullName-${idx}`} style={LABEL_STYLE}>NOMBRE COMPLETO</label>
+                  <input
                     id={`fullName-${idx}`}
                     value={m.fullName ?? ''}
                     onChange={(e) => setField(idx, 'fullName', e.target.value)}
+                    className={DARK_INPUT_CLS}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor={`dob-${idx}`}>Fecha de nacimiento</Label>
-                  <Input
+                  <label htmlFor={`dob-${idx}`} style={LABEL_STYLE}>FECHA DE NACIMIENTO</label>
+                  <input
                     id={`dob-${idx}`}
                     type="date"
                     value={m.dob ?? ''}
                     onChange={(e) => setField(idx, 'dob', e.target.value)}
+                    className={DARK_INPUT_CLS}
+                    style={{ colorScheme: 'dark' }}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor={`passport-${idx}`}>Pasaporte / ID</Label>
-                  <Input
+                  <label htmlFor={`passport-${idx}`} style={LABEL_STYLE}>PASAPORTE / ID</label>
+                  <input
                     id={`passport-${idx}`}
                     value={m.passport ?? ''}
                     onChange={(e) => setField(idx, 'passport', e.target.value)}
+                    className={DARK_INPUT_CLS}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor={`birthplace-${idx}`}>Lugar de nacimiento</Label>
-                  <Input
+                  <label htmlFor={`birthplace-${idx}`} style={LABEL_STYLE}>LUGAR DE NACIMIENTO</label>
+                  <input
                     id={`birthplace-${idx}`}
                     value={m.birthplace ?? ''}
                     onChange={(e) => setField(idx, 'birthplace', e.target.value)}
+                    className={DARK_INPUT_CLS}
                   />
                 </div>
               </div>
+
               <div className="flex justify-end">
-                <Button
-                  size="sm"
+                <button
                   onClick={() => saveOne(idx)}
                   disabled={savingIndex === idx}
-                  className="bg-[#002855] hover:bg-[#001d3d] text-white"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50"
+                  style={{
+                    background: '#FFFFFF',
+                    color: '#000000',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    letterSpacing: '-0.005em',
+                    boxShadow: '0 4px 18px rgba(255,255,255,0.18), 0 0 0 0.5px rgba(255,255,255,0.4) inset',
+                  }}
                 >
                   {savingIndex === idx ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                      Guardando...
-                    </>
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Guardando…</>
                   ) : (
-                    <>
-                      <Save className="w-4 h-4 mr-1.5" />
-                      Guardar cambios
-                    </>
+                    <><Save className="w-3.5 h-3.5" /> Guardar cambios</>
                   )}
-                </Button>
+                </button>
               </div>
             </section>
           ))}

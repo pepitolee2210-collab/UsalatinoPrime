@@ -12,7 +12,7 @@ export default async function Home() {
   const { data: role } = await supabase.rpc('get_user_role', { user_id: user.id })
 
   if (role === 'admin') {
-    redirect('/ceo')
+    redirect('/admin/servicios')
   }
 
   if (role === 'employee') {

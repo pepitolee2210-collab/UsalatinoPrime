@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
+// Card removed — replaced by dark wrapper
 import {
   Download, CheckCircle, ChevronDown, ChevronUp,
   Loader2, User, Calendar, MessageSquare, FileText,
@@ -364,8 +364,15 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
   }
 
   return (
-    <Card className={status === 'nuevo' ? 'border-amber-200' : ''}>
-      <CardContent className="p-0">
+    <div
+      className="relative rounded-2xl overflow-hidden"
+      style={{
+        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        border: status === 'nuevo' ? '0.5px solid rgba(250,204,21,0.3)' : '0.5px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(20px)',
+      }}
+    >
+      <div>
         {/* Header row */}
         <div
           className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
@@ -547,8 +554,8 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 

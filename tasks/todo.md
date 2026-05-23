@@ -319,3 +319,288 @@ Fase 3: pulido final.
 - [x] Frontend modo chat (WhatsApp-like + grabador audio)
 - [x] Frontend modo llamada voz (Live API + Siri orb)
 - [x] Conexión con agenda (create_lead → callback_requests)
+
+---
+---
+
+# Plan XL: Landing Pública Premium — usalatinoprime.com
+
+## Status: PENDIENTE APROBACIÓN
+
+## El Problema
+
+`usalatinoprime.com` hoy es solo un dispatcher al login. No hay landing pública. Henry quiere correr ADs (Meta, Google) y necesita una landing tipo Platzi: hero impactante, catálogo de servicios como e-commerce, páginas individuales por servicio con fases visuales, equipo, reseñas, próximos lanzamientos.
+
+## Decisiones tomadas
+
+| Pregunta | Decisión |
+|---|---|
+| URL de la landing | **Raíz** (`usalatinoprime.com/`). Anónimo → landing; staff/cliente logueado → su dashboard |
+| Branding | Premium nuevo, tipo Platzi/Apple. NO el #F2A900/#002855 actual |
+| Flexibilidad de fases | **Servicios separados** en el catálogo (no checkboxes) |
+| Alcance | Landing completa + Sobre Nosotros + 5 páginas de servicio |
+| Assets | Henry pasará: video, fotos equipo, precios reales, reseñas, bios |
+| Pago | Sin checkout. CTA = botón WhatsApp |
+
+## Arquitectura de rutas
+
+```
+/                                       → Landing principal (NUEVA)
+/servicios/visa-juvenil-completa        → 3 fases + calculadora hijos
+/servicios/visa-juvenil-i360            → solo fases I-360 + I-485
+/servicios/visa-juvenil-i485            → solo fase I-485
+/servicios/asilo-completo               → fase 1 + 2
+/servicios/asilo-reforzamiento          → solo fase 2
+/sobre-nosotros                         → equipo
+/                                       → si hay sesión, redirige al dashboard según rol (actual)
+```
+
+Lógica del dispatcher en `/src/app/page.tsx`:
+```tsx
+if (user) {
+  // Lógica existente: admin → /ceo, employee → /employee/contracts, client → /comunidad
+}
+return <LandingPage />   // visitante anónimo
+```
+
+## Estructura de la landing principal (`/`)
+
+```
+1. Navbar sticky transparente → opaco al scroll
+   - Logo UsaLatinoPrime
+   - Links: Servicios · Equipo · Reseñas · Iniciar sesión
+   - CTA: "Hablar con un asesor" (WhatsApp)
+
+2. Hero (full-bleed)
+   - Headline impactante (h1 80-120px en desktop)
+   - Subhead 1 línea
+   - Video autoplay muted loop (mp4) o video con play button
+   - 2 CTAs: "Ver servicios" (scroll) + "Hablar por WhatsApp"
+
+3. Catálogo de servicios (5 cards)
+   - Grid responsive: 3 cols desktop, 2 tablet, 1 mobile
+   - Card: ícono + título + 1 línea descripción + precio "desde $X" + flecha
+   - Hover: lift + glow sutil
+   - Click → /servicios/{slug}
+
+4. Sección "¿Por qué UsaLatinoPrime?" (diferenciadores)
+   - 3-4 features: experiencia, equipo bilingüe, app móvil, plataforma 24/7
+   - Iconos + título + descripción corta
+
+5. Reseñas / Testimonios (carousel o grid)
+   - 6 testimonios reales con foto, nombre, servicio
+   - Estrellas + texto + servicio que tomó
+
+6. Próximos lanzamientos
+   - Sandbox de Utah (descripción + visual)
+   - App DigiLegal (mockup móvil + "Próximamente en App Store / Play Store")
+
+7. Sección equipo (preview con link a /sobre-nosotros)
+   - 5 cards: Henry, Vanessa, Diana, Giuseppe, Mauricio
+   - Foto circular + nombre + rol
+   - "Conoce a todo el equipo →"
+
+8. CTA final
+   - "Empieza tu trámite hoy" + botón WhatsApp grande
+
+9. Footer
+   - Logo + descripción + links + redes + dirección + copyright
+```
+
+## Estructura de página de servicio (ej: `/servicios/visa-juvenil-completa`)
+
+```
+1. Navbar (mismo)
+
+2. Hero específico
+   - Breadcrumb: Inicio > Servicios > Visa Juvenil
+   - Título del servicio
+   - Descripción 2-3 líneas
+   - Precio: "Desde $X · Plan a tu medida"
+   - 2 CTAs: "Cotizar por WhatsApp" + "Ver fases ↓"
+
+3. "¿En qué consiste?" (1 párrafo)
+
+4. Línea de tiempo de fases (vertical, didáctico)
+   - Misma visual que ve el cliente en su portal → familiaridad
+   - Fase 1: Custodia (descripción, qué entrega Henry, tiempo estimado)
+   - Fase 2: I-360
+   - Fase 3: I-485
+   - Cada fase con icono, color, número grande
+
+5. Calculadora (SOLO en visa juvenil)
+   - Input numérico "¿Cuántos hijos?" (1-10)
+   - Precio recalculado en vivo
+   - Texto: "$X por el primer hijo + $Y por cada hijo adicional"
+   - Botón "Cotizar este precio por WhatsApp" → mensaje pre-llenado
+
+6. Documentos que necesitas
+   - Lista checklist visual
+
+7. FAQ (3-5 preguntas comunes)
+
+8. CTA final + Footer
+```
+
+## Estructura `/sobre-nosotros`
+
+```
+1. Hero del equipo
+   - "El equipo detrás de UsaLatinoPrime"
+   - Foto grupal (si la tienen) o composición de 5 fotos
+
+2. Grid de equipo (5 cards detalladas)
+   - Foto grande
+   - Nombre + rol
+   - 2-3 líneas de bio
+   - Especialidad
+   - Link LinkedIn opcional
+
+3. Misión / Valores
+
+4. Por qué nos eligen
+
+5. CTA + Footer
+```
+
+## Diseño visual (estilo premium Platzi/Apple)
+
+**Paleta nueva propuesta** (a confirmar con Henry):
+- Background: `#0A0A0F` (carbón profundo) o `#FFFFFF` (claro)
+- Acento principal: `#FFD60A` (dorado vibrante, más premium que F2A900)
+- Acento secundario: `#0066FF` (azul saturado, energético)
+- Texto: blanco puro / `#1A1A1F`
+- Gradientes sutiles en cards: linear-gradient(135deg, rgba(255,214,10,0.08), rgba(0,102,255,0.04))
+
+**Tipografía**:
+- Display: Plus Jakarta Sans (ya cargado en el proyecto) o Inter Display
+- Body: Inter
+- Mono para precios/datos: JetBrains Mono (ya cargado)
+
+**Estilo**:
+- Bordes redondeados generosos (16-24px)
+- Sombras suaves multi-capa
+- Microinteracciones: hover lift, fade-in al scroll, parallax sutil en hero
+- Animaciones con `framer-motion` (ya en deps?) o CSS
+
+**Activar skill `frontend-design`** durante la implementación visual de cada componente.
+
+## Componentes a crear
+
+```
+src/app/(landing)/                   ← route group para todo lo público
+  layout.tsx                          ← navbar + footer + estilos landing
+  page.tsx                            ← landing principal
+  servicios/
+    [slug]/page.tsx                   ← detalle por servicio (dinámico)
+  sobre-nosotros/page.tsx
+
+src/components/landing/
+  navbar.tsx
+  footer.tsx
+  hero.tsx
+  service-card.tsx
+  service-catalog.tsx
+  testimonials.tsx
+  upcoming-products.tsx
+  team-preview.tsx
+  team-full.tsx
+  phase-timeline.tsx                  ← reutiliza estilos del cliente portal
+  visa-juvenil-calculator.tsx
+  whatsapp-cta.tsx
+  faq.tsx
+
+src/lib/landing/
+  services-catalog.ts                 ← data de los 5 servicios (precios, fases, descripciones)
+  team-data.ts                        ← bios y datos del equipo
+  testimonials-data.ts                ← reseñas reales
+
+src/app/page.tsx                      ← MODIFICAR: render Landing si no hay user
+```
+
+## Modelo de datos
+
+**Sin tablas nuevas**. Los datos del catálogo y equipo viven en archivos TS (`src/lib/landing/`). Si en el futuro Henry quiere editar precios desde admin, migramos a Supabase con una tabla `landing_services`.
+
+## Lista de assets que necesito de Henry
+
+### Críticos (sin esto no se puede entregar)
+- [ ] **Video del hero** — MP4 (1080p, ~30 seg ideal, sin audio) o URL Vimeo/YouTube
+- [ ] **5 fotos del equipo** — JPG/PNG, mínimo 800×800, fondo neutro idealmente
+- [ ] **Precios reales** (los 5 servicios):
+  - Visa Juvenil completa: base 1 hijo + cuánto suma cada hijo extra
+  - Visa Juvenil I-360+I-485: base + lógica hijos
+  - Visa Juvenil I-485: base + lógica hijos
+  - Asilo completo: precio fijo
+  - Asilo reforzamiento: precio fijo
+- [ ] **Bios cortas equipo** — 2-3 líneas por persona, rol + algo personal
+- [ ] **Reseñas** — mínimo 6: texto, nombre, servicio, estrellas (5/5 ideal)
+- [ ] **Número WhatsApp para CTAs** — ¿Andrium (+1 267-787-4365) o uno general?
+
+### Importantes (con placeholders si no llegan)
+- [ ] Logo UsaLatinoPrime alta resolución (SVG ideal)
+- [ ] Logo Sandbox Utah + descripción 1 párrafo
+- [ ] Logo/mockup DigiLegal + descripción 1 párrafo
+- [ ] FAQ por servicio (3-5 preguntas/respuestas comunes)
+- [ ] Headline principal para el hero (puedo proponer 3 opciones)
+- [ ] Misión/valores de la firma
+
+## Plan de entrega (5 PRs)
+
+### PR1: Esqueleto + Hero + Navbar/Footer (M, ~4-5 horas)
+- [ ] Route group `(landing)` con layout
+- [ ] Modificar `src/app/page.tsx` para dispatcher inteligente
+- [ ] Navbar sticky con scroll behavior
+- [ ] Footer con info legal
+- [ ] Hero con video placeholder
+- [ ] Setup tipografía + paleta nueva en globals
+- [ ] Responsive básico
+
+### PR2: Catálogo en home + 1 servicio piloto (L, ~6-8 horas)
+- [ ] Componente `ServiceCatalog` con 5 cards
+- [ ] Data en `services-catalog.ts`
+- [ ] Página de servicio dinámica `/servicios/[slug]`
+- [ ] Primera página completa: Visa Juvenil Completa
+- [ ] Componente `PhaseTimeline` reutilizable
+- [ ] Calculadora dinámica con número de hijos
+- [ ] CTA WhatsApp con mensaje pre-llenado
+
+### PR3: Resto de servicios (M, ~3-4 horas)
+- [ ] 4 páginas restantes: VJ-i360, VJ-i485, Asilo completo, Asilo reforzamiento
+- [ ] Datos en catalog
+- [ ] FAQ por servicio
+
+### PR4: Reseñas + Lanzamientos + Equipo (L, ~5-6 horas)
+- [ ] Sección Testimonios con carousel o grid
+- [ ] Sección Próximos Lanzamientos (Sandbox + DigiLegal)
+- [ ] Preview equipo en home
+- [ ] Página completa `/sobre-nosotros`
+
+### PR5: SEO + Animaciones + Pulido final (M, ~3-4 horas)
+- [ ] Metadata por página (title, description, OG image)
+- [ ] sitemap.xml
+- [ ] robots.txt
+- [ ] Microanimaciones (fade-in al scroll, hover effects)
+- [ ] Performance: lazy load del video, optimización de imágenes con next/image
+- [ ] Accesibilidad: alt text, ARIA, focus states
+- [ ] Test responsive en mobile/tablet/desktop
+
+## Riesgos
+
+1. **Sin assets reales no se ve bien** — la calidad de la landing depende 100% de las fotos y el video. Si no llegan, queda con placeholders feos.
+2. **Precios sensibles** — son visibles públicamente y aparecen en ads. Cualquier cambio hay que coordinar.
+3. **WhatsApp como único CTA** — funciona para arranque pero limita escalabilidad. Para v2 quizá un mini-formulario que envíe a WhatsApp con datos pre-cargados.
+4. **El branding nuevo puede chocar con la app** — si abres la landing premium y luego vas al dashboard con paleta vieja, hay disonancia. Aceptable por ahora, pero quizá rediseñar la app en una v2.
+5. **Conflicto con `/visa-juvenil-form`** — esa ruta ya existe (form público de visa juvenil). Hay que confirmar si es la misma o si seguirá funcionando paralela.
+
+## Decisiones abiertas (preguntar antes de PR2)
+
+- ¿Cómo se llama el botón principal del CTA? "Hablar con un asesor", "Iniciar trámite", "Cotizar ahora"
+- ¿Hay un eslogan/frase de marca que deba aparecer siempre?
+- ¿Sandbox Utah y DigiLegal aparecen "como cards" o como "banners destacados"?
+- ¿La calculadora muestra precio total o solo "desde $X" para no asustar a la primera?
+
+---
+
+**Espero aprobación de Henry para empezar PR1.**
+

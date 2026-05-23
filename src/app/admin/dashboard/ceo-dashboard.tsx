@@ -2,8 +2,6 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import {
   TrendingUp, TrendingDown, Users, FileSignature, DollarSign,
   AlertTriangle, Clock, ArrowRight, PhoneCall,
@@ -23,24 +21,61 @@ export function CeoDashboard({ data }: Props) {
     : kpi.revenue_this_month > 0 ? 100 : 0
 
   return (
-    <div className="space-y-6 max-w-7xl">
-      {/* ═══ HERO: KPIs principales ═══ */}
+    <div className="space-y-6 max-w-7xl relative" style={{ color: '#FAFAFA' }}>
+      {/* ─── Header strip ─── */}
+      <div
+        className="rounded-2xl px-6 py-5 flex items-center justify-between gap-4 flex-wrap relative overflow-hidden"
+        style={{
+          background: 'linear-gradient(180deg, rgba(20,20,20,0.95), rgba(8,8,8,0.95))',
+          border: '0.5px solid rgba(255,255,255,0.1)',
+          backdropFilter: 'blur(20px)',
+        }}
+      >
+        <span
+          aria-hidden
+          className="absolute top-0 left-0 right-0 h-px"
+          style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)' }}
+        />
+        <div className="flex items-center gap-3">
+          <span className="relative flex items-center justify-center" style={{ width: 8, height: 8 }}>
+            <span
+              className="absolute inset-0 rounded-full"
+              style={{ background: '#FFFFFF', animation: 'dash-ping 2s ease-in-out infinite' }}
+            />
+            <span
+              className="relative rounded-full"
+              style={{ width: 8, height: 8, background: '#FFFFFF', boxShadow: '0 0 10px rgba(255,255,255,0.7)' }}
+            />
+          </span>
+          <div>
+            <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: '#525252' }}>
+              VISTA CEO · DASHBOARD
+            </p>
+            <p style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.02em', marginTop: 2 }}>
+              Centro de operaciones
+            </p>
+          </div>
+        </div>
+        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.15em', color: '#525252' }}>
+          {new Date(data.generated_at).toLocaleString('es-US', { dateStyle: 'short', timeStyle: 'short' }).toUpperCase()}
+        </p>
+      </div>
+
+      {/* ─── KPIs ─── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
-          icon={<Users className="w-5 h-5" />}
+          icon={<Users className="w-4 h-4" strokeWidth={1.7} />}
           label="Clientes totales"
           value={kpi.total_clients.toLocaleString()}
-          accent="blue"
         />
         <KpiCard
-          icon={<FileSignature className="w-5 h-5" />}
+          icon={<FileSignature className="w-4 h-4" strokeWidth={1.7} />}
           label="Contratos firmados"
           value={kpi.contracts_signed.toLocaleString()}
           hint={`${ops.pending_signature.length} pend. firma`}
-          accent="emerald"
         />
         <KpiCard
-          icon={<DollarSign className="w-5 h-5" />}
+          icon={<DollarSign className="w-4 h-4" strokeWidth={1.7} />}
           label="Cobrado este mes"
           value={`$${kpi.revenue_this_month.toLocaleString()}`}
           hint={
@@ -49,251 +84,296 @@ export function CeoDashboard({ data }: Props) {
               : `${monthDelta > 0 ? '↑' : '↓'} ${Math.abs(monthDelta).toFixed(0)}% vs mes pasado`
           }
           deltaPositive={monthDelta >= 0}
-          accent="amber"
         />
         <KpiCard
-          icon={<AlertTriangle className="w-5 h-5" />}
+          icon={<AlertTriangle className="w-4 h-4" strokeWidth={1.7} />}
           label="Vencido"
           value={`$${kpi.revenue_overdue.toLocaleString()}`}
           hint={`${ops.overdue_clients.length} clientes con deuda`}
-          accent={kpi.revenue_overdue > 0 ? 'red' : 'gray'}
+          warning={kpi.revenue_overdue > 0}
         />
       </div>
 
-      {/* ═══ FUNNEL ═══ */}
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2">
-              <Layers className="w-5 h-5 text-[#002855]" />
-              <div>
-                <h2 className="text-base font-bold text-gray-900">Funnel del cliente</h2>
-                <p className="text-[11px] text-gray-500">Desde la primera llamada IA hasta el contrato firmado</p>
-              </div>
-            </div>
-          </div>
-          <FunnelChart stages={funnel} />
-        </CardContent>
-      </Card>
+      {/* ─── Funnel ─── */}
+      <DashCard>
+        <SectionHeader icon={<Layers className="w-4 h-4" strokeWidth={1.7} />} title="Funnel del cliente" subtitle="Desde la primera llamada IA hasta el contrato firmado" />
+        <FunnelChart stages={funnel} />
+      </DashCard>
 
-      {/* ═══ Grid 2 columnas: Servicios + Tendencia ═══ */}
+      {/* ─── Servicios + Tendencia ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Servicios */}
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Briefcase className="w-5 h-5 text-[#002855]" />
-                <h2 className="text-base font-bold text-gray-900">Servicios</h2>
-              </div>
-              <Link href="/admin/cases" className="text-[11px] text-blue-600 hover:underline">
-                Ver casos →
-              </Link>
-            </div>
-            <ServicesBreakdown services={services} />
-          </CardContent>
-        </Card>
+        <DashCard>
+          <SectionHeader
+            icon={<Briefcase className="w-4 h-4" strokeWidth={1.7} />}
+            title="Servicios"
+            action={<Link href="/admin/cases" style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: '#A1A1A1', letterSpacing: '0.15em' }}>VER CASOS →</Link>}
+          />
+          <ServicesBreakdown services={services} />
+        </DashCard>
 
-        {/* Tendencia 6 meses */}
-        <Card>
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Activity className="w-5 h-5 text-[#002855]" />
-                <h2 className="text-base font-bold text-gray-900">Tendencia · últimos 6 meses</h2>
-              </div>
-            </div>
-            <TrendChart points={trend} />
-          </CardContent>
-        </Card>
+        <DashCard>
+          <SectionHeader icon={<Activity className="w-4 h-4" strokeWidth={1.7} />} title="Tendencia · últimos 6 meses" />
+          <TrendChart points={trend} />
+        </DashCard>
       </div>
 
-      {/* ═══ Operaciones (lo que hace Andrium) ═══ */}
-      <Card>
-        <CardContent className="p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-amber-500" />
-              <div>
-                <h2 className="text-base font-bold text-gray-900">Operaciones diarias</h2>
-                <p className="text-[11px] text-gray-500">
-                  Lo que el equipo gestiona manualmente. <span className="text-amber-700 font-semibold">Próximamente automatizado</span>.
-                </p>
-              </div>
-            </div>
-          </div>
+      {/* ─── Operaciones diarias ─── */}
+      <DashCard>
+        <SectionHeader
+          icon={<Zap className="w-4 h-4" strokeWidth={1.7} />}
+          title="Operaciones diarias"
+          subtitle="Lo que el equipo gestiona manualmente · próximamente automatizado"
+        />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <OpStatCard
+            icon={<FileSignature className="w-3.5 h-3.5" strokeWidth={1.7} />}
+            label="Pendientes de firma"
+            value={ops.pending_signature.length}
+            hint={ops.pending_signature.length > 0 ? `${ops.pending_signature[0].days_waiting} días el más antiguo` : 'Al día'}
+            link="/admin/contratos"
+          />
+          <OpStatCard
+            icon={<Clock className="w-3.5 h-3.5" strokeWidth={1.7} />}
+            label="Próximos 7 días"
+            value={ops.upcoming_payments_7d_count}
+            hint={`$${ops.upcoming_payments_7d_amount.toLocaleString()} a cobrar`}
+            link="/admin/payments"
+          />
+          <OpStatCard
+            icon={<AlertTriangle className="w-3.5 h-3.5" strokeWidth={1.7} />}
+            label="Casos atascados"
+            value={ops.stuck_cases}
+            hint="sin movimiento >14d"
+            link="/admin/cases"
+          />
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <OpStatCard
-              icon={<FileSignature className="w-4 h-4 text-amber-600" />}
-              label="Pendientes de firma"
-              value={ops.pending_signature.length}
-              hint={ops.pending_signature.length > 0 ? `${ops.pending_signature[0].days_waiting} días el más antiguo` : 'Al día'}
-              link="/admin/contratos"
-              accent="amber"
-            />
-            <OpStatCard
-              icon={<Clock className="w-4 h-4 text-blue-600" />}
-              label="Próximos 7 días"
-              value={ops.upcoming_payments_7d_count}
-              hint={`$${ops.upcoming_payments_7d_amount.toLocaleString()} a cobrar`}
-              link="/admin/payments"
-              accent="blue"
-            />
-            <OpStatCard
-              icon={<AlertTriangle className="w-4 h-4 text-gray-600" />}
-              label="Casos atascados"
-              value={ops.stuck_cases}
-              hint="sin movimiento >14d"
-              link="/admin/cases"
-              accent="gray"
-            />
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <PendingSignatureList items={ops.pending_signature} />
+          <OverdueClientsList items={ops.overdue_clients} />
+        </div>
+      </DashCard>
 
-          {/* Sub-secciones colapsables */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-            <PendingSignatureList items={ops.pending_signature} />
-            <OverdueClientsList items={ops.overdue_clients} />
-          </div>
-        </CardContent>
-      </Card>
+      {/* ─── Auto-pilot ─── */}
+      <DashCard accent>
+        <SectionHeader
+          icon={<Sparkles className="w-4 h-4" strokeWidth={1.7} />}
+          title="Auto-pilot"
+          subtitle="Automatización progresiva del trabajo manual"
+          action={<span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', padding: '4px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.08)', color: '#FFFFFF', border: '0.5px solid rgba(255,255,255,0.15)' }}>SOON</span>}
+        />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <AutoPilotCard
+            icon={<FileSignature className="w-3.5 h-3.5" strokeWidth={1.7} />}
+            label="Contratos auto-generados"
+            value={autopilot.auto_contracts_this_month}
+            description="Cuando Vanessa marca acepta, el sistema genera el draft."
+            status="phase_2"
+          />
+          <AutoPilotCard
+            icon={<PhoneCall className="w-3.5 h-3.5" strokeWidth={1.7} />}
+            label="WhatsApp automáticos"
+            value={autopilot.auto_whatsapp_sent_this_month}
+            description="Recordatorios de firma + cobranza vía Twilio."
+            status="phase_3"
+          />
+          <AutoPilotCard
+            icon={<DollarSign className="w-3.5 h-3.5" strokeWidth={1.7} />}
+            label="Pagos cobrados solos"
+            value={autopilot.auto_payments_collected_this_month}
+            description="Cron de cobranza diario sin intervención humana."
+            status="phase_3"
+          />
+        </div>
+      </DashCard>
 
-      {/* ═══ Auto-pilot (Fase 2-3) ═══ */}
-      <Card className="border-2 border-dashed border-amber-200 bg-amber-50/30">
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-amber-500" />
-              <div>
-                <h2 className="text-base font-bold text-gray-900">Auto-pilot</h2>
-                <p className="text-[11px] text-gray-500">Automatización progresiva del trabajo manual</p>
-              </div>
-            </div>
-            <Badge className="bg-amber-100 text-amber-800">Próximamente</Badge>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <AutoPilotCard
-              icon={<FileSignature className="w-4 h-4 text-violet-600" />}
-              label="Contratos auto-generados"
-              value={autopilot.auto_contracts_this_month}
-              description="Cuando Vanessa marca acepta, el sistema genera el draft."
-              status="phase_2"
-            />
-            <AutoPilotCard
-              icon={<PhoneCall className="w-4 h-4 text-emerald-600" />}
-              label="WhatsApp automáticos"
-              value={autopilot.auto_whatsapp_sent_this_month}
-              description="Recordatorios de firma + cobranza vía Twilio."
-              status="phase_3"
-            />
-            <AutoPilotCard
-              icon={<DollarSign className="w-4 h-4 text-amber-600" />}
-              label="Pagos cobrados solos"
-              value={autopilot.auto_payments_collected_this_month}
-              description="Cron de cobranza diario sin intervención humana."
-              status="phase_3"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <p className="text-[11px] text-gray-400 text-right">
-        Datos actualizados: {new Date(data.generated_at).toLocaleString('es-US')}
-      </p>
+      <style>{`
+        @keyframes dash-ping {
+          0% { transform: scale(1); opacity: 0.8; }
+          100% { transform: scale(2.5); opacity: 0; }
+        }
+      `}</style>
     </div>
   )
 }
 
-// ══════════════════════════════════════════════════════════════════════
-// Componentes auxiliares
-// ══════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════
+// Reusable pieces
+// ════════════════════════════════════════════════════════════════════
+
+function DashCard({ children, accent }: { children: React.ReactNode; accent?: boolean }) {
+  return (
+    <div
+      className="relative rounded-2xl p-5 space-y-5 overflow-hidden"
+      style={{
+        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        border: '0.5px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(20px)',
+      }}
+    >
+      {accent && (
+        <span
+          aria-hidden
+          className="absolute top-0 left-0 right-0 h-px"
+          style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)' }}
+        />
+      )}
+      <span
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse at top, rgba(255,255,255,0.04), transparent 60%)',
+        }}
+      />
+      <div className="relative">{children}</div>
+    </div>
+  )
+}
+
+function SectionHeader({
+  icon, title, subtitle, action,
+}: {
+  icon: React.ReactNode
+  title: string
+  subtitle?: string
+  action?: React.ReactNode
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 mb-5">
+      <div className="flex items-center gap-3">
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center"
+          style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
+            border: '0.5px solid rgba(255,255,255,0.15)',
+            color: '#FFFFFF',
+          }}
+        >
+          {icon}
+        </div>
+        <div>
+          <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.018em', color: '#FFFFFF' }}>{title}</h2>
+          {subtitle && (
+            <p style={{ fontSize: 11, color: '#A1A1A1', marginTop: 2, letterSpacing: '-0.005em' }}>{subtitle}</p>
+          )}
+        </div>
+      </div>
+      {action && <div>{action}</div>}
+    </div>
+  )
+}
 
 function KpiCard({
-  icon, label, value, hint, accent = 'blue', deltaPositive,
+  icon, label, value, hint, deltaPositive, warning,
 }: {
   icon: React.ReactNode
   label: string
   value: string
   hint?: string
-  accent?: 'blue' | 'emerald' | 'amber' | 'red' | 'gray'
   deltaPositive?: boolean
+  warning?: boolean
 }) {
-  const accentMap = {
-    blue: 'from-blue-500/10 to-blue-500/0 text-blue-700 ring-blue-100',
-    emerald: 'from-emerald-500/10 to-emerald-500/0 text-emerald-700 ring-emerald-100',
-    amber: 'from-amber-500/10 to-amber-500/0 text-amber-700 ring-amber-100',
-    red: 'from-red-500/10 to-red-500/0 text-red-700 ring-red-100',
-    gray: 'from-gray-500/10 to-gray-500/0 text-gray-700 ring-gray-100',
-  }
   return (
-    <Card className={`relative overflow-hidden ring-1 ${accentMap[accent].split(' ').slice(2).join(' ')}`}>
-      <div className={`absolute inset-0 bg-gradient-to-br ${accentMap[accent].split(' ').slice(0, 2).join(' ')}`} />
-      <CardContent className="p-4 relative">
-        <div className={`inline-flex w-9 h-9 rounded-xl items-center justify-center mb-2 ${accentMap[accent].split(' ').slice(2).join(' ')}`}>
+    <div
+      className="group relative overflow-hidden rounded-2xl p-4 transition-all duration-500 hover:-translate-y-0.5"
+      style={{
+        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        border: '0.5px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(20px)',
+      }}
+    >
+      <span
+        aria-hidden
+        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+        style={{ background: 'radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 60%)' }}
+      />
+      <div className="relative">
+        <div
+          className="inline-flex w-8 h-8 rounded-lg items-center justify-center mb-3"
+          style={{
+            background: warning ? 'rgba(255,255,255,0.12)' : 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
+            border: '0.5px solid rgba(255,255,255,0.15)',
+            color: '#FFFFFF',
+          }}
+        >
           {icon}
         </div>
-        <p className="text-[11px] text-gray-500 font-medium">{label}</p>
-        <p className="text-2xl font-bold text-gray-900 mt-0.5">{value}</p>
+        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#525252' }}>
+          {label.toUpperCase()}
+        </p>
+        <p style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.025em', color: '#FFFFFF', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+          {value}
+        </p>
         {hint && (
-          <p className={`text-[10px] mt-1 flex items-center gap-1 ${
-            typeof deltaPositive === 'boolean'
-              ? deltaPositive ? 'text-emerald-700 font-semibold' : 'text-red-700 font-semibold'
-              : 'text-gray-500'
-          }`}>
-            {typeof deltaPositive === 'boolean' && (deltaPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />)}
+          <p
+            className="flex items-center gap-1 mt-1.5"
+            style={{
+              fontSize: 10,
+              color: typeof deltaPositive === 'boolean' ? '#FFFFFF' : '#A1A1A1',
+              fontFamily: 'var(--font-mono-tech)',
+              letterSpacing: '0.05em',
+              fontWeight: typeof deltaPositive === 'boolean' ? 700 : 400,
+            }}
+          >
+            {typeof deltaPositive === 'boolean' && (deltaPositive ? <TrendingUp className="w-3 h-3" strokeWidth={2} /> : <TrendingDown className="w-3 h-3" strokeWidth={2} />)}
             {hint}
           </p>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
 function FunnelChart({ stages }: { stages: CeoDashboardData['funnel'] }) {
   const max = Math.max(...stages.map(s => s.count), 1)
-
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {stages.map((stage, i) => {
         const pct = (stage.count / max) * 100
         const prevStage = i > 0 ? stages[i - 1] : null
         const conversion = prevStage && prevStage.count > 0
           ? (stage.count / prevStage.count) * 100
           : null
-        const colors = [
-          'from-rose-500 to-rose-400',
-          'from-orange-500 to-orange-400',
-          'from-amber-500 to-amber-400',
-          'from-yellow-500 to-yellow-400',
-          'from-lime-500 to-lime-400',
-          'from-emerald-500 to-emerald-400',
-          'from-teal-500 to-teal-400',
-        ]
+        // Cada etapa con intensidad blanca distinta
+        const intensity = 1 - (i / Math.max(stages.length - 1, 1)) * 0.4
         return (
-          <div key={stage.key} className="group">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2 text-sm">
-                <span className="font-semibold text-gray-900">{stage.label}</span>
-                <span className="text-[11px] text-gray-400">{stage.description}</span>
+          <div key={stage.key}>
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-2">
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>{stage.label}</span>
+                <span style={{ fontSize: 10, color: '#525252' }}>{stage.description}</span>
               </div>
-              <div className="flex items-center gap-2 text-[11px]">
+              <div className="flex items-center gap-2">
                 {conversion !== null && (
-                  <span className={`font-medium ${
-                    conversion >= 50 ? 'text-emerald-700' : conversion >= 20 ? 'text-amber-700' : 'text-red-700'
-                  }`}>
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-mono-tech)',
+                      fontSize: 10,
+                      fontWeight: 500,
+                      letterSpacing: '0.05em',
+                      color: conversion >= 50 ? '#FFFFFF' : conversion >= 20 ? '#A1A1A1' : '#525252',
+                    }}
+                  >
                     {conversion.toFixed(0)}%
                   </span>
                 )}
-                <span className="font-bold text-gray-900 tabular-nums">{stage.count.toLocaleString()}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>
+                  {stage.count.toLocaleString()}
+                </span>
               </div>
             </div>
-            <div className="h-7 bg-gray-50 rounded-md overflow-hidden">
+            <div className="h-7 rounded-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
               <div
-                className={`h-full bg-gradient-to-r ${colors[i] || 'from-gray-500 to-gray-400'} transition-all duration-700 flex items-center px-2`}
-                style={{ width: `${pct}%`, minWidth: stage.count > 0 ? '4%' : '0' }}
+                className="h-full transition-all duration-700 flex items-center px-2"
+                style={{
+                  width: `${pct}%`,
+                  minWidth: stage.count > 0 ? '4%' : '0',
+                  background: `linear-gradient(90deg, rgba(255,255,255,${intensity * 0.95}), rgba(255,255,255,${intensity * 0.6}))`,
+                  boxShadow: `0 0 16px rgba(255,255,255,${intensity * 0.25})`,
+                }}
               >
                 {pct > 12 && (
-                  <span className="text-[10px] text-white font-bold tabular-nums">
+                  <span style={{ fontSize: 10, fontWeight: 700, color: '#000000', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
                     {stage.count}
                   </span>
                 )}
@@ -312,7 +392,7 @@ function ServicesBreakdown({ services }: { services: CeoDashboardData['services'
   const maxRevenue = Math.max(...visible.map(s => s.revenue_signed), 1)
 
   if (visible.length === 0) {
-    return <p className="text-sm text-gray-400 text-center py-6">Sin servicios con actividad</p>
+    return <p className="text-center py-6" style={{ fontSize: 13, color: '#525252' }}>Sin servicios con actividad</p>
   }
 
   return (
@@ -322,20 +402,28 @@ function ServicesBreakdown({ services }: { services: CeoDashboardData['services'
         const sharePct = totalRevenue > 0 ? (s.revenue_signed / totalRevenue) * 100 : 0
         return (
           <div key={s.slug}>
-            <div className="flex items-center justify-between text-sm mb-1">
-              <span className="font-medium text-gray-900 truncate flex-1 mr-3">{s.name}</span>
-              <span className="text-xs text-gray-500 flex-shrink-0">
-                {s.contracts} contratos · <span className="font-bold text-gray-900">${s.revenue_signed.toLocaleString()}</span>
+            <div className="flex items-center justify-between mb-1">
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#FFFFFF', letterSpacing: '-0.005em' }} className="truncate flex-1 mr-3">
+                {s.name}
+              </span>
+              <span style={{ fontSize: 11, color: '#A1A1A1' }}>
+                {s.contracts} contratos · <span style={{ fontWeight: 700, color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>${s.revenue_signed.toLocaleString()}</span>
               </span>
             </div>
-            <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
               <div
-                className="h-full rounded-full bg-gradient-to-r from-[#002855] to-[#F2A900]"
-                style={{ width: `${Math.max(2, pct)}%` }}
+                className="h-full rounded-full"
+                style={{
+                  width: `${Math.max(2, pct)}%`,
+                  background: 'linear-gradient(90deg, rgba(255,255,255,0.5), #FFFFFF)',
+                  boxShadow: '0 0 8px rgba(255,255,255,0.3)',
+                }}
               />
             </div>
             {sharePct > 0 && (
-              <p className="text-[10px] text-gray-400 mt-0.5">{sharePct.toFixed(1)}% de ingresos firmados</p>
+              <p style={{ fontSize: 10, color: '#525252', marginTop: 3, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+                {sharePct.toFixed(1)}% DE INGRESOS FIRMADOS
+              </p>
             )}
           </div>
         )
@@ -350,8 +438,7 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
 
   return (
     <div className="space-y-3">
-      {/* Barras por mes */}
-      <div className="grid grid-cols-6 gap-1.5 h-36">
+      <div className="grid grid-cols-6 gap-2 h-36">
         {points.map((p, i) => {
           const expectedH = (p.revenue_expected / maxRev) * 100
           const collectedH = (p.revenue_collected / maxRev) * 100
@@ -359,27 +446,45 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
           return (
             <div
               key={p.month}
-              className="relative flex items-end justify-center gap-0.5 cursor-pointer group"
+              className="relative flex items-end justify-center gap-0.5 cursor-pointer"
               onMouseEnter={() => setHoverIdx(i)}
               onMouseLeave={() => setHoverIdx(null)}
             >
-              {/* Esperado (fondo) */}
               <div
-                className="w-3 bg-amber-100 rounded-t transition-all"
-                style={{ height: `${Math.max(2, expectedH)}%` }}
+                className="w-2.5 rounded-t transition-all"
+                style={{
+                  height: `${Math.max(2, expectedH)}%`,
+                  background: 'rgba(255,255,255,0.12)',
+                  border: '0.5px solid rgba(255,255,255,0.18)',
+                }}
               />
-              {/* Cobrado (foreground) */}
               <div
-                className={`w-3 rounded-t transition-all ${isHover ? 'bg-emerald-700' : 'bg-emerald-500'}`}
-                style={{ height: `${Math.max(2, collectedH)}%` }}
+                className="w-2.5 rounded-t transition-all"
+                style={{
+                  height: `${Math.max(2, collectedH)}%`,
+                  background: isHover ? '#FFFFFF' : 'rgba(255,255,255,0.7)',
+                  boxShadow: isHover ? '0 0 16px rgba(255,255,255,0.5)' : 'none',
+                }}
               />
               {isHover && (
-                <div className="absolute bottom-full mb-1 px-2 py-1 rounded bg-gray-900 text-white text-[10px] whitespace-nowrap z-10 shadow-lg">
-                  <p className="font-semibold capitalize">{p.label}</p>
-                  <p className="text-emerald-300">Cobrado: ${p.revenue_collected.toLocaleString()}</p>
-                  <p className="text-amber-300">Esperado: ${p.revenue_expected.toLocaleString()}</p>
-                  <p className="text-gray-300 text-[9px] mt-0.5">
-                    {p.contracts_signed}/{p.contracts_created} firmados/creados
+                <div
+                  className="absolute bottom-full mb-2 px-3 py-2 rounded-lg whitespace-nowrap z-10"
+                  style={{
+                    background: 'rgba(20,20,20,0.98)',
+                    border: '0.5px solid rgba(255,255,255,0.15)',
+                    backdropFilter: 'blur(20px)',
+                    boxShadow: '0 12px 24px rgba(0,0,0,0.6)',
+                  }}
+                >
+                  <p style={{ fontSize: 11, fontWeight: 600, color: '#FFFFFF', textTransform: 'capitalize' }}>{p.label}</p>
+                  <p style={{ fontSize: 10, color: '#FFFFFF', marginTop: 2 }}>
+                    Cobrado: <span style={{ fontWeight: 700 }}>${p.revenue_collected.toLocaleString()}</span>
+                  </p>
+                  <p style={{ fontSize: 10, color: '#A1A1A1' }}>
+                    Esperado: ${p.revenue_expected.toLocaleString()}
+                  </p>
+                  <p style={{ fontSize: 9, color: '#525252', marginTop: 4, fontFamily: 'var(--font-mono-tech)' }}>
+                    {p.contracts_signed}/{p.contracts_created} FIRMADOS/CREADOS
                   </p>
                 </div>
               )}
@@ -387,22 +492,20 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
           )
         })}
       </div>
-      {/* Labels meses */}
-      <div className="grid grid-cols-6 gap-1.5">
+      <div className="grid grid-cols-6 gap-2">
         {points.map(p => (
-          <div key={p.month} className="text-[10px] text-gray-500 text-center capitalize">
+          <div key={p.month} className="text-center" style={{ fontSize: 9, color: '#525252', textTransform: 'capitalize', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.1em' }}>
             {p.label}
           </div>
         ))}
       </div>
-      {/* Leyenda */}
-      <div className="flex items-center gap-4 text-[10px] text-gray-500 pt-2 border-t border-gray-100">
-        <span className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded bg-emerald-500" />
+      <div className="flex items-center gap-4 pt-3" style={{ fontSize: 10, color: '#A1A1A1', borderTop: '0.5px solid rgba(255,255,255,0.06)' }}>
+        <span className="inline-flex items-center gap-1.5">
+          <span style={{ width: 10, height: 10, borderRadius: 2, background: '#FFFFFF' }} />
           Cobrado
         </span>
-        <span className="flex items-center gap-1">
-          <span className="w-2.5 h-2.5 rounded bg-amber-100" />
+        <span className="inline-flex items-center gap-1.5">
+          <span style={{ width: 10, height: 10, borderRadius: 2, background: 'rgba(255,255,255,0.12)', border: '0.5px solid rgba(255,255,255,0.18)' }} />
           Esperado
         </span>
       </div>
@@ -411,57 +514,72 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
 }
 
 function OpStatCard({
-  icon, label, value, hint, link, accent,
+  icon, label, value, hint, link,
 }: {
   icon: React.ReactNode
   label: string
   value: number | string
   hint?: string
   link: string
-  accent: 'amber' | 'blue' | 'gray'
 }) {
-  const colorMap = {
-    amber: 'border-amber-100 hover:border-amber-200 bg-amber-50/30',
-    blue: 'border-blue-100 hover:border-blue-200 bg-blue-50/30',
-    gray: 'border-gray-200 hover:border-gray-300 bg-gray-50/30',
-  }
   return (
-    <Link href={link} className={`block rounded-xl border ${colorMap[accent]} p-3 transition-colors`}>
-      <div className="flex items-start justify-between mb-1">
-        <div className="flex items-center gap-2">
+    <Link
+      href={link}
+      className="group block rounded-xl p-4 transition-all duration-500"
+      style={{
+        background: 'rgba(255,255,255,0.04)',
+        border: '0.5px solid rgba(255,255,255,0.08)',
+      }}
+    >
+      <div className="flex items-start justify-between mb-2">
+        <div className="flex items-center gap-2" style={{ color: '#A1A1A1' }}>
           {icon}
-          <span className="text-xs font-medium text-gray-700">{label}</span>
+          <span style={{ fontSize: 11, fontWeight: 500, color: '#FFFFFF', letterSpacing: '-0.005em' }}>{label}</span>
         </div>
-        <ArrowRight className="w-3 h-3 text-gray-400" />
+        <ArrowRight className="w-3 h-3 transition-transform duration-500 group-hover:translate-x-0.5" style={{ color: '#525252' }} />
       </div>
-      <p className="text-xl font-bold text-gray-900">{value}</p>
-      {hint && <p className="text-[10px] text-gray-500 mt-0.5">{hint}</p>}
+      <p style={{ fontSize: 22, fontWeight: 700, color: '#FFFFFF', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
+        {value}
+      </p>
+      {hint && (
+        <p style={{ fontSize: 10, color: '#525252', marginTop: 2, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+          {hint}
+        </p>
+      )}
     </Link>
   )
 }
 
 function PendingSignatureList({ items }: { items: CeoDashboardData['ops']['pending_signature'] }) {
   return (
-    <div className="rounded-xl border border-amber-100 bg-amber-50/40 p-3">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-amber-900">
-          Esperando firma · top {items.length}
+    <div
+      className="rounded-xl p-4"
+      style={{
+        background: 'rgba(255,255,255,0.03)',
+        border: '0.5px solid rgba(255,255,255,0.08)',
+      }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: '#A1A1A1' }}>
+          ESPERANDO FIRMA · TOP {items.length}
         </p>
-        <Link href="/admin/contratos" className="text-[10px] text-amber-700 hover:underline">
-          Ver todos
+        <Link href="/admin/contratos" style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: '#525252', letterSpacing: '0.15em' }}>
+          VER →
         </Link>
       </div>
       {items.length === 0 ? (
-        <p className="text-[11px] text-gray-400 italic text-center py-2">
-          Sin contratos pendientes 🎉
+        <p className="text-center py-3" style={{ fontSize: 11, color: '#525252' }}>
+          Sin contratos pendientes
         </p>
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {items.slice(0, 5).map(c => (
-            <div key={c.id} className="flex items-center justify-between text-xs gap-2">
-              <span className="font-medium text-gray-800 truncate flex-1">{c.client_name}</span>
-              <span className="text-[10px] text-amber-700 font-semibold whitespace-nowrap">
-                {c.days_waiting}d · ${c.total_price.toLocaleString()}
+            <div key={c.id} className="flex items-center justify-between gap-2">
+              <span className="truncate flex-1" style={{ fontSize: 12, fontWeight: 500, color: '#FFFFFF' }}>
+                {c.client_name}
+              </span>
+              <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, color: '#A1A1A1', whiteSpace: 'nowrap' }}>
+                {c.days_waiting}D · ${c.total_price.toLocaleString()}
               </span>
             </div>
           ))}
@@ -473,28 +591,34 @@ function PendingSignatureList({ items }: { items: CeoDashboardData['ops']['pendi
 
 function OverdueClientsList({ items }: { items: CeoDashboardData['ops']['overdue_clients'] }) {
   return (
-    <div className="rounded-xl border border-red-100 bg-red-50/40 p-3">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-red-900">
-          Clientes con deuda
+    <div
+      className="rounded-xl p-4"
+      style={{
+        background: 'rgba(255,255,255,0.03)',
+        border: '0.5px solid rgba(255,255,255,0.08)',
+      }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: '#FFFFFF' }}>
+          ◆ CLIENTES CON DEUDA
         </p>
-        <Link href="/admin/payments" className="text-[10px] text-red-700 hover:underline">
-          Ver pagos
+        <Link href="/admin/payments" style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: '#525252', letterSpacing: '0.15em' }}>
+          VER →
         </Link>
       </div>
       {items.length === 0 ? (
-        <p className="text-[11px] text-gray-400 italic text-center py-2">
-          Sin deuda pendiente 🎉
+        <p className="text-center py-3" style={{ fontSize: 11, color: '#525252' }}>
+          Sin deuda pendiente
         </p>
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-2">
           {items.slice(0, 5).map(c => (
-            <div key={c.client_id} className="flex items-center justify-between text-xs gap-2">
-              <span className="font-medium text-gray-800 truncate flex-1">
+            <div key={c.client_id} className="flex items-center justify-between gap-2">
+              <span className="truncate flex-1" style={{ fontSize: 12, fontWeight: 500, color: '#FFFFFF' }}>
                 {c.name}
-                <span className="text-[10px] text-gray-400 ml-1">({c.installments_overdue})</span>
+                <span style={{ fontSize: 10, color: '#525252', marginLeft: 6 }}>({c.installments_overdue})</span>
               </span>
-              <span className="text-[10px] text-red-700 font-bold whitespace-nowrap">
+              <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap' }}>
                 ${c.total_overdue.toLocaleString()}
               </span>
             </div>
@@ -515,22 +639,38 @@ function AutoPilotCard({
   status: 'phase_2' | 'phase_3' | 'live'
 }) {
   return (
-    <div className="rounded-xl border border-amber-100 bg-white/60 p-3">
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2">
+    <div
+      className="rounded-xl p-4"
+      style={{
+        background: 'rgba(255,255,255,0.03)',
+        border: '0.5px solid rgba(255,255,255,0.08)',
+      }}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2" style={{ color: '#A1A1A1' }}>
           {icon}
-          <span className="text-xs font-semibold text-gray-700">{label}</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>{label}</span>
         </div>
-        <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-          status === 'live' ? 'bg-emerald-100 text-emerald-800' :
-          status === 'phase_2' ? 'bg-violet-100 text-violet-800' :
-          'bg-blue-100 text-blue-800'
-        }`}>
-          {status === 'live' ? 'Activo' : status === 'phase_2' ? 'Fase 2' : 'Fase 3'}
+        <span
+          style={{
+            fontFamily: 'var(--font-mono-tech)',
+            fontSize: 8,
+            fontWeight: 700,
+            letterSpacing: '0.2em',
+            padding: '2px 6px',
+            borderRadius: 3,
+            background: status === 'live' ? '#FFFFFF' : 'rgba(255,255,255,0.08)',
+            color: status === 'live' ? '#000000' : '#A1A1A1',
+            border: status === 'live' ? 'none' : '0.5px solid rgba(255,255,255,0.12)',
+          }}
+        >
+          {status === 'live' ? 'LIVE' : status === 'phase_2' ? 'FASE 2' : 'FASE 3'}
         </span>
       </div>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-      <p className="text-[10px] text-gray-500 mt-1 leading-snug">{description}</p>
+      <p style={{ fontSize: 24, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.025em', fontVariantNumeric: 'tabular-nums' }}>
+        {value}
+      </p>
+      <p style={{ fontSize: 10, color: '#525252', marginTop: 4, lineHeight: 1.5 }}>{description}</p>
     </div>
   )
 }

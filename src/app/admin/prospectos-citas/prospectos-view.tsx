@@ -3,9 +3,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import {
   Loader2, Phone, Bot, CalendarCheck, Clock, UserPlus, X,
@@ -57,9 +54,11 @@ const STATUS_CONFIG: Record<Status, { label: string; color: string; icon: typeof
 
 interface Props {
   mode: 'admin' | 'senior_consultant'
+  /** Cuando true, oculta el h1 interno (el padre renderiza un PageHeader). */
+  hideHeader?: boolean
 }
 
-export function ProspectosView({ mode }: Props) {
+export function ProspectosView({ mode, hideHeader }: Props) {
   const [items, setItems] = useState<Prospecto[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<TabKey>('llamar_ahora')
@@ -141,8 +140,8 @@ export function ProspectosView({ mode }: Props) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="w-5 h-5 animate-spin" style={{ color: '#A1A1A1' }} />
       </div>
     )
   }
@@ -155,39 +154,54 @@ export function ProspectosView({ mode }: Props) {
   return (
     <>
       <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-              <Bot className="w-6 h-6 text-rose-500" />
-              {title}
-            </h1>
-            <p className="text-sm text-gray-500">{subtitle}</p>
+        {!hideHeader && (
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: '#FFFFFF' }}>
+                <Bot className="w-6 h-6" style={{ color: '#FFFFFF' }} />
+                {title}
+              </h1>
+              <p style={{ fontSize: 13, color: '#A1A1A1' }}>{subtitle}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              {mode === 'admin' && (
+                <Link href="/admin/prospectos-citas/configuracion" className={PROS_BTN_GHOST}>
+                  <Settings2 className="w-3.5 h-3.5" /> Configurar horarios
+                </Link>
+              )}
+              <button onClick={load} className={PROS_BTN_GHOST}>
+                <RefreshCw className="w-3.5 h-3.5" /> Actualizar
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {mode === 'admin' && (
-              <Link href="/admin/prospectos-citas/configuracion">
-                <Button variant="outline" size="sm">
-                  <Settings2 className="w-3.5 h-3.5 mr-1" /> Configurar horarios
-                </Button>
-              </Link>
-            )}
-            <Button variant="outline" size="sm" onClick={load}>
-              <RefreshCw className="w-3.5 h-3.5 mr-1" /> Actualizar
-            </Button>
+        )}
+
+        {/* Toolbar when hideHeader (page-level) */}
+        {hideHeader && (
+          <div className="flex justify-end">
+            <button onClick={load} className={PROS_BTN_GHOST}>
+              <RefreshCw className="w-3.5 h-3.5" /> Actualizar
+            </button>
           </div>
-        </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <StatCard label="Llamar ahora" value={stats.ahora} accent="red" icon={<PhoneCall className="w-5 h-5 text-red-600" />} />
-          <StatCard label="Programadas" value={stats.proximas} accent="amber" icon={<Clock className="w-5 h-5 text-amber-600" />} />
-          <StatCard label="En curso" value={stats.enCurso} accent="blue" icon={<PhoneCall className="w-5 h-5 text-blue-600" />} />
-          <StatCard label="Completadas" value={stats.completadas} accent="green" icon={<CheckCircle className="w-5 h-5 text-green-600" />} />
-          <StatCard label="Conversión" value={`${conversionRate}%`} accent="blue" icon={<CalendarCheck className="w-5 h-5 text-blue-600" />} hint={`${stats.acepta} de ${stats.total}`} />
+          <StatCard label="Llamar ahora" value={stats.ahora} tone="danger" icon={<PhoneCall className="w-4 h-4" />} />
+          <StatCard label="Programadas" value={stats.proximas} tone="warning" icon={<Clock className="w-4 h-4" />} />
+          <StatCard label="En curso" value={stats.enCurso} tone="info" icon={<PhoneCall className="w-4 h-4" />} pulse={stats.enCurso > 0} />
+          <StatCard label="Completadas" value={stats.completadas} tone="success" icon={<CheckCircle className="w-4 h-4" />} />
+          <StatCard label="Conversión" value={`${conversionRate}%`} tone="white" icon={<CalendarCheck className="w-4 h-4" />} hint={`${stats.acepta} de ${stats.total}`} />
         </div>
 
-        {/* Tabs */}
-        <div className="flex flex-wrap gap-2">
+        {/* Tabs — segmented control */}
+        <div
+          className="inline-flex items-center gap-1 p-1 rounded-full flex-wrap"
+          style={{
+            background: 'rgba(255,255,255,0.04)',
+            border: '0.5px solid rgba(255,255,255,0.08)',
+          }}
+        >
           {([
             { key: 'llamar_ahora', label: 'Llamar ahora', count: stats.ahora },
             { key: 'upcoming', label: 'Programadas', count: stats.proximas },
@@ -195,154 +209,224 @@ export function ProspectosView({ mode }: Props) {
             { key: 'completadas', label: 'Completadas', count: stats.completadas },
             { key: 'no_procede', label: 'No procede' },
             { key: 'all', label: 'Todas' },
-          ] as const).map(t => (
-            <Button
-              key={t.key}
-              variant={tab === t.key ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setTab(t.key)}
-            >
-              {t.label}
-              {'count' in t && t.count ? (
-                <Badge className="ml-1.5 bg-white/20 text-current text-xs px-1.5">{t.count}</Badge>
-              ) : null}
-            </Button>
-          ))}
+          ] as const).map(t => {
+            const isActive = tab === t.key
+            return (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition-all duration-300"
+                style={{
+                  background: isActive ? '#FFFFFF' : 'transparent',
+                  color: isActive ? '#000000' : '#A1A1A1',
+                  fontSize: 12,
+                  fontWeight: isActive ? 700 : 500,
+                  letterSpacing: '-0.005em',
+                  boxShadow: isActive ? '0 0 16px rgba(255,255,255,0.2)' : 'none',
+                }}
+              >
+                {t.label}
+                {'count' in t && t.count ? (
+                  <span
+                    className="inline-flex items-center justify-center"
+                    style={{
+                      background: isActive ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.1)',
+                      color: isActive ? '#000000' : '#FFFFFF',
+                      fontFamily: 'var(--font-mono-tech)',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      minWidth: 16,
+                      height: 16,
+                      padding: '0 5px',
+                      borderRadius: 8,
+                    }}
+                  >
+                    {t.count}
+                  </span>
+                ) : null}
+              </button>
+            )
+          })}
         </div>
 
         {/* List */}
         <div className="space-y-3">
           {filtered.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Bot className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm text-gray-500">No hay prospectos en esta categoría.</p>
-              </CardContent>
-            </Card>
+            <div
+              className="rounded-2xl py-16 text-center"
+              style={{
+                background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
+                border: '0.5px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <div
+                className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3"
+                style={{
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '0.5px solid rgba(255,255,255,0.1)',
+                }}
+              >
+                <Bot className="w-7 h-7" style={{ color: '#525252' }} />
+              </div>
+              <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+                SIN PROSPECTOS EN ESTA CATEGORÍA
+              </p>
+            </div>
           ) : filtered.map(p => {
-            const cfg = STATUS_CONFIG[p.status]
-            const StatusIcon = cfg.icon
             const scheduled = new Date(p.scheduled_at)
             const isPast = scheduled.getTime() < now
             const isUpdating = updating === p.id
             const isEnCurso = p.call_status === 'en_curso'
+            const isLlamarAhora = p.call_status === 'llamada_ahora'
 
             return (
-              <Card key={p.id} className={`hover:shadow-sm transition-shadow ${isEnCurso ? 'ring-2 ring-blue-400' : ''}`}>
-                <CardContent className="p-4 space-y-3">
-                  <div className="flex items-start justify-between gap-4 flex-wrap">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <h3 className="text-base font-semibold text-gray-900">
-                          {p.guest_name || 'Sin nombre'}
-                        </h3>
-                        <Badge className={cfg.color}>
-                          <StatusIcon className="w-3 h-3 mr-1" />
-                          {cfg.label}
-                        </Badge>
-                        <Badge className="bg-rose-100 text-rose-700">
-                          <Bot className="w-3 h-3 mr-1" /> IA
-                        </Badge>
-                        {isEnCurso && (
-                          <Badge className="bg-blue-100 text-blue-700 animate-pulse">
-                            <PhoneCall className="w-3 h-3 mr-1" /> En llamada
-                          </Badge>
-                        )}
-                        {p.call_status === 'llamada_ahora' && !isEnCurso && (
-                          <Badge className="bg-red-100 text-red-700">
-                            <PhoneCall className="w-3 h-3 mr-1" /> Llamar ahora
-                          </Badge>
-                        )}
-                        {p.probability && (
-                          <Badge className={
-                            p.probability === 'alta' ? 'bg-green-100 text-green-700' :
-                            p.probability === 'media' ? 'bg-amber-100 text-amber-700' :
-                            'bg-gray-100 text-gray-700'
-                          }>
-                            Viabilidad: {p.probability}
-                          </Badge>
-                        )}
-                        {p.client_decision === 'acepta' && (
-                          <Badge className="bg-emerald-100 text-emerald-700">
-                            <CheckCircle className="w-3 h-3 mr-1" /> Acepta
-                          </Badge>
-                        )}
-                        {isPast && p.status === 'scheduled' && !p.call_status && (
-                          <Badge className="bg-orange-100 text-orange-800">
-                            <AlertCircle className="w-3 h-3 mr-1" /> Pasó la hora
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-x-4 gap-y-1 flex-wrap text-sm text-gray-500 mb-1">
-                        {p.guest_phone && (
-                          <a href={`tel:${p.guest_phone}`} className="flex items-center gap-1 text-blue-600 hover:underline">
-                            <Phone className="w-3.5 h-3.5" />
-                            {p.guest_phone}
-                          </a>
-                        )}
-                        <span className="flex items-center gap-1 text-gray-700 font-medium">
-                          <CalendarCheck className="w-3.5 h-3.5" />
-                          {format(scheduled, "EEEE d 'de' MMMM, HH:mm", { locale: es })}
-                        </span>
-                        <span className="text-gray-400">
-                          (registrado {formatDistanceToNow(new Date(p.created_at), { locale: es, addSuffix: true })})
-                        </span>
-                      </div>
-                      {p.notes && (
-                        <p className="text-sm text-gray-600 mt-2 bg-gray-50 rounded-md p-2">
-                          <span className="text-xs text-gray-400 uppercase tracking-wide block mb-0.5">Notas de la IA</span>
-                          {p.notes}
-                        </p>
+              <div
+                key={p.id}
+                className="relative rounded-2xl p-5 transition-all duration-500 group"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+                  border: isEnCurso ? '0.5px solid rgba(96,165,250,0.4)' : '0.5px solid rgba(255,255,255,0.1)',
+                  backdropFilter: 'blur(20px)',
+                  boxShadow: isEnCurso ? '0 0 24px rgba(96,165,250,0.18)' : 'none',
+                }}
+              >
+                {/* Inner glow halo on hover */}
+                <span
+                  aria-hidden
+                  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl"
+                  style={{ background: 'radial-gradient(ellipse at top, rgba(255,255,255,0.04), transparent 60%)' }}
+                />
+
+                <div className="relative flex items-start justify-between gap-4 flex-wrap">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
+                      <h3 style={{ fontSize: 17, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.018em' }}>
+                        {p.guest_name || 'Sin nombre'}
+                      </h3>
+                      <ProsBadge kind="ai" label="IA" icon={<Bot className="w-3 h-3" />} />
+                      {p.status === 'scheduled' && !isEnCurso && !isLlamarAhora && (
+                        <ProsBadge kind="warning" label={STATUS_CONFIG.scheduled.label} icon={<Clock className="w-3 h-3" />} />
                       )}
-                      {p.voice_call && (
-                        <Link
-                          href="/admin/llamadas"
-                          className="inline-flex items-center gap-1 text-xs text-rose-600 hover:text-rose-800 hover:underline mt-2"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                          Ver llamada completa ({p.voice_call.duration_seconds || 0}s)
-                        </Link>
+                      {p.status === 'completed' && (
+                        <ProsBadge kind="success" label="Completada" icon={<CheckCircle className="w-3 h-3" />} />
+                      )}
+                      {p.status === 'no_show' && (
+                        <ProsBadge kind="danger" label="No asistió" icon={<XCircle className="w-3 h-3" />} />
+                      )}
+                      {p.status === 'cancelled' && (
+                        <ProsBadge kind="neutral" label="Cancelada" icon={<X className="w-3 h-3" />} />
+                      )}
+                      {isEnCurso && (
+                        <ProsBadge kind="info" label="En llamada" icon={<PhoneCall className="w-3 h-3" />} pulse />
+                      )}
+                      {isLlamarAhora && !isEnCurso && (
+                        <ProsBadge kind="danger" label="Llamar ahora" icon={<PhoneCall className="w-3 h-3" />} pulse />
+                      )}
+                      {p.probability && (
+                        <ProsBadge
+                          kind={p.probability === 'alta' ? 'success' : p.probability === 'media' ? 'warning' : 'neutral'}
+                          label={`Viabilidad: ${p.probability}`}
+                        />
+                      )}
+                      {p.client_decision === 'acepta' && (
+                        <ProsBadge kind="success" label="Acepta" icon={<CheckCircle className="w-3 h-3" />} />
+                      )}
+                      {isPast && p.status === 'scheduled' && !p.call_status && (
+                        <ProsBadge kind="warning" label="Pasó la hora" icon={<AlertCircle className="w-3 h-3" />} />
                       )}
                     </div>
 
-                    <div className="flex flex-col gap-1.5 flex-shrink-0">
-                      {(p.call_status == null || p.call_status === 'llamada_ahora' || p.call_status === 'programada') && (
-                        <Button
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
-                          disabled={isUpdating}
-                          onClick={() => startCall(p)}
+                    <div className="flex items-center gap-x-5 gap-y-1 flex-wrap mb-2">
+                      {p.guest_phone && (
+                        <a
+                          href={`tel:${p.guest_phone}`}
+                          className="inline-flex items-center gap-1.5 transition-opacity hover:opacity-80"
+                          style={{ color: '#FFFFFF', fontSize: 13, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em' }}
                         >
-                          <PhoneCall className="w-3.5 h-3.5 mr-1" />
-                          Iniciar llamada
-                        </Button>
+                          <Phone className="w-3.5 h-3.5" />
+                          {p.guest_phone}
+                        </a>
                       )}
-                      {p.call_status === 'en_curso' && (
-                        <Button
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white"
-                          disabled={isUpdating}
-                          onClick={() => setSelected(p)}
-                        >
-                          <FileText className="w-3.5 h-3.5 mr-1" />
-                          Retomar captura
-                        </Button>
-                      )}
-                      {p.client_decision === 'acepta' && (
-                        <Button
-                          size="sm"
-                          className="bg-[#002855] hover:bg-[#001d3d] text-white"
-                          disabled={isUpdating}
-                          onClick={() => convertToClient(p)}
-                        >
-                          <UserPlus className="w-3.5 h-3.5 mr-1" />
-                          Pasar a contratos
-                        </Button>
-                      )}
+                      <span
+                        className="inline-flex items-center gap-1.5"
+                        style={{ color: '#A1A1A1', fontSize: 12, fontWeight: 500 }}
+                      >
+                        <CalendarCheck className="w-3.5 h-3.5" />
+                        {format(scheduled, "EEEE d 'de' MMM · HH:mm", { locale: es })}
+                      </span>
+                      <span style={{ color: '#525252', fontSize: 11, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+                        REG. {formatDistanceToNow(new Date(p.created_at), { locale: es, addSuffix: true }).toUpperCase()}
+                      </span>
                     </div>
+
+                    {p.notes && (
+                      <div
+                        className="mt-3 rounded-xl px-3.5 py-2.5"
+                        style={{
+                          background: 'rgba(255,255,255,0.03)',
+                          border: '0.5px solid rgba(255,255,255,0.06)',
+                        }}
+                      >
+                        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.2em', color: '#525252', marginBottom: 4 }}>
+                          NOTAS DE LA IA
+                        </p>
+                        <p style={{ fontSize: 12.5, color: '#A1A1A1', lineHeight: 1.5 }}>{p.notes}</p>
+                      </div>
+                    )}
+
+                    {p.voice_call && (
+                      <Link
+                        href="/admin/llamadas"
+                        className="inline-flex items-center gap-1 mt-3 transition-opacity hover:opacity-80"
+                        style={{
+                          color: '#FFFFFF',
+                          fontFamily: 'var(--font-mono-tech)',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          letterSpacing: '0.15em',
+                        }}
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        VER LLAMADA ({p.voice_call.duration_seconds || 0}s) →
+                      </Link>
+                    )}
                   </div>
-                </CardContent>
-              </Card>
+
+                  {/* Action buttons */}
+                  <div className="flex flex-col gap-1.5 flex-shrink-0">
+                    {(p.call_status == null || p.call_status === 'llamada_ahora' || p.call_status === 'programada') && (
+                      <button
+                        disabled={isUpdating}
+                        onClick={() => startCall(p)}
+                        className={PROS_BTN_SOLID}
+                      >
+                        <PhoneCall className="w-3.5 h-3.5" />
+                        Iniciar llamada
+                      </button>
+                    )}
+                    {p.call_status === 'en_curso' && (
+                      <button
+                        disabled={isUpdating}
+                        onClick={() => setSelected(p)}
+                        className={PROS_BTN_SOLID}
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        Retomar captura
+                      </button>
+                    )}
+                    {p.client_decision === 'acepta' && (
+                      <button
+                        disabled={isUpdating}
+                        onClick={() => convertToClient(p)}
+                        className={PROS_BTN_OUTLINE}
+                      >
+                        <UserPlus className="w-3.5 h-3.5" />
+                        Pasar a contratos
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             )
           })}
         </div>
@@ -362,32 +446,132 @@ export function ProspectosView({ mode }: Props) {
   )
 }
 
+// ════════════════════════════════════════════════════════════════════
+// Dark techno helpers
+// ════════════════════════════════════════════════════════════════════
+
+const PROS_BTN_GHOST =
+  'inline-flex items-center gap-1.5 px-3 py-2 rounded-full transition-all duration-200 ' +
+  'hover:bg-white/10 active:scale-95 text-[12px] font-semibold tracking-tight ' +
+  'bg-white/[0.04] border border-white/10 text-white'
+
+const PROS_BTN_SOLID =
+  'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 ' +
+  'hover:opacity-90 active:scale-95 text-[12px] font-semibold tracking-tight ' +
+  'bg-white text-black shadow-[0_4px_18px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset] disabled:opacity-50'
+
+const PROS_BTN_OUTLINE =
+  'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 ' +
+  'hover:bg-white/10 active:scale-95 text-[12px] font-semibold tracking-tight ' +
+  'bg-white/[0.06] border border-white/20 text-white disabled:opacity-50'
+
+type StatTone = 'success' | 'warning' | 'danger' | 'info' | 'white'
+
+const TONE_MAP: Record<StatTone, { icon: string; ring: string; bg: string }> = {
+  success: { icon: '#4ADE80', ring: 'rgba(34,197,94,0.3)',  bg: 'rgba(34,197,94,0.10)'  },
+  warning: { icon: '#FACC15', ring: 'rgba(250,204,21,0.3)', bg: 'rgba(250,204,21,0.10)' },
+  danger:  { icon: '#F87171', ring: 'rgba(248,113,113,0.3)', bg: 'rgba(248,113,113,0.10)' },
+  info:    { icon: '#60A5FA', ring: 'rgba(96,165,250,0.3)', bg: 'rgba(96,165,250,0.10)' },
+  white:   { icon: '#FFFFFF', ring: 'rgba(255,255,255,0.18)', bg: 'rgba(255,255,255,0.06)' },
+}
+
 function StatCard({
-  label, value, hint, icon, accent,
+  label, value, hint, icon, tone, pulse,
 }: {
   label: string
   value: string | number
   hint?: string
   icon: React.ReactNode
-  accent?: 'amber' | 'green' | 'red' | 'blue'
+  tone: StatTone
+  pulse?: boolean
 }) {
-  const accentClass =
-    accent === 'amber' ? 'bg-amber-50 border-amber-100' :
-    accent === 'green' ? 'bg-green-50 border-green-100' :
-    accent === 'red' ? 'bg-red-50 border-red-100' :
-    accent === 'blue' ? 'bg-blue-50 border-blue-100' :
-    'bg-white border-gray-100'
-
+  const t = TONE_MAP[tone]
   return (
-    <Card className={`${accentClass} border`}>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-2">
+    <div
+      className="relative rounded-2xl p-4 overflow-hidden transition-transform duration-300 hover:-translate-y-0.5"
+      style={{
+        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        border: '0.5px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(20px)',
+      }}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <span
+          className="inline-flex items-center justify-center w-7 h-7 rounded-lg relative"
+          style={{
+            background: t.bg,
+            border: `0.5px solid ${t.ring}`,
+            color: t.icon,
+          }}
+        >
           {icon}
-          <p className="text-xs text-gray-500 font-medium">{label}</p>
-        </div>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-        {hint && <p className="text-[10px] text-gray-400 mt-1">{hint}</p>}
-      </CardContent>
-    </Card>
+          {pulse && (
+            <span
+              aria-hidden
+              className="absolute inset-0 rounded-lg"
+              style={{
+                boxShadow: `0 0 12px ${t.icon}`,
+                animation: 'ulp-glow 2s ease-in-out infinite',
+              }}
+            />
+          )}
+        </span>
+        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#525252' }}>
+          {label.toUpperCase()}
+        </p>
+      </div>
+      <p style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.025em', color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>
+        {value}
+      </p>
+      {hint && (
+        <p style={{ fontSize: 10, color: '#525252', marginTop: 2, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+          {hint.toUpperCase()}
+        </p>
+      )}
+    </div>
+  )
+}
+
+type ProsBadgeKind = 'ai' | 'success' | 'warning' | 'danger' | 'info' | 'neutral'
+
+const PROS_BADGE_STYLES: Record<ProsBadgeKind, { bg: string; border: string; text: string; dot: string }> = {
+  ai:      { bg: 'rgba(255,255,255,0.06)',  border: 'rgba(255,255,255,0.18)', text: '#FFFFFF', dot: '#FFFFFF' },
+  success: { bg: 'rgba(34,197,94,0.10)',    border: 'rgba(34,197,94,0.3)',    text: '#86EFAC', dot: '#4ADE80' },
+  warning: { bg: 'rgba(250,204,21,0.10)',   border: 'rgba(250,204,21,0.3)',   text: '#FDE68A', dot: '#FACC15' },
+  danger:  { bg: 'rgba(248,113,113,0.10)',  border: 'rgba(248,113,113,0.3)',  text: '#FCA5A5', dot: '#F87171' },
+  info:    { bg: 'rgba(96,165,250,0.10)',   border: 'rgba(96,165,250,0.3)',   text: '#93C5FD', dot: '#60A5FA' },
+  neutral: { bg: 'rgba(255,255,255,0.04)',  border: 'rgba(255,255,255,0.1)',  text: '#A1A1A1', dot: '#A1A1A1' },
+}
+
+function ProsBadge({ kind, label, icon, pulse }: { kind: ProsBadgeKind; label: string; icon?: React.ReactNode; pulse?: boolean }) {
+  const s = PROS_BADGE_STYLES[kind]
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full"
+      style={{
+        background: s.bg,
+        border: `0.5px solid ${s.border}`,
+        fontFamily: 'var(--font-mono-tech)',
+        fontSize: 9,
+        fontWeight: 700,
+        letterSpacing: '0.1em',
+        color: s.text,
+      }}
+    >
+      {pulse && (
+        <span className="relative flex items-center justify-center" style={{ width: 5, height: 5 }}>
+          <span
+            className="absolute inset-0 rounded-full"
+            style={{ background: s.dot, animation: 'ulp-ping 1.6s ease-in-out infinite' }}
+          />
+          <span
+            className="relative rounded-full"
+            style={{ width: 5, height: 5, background: s.dot, boxShadow: `0 0 6px ${s.dot}` }}
+          />
+        </span>
+      )}
+      {icon}
+      {label.toUpperCase()}
+    </span>
   )
 }

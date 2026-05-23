@@ -2,14 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import {
   Loader2, Calendar, Clock, Settings2, ArrowLeft, Save, Plus, Trash2, Ban,
 } from 'lucide-react'
+import { PageHeader, AdminKeyframes } from '@/components/admin-ui'
 
 interface TimeBlock { start_hour: number; end_hour: number }
 interface DayConfig {
@@ -149,200 +146,428 @@ export default function ProspectSchedulingConfigPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+      <div className="flex items-center justify-center py-24">
+        <Loader2 className="w-5 h-5 animate-spin" style={{ color: '#A1A1A1' }} />
       </div>
     )
   }
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <Link href="/admin/prospectos-citas" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 mb-2">
-            <ArrowLeft className="w-4 h-4" /> Volver
-          </Link>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Calendar className="w-6 h-6 text-rose-500" />
-            Calendario de Prospectos IA
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Configura cuándo la IA puede agendar llamadas con prospectos.
-            Es independiente del calendario de clientes reales.
-          </p>
-        </div>
-      </div>
+      <AdminKeyframes />
+
+      <Link
+        href="/admin/prospectos-citas"
+        className="inline-flex items-center gap-1.5 transition-opacity hover:opacity-80"
+        style={{
+          fontFamily: 'var(--font-mono-tech)',
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: '0.2em',
+          color: '#A1A1A1',
+        }}
+      >
+        <ArrowLeft className="w-3.5 h-3.5" />
+        VOLVER A PROSPECTOS
+      </Link>
+
+      <PageHeader
+        eyebrow="Operación · Prospectos IA · Configuración"
+        title="Calendario IA"
+        accentDot
+        description="Configura cuándo la IA puede agendar llamadas con prospectos. Es independiente del calendario de clientes reales."
+      />
 
       {/* Global settings */}
-      <Card>
-        <CardContent className="p-5">
-          <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
-            <Settings2 className="w-4 h-4 text-gray-500" />
-            Configuración global
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-            <div>
-              <Label className="text-xs">Duración de cada cita (min)</Label>
-              <Input
-                type="number"
-                min={15}
-                max={120}
-                step={15}
-                value={settings.slot_duration_minutes}
-                onChange={e => setSettings({ ...settings, slot_duration_minutes: parseInt(e.target.value) || 30 })}
-              />
-              <p className="text-[10px] text-gray-400 mt-1">Default: 30 min (call de calificación)</p>
-            </div>
-            <div>
-              <Label className="text-xs">Aviso mínimo (horas)</Label>
-              <Input
-                type="number"
-                min={0}
-                max={48}
-                step={1}
-                value={settings.advance_notice_hours}
-                onChange={e => setSettings({ ...settings, advance_notice_hours: parseInt(e.target.value) || 0 })}
-              />
-              <p className="text-[10px] text-gray-400 mt-1">No agendar antes de X horas desde ahora</p>
-            </div>
-            <Button onClick={saveSettings} disabled={saving === 'settings'}>
-              {saving === 'settings' ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
-              Guardar
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <Panel icon={<Settings2 className="w-4 h-4" />} title="Configuración global">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+          <FormField label="Duración de cada cita (min)" hint="Default: 30 min (call de calificación)">
+            <DarkNumberInput
+              value={settings.slot_duration_minutes}
+              min={15}
+              max={120}
+              step={15}
+              onChange={(v) => setSettings({ ...settings, slot_duration_minutes: v })}
+            />
+          </FormField>
+          <FormField label="Aviso mínimo (horas)" hint="No agendar antes de X horas desde ahora">
+            <DarkNumberInput
+              value={settings.advance_notice_hours}
+              min={0}
+              max={48}
+              step={1}
+              onChange={(v) => setSettings({ ...settings, advance_notice_hours: v })}
+            />
+          </FormField>
+          <button onClick={saveSettings} disabled={saving === 'settings'} className={PRIMARY_BTN}>
+            {saving === 'settings' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            Guardar
+          </button>
+        </div>
+      </Panel>
 
       {/* Day-of-week grid */}
-      <Card>
-        <CardContent className="p-5">
-          <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
-            <Clock className="w-4 h-4 text-gray-500" />
-            Horarios por día
-          </h2>
-          <div className="space-y-3">
-            {config.map((day, idx) => (
-              <div key={day.day_of_week} className="rounded-lg border border-gray-200 p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={day.is_available}
-                      onChange={e => updateDayAvailable(idx, e.target.checked)}
-                      className="w-4 h-4 accent-rose-500"
-                    />
-                    <span className="font-medium text-gray-900 text-sm">{DAYS[day.day_of_week]}</span>
-                  </label>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => saveDayConfig(config[idx])}
-                    disabled={saving === `day-${day.day_of_week}`}
+      <Panel icon={<Clock className="w-4 h-4" />} title="Horarios por día">
+        <div className="space-y-2">
+          {config.map((day, idx) => (
+            <div
+              key={day.day_of_week}
+              className="rounded-xl p-4"
+              style={{
+                background: day.is_available ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.015)',
+                border: '0.5px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <CustomCheckbox
+                    checked={day.is_available}
+                    onChange={(c) => updateDayAvailable(idx, c)}
+                  />
+                  <span
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: day.is_available ? '#FFFFFF' : '#525252',
+                      letterSpacing: '-0.005em',
+                    }}
                   >
-                    {saving === `day-${day.day_of_week}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                  </Button>
-                </div>
+                    {DAYS[day.day_of_week]}
+                  </span>
+                  {!day.is_available && (
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-mono-tech)',
+                        fontSize: 9,
+                        fontWeight: 700,
+                        letterSpacing: '0.18em',
+                        color: '#525252',
+                      }}
+                    >
+                      INACTIVO
+                    </span>
+                  )}
+                </label>
+                <button
+                  onClick={() => saveDayConfig(config[idx])}
+                  disabled={saving === `day-${day.day_of_week}`}
+                  className={ICON_BTN}
+                  title="Guardar"
+                >
+                  {saving === `day-${day.day_of_week}` ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                </button>
+              </div>
 
-                {day.is_available && (
-                  <div className="space-y-2 pl-6">
-                    {day.time_blocks.length === 0 && (
-                      <p className="text-xs text-gray-400 italic">Sin bloques de horario — agrega uno o desactiva el día</p>
-                    )}
-                    {day.time_blocks.map((block, bIdx) => (
-                      <div key={bIdx} className="flex items-center gap-2 text-sm">
-                        <select
-                          value={block.start_hour}
-                          onChange={e => {
-                            const blocks = [...day.time_blocks]
-                            blocks[bIdx] = { ...block, start_hour: parseInt(e.target.value) }
-                            updateDayBlocks(idx, blocks)
-                          }}
-                          className="h-8 rounded border border-gray-200 bg-white px-2 text-xs"
-                        >
-                          {Array.from({ length: 24 }, (_, h) => (
-                            <option key={h} value={h}>{formatHour(h)}</option>
-                          ))}
-                        </select>
-                        <span className="text-gray-400">a</span>
-                        <select
-                          value={block.end_hour}
-                          onChange={e => {
-                            const blocks = [...day.time_blocks]
-                            blocks[bIdx] = { ...block, end_hour: parseInt(e.target.value) }
-                            updateDayBlocks(idx, blocks)
-                          }}
-                          className="h-8 rounded border border-gray-200 bg-white px-2 text-xs"
-                        >
-                          {Array.from({ length: 24 }, (_, h) => (
-                            <option key={h} value={h}>{formatHour(h)}</option>
-                          ))}
-                        </select>
-                        <Button size="sm" variant="ghost" onClick={() => removeBlock(idx, bIdx)} className="text-red-400 hover:text-red-600 h-8">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
-                      </div>
-                    ))}
-                    <Button size="sm" variant="outline" onClick={() => addBlock(idx)} className="mt-1">
-                      <Plus className="w-3.5 h-3.5 mr-1" /> Agregar bloque
-                    </Button>
-                  </div>
-                )}
+              {day.is_available && (
+                <div className="mt-3 pl-7 space-y-2">
+                  {day.time_blocks.length === 0 && (
+                    <p
+                      style={{
+                        fontSize: 11,
+                        color: '#525252',
+                        fontFamily: 'var(--font-mono-tech)',
+                        letterSpacing: '0.1em',
+                        fontStyle: 'italic',
+                      }}
+                    >
+                      SIN BLOQUES — AGREGA UNO O DESACTIVA EL DÍA
+                    </p>
+                  )}
+                  {day.time_blocks.map((block, bIdx) => (
+                    <div key={bIdx} className="flex items-center gap-2">
+                      <HourSelect
+                        value={block.start_hour}
+                        onChange={(v) => {
+                          const blocks = [...day.time_blocks]
+                          blocks[bIdx] = { ...block, start_hour: v }
+                          updateDayBlocks(idx, blocks)
+                        }}
+                      />
+                      <span style={{ color: '#525252', fontSize: 11, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.2em' }}>
+                        A
+                      </span>
+                      <HourSelect
+                        value={block.end_hour}
+                        onChange={(v) => {
+                          const blocks = [...day.time_blocks]
+                          blocks[bIdx] = { ...block, end_hour: v }
+                          updateDayBlocks(idx, blocks)
+                        }}
+                      />
+                      <button
+                        onClick={() => removeBlock(idx, bIdx)}
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/10"
+                        style={{ color: '#FCA5A5' }}
+                        title="Eliminar bloque"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                  <button onClick={() => addBlock(idx)} className={GHOST_BTN}>
+                    <Plus className="w-3.5 h-3.5" /> Agregar bloque
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </Panel>
+
+      {/* Blocked dates */}
+      <Panel icon={<Ban className="w-4 h-4" />} title="Fechas bloqueadas" description="Días que la IA NO puede agendar (vacaciones, conferencias, etc.).">
+        <div className="flex items-end gap-3 mb-5 flex-wrap">
+          <FormField label="Fecha" className="flex-1 min-w-[180px]">
+            <DarkDateInput value={newBlockDate} onChange={setNewBlockDate} />
+          </FormField>
+          <FormField label="Motivo (opcional)" className="flex-1 min-w-[180px]">
+            <DarkTextInput
+              value={newBlockReason}
+              onChange={setNewBlockReason}
+              placeholder="Ej: vacaciones"
+            />
+          </FormField>
+          <button
+            onClick={() => newBlockDate && toggleBlockDate('block', newBlockDate, newBlockReason)}
+            disabled={!newBlockDate}
+            className={PRIMARY_BTN}
+          >
+            <Ban className="w-3.5 h-3.5" /> Bloquear
+          </button>
+        </div>
+
+        {blockedDates.length === 0 ? (
+          <p style={{ fontSize: 11, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em', fontStyle: 'italic' }}>
+            NO HAY FECHAS BLOQUEADAS
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {blockedDates.map((b) => (
+              <div
+                key={b.id}
+                className="flex items-center justify-between p-3 rounded-xl"
+                style={{
+                  background: 'rgba(248,113,113,0.06)',
+                  border: '0.5px solid rgba(248,113,113,0.2)',
+                }}
+              >
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: '#FCA5A5' }}>
+                    {new Date(b.blocked_date + 'T12:00:00').toLocaleDateString('es-US', {
+                      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                    })}
+                  </p>
+                  {b.reason && (
+                    <p style={{ fontSize: 11, color: '#A1A1A1', marginTop: 2 }}>
+                      {b.reason}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => toggleBlockDate('unblock', b.blocked_date)}
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/15"
+                  style={{ color: '#FCA5A5' }}
+                  title="Desbloquear"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Blocked dates */}
-      <Card>
-        <CardContent className="p-5">
-          <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2 mb-4">
-            <Ban className="w-4 h-4 text-gray-500" />
-            Fechas bloqueadas
-          </h2>
-          <p className="text-xs text-gray-500 mb-3">
-            Días que la IA NO puede agendar (vacaciones, conferencias, etc.).
-          </p>
-
-          <div className="flex items-end gap-2 mb-4 flex-wrap">
-            <div className="flex-1 min-w-[180px]">
-              <Label className="text-xs">Fecha</Label>
-              <Input type="date" value={newBlockDate} onChange={e => setNewBlockDate(e.target.value)} />
-            </div>
-            <div className="flex-1 min-w-[180px]">
-              <Label className="text-xs">Motivo (opcional)</Label>
-              <Input value={newBlockReason} onChange={e => setNewBlockReason(e.target.value)} placeholder="Ej: vacaciones" />
-            </div>
-            <Button
-              onClick={() => newBlockDate && toggleBlockDate('block', newBlockDate, newBlockReason)}
-              disabled={!newBlockDate}
-            >
-              <Ban className="w-4 h-4 mr-1" />
-              Bloquear
-            </Button>
-          </div>
-
-          {blockedDates.length === 0 ? (
-            <p className="text-xs text-gray-400 italic">No hay fechas bloqueadas</p>
-          ) : (
-            <div className="space-y-1.5">
-              {blockedDates.map(b => (
-                <div key={b.id} className="flex items-center justify-between p-2 rounded-lg bg-red-50 border border-red-100">
-                  <div>
-                    <p className="text-sm font-medium text-red-900">
-                      {new Date(b.blocked_date + 'T12:00:00').toLocaleDateString('es-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                    </p>
-                    {b.reason && <p className="text-xs text-red-600">{b.reason}</p>}
-                  </div>
-                  <Button size="sm" variant="ghost" onClick={() => toggleBlockDate('unblock', b.blocked_date)} className="text-red-500 hover:text-red-700">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        )}
+      </Panel>
     </div>
   )
 }
+
+// ════════════════════════════════════════════════════════════════════
+// Helpers
+// ════════════════════════════════════════════════════════════════════
+
+const PRIMARY_BTN =
+  'inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full transition-all duration-200 ' +
+  'hover:opacity-90 active:scale-95 text-[12px] font-semibold tracking-tight ' +
+  'bg-white text-black shadow-[0_4px_18px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset] disabled:opacity-50'
+
+const GHOST_BTN =
+  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ' +
+  'hover:bg-white/10 active:scale-95 text-[11px] font-semibold tracking-tight ' +
+  'bg-white/[0.04] border border-white/10 text-white'
+
+const ICON_BTN =
+  'inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors ' +
+  'hover:bg-white/10 text-white border border-white/10 disabled:opacity-50'
+
+function Panel({
+  icon, title, description, children,
+}: { icon: React.ReactNode; title: string; description?: string; children: React.ReactNode }) {
+  return (
+    <div
+      className="relative rounded-2xl p-5 overflow-hidden"
+      style={{
+        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        border: '0.5px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(20px)',
+      }}
+    >
+      <span
+        aria-hidden
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse at top, rgba(255,255,255,0.03), transparent 60%)' }}
+      />
+      <div className="relative">
+        <div className="flex items-start gap-3 mb-4">
+          <span
+            className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
+              border: '0.5px solid rgba(255,255,255,0.15)',
+              color: '#FFFFFF',
+            }}
+          >
+            {icon}
+          </span>
+          <div>
+            <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.018em', color: '#FFFFFF' }}>{title}</h2>
+            {description && (
+              <p style={{ fontSize: 12, color: '#A1A1A1', marginTop: 3, letterSpacing: '-0.005em' }}>{description}</p>
+            )}
+          </div>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function FormField({ label, hint, className, children }: { label: string; hint?: string; className?: string; children: React.ReactNode }) {
+  return (
+    <div className={`space-y-1.5 ${className || ''}`}>
+      <label
+        style={{
+          fontFamily: 'var(--font-mono-tech)',
+          fontSize: 9,
+          fontWeight: 500,
+          letterSpacing: '0.18em',
+          color: '#A1A1A1',
+        }}
+      >
+        {label.toUpperCase()}
+      </label>
+      {children}
+      {hint && (
+        <p style={{ fontSize: 10, color: '#525252', marginTop: 2, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+          {hint.toUpperCase()}
+        </p>
+      )}
+    </div>
+  )
+}
+
+const DARK_INPUT_STYLE: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.04)',
+  border: '0.5px solid rgba(255,255,255,0.1)',
+  color: '#FAFAFA',
+  fontSize: 13,
+  letterSpacing: '-0.005em',
+  colorScheme: 'dark',
+}
+
+function DarkNumberInput({ value, onChange, min, max, step }: { value: number; onChange: (v: number) => void; min?: number; max?: number; step?: number }) {
+  return (
+    <input
+      type="number"
+      value={value}
+      min={min}
+      max={max}
+      step={step}
+      onChange={(e) => onChange(parseInt(e.target.value) || 0)}
+      className="w-full px-3.5 py-2.5 rounded-xl outline-none transition-colors focus:border-white/30"
+      style={DARK_INPUT_STYLE}
+    />
+  )
+}
+
+function DarkTextInput({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="w-full px-3.5 py-2.5 rounded-xl outline-none transition-colors focus:border-white/30"
+      style={DARK_INPUT_STYLE}
+    />
+  )
+}
+
+function DarkDateInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <input
+      type="date"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full px-3.5 py-2.5 rounded-xl outline-none transition-colors focus:border-white/30"
+      style={DARK_INPUT_STYLE}
+    />
+  )
+}
+
+function HourSelect({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(parseInt(e.target.value))}
+        className="appearance-none px-3 py-1.5 pr-7 rounded-lg outline-none cursor-pointer transition-colors focus:border-white/30"
+        style={{
+          background: 'rgba(255,255,255,0.04)',
+          border: '0.5px solid rgba(255,255,255,0.1)',
+          color: '#FAFAFA',
+          fontFamily: 'var(--font-mono-tech)',
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: '0.02em',
+          minWidth: 92,
+        }}
+      >
+        {Array.from({ length: 24 }, (_, h) => (
+          <option key={h} value={h} style={{ background: '#0A0A0A', color: '#FAFAFA' }}>
+            {formatHour(h)}
+          </option>
+        ))}
+      </select>
+      <span
+        aria-hidden
+        className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
+        style={{ color: '#525252', fontSize: 9 }}
+      >
+        ▾
+      </span>
+    </div>
+  )
+}
+
+function CustomCheckbox({ checked, onChange }: { checked: boolean; onChange: (c: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.preventDefault(); onChange(!checked) }}
+      className="inline-flex items-center justify-center w-5 h-5 rounded-md transition-all duration-200"
+      style={{
+        background: checked ? '#FFFFFF' : 'rgba(255,255,255,0.04)',
+        border: checked ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.15)',
+        boxShadow: checked ? '0 0 12px rgba(255,255,255,0.18)' : 'none',
+      }}
+    >
+      {checked && (
+        <svg width="11" height="9" viewBox="0 0 12 10" fill="none">
+          <path d="M1.5 5L4.5 8L10.5 1.5" stroke="#000000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      )}
+    </button>
+  )
+}
+
+// Ignore unused import on Calendar (kept for symmetry if needed later)
+void Calendar

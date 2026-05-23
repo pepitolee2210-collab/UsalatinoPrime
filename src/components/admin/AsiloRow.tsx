@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
+// Card removed — replaced by dark wrapper
 import {
   Download, CheckCircle, Archive, ChevronDown, ChevronUp,
   Loader2, User, MapPin, Calendar, ShieldAlert, MessageSquare, FileText,
@@ -275,8 +275,15 @@ export function AsiloRow({ submission }: { submission: Submission }) {
   }
 
   return (
-    <Card className={status === 'pending' ? 'border-amber-200' : ''}>
-      <CardContent className="p-0">
+    <div
+      className="relative rounded-2xl overflow-hidden"
+      style={{
+        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        border: status === 'pending' ? '0.5px solid rgba(250,204,21,0.3)' : '0.5px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(20px)',
+      }}
+    >
+      <div>
         {/* Header row */}
         <div
           className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
@@ -601,8 +608,8 @@ export function AsiloRow({ submission }: { submission: Submission }) {
             </div>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 

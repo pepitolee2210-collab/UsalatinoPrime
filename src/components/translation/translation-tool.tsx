@@ -2,15 +2,22 @@
 
 import { useRef, useState } from 'react'
 import { Languages, FileUp, FileText, Trash2, Loader2, Download, Sparkles, AlertTriangle, Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import type { TranslatedDoc } from '@/lib/translation/schema'
 
 const MAX_BYTES = 8 * 1024 * 1024
 const MAX_FILES = 2
 
-// Path del PNG de la firma del traductor oficial. Se sirve como asset estático.
 const SIGNATURE_PATH = '/translation-cert/signature.png'
+
+const BTN_PRIMARY =
+  'inline-flex items-center gap-2 px-5 py-2.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50 ' +
+  'bg-white text-black text-[13px] font-semibold tracking-tight ' +
+  'shadow-[0_4px_20px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset]'
+
+const BTN_SUCCESS =
+  'inline-flex items-center gap-2 px-5 py-2.5 rounded-full transition-all duration-200 hover:bg-emerald-500/15 active:scale-95 disabled:opacity-50 ' +
+  'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[13px] font-semibold tracking-tight'
 
 export function TranslationTool() {
   const [files, setFiles] = useState<File[]>([])
@@ -43,7 +50,6 @@ export function TranslationTool() {
           toast.error(`"${f.name}" supera el límite de ${MAX_BYTES / 1024 / 1024} MB`)
           continue
         }
-        // Si ya hay un PDF o si el nuevo es PDF: solo se permite 1 archivo total
         if (merged.some(isPdf) || isPdf(f)) {
           if (merged.length >= 1) {
             toast.error(isPdf(f)
@@ -99,7 +105,6 @@ export function TranslationTool() {
     if (!doc) return
     setGeneratingPdf(true)
     try {
-      // Cargar la firma como dataURL para que jsPDF la incruste
       const signatureDataUrl = await loadImageAsDataUrl(SIGNATURE_PATH)
       const { buildTranslationPDF } = await import('@/lib/translation/build-pdf')
       const certDate = new Date().toLocaleDateString('en-US', {
@@ -133,22 +138,55 @@ export function TranslationTool() {
 
   return (
     <div className="space-y-5 max-w-3xl">
-      <div className="rounded-2xl border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-5">
-        <div className="flex items-start gap-3">
-          <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
-            <Languages className="w-5 h-5 text-white" />
+      {/* Info card */}
+      <div
+        className="relative rounded-2xl p-5 overflow-hidden"
+        style={{
+          background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+          border: '0.5px solid rgba(255,255,255,0.1)',
+          backdropFilter: 'blur(20px)',
+        }}
+      >
+        <span
+          aria-hidden
+          className="absolute top-0 left-0 right-0 h-px"
+          style={{ background: 'linear-gradient(90deg, transparent, rgba(96,165,250,0.4), transparent)' }}
+        />
+        <div className="relative flex items-start gap-3">
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, rgba(96,165,250,0.18), rgba(96,165,250,0.04))',
+              border: '0.5px solid rgba(96,165,250,0.3)',
+            }}
+          >
+            <Languages className="w-5 h-5" style={{ color: '#60A5FA' }} />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-gray-900">Traductor de documentos civiles</h2>
-            <p className="text-sm text-gray-600 mt-0.5">
-              Sube un acta de nacimiento, matrimonio, cédula u otro documento oficial en español.
-              Gemini lo traduce al inglés con el formato certificado de UsaLatino Prime, incluye
-              la página de Translation Certification firmada por Andrew Sonny Navarro y descargas
-              el PDF listo para entregar.
+            <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: '#525252' }}>
+              TRADUCTOR · DOCUMENTOS CIVILES
             </p>
-            <p className="text-[11px] text-gray-500 mt-1.5">
-              <span className="font-semibold">Imágenes</span>: hasta 2 (frente/reverso o 2 hojas) — JPG, PNG, HEIC, WebP.{' '}
-              <span className="font-semibold">PDF</span>: 1 archivo de máximo 2 páginas. Cada archivo hasta 8 MB.
+            <h2 style={{ fontSize: 17, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.018em', marginTop: 2 }}>
+              Traductor de actas civiles
+            </h2>
+            <p style={{ fontSize: 13, color: '#A1A1A1', marginTop: 6, lineHeight: 1.55 }}>
+              Sube un acta de nacimiento, matrimonio, cédula u otro documento oficial en español.
+              Gemini lo traduce al inglés con el formato certificado de UsaLatino Prime, incluye la página de
+              <span style={{ color: '#FFFFFF', fontWeight: 600 }}> Translation Certification</span> firmada por
+              <span style={{ color: '#FFFFFF', fontWeight: 600 }}> Andrew Sonny Navarro</span> y descargas el PDF listo para entregar.
+            </p>
+            <p
+              style={{
+                fontSize: 10,
+                color: '#525252',
+                marginTop: 8,
+                fontFamily: 'var(--font-mono-tech)',
+                letterSpacing: '0.05em',
+              }}
+            >
+              IMÁGENES · HASTA 2 (FRENTE/REVERSO O 2 HOJAS) · JPG/PNG/HEIC/WEBP
+              <br />
+              PDF · 1 ARCHIVO MÁX 2 PÁGINAS · CADA UNO HASTA 8 MB
             </p>
           </div>
         </div>
@@ -156,8 +194,17 @@ export function TranslationTool() {
 
       {/* Upload */}
       <div>
-        <label className="text-xs font-medium text-gray-700 block mb-2">
-          Documento original (hasta 2 imágenes o 1 PDF de 2 páginas, máx. 8 MB c/u)
+        <label
+          className="block mb-2"
+          style={{
+            fontFamily: 'var(--font-mono-tech)',
+            fontSize: 10,
+            fontWeight: 500,
+            letterSpacing: '0.18em',
+            color: '#A1A1A1',
+          }}
+        >
+          DOCUMENTO ORIGINAL
         </label>
 
         <input
@@ -167,7 +214,6 @@ export function TranslationTool() {
           multiple
           onChange={e => {
             addFiles(e.target.files)
-            // Permitir volver a seleccionar el mismo archivo si lo quitan
             if (inputRef.current) inputRef.current.value = ''
           }}
           className="sr-only"
@@ -185,38 +231,85 @@ export function TranslationTool() {
               setDragOver(false)
               addFiles(e.dataTransfer.files)
             }}
-            className={`w-full flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed py-10 px-4 transition-colors text-center ${
-              dragOver
-                ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50/30'
-            }`}
+            className="w-full flex flex-col items-center justify-center gap-3 rounded-2xl py-12 px-4 text-center transition-all duration-300"
+            style={{
+              background: dragOver ? 'rgba(96,165,250,0.06)' : 'rgba(255,255,255,0.02)',
+              border: dragOver ? '2px dashed rgba(96,165,250,0.5)' : '2px dashed rgba(255,255,255,0.12)',
+            }}
           >
-            <FileUp className="w-9 h-9 text-blue-500" />
+            <div
+              className="inline-flex items-center justify-center w-12 h-12 rounded-2xl"
+              style={{
+                background: 'rgba(96,165,250,0.12)',
+                border: '0.5px solid rgba(96,165,250,0.25)',
+              }}
+            >
+              <FileUp className="w-5 h-5" style={{ color: '#60A5FA' }} />
+            </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900">Haz click para seleccionar archivos</p>
-              <p className="text-[11px] text-gray-500 mt-0.5">o arrastra y suelta aquí · hasta 2 imágenes o 1 PDF de 2 páginas · máx. 8 MB c/u</p>
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                Click para seleccionar archivos
+              </p>
+              <p
+                style={{
+                  fontSize: 11,
+                  color: '#525252',
+                  marginTop: 4,
+                  fontFamily: 'var(--font-mono-tech)',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                O ARRASTRA Y SUELTA · HASTA 2 IMÁGENES O 1 PDF · MÁX 8 MB
+              </p>
             </div>
           </button>
         ) : (
           <div className="space-y-2">
             {files.map((f, i) => (
-              <div key={`${f.name}-${i}`} className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-3 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-white border border-emerald-200 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-5 h-5 text-emerald-700" />
+              <div
+                key={`${f.name}-${i}`}
+                className="rounded-xl p-3 flex items-center gap-3"
+                style={{
+                  background: 'rgba(34,197,94,0.06)',
+                  border: '0.5px solid rgba(34,197,94,0.25)',
+                }}
+              >
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                  style={{
+                    background: 'rgba(34,197,94,0.12)',
+                    border: '0.5px solid rgba(34,197,94,0.25)',
+                  }}
+                >
+                  <FileText className="w-4 h-4" style={{ color: '#4ADE80' }} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{f.name}</p>
-                  <p className="text-[11px] text-gray-500">
-                    {(f.size / 1024).toFixed(0)} KB · {f.type || 'archivo'}
+                  <p
+                    className="truncate"
+                    style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}
+                  >
+                    {f.name}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 10,
+                      color: '#86EFAC',
+                      fontFamily: 'var(--font-mono-tech)',
+                      letterSpacing: '0.05em',
+                      marginTop: 2,
+                    }}
+                  >
+                    {(f.size / 1024).toFixed(0)} KB · {(f.type || 'ARCHIVO').toUpperCase()}
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => removeFile(i)}
-                  className="w-8 h-8 rounded-lg hover:bg-red-50 flex items-center justify-center text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-red-500/10"
+                  style={{ color: '#FCA5A5' }}
                   title="Quitar archivo"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Trash2 className="w-3.5 h-3.5" />
                 </button>
               </div>
             ))}
@@ -224,9 +317,17 @@ export function TranslationTool() {
               <button
                 type="button"
                 onClick={() => inputRef.current?.click()}
-                className="w-full rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 hover:border-blue-400 hover:bg-blue-50/30 py-3 px-4 text-sm text-gray-600 flex items-center justify-center gap-2 transition-colors"
+                className="w-full rounded-xl py-3 px-4 flex items-center justify-center gap-2 transition-all duration-200 hover:bg-white/5"
+                style={{
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '2px dashed rgba(255,255,255,0.12)',
+                  color: '#A1A1A1',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  letterSpacing: '-0.005em',
+                }}
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3.5 h-3.5" />
                 Agregar otra imagen ({files.length}/{MAX_FILES})
               </button>
             )}
@@ -234,46 +335,48 @@ export function TranslationTool() {
         )}
       </div>
 
-      {/* Info de la página de certificación (no es editable, es fija) */}
-      <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 flex items-start gap-3">
-        <Sparkles className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-        <div className="text-sm text-gray-700 space-y-1">
-          <p className="font-semibold text-gray-900">Página de certificación incluida automáticamente</p>
-          <p>
-            Cada PDF se genera con la página firmada por <span className="font-semibold">Andrew Sonny Navarro</span>{' '}
-            y la fecha de hoy. No tienes que llenar nada — Henry pidió que sea siempre el mismo formato.
+      {/* Info de certificación */}
+      <div
+        className="rounded-xl p-4 flex items-start gap-3"
+        style={{
+          background: 'rgba(250,204,21,0.06)',
+          border: '0.5px solid rgba(250,204,21,0.25)',
+        }}
+      >
+        <Sparkles className="w-4 h-4 mt-0.5 shrink-0" style={{ color: '#FACC15' }} />
+        <div className="space-y-1">
+          <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: '#FACC15' }}>
+            CERTIFICACIÓN AUTOMÁTICA
+          </p>
+          <p style={{ fontSize: 13, fontWeight: 600, color: '#FDE68A' }}>
+            Página firmada incluida en cada PDF
+          </p>
+          <p style={{ fontSize: 12, color: '#A1A1A1', lineHeight: 1.55 }}>
+            Cada documento se genera con la página firmada por <span style={{ color: '#FFFFFF', fontWeight: 600 }}>Andrew Sonny Navarro</span>{' '}
+            y la fecha de hoy. No tienes que llenar nada — el formato es fijo según pidió Henry.
           </p>
         </div>
       </div>
 
       {/* Acciones */}
       <div className="flex items-center gap-2 flex-wrap">
-        <Button
-          onClick={handleTranslate}
-          disabled={files.length === 0 || translating}
-          className="bg-[#F2A900] hover:bg-[#D4940A] text-[#001020] font-bold"
-        >
+        <button onClick={handleTranslate} disabled={files.length === 0 || translating} className={BTN_PRIMARY}>
           {translating ? (
-            <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Traduciendo con Gemini...</>
+            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Traduciendo con Gemini…</>
           ) : doc ? (
-            <><Sparkles className="w-4 h-4 mr-1.5" /> Volver a traducir</>
+            <><Sparkles className="w-3.5 h-3.5" /> Volver a traducir</>
           ) : (
-            <><Sparkles className="w-4 h-4 mr-1.5" /> Traducir documento</>
+            <><Sparkles className="w-3.5 h-3.5" /> Traducir documento</>
           )}
-        </Button>
+        </button>
         {doc && (
-          <Button
-            onClick={handleDownload}
-            disabled={generatingPdf}
-            variant="outline"
-            className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-          >
+          <button onClick={handleDownload} disabled={generatingPdf} className={BTN_SUCCESS}>
             {generatingPdf ? (
-              <><Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> Generando PDF...</>
+              <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generando PDF…</>
             ) : (
-              <><Download className="w-4 h-4 mr-1.5" /> Descargar PDF traducido</>
+              <><Download className="w-3.5 h-3.5" /> Descargar PDF traducido</>
             )}
-          </Button>
+          </button>
         )}
       </div>
 
@@ -299,96 +402,150 @@ async function loadImageAsDataUrl(src: string): Promise<string | null> {
 
 function TranslationPreview({ doc }: { doc: TranslatedDoc }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 space-y-3 shadow-sm font-serif">
-      <div className="flex items-start justify-between gap-3 pb-3 border-b">
-        <p className="text-[11px] uppercase tracking-wider text-gray-400 font-semibold">Vista previa de la traducción</p>
-        <div className="text-[11px] text-gray-400 italic flex items-center gap-1.5">
-          <AlertTriangle className="w-3.5 h-3.5" />
-          Revisa antes de descargar
+    <div
+      className="rounded-2xl p-6 space-y-3"
+      style={{
+        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        border: '0.5px solid rgba(255,255,255,0.1)',
+        backdropFilter: 'blur(20px)',
+        fontFamily: 'Georgia, serif',
+      }}
+    >
+      <div
+        className="flex items-start justify-between gap-3 pb-3"
+        style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}
+      >
+        <p
+          style={{
+            fontFamily: 'var(--font-mono-tech)',
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.2em',
+            color: '#525252',
+          }}
+        >
+          VISTA PREVIA · TRADUCCIÓN
+        </p>
+        <div
+          className="inline-flex items-center gap-1.5"
+          style={{
+            fontFamily: 'var(--font-mono-tech)',
+            fontSize: 9,
+            fontWeight: 700,
+            letterSpacing: '0.15em',
+            color: '#FDE68A',
+          }}
+        >
+          <AlertTriangle className="w-3 h-3" />
+          REVISAR ANTES DE DESCARGAR
         </div>
       </div>
 
-      <p className="text-center text-sm font-bold text-gray-900">CERTIFIED TRANSLATION FROM SPANISH INTO ENGLISH</p>
+      <p style={{ textAlign: 'center', fontSize: 14, fontWeight: 700, color: '#FFFFFF' }}>
+        CERTIFIED TRANSLATION FROM SPANISH INTO ENGLISH
+      </p>
 
       {doc.jurisdiction_header?.length > 0 && (
         <div className="space-y-0.5 pt-1">
           {doc.jurisdiction_header.map((line, i) => (
-            <p key={i} className="text-sm font-bold text-gray-900">{line}</p>
+            <p key={i} style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF' }}>{line}</p>
           ))}
         </div>
       )}
 
-      {doc.document_type && <p className="text-sm font-bold text-gray-900 pt-1">{doc.document_type}</p>}
+      {doc.document_type && (
+        <p style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', paddingTop: 4 }}>{doc.document_type}</p>
+      )}
 
       {doc.registration_number && (
-        <p className="text-sm text-gray-800"><span className="font-bold">Registration Number:</span> {doc.registration_number}</p>
+        <p style={{ fontSize: 13, color: '#D4D4D8' }}>
+          <span style={{ fontWeight: 700, color: '#FFFFFF' }}>Registration Number:</span> {doc.registration_number}
+        </p>
       )}
 
       {doc.issuing_authority && (
-        <p className="text-sm text-gray-800 leading-relaxed pt-1">{doc.issuing_authority}</p>
+        <p style={{ fontSize: 13, color: '#D4D4D8', lineHeight: 1.55, paddingTop: 4 }}>{doc.issuing_authority}</p>
       )}
 
-      {doc.certification_verb && <p className="text-sm font-bold text-gray-900 pt-1">{doc.certification_verb}</p>}
+      {doc.certification_verb && (
+        <p style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', paddingTop: 4 }}>{doc.certification_verb}</p>
+      )}
 
       {doc.certification_paragraph && (
-        <p className="text-sm text-gray-800 leading-relaxed">{doc.certification_paragraph}</p>
+        <p style={{ fontSize: 13, color: '#D4D4D8', lineHeight: 1.55 }}>{doc.certification_paragraph}</p>
       )}
 
       {doc.registered_person_name && (
-        <p className="text-base font-bold text-gray-900 pt-2">{doc.registered_person_name}</p>
+        <p style={{ fontSize: 16, fontWeight: 700, color: '#FFFFFF', paddingTop: 8 }}>{doc.registered_person_name}</p>
       )}
 
-      <div className="space-y-0.5 text-sm text-gray-800">
+      <div className="space-y-0.5">
         {doc.primary_fields?.map((f, i) => (
-          <p key={i}><span className="font-bold">{f.label}:</span> {f.value}</p>
+          <p key={i} style={{ fontSize: 13, color: '#D4D4D8' }}>
+            <span style={{ fontWeight: 700, color: '#FFFFFF' }}>{f.label}:</span> {f.value}
+          </p>
         ))}
       </div>
 
       {doc.parents?.length > 0 && (
-        <div className="space-y-0.5 text-sm text-gray-800 pt-1">
+        <div className="space-y-0.5 pt-2">
           {doc.parents.map((p, i) => (
-            <p key={i}><span className="font-bold">{p.label}:</span> {p.line}</p>
+            <p key={i} style={{ fontSize: 13, color: '#D4D4D8' }}>
+              <span style={{ fontWeight: 700, color: '#FFFFFF' }}>{p.label}:</span> {p.line}
+            </p>
           ))}
         </div>
       )}
 
       {doc.registration_fields?.length > 0 && (
-        <div className="space-y-0.5 text-sm text-gray-800 pt-1">
+        <div className="space-y-0.5 pt-2">
           {doc.registration_fields.map((f, i) => (
-            <p key={i}><span className="font-bold">{f.label}:</span> {f.value}</p>
+            <p key={i} style={{ fontSize: 13, color: '#D4D4D8' }}>
+              <span style={{ fontWeight: 700, color: '#FFFFFF' }}>{f.label}:</span> {f.value}
+            </p>
           ))}
         </div>
       )}
 
       {doc.validation_paragraph && (
-        <p className="text-xs text-gray-700 leading-relaxed pt-2">{doc.validation_paragraph}</p>
+        <p style={{ fontSize: 12, color: '#A1A1A1', lineHeight: 1.55, paddingTop: 6 }}>{doc.validation_paragraph}</p>
       )}
 
       {doc.reference_codes?.length > 0 && (
-        <div className="space-y-0.5 text-sm text-gray-800 pt-1">
+        <div className="space-y-0.5 pt-2">
           {doc.reference_codes.map((c, i) => (
-            <p key={i}><span className="font-bold">{c.label}:</span> {c.value}</p>
+            <p key={i} style={{ fontSize: 13, color: '#D4D4D8' }}>
+              <span style={{ fontWeight: 700, color: '#FFFFFF' }}>{c.label}:</span> {c.value}
+            </p>
           ))}
         </div>
       )}
 
       {(doc.signatory_name || doc.signatory_title) && (
         <div className="pt-3">
-          {doc.signatory_name && <p className="text-sm font-bold text-gray-900">{doc.signatory_name}</p>}
-          {doc.signatory_title && <p className="text-sm text-gray-800">{doc.signatory_title}</p>}
+          {doc.signatory_name && (
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF' }}>{doc.signatory_name}</p>
+          )}
+          {doc.signatory_title && (
+            <p style={{ fontSize: 13, color: '#D4D4D8' }}>{doc.signatory_title}</p>
+          )}
         </div>
       )}
 
       {doc.closing_fields?.length > 0 && (
-        <div className="space-y-0.5 text-sm text-gray-800 pt-1">
+        <div className="space-y-0.5 pt-2">
           {doc.closing_fields.map((f, i) => (
-            <p key={i}><span className="font-bold">{f.label}:</span> {f.value}</p>
+            <p key={i} style={{ fontSize: 13, color: '#D4D4D8' }}>
+              <span style={{ fontWeight: 700, color: '#FFFFFF' }}>{f.label}:</span> {f.value}
+            </p>
           ))}
         </div>
       )}
 
       {doc.closing_note && (
-        <p className="text-xs text-gray-700 leading-relaxed pt-1 italic">{doc.closing_note}</p>
+        <p style={{ fontSize: 12, color: '#A1A1A1', lineHeight: 1.55, paddingTop: 4, fontStyle: 'italic' }}>
+          {doc.closing_note}
+        </p>
       )}
     </div>
   )
