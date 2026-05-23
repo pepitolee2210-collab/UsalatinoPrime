@@ -2,6 +2,20 @@
 
 import { useEffect, useRef, useState } from 'react'
 
+// Detección de mobile para degradar efectos pesados.
+// `matchMedia` se evalúa una vez al montar y se actualiza si cambia el viewport.
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)')
+    setIsMobile(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
+  }, [])
+  return isMobile
+}
+
 // Lista de wallpapers disponibles en /public/wallpapers/.
 // Si un archivo no existe físicamente, el componente lo descarta silenciosamente
 // al cargar (handleError). Para añadir un wallpaper: subir el JPG a la carpeta
@@ -23,6 +37,7 @@ export function WallpaperHero() {
   const [available, setAvailable] = useState<string[]>([])
   const [active, setActive] = useState(0)
   const indexRef = useRef(0)
+  const isMobile = useIsMobile()
 
   // Pre-cargar las imágenes y filtrar las que existen
   useEffect(() => {
@@ -72,7 +87,8 @@ export function WallpaperHero() {
         zIndex: 0,
       }}
     >
-      {/* Capas de imágenes con cross-fade */}
+      {/* Capas de imágenes con cross-fade. En mobile: sin blur ni contrast
+          (filter es muy caro), opacidad un poco más baja para suavizar */}
       {available.map((src, i) => (
         <div
           key={src}
@@ -81,29 +97,31 @@ export function WallpaperHero() {
             backgroundImage: `url(${src})`,
             backgroundSize: 'cover',
             backgroundPosition: 'center top',
-            opacity: i === active ? 0.42 : 0,
+            opacity: i === active ? (isMobile ? 0.35 : 0.42) : 0,
             transition: `opacity ${FADE_MS}ms cubic-bezier(0.32, 0.72, 0, 1)`,
-            filter: 'blur(1.5px) saturate(0.85) contrast(1.05)',
+            filter: isMobile ? 'none' : 'blur(1.5px) saturate(0.85) contrast(1.05)',
             willChange: 'opacity',
           }}
         />
       ))}
 
-      {/* Scanlines técnicas — refuerzan la sensación de "señal en pantalla" */}
-      <div
-        className="absolute inset-0"
-        style={{
-          background:
-            'repeating-linear-gradient(0deg, ' +
-            'rgba(255,255,255,0) 0px, ' +
-            'rgba(255,255,255,0) 2px, ' +
-            'rgba(255,255,255,0.02) 3px, ' +
-            'rgba(255,255,255,0) 4px)',
-          mixBlendMode: 'overlay',
-        }}
-      />
+      {/* Scanlines técnicas — desactivadas en mobile (mix-blend es muy caro) */}
+      {!isMobile && (
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'repeating-linear-gradient(0deg, ' +
+              'rgba(255,255,255,0) 0px, ' +
+              'rgba(255,255,255,0) 2px, ' +
+              'rgba(255,255,255,0.02) 3px, ' +
+              'rgba(255,255,255,0) 4px)',
+            mixBlendMode: 'overlay',
+          }}
+        />
+      )}
 
-      {/* Vignette radial: oscurece los bordes, deja el centro respirando */}
+      {/* Vignette radial — barata, se mantiene */}
       <div
         className="absolute inset-0"
         style={{
@@ -112,7 +130,7 @@ export function WallpaperHero() {
         }}
       />
 
-      {/* Gradient mask vertical — fade-out hacia negro absoluto al llegar a las cards */}
+      {/* Gradient mask vertical — barato, se mantiene */}
       <div
         className="absolute inset-0"
         style={{
@@ -126,16 +144,18 @@ export function WallpaperHero() {
         }}
       />
 
-      {/* Noise grain sutil — rompe el banding del gradient */}
-      <div
-        className="absolute inset-0"
-        style={{
-          opacity: 0.08,
-          mixBlendMode: 'overlay',
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E\")",
-        }}
-      />
+      {/* Noise grain — desactivado en mobile (feTurbulence + mix-blend son devastadores) */}
+      {!isMobile && (
+        <div
+          className="absolute inset-0"
+          style={{
+            opacity: 0.08,
+            mixBlendMode: 'overlay',
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E\")",
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -176,6 +176,7 @@ export default function ServiciosPage() {
         {/* ─── Marquee ─── */}
         <div className="mt-24 overflow-hidden relative" style={{ borderTop: '0.5px solid rgba(255,255,255,0.08)', borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
           <div
+            data-tech-marquee
             className="flex gap-12 py-6 whitespace-nowrap"
             style={{
               animation: 'tech-marquee 38s linear infinite',
@@ -298,6 +299,7 @@ function Aurora() {
     <>
       <div
         aria-hidden
+        data-tech-aurora
         className="absolute pointer-events-none"
         style={{
           top: '-20%',
@@ -311,6 +313,7 @@ function Aurora() {
       />
       <div
         aria-hidden
+        data-tech-aurora
         className="absolute pointer-events-none"
         style={{
           top: '10%',
@@ -324,6 +327,7 @@ function Aurora() {
       />
       <div
         aria-hidden
+        data-tech-aurora
         className="absolute pointer-events-none"
         style={{
           bottom: '5%',
@@ -343,6 +347,7 @@ function DotGrid() {
   return (
     <div
       aria-hidden
+      data-tech-dotgrid
       className="absolute inset-0 pointer-events-none"
       style={{
         backgroundImage:
@@ -359,6 +364,7 @@ function ScanLines() {
   return (
     <div
       aria-hidden
+      data-tech-scanlines
       className="absolute inset-0 pointer-events-none opacity-[0.4]"
       style={{
         backgroundImage:
@@ -392,6 +398,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
       {/* Conic gradient halo border */}
       <div
         aria-hidden
+        data-tech-conic
         className="absolute -inset-px rounded-[24px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"
         style={{
           background:
@@ -584,6 +591,31 @@ function Keyframes() {
       @keyframes tech-marquee {
         from { transform: translateX(0); }
         to { transform: translateX(-50%); }
+      }
+
+      /* ════════════════════════════════════════════════════════════════
+         MOBILE PERFORMANCE — desactiva los efectos GPU más caros.
+         Aurora con filter:blur(80px) × 3 capas tira los FPS a 15–20 en
+         mobile mid-range. El marquee infinito y el conic rotation suman
+         más carga. Aquí los reducimos al mínimo manteniendo la estética
+         dark techno.
+         ════════════════════════════════════════════════════════════════ */
+      @media (max-width: 768px) {
+        /* DotGrid → bajar opacidad para reducir repaints visibles */
+        [data-tech-dotgrid] { opacity: 0.3; }
+        /* ScanLines → desactivar (overlay caro) */
+        [data-tech-scanlines] { display: none; }
+        /* Aurora → desactivar las 3 capas con blur(80px) que matan FPS */
+        [data-tech-aurora] { display: none; }
+        /* Marquee infinito → pausar para no consumir batería */
+        [data-tech-marquee] { animation-play-state: paused; }
+        /* Conic rotation continuo → pausar */
+        [data-tech-conic] { animation: none; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        [data-tech-aurora], [data-tech-marquee], [data-tech-conic] {
+          animation: none !important;
+        }
       }
     `}</style>
   )

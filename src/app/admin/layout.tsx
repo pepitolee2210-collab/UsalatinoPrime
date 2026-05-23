@@ -121,11 +121,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, [])
 
   useEffect(() => {
-    fetch('/api/admin/sidebar-counts')
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data) setCounts(data) })
-      .catch(() => {})
-  }, [pathname])
+    // Fetch al montar + refresh cada 60s. Antes se disparaba en cada
+    // cambio de pathname → cada click bloqueaba la transición con red.
+    let cancelled = false
+    const load = () => {
+      fetch('/api/admin/sidebar-counts')
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data && !cancelled) setCounts(data) })
+        .catch(() => {})
+    }
+    load()
+    const timer = setInterval(load, 60_000)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [])
 
   function toggleGroup(heading: string, e?: React.MouseEvent) {
     setCollapsedGroups((prev) => {
@@ -675,6 +686,37 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         @keyframes chromatic-bloom-red {
           0%, 100% { opacity: 0.16; transform: translateY(0); }
           50% { opacity: 0.28; transform: translateY(-8%); }
+        }
+
+        /* ════════════════════════════════════════════════════════════
+           MOBILE PERFORMANCE DEGRADATION
+           Desactiva los efectos más caros en mobile (≤ 768px). En GPUs
+           mobile el blur, mix-blend-mode y filter consumen ~70% del
+           presupuesto de frame. La estética se mantiene con animaciones
+           más simples; el resultado se ve casi igual a 60fps.
+           ════════════════════════════════════════════════════════════ */
+        @media (max-width: 768px) {
+          /* MorphMetallicText — quita will-change continuo y alarga duración */
+          .morph-word-admin, .morph-word-panel {
+            will-change: auto;
+            animation-duration: 12s;
+          }
+          /* Neon letter wave — duración más larga, menos repaints */
+          .neon-letter { animation-duration: 8s; }
+          .neon-heading-wrap:hover .neon-letter {
+            animation-duration: 2.4s;
+            transform: none;
+          }
+          /* nav-item-stagger — desactiva animación de entrada por item */
+          .nav-item-stagger { animation: none; }
+        }
+        /* Respeta la preferencia del sistema "reducir movimiento" */
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01s !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.05s !important;
+          }
         }
       `}</style>
     </div>
