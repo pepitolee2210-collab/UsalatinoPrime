@@ -183,10 +183,13 @@ export async function runJurisdictionResearchSync(caseId: string): Promise<void>
 
   log.info('research started', { caseId, state: location.stateCode, route: procedural.route })
 
-  // AbortSignal de seguridad: si Claude tarda > 270s (típico ~60-120s),
-  // rendimos antes de los 300s de Vercel para poder persistir `failed`.
+  // AbortSignal de seguridad: si Claude+web_search tarda > 290s, rendimos
+  // antes de los 300s del cap de Vercel para poder persistir `failed` limpio.
+  // researchJurisdiction internamente skipea la pasada 2 (retry) si la pasada
+  // 1 ya tomó > 180s, dejando margen para que el research típico (60-200s)
+  // termine sin disparar el abort.
   const safetyAbort = new AbortController()
-  const safetyTimer = setTimeout(() => safetyAbort.abort(new Error('safety_timeout_270s')), 270_000)
+  const safetyTimer = setTimeout(() => safetyAbort.abort(new Error('safety_timeout_290s')), 290_000)
 
   const researchStartMs = Date.now()
   try {
@@ -262,7 +265,7 @@ export async function runJurisdictionResearchSync(caseId: string): Promise<void>
       rawMessage === 'safety_timeout_270s'
 
     const userFacingMessage = isAbort
-      ? 'La investigación tardó más de 270 segundos. Reintenta — si vuelve a fallar, contacta al equipo técnico.'
+      ? 'La investigación tardó más de 290 segundos. Reintenta — si vuelve a fallar, contacta al equipo técnico.'
       : rawMessage
 
     log.error('research failed', {

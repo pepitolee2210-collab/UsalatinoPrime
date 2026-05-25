@@ -554,22 +554,33 @@ function getClient(): Anthropic {
  * ≈ $0.35-0.55 USD por invocación. Se cachea por caseId en
  * `case_jurisdictions` por 30 días. Si se dispara retry: +$0.20 ≈ $0.75 total.
  */
+/**
+ * Tiempo máximo en ms desde el inicio del research a partir del cual NO
+ * disparamos la pasada 2 (retry). Si la pasada 1 ya consumió este budget,
+ * persistimos lo obtenido como 'incomplete' en lugar de arriesgar un timeout
+ * total del worker (Vercel mata el lambda a los 300s).
+ */
+const RETRY_BUDGET_MS = 180_000
+
 export async function researchJurisdiction(
   location: ClientLocation,
   procedural: ProceduralContext,
   signal?: AbortSignal,
 ): Promise<JurisdictionResearchResult> {
   const stateCode = location.stateCode as UsStateCode
+  const startMs = Date.now()
 
-  // Pasada 1: prompt principal con max_uses=10 (subido desde 7 — el budget
-  // anterior se quedaba corto cuando el catálogo SIJS exigía buscar
-  // explícitamente petition + motion + affidavit + order + coversheet por
-  // estado/condado).
+  // Pasada 1: prompt principal con max_uses=8. Bajado desde 10 para reducir
+  // el tiempo total del research — Claude con web_search a 10 búsquedas tarda
+  // ~200-260s, lo cual no deja margen para retry dentro del cap de Vercel.
+  // 8 búsquedas siguen cubriendo el SIJS core package típico.
   const firstAttempt = await callClaudeForResearch(location, procedural, {
     signal,
-    maxUses: 10,
+    maxUses: 8,
     retryContext: null,
   })
+
+  const firstAttemptElapsedMs = Date.now() - startMs
 
   const validation = validateSIJCorePackage(firstAttempt, stateCode, procedural)
   if (validation.ok) {
@@ -579,8 +590,23 @@ export async function researchJurisdiction(
       relation: procedural.petitionerRelation,
       meritsForms: firstAttempt.required_forms.length,
       intakeForms: firstAttempt.intake_packet.required_forms.length,
+      firstAttemptElapsedMs,
     })
     return firstAttempt
+  }
+
+  // Gate del retry: si la pasada 1 ya consumió >180s, NO disparamos pasada 2
+  // — el riesgo de safety timeout total es demasiado alto. En su lugar
+  // devolvemos lo que tenemos con warnings para que el caller persista como
+  // 'incomplete' (que sí está válido y mejor que 'failed').
+  if (firstAttemptElapsedMs > RETRY_BUDGET_MS) {
+    log.warn('research first-attempt slow — skipping retry to avoid timeout', {
+      stateCode,
+      firstAttemptElapsedMs,
+      retryBudgetMs: RETRY_BUDGET_MS,
+      missing: validation.missing,
+    })
+    return { ...firstAttempt, _missing_families: validation.missing }
   }
 
   log.warn('research first-attempt missing core families — running targeted retry', {
@@ -588,6 +614,7 @@ export async function researchJurisdiction(
     route: procedural.route,
     missing: validation.missing,
     warnings: validation.warnings,
+    firstAttemptElapsedMs,
   })
 
   // Pasada 2: retry dirigido con queries específicas para los gaps.
@@ -598,7 +625,7 @@ export async function researchJurisdiction(
   try {
     secondAttempt = await callClaudeForResearch(location, procedural, {
       signal,
-      maxUses: 5,
+      maxUses: 4,
       retryContext: {
         previousResult: firstAttempt,
         missingFamilies: missingDescriptions,
@@ -609,6 +636,7 @@ export async function researchJurisdiction(
     log.error('targeted retry failed — keeping first attempt with warnings', {
       stateCode,
       err: err instanceof Error ? err.message : err,
+      totalElapsedMs: Date.now() - startMs,
     })
   }
 
