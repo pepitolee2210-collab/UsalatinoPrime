@@ -203,6 +203,12 @@ export async function POST(req: NextRequest) {
       endpoint: workerUrl,
       body: { caseId },
       deduplicationId: `research-jurisdiction:${caseId}`,
+      // CRÍTICO: 0 retries. El research puede tomar 95-290s; si Vercel mata el
+      // lambda por safety timeout, QStash NO debe reintentar — un retry corre
+      // el research COMPLETO desde cero y puede sobreescribir un resultado
+      // exitoso previo con 'failed'. Mejor que la única corrida persista lo
+      // que logre (completed/incomplete/failed) y el admin reintente con clic.
+      retries: 0,
     })
     log.info('research encolado a QStash', { caseId, force, state: location.stateCode, messageId })
   } catch (err) {

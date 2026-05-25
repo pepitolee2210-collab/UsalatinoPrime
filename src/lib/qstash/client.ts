@@ -29,18 +29,26 @@ function getReceiver(): Receiver {
  * Enqueues a job for async processing. Returns immediately so the Twilio
  * webhook can respond within its ~15s timeout while the real work (Gemini
  * call + Twilio reply) runs in the background.
+ *
+ * `retries` controla los reintentos automáticos de QStash si el worker no
+ * responde (timeout HTTP) o devuelve un código de error. Defecto: 3 — apto
+ * para workers idempotentes y rápidos. Pasar `0` para workers que pueden
+ * exceder el cap de Vercel: el lambda matado no responde, QStash reintenta,
+ * y cada retry corre el research COMPLETO desde cero — destructivo si una
+ * de las pasadas fue exitosa antes de morir.
  */
 export async function enqueueJob(args: {
   endpoint: string           // full https URL of the worker
   body: unknown
   deduplicationId?: string   // Twilio MessageSid — prevents double-processing
+  retries?: number           // override default 3
 }): Promise<{ messageId: string }> {
   const client = getClient()
   try {
     const res = await client.publishJSON({
       url: args.endpoint,
       body: args.body as Record<string, unknown>,
-      retries: 3,
+      retries: args.retries ?? 3,
       deduplicationId: args.deduplicationId,
     })
     return { messageId: res.messageId }
