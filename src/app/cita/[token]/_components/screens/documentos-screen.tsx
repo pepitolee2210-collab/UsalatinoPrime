@@ -8,6 +8,7 @@ import { DocumentCardSingle } from '../documents/document-card-single'
 import { DocumentCardDual } from '../documents/document-card-dual'
 import { DocumentCardMultiple } from '../documents/document-card-multiple'
 import { PreviewModal } from '../documents/preview-modal'
+import { UploadInstructionsBanner } from '../documents/upload-instructions-banner'
 import { deleteClientDocument } from '../documents/upload-client'
 import type { DocItem, RequiredDocsResponse, UploadFile } from '../documents/types'
 import { formatBytes, fileTypeIcon } from '../documents/types'
@@ -86,8 +87,8 @@ export function DocumentosScreen({ token }: DocumentosScreenProps) {
 
   if (!data || !data.current_phase) {
     return (
-      <div className="ulp-screen px-6 py-6 max-w-2xl mx-auto">
-        <header className="mb-6">
+      <div className="ulp-screen px-6 py-6 max-w-2xl mx-auto space-y-6">
+        <header>
           <p className="ulp-label" style={{ color: 'var(--color-ulp-outline)' }}>
             Tus documentos
           </p>
@@ -95,6 +96,7 @@ export function DocumentosScreen({ token }: DocumentosScreenProps) {
             Mis Documentos
           </h1>
         </header>
+        <UploadInstructionsBanner />
         <EmptyState
           icon="hourglass_empty"
           title="Tu equipo aún no ha asignado tu fase"
@@ -106,12 +108,13 @@ export function DocumentosScreen({ token }: DocumentosScreenProps) {
 
   if (data.categories.length === 0) {
     return (
-      <div className="ulp-screen px-6 py-6 max-w-2xl mx-auto">
-        <header className="mb-6">
+      <div className="ulp-screen px-6 py-6 max-w-2xl mx-auto space-y-6">
+        <header>
           <h1 className="ulp-h2 italic" style={{ color: 'var(--color-ulp-on-secondary-fixed)' }}>
             Mis Documentos
           </h1>
         </header>
+        <UploadInstructionsBanner />
         <EmptyState
           icon="task_alt"
           title="Sin documentos pendientes"
@@ -137,6 +140,8 @@ export function DocumentosScreen({ token }: DocumentosScreenProps) {
           <strong>{phaseLabel?.toLowerCase()}</strong>. Acepta PDF, JPG, PNG, WebP y HEIC.
         </p>
       </header>
+
+      <UploadInstructionsBanner />
 
       <section
         className="rounded-2xl border p-5 flex items-center justify-between"
