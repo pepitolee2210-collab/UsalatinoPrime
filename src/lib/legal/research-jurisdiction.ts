@@ -560,7 +560,7 @@ function getClient(): Anthropic {
  * persistimos lo obtenido como 'incomplete' en lugar de arriesgar un timeout
  * total del worker (Vercel mata el lambda a los 300s).
  */
-const RETRY_BUDGET_MS = 180_000
+const RETRY_BUDGET_MS = 130_000
 
 export async function researchJurisdiction(
   location: ClientLocation,
@@ -570,13 +570,15 @@ export async function researchJurisdiction(
   const stateCode = location.stateCode as UsStateCode
   const startMs = Date.now()
 
-  // Pasada 1: prompt principal con max_uses=8. Bajado desde 10 para reducir
-  // el tiempo total del research — Claude con web_search a 10 búsquedas tarda
-  // ~200-260s, lo cual no deja margen para retry dentro del cap de Vercel.
-  // 8 búsquedas siguen cubriendo el SIJS core package típico.
+  // Pasada 1: prompt principal con max_uses=5. Reducido desde 10/8 porque
+  // Claude+web_search con cada búsqueda tarda 20-30s reales. 10 búsquedas
+  // exceden el cap de Vercel (300s). 5 búsquedas focalizadas en el SIJS core
+  // package (corte + petition + motion + order/affidavit + coversheet) dan
+  // resultado completo en ~100-150s típico; cualquier gap se cubre en la
+  // pasada 2 dirigida con max_uses=3.
   const firstAttempt = await callClaudeForResearch(location, procedural, {
     signal,
-    maxUses: 8,
+    maxUses: 5,
     retryContext: null,
   })
 
@@ -625,7 +627,7 @@ export async function researchJurisdiction(
   try {
     secondAttempt = await callClaudeForResearch(location, procedural, {
       signal,
-      maxUses: 4,
+      maxUses: 3,
       retryContext: {
         previousResult: firstAttempt,
         missingFamilies: missingDescriptions,
