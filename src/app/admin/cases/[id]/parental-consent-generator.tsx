@@ -4,6 +4,17 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { FileText, Download, Loader2, Eye, Copy, X, Heart, Pencil, Save, Sparkles } from 'lucide-react'
+import { fetchJsonSafe } from '@/lib/api/fetch-json'
+
+interface JurisdictionStatusResp {
+  ready: boolean
+  status: 'completed' | 'incomplete' | 'pending' | 'failed' | 'missing'
+  research_error: string | null
+}
+
+interface ParentalDeclarationResp {
+  declaration: string
+}
 
 interface FormSub {
   form_type: string
@@ -154,9 +165,8 @@ export function ParentalConsentGenerator({ caseId, clientName, formSubmissions }
   useEffect(() => {
     if (loaded) return
     setLoaded(true)
-    fetch(`/api/cases/saved-declarations?case_id=${caseId}`)
-      .then(r => r.json())
-      .then((data: { declarations?: StoredDoc[] }) => {
+    fetchJsonSafe<{ declarations?: StoredDoc[] }>(`/api/cases/saved-declarations?case_id=${caseId}`)
+      .then((data) => {
         const all = data.declarations || []
         const next: Record<SlotKey, Content> = {} as Record<SlotKey, Content>
         for (const slot of slots) {
@@ -181,8 +191,7 @@ export function ParentalConsentGenerator({ caseId, clientName, formSubmissions }
   async function persist(slot: SlotDef, content: Content) {
     if (!content.en) return
     try {
-      const res = await fetch(`/api/cases/saved-declarations?case_id=${caseId}`)
-      const data = await res.json() as { declarations?: StoredDoc[] }
+      const data = await fetchJsonSafe<{ declarations?: StoredDoc[] }>(`/api/cases/saved-declarations?case_id=${caseId}`)
       const all = data.declarations || []
       const targetType = TYPE_BY_MODE[slot.mode]
       const filtered = all.filter(d => {
@@ -199,7 +208,7 @@ export function ParentalConsentGenerator({ caseId, clientName, formSubmissions }
         ...(slot.parentRole !== 'any' ? { parent_role: slot.parentRole } : {}),
       }
       const updated = [...filtered, next]
-      await fetch('/api/cases/saved-declarations', {
+      await fetchJsonSafe('/api/cases/saved-declarations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ case_id: caseId, declarations: updated }),
@@ -216,28 +225,20 @@ export function ParentalConsentGenerator({ caseId, clientName, formSubmissions }
     try {
       // Pre-check: la generación necesita jurisdicción cacheada. Si no la hay,
       // mostramos modal y abortamos para no colgar al usuario esperando 90s.
-      try {
-        const statusRes = await fetch(`/api/cases/${encodeURIComponent(caseId)}/jurisdiction-status`, { cache: 'no-store' })
-        if (statusRes.ok) {
-          const statusData = await statusRes.json() as {
-            ready: boolean
-            status: 'completed' | 'incomplete' | 'pending' | 'failed' | 'missing'
-            research_error: string | null
-          }
-          if (!statusData.ready) {
-            setJurisdictionMissing({
-              status: statusData.status === 'pending' ? 'pending' : statusData.status === 'failed' ? 'failed' : 'missing',
-              error: statusData.research_error,
-            })
-            setGenerating(null)
-            return
-          }
-        }
-      } catch {
-        // Si el pre-check falla por red, dejamos seguir con la lógica original.
+      const statusData = await fetchJsonSafe<JurisdictionStatusResp>(
+        `/api/cases/${encodeURIComponent(caseId)}/jurisdiction-status`,
+        { cache: 'no-store' },
+      ).catch(() => null)
+      if (statusData && !statusData.ready) {
+        setJurisdictionMissing({
+          status: statusData.status === 'pending' ? 'pending' : statusData.status === 'failed' ? 'failed' : 'missing',
+          error: statusData.research_error,
+        })
+        setGenerating(null)
+        return
       }
 
-      const resEN = await fetch('/api/ai/generate-declaration', {
+      const dataEN = await fetchJsonSafe<ParentalDeclarationResp>('/api/ai/generate-declaration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -248,11 +249,9 @@ export function ParentalConsentGenerator({ caseId, clientName, formSubmissions }
           ...(parentRoleParam ? { parent_role: parentRoleParam } : {}),
         }),
       })
-      if (!resEN.ok) throw new Error()
-      const dataEN = await resEN.json()
 
       // Spanish = translation of English (cheaper, 1:1 consistency).
-      const resES = await fetch('/api/ai/generate-declaration', {
+      const dataES = await fetchJsonSafe<ParentalDeclarationResp>('/api/ai/generate-declaration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -264,15 +263,13 @@ export function ParentalConsentGenerator({ caseId, clientName, formSubmissions }
           ...(parentRoleParam ? { parent_role: parentRoleParam } : {}),
         }),
       })
-      if (!resES.ok) throw new Error()
-      const dataES = await resES.json()
 
       const next: Content = { en: dataEN.declaration, es: dataES.declaration }
       setContent(slot.key, next)
       await persist(slot, next)
       toast.success(`Carta generada en inglés y español (${slot.title})`)
-    } catch {
-      toast.error('Error al generar. Intente de nuevo.')
+    } catch (e) {
+      toast.error(e instanceof Error && e.message ? e.message : 'Error al generar. Intente de nuevo.')
     } finally {
       setGenerating(null)
     }
@@ -282,7 +279,7 @@ export function ParentalConsentGenerator({ caseId, clientName, formSubmissions }
     const declarationType = TYPE_BY_MODE[slot.mode]
     const parentRoleParam = slot.parentRole === 'any' ? undefined : slot.parentRole
     try {
-      const res = await fetch('/api/ai/generate-declaration', {
+      const data = await fetchJsonSafe<ParentalDeclarationResp>('/api/ai/generate-declaration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -294,9 +291,7 @@ export function ParentalConsentGenerator({ caseId, clientName, formSubmissions }
           ...(parentRoleParam ? { parent_role: parentRoleParam } : {}),
         }),
       })
-      if (!res.ok) return null
-      const data = await res.json()
-      return data.declaration as string
+      return data.declaration
     } catch {
       return null
     }
@@ -336,7 +331,7 @@ export function ParentalConsentGenerator({ caseId, clientName, formSubmissions }
     if (!previewDoc || correctionFeedback.trim().length < 5) return
     setApplyingCorrection(true)
     try {
-      const resCorrect = await fetch('/api/ai/correct-declaration', {
+      const dataC = await fetchJsonSafe<{ corrected: string }>('/api/ai/correct-declaration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -345,11 +340,6 @@ export function ParentalConsentGenerator({ caseId, clientName, formSubmissions }
           lang: previewDoc.lang,
         }),
       })
-      if (!resCorrect.ok) {
-        const dataC = await resCorrect.json().catch(() => ({}))
-        throw new Error(dataC.error || 'Error al aplicar la corrección')
-      }
-      const dataC = await resCorrect.json()
       const corrected: string = dataC.corrected
 
       const current = getContent(previewDoc.slot.key)

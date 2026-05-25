@@ -49,12 +49,20 @@ El menor es el beneficiario del caso SIJS. Sus respuestas se integrarán en una 
 - Si el menor da una respuesta muy corta sobre un tema grave, expande cuidadosamente manteniendo la voz del menor y los hechos.`
 
 export async function POST(request: NextRequest) {
+  const startMs = Date.now()
   // Auth — solo admin/employee pueden usar este botón desde el form del cliente
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  const { question, answer, context } = await request.json()
+  let parsed: { question?: unknown; answer?: unknown; context?: unknown }
+  try {
+    parsed = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Body inválido (JSON requerido)' }, { status: 400 })
+  }
+
+  const { question, answer, context } = parsed
 
   if (!question || !answer) {
     return NextResponse.json({ error: 'question y answer requeridos' }, { status: 400 })
@@ -74,9 +82,10 @@ export async function POST(request: NextRequest) {
       signal: request.signal,
     })
 
+    log.info('answer improved', { context, elapsedMs: Date.now() - startMs })
     return NextResponse.json({ improved })
   } catch (err) {
-    log.error('Claude improve-answer failed', err)
+    log.error('Claude improve-answer failed', { err: err instanceof Error ? err.message : err, elapsedMs: Date.now() - startMs })
     const message = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ error: `Error al mejorar la respuesta: ${message}` }, { status: 500 })
   }

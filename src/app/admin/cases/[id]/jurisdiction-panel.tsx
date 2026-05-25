@@ -12,6 +12,7 @@ import {
 import { AutomatedFormModal } from './automated-form-modal'
 import { FormClientStatus } from './form-client-status'
 import { resolveAutomatedFormSlug } from '@/lib/legal/automated-forms-registry'
+import { fetchJsonSafe } from '@/lib/api/fetch-json'
 
 type FilingChannel = 'in_person' | 'email' | 'portal' | 'mail' | 'hybrid'
 
@@ -113,19 +114,6 @@ interface JurisdictionResponse {
   reason?: string
   queued?: boolean
   error?: string
-}
-
-async function readJsonSafe(res: Response): Promise<JurisdictionResponse> {
-  // Vercel a veces devuelve text/plain "An error occurred..." en timeout o
-  // FUNCTION_INVOCATION_FAILED. Leemos como texto y parseamos a mano para
-  // dar un error útil en vez de "Unexpected token 'A'".
-  const text = await res.text()
-  try {
-    return JSON.parse(text) as JurisdictionResponse
-  } catch {
-    const preview = text.slice(0, 180).replace(/\s+/g, ' ').trim()
-    throw new Error(`Respuesta no-JSON del servidor (status ${res.status}): ${preview || '(body vacío)'}`)
-  }
 }
 
 interface Props {
@@ -248,8 +236,7 @@ export function JurisdictionPanel({ caseId }: Props) {
     if (!silent) setLoading(true)
     try {
       // Default: cache-only. NO dispara research al montar.
-      const res = await fetch(`/api/admin/case-jurisdiction?caseId=${encodeURIComponent(caseId)}&lookup=cache`)
-      const json = await readJsonSafe(res)
+      const json = await fetchJsonSafe<JurisdictionResponse>(`/api/admin/case-jurisdiction?caseId=${encodeURIComponent(caseId)}&lookup=cache`)
       setData(json)
     } catch (err) {
       if (!silent) toast.error(err instanceof Error ? err.message : 'Error al cargar jurisdicción')
@@ -277,19 +264,15 @@ export function JurisdictionPanel({ caseId }: Props) {
   async function investigate() {
     setResearching(true)
     try {
-      const res = await fetch('/api/admin/case-jurisdiction', {
+      const json = await fetchJsonSafe<JurisdictionResponse>('/api/admin/case-jurisdiction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ caseId, force: true }),
       })
-      const json = await readJsonSafe(res)
-      if (!res.ok && !json.jurisdiction) {
-        throw new Error(json.error || 'No se pudo investigar')
-      }
       setData(json)
       const isPendingNow = json.queued || json.jurisdiction?.research_status === 'pending'
       if (isPendingNow) {
-        toast.success('Investigación encolada — la pantalla se actualiza sola en ~30-60s')
+        toast.success('Investigación encolada — puedes cerrar esta pestaña y volver luego. La pantalla se actualiza sola en ~60-120s.')
       } else if (json.jurisdiction) {
         toast.success('Jurisdicción actualizada')
       } else {

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createServiceClient } from '@/lib/supabase/service'
 import { buildCaseContext } from '@/lib/ai/prompts/chat-system'
 import { generateText } from '@/lib/ai/anthropic-client'
-import { researchJurisdiction } from '@/lib/legal/research-jurisdiction'
-import { inferProceduralRoute } from '@/lib/legal/infer-procedural-route'
 import { createLogger } from '@/lib/logger'
 import { mergeWitnesses, normalizeWitnessName } from '@/lib/witnesses'
 import { normalizeMinorStory, buildLegacyNarrativeBlock } from '@/lib/legal/normalize-minor-story'
@@ -911,7 +908,17 @@ Input (EN): \`I, MARIA GONZALEZ, of legal age, Colombian national, hereby declar
 
 Output (ES): \`Yo, MARIA GONZALEZ, mayor de edad, de nacionalidad colombiana, por la presente declaro bajo pena de perjurio...\``
 
+const VALID_DECLARATION_TYPES: ReadonlySet<DeclarationType> = new Set([
+  'tutor',
+  'minor',
+  'witness',
+  'parental_consent',
+  'parental_consent_collaborative',
+  'petition_guardianship',
+])
+
 export async function POST(request: NextRequest) {
+  const startMs = Date.now()
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -926,81 +933,56 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
-  const { case_id, type, index = 0, lang = 'en', english_source, witness_name, parent_role } = await request.json() as {
-    case_id: string
-    type: DeclarationType
+  let parsed: {
+    case_id?: string
+    type?: DeclarationType
     index?: number
     lang?: 'en' | 'es'
     english_source?: string
-    /**
-     * Para `type === 'witness'`: nombre del testigo tal como lo conoce el UI.
-     * Llave estable que sobrevive a cambios de orden en `tutor.witnesses` o
-     * `client_witnesses.witnesses`. Si está presente, gana sobre `index`.
-     */
     witness_name?: string
-    /**
-     * Para `type === 'parental_consent'` / `parental_consent_collaborative`:
-     * cuando el menor reportó abandono por ambos padres, distingue qué carta
-     * generar (la del padre o la de la madre). Selecciona los datos correctos
-     * desde `client_absent_parent.form_data.father` o `.mother`.
-     */
     parent_role?: ParentRole
   }
+  try {
+    parsed = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Body inválido (JSON requerido)' }, { status: 400 })
+  }
+
+  const { case_id, type, index = 0, lang = 'en', english_source, witness_name, parent_role } = parsed
 
   if (!case_id || !type) {
     return NextResponse.json({ error: 'case_id y type requeridos' }, { status: 400 })
   }
 
-  // Build context — pure SQL, no AI
-  let ctx = await buildCaseContext(case_id)
+  if (!VALID_DECLARATION_TYPES.has(type)) {
+    return NextResponse.json({ error: `type inválido: ${type}` }, { status: 400 })
+  }
 
-  // Auto-trigger de research de jurisdicción: si tenemos ubicación resuelta pero
-  // nadie ha investigado aún la corte, lo hacemos ahora. Esto cubre el caso
-  // donde el admin clica "Generar" sin haber abierto antes el JurisdictionPanel
-  // (el panel lo dispara al montar). Se hace solo en modo generación (no en
-  // traducción) para no repetir el research en el segundo fetch EN→ES.
+  if (type === 'witness' && !witness_name) {
+    return NextResponse.json({ error: 'witness_name requerido cuando type=witness' }, { status: 400 })
+  }
+
   const isTranslation = lang === 'es' && typeof english_source === 'string' && english_source.trim().length > 0
-  if (!isTranslation && !ctx.jurisdiction && ctx.clientLocation) {
-    try {
-      log.info('auto-researching jurisdiction before declaration generation', {
-        caseId: case_id,
-        stateCode: ctx.clientLocation.stateCode,
-      })
-      const service = createServiceClient()
-      const procedural = await inferProceduralRoute(case_id, service)
-      const research = await researchJurisdiction(ctx.clientLocation, procedural, request.signal)
-      await service.from('case_jurisdictions').upsert({
-        case_id,
-        state_code: research.state_code,
-        state_name: research.state_name,
-        client_zip: ctx.clientLocation.zip,
-        court_name: research.court_name,
-        court_name_es: research.court_name_es,
-        court_address: research.court_address,
-        filing_procedure: research.filing_procedure,
-        filing_procedure_es: research.filing_procedure_es,
-        age_limit_sijs: research.age_limit_sijs,
-        sources: research.sources,
-        confidence: research.confidence,
-        notes: research.notes,
-        procedural_route: procedural.route,
-        petitioner_relation: procedural.petitionerRelation,
-        procedural_route_reason: procedural.reasonForChoice,
-        procedural_route_confidence: procedural.confidence,
-        verified_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'case_id' })
-      // Re-carga el contexto con la jurisdicción recién persistida.
-      ctx = await buildCaseContext(case_id)
-    } catch (err) {
-      // No bloqueamos la generación si el research falla — el documento
-      // sale con el fallback "[FALTA: Nombre del tribunal]" y el admin puede
-      // reintentar desde el panel.
-      log.warn('auto-research jurisdiction failed, continuing without it', {
-        caseId: case_id,
-        err: err instanceof Error ? err.message : String(err),
-      })
-    }
+
+  // Build context — pure SQL, no AI
+  const ctx = await buildCaseContext(case_id)
+
+  // Defensa en profundidad: la generación (no traducción) requiere jurisdicción
+  // cacheada en case_jurisdictions. El frontend pre-checkea, pero rechazamos
+  // explícitamente aquí para evitar que un caller no-UI dispare auto-research
+  // que excede el maxDuration. Si la jurisdicción no está completed/incomplete,
+  // devolvemos 409 con el status real para que el frontend muestre el modal.
+  if (!isTranslation && !ctx.jurisdiction) {
+    log.warn('declaration generation blocked — jurisdiction not ready', {
+      caseId: case_id,
+      type,
+      hasLocation: Boolean(ctx.clientLocation),
+    })
+    return NextResponse.json({
+      error: 'JURISDICTION_NOT_READY',
+      message: 'La jurisdicción del caso no está investigada. Investígala desde la pestaña Radicación antes de generar la declaración.',
+      research_status: 'missing',
+    }, { status: 409 })
   }
 
   // Modo TRADUCCIÓN: cuando el frontend pide ES y ya tiene la versión EN lista,
@@ -1058,6 +1040,17 @@ export async function POST(request: NextRequest) {
     const missingMatches = declaration.match(/\[FALTA:[^\]]*\]/gi) || []
     const missingFields = Array.from(new Set(missingMatches.map(m => m.trim())))
 
+    log.info('declaration generated', {
+      caseId: case_id,
+      type,
+      index,
+      lang,
+      witness_name,
+      mode: 'generation',
+      missingCount: missingFields.length,
+      elapsedMs: Date.now() - startMs,
+    })
+
     return NextResponse.json({
       declaration,
       type,
@@ -1070,12 +1063,14 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (err) {
-    log.error('Claude declaration failed', err)
+    log.error('Claude declaration failed', { caseId: case_id, type, err: err instanceof Error ? err.message : err, elapsedMs: Date.now() - startMs })
     const message = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ error: `Error al generar la declaración: ${message}` }, { status: 500 })
   }
 }
 
-// Timeout amplio: la primera generación de un caso puede incluir auto-research
-// de jurisdicción (~30s con web_search) + la generación propiamente dicha.
+// Timeout 90s — con el pre-check de jurisdicción ya NO se dispara research
+// dentro de este endpoint, así que sólo es Claude generando (~30-60s). Si
+// alguna vez excede, devolvemos JSON con error claro (el frontend usa
+// fetchJsonSafe y muestra el mensaje útil).
 export const maxDuration = 90

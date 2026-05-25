@@ -10,6 +10,32 @@ import {
 import { ReadinessPanel } from './readiness-panel'
 import { mergeWitnesses, normalizeWitnessName } from '@/lib/witnesses'
 import { normalizeMinorStory } from '@/lib/legal/normalize-minor-story'
+import { fetchJsonSafe } from '@/lib/api/fetch-json'
+
+interface JurisdictionStatus {
+  ready: boolean
+  status: 'completed' | 'incomplete' | 'pending' | 'failed' | 'missing'
+  court_name: string | null
+  state_code: string | null
+  research_error: string | null
+}
+
+interface GenerateDeclarationResp {
+  declaration: string
+  type: string
+  index: number
+  clientName: string
+  mode: 'generation' | 'translation'
+  warnings?: { missingCount: number; missingFields: string[] }
+}
+
+interface CorrectDeclarationResp {
+  corrected: string
+}
+
+interface SavedDeclarationsResp {
+  declarations?: GeneratedDoc[]
+}
 
 interface DeclarationGeneratorProps {
   caseId: string
@@ -45,12 +71,18 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
   const [correctionFeedback, setCorrectionFeedback] = useState('')
   const [applyingCorrection, setApplyingCorrection] = useState(false)
   const [savingEdit, setSavingEdit] = useState(false)
+  // Si la jurisdicción del case no está investigada, mostramos un modal que
+  // explica qué hacer en vez de dejar que el endpoint se cuelgue intentando
+  // auto-investigarla (excede el maxDuration de Vercel y bloquea la UI).
+  const [jurisdictionMissing, setJurisdictionMissing] = useState<{
+    status: 'missing' | 'pending' | 'failed'
+    error: string | null
+  } | null>(null)
 
   // Load saved declarations on mount
   if (!loaded) {
     setLoaded(true)
-    fetch(`/api/cases/saved-declarations?case_id=${caseId}`)
-      .then(r => r.json())
+    fetchJsonSafe<SavedDeclarationsResp>(`/api/cases/saved-declarations?case_id=${caseId}`)
       .then(data => {
         if (data.declarations?.length) setDocs(data.declarations)
       })
@@ -79,13 +111,29 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
     const key = `${type}-${index}`
     setGenerating(key)
     try {
+      // PRE-CHECK obligatorio: la generación necesita jurisdicción cacheada.
+      // Si no la hay, mostramos modal explicativo y abortamos para no colgar
+      // al usuario esperando un timeout de Vercel (90s + auto-research).
+      const status = await fetchJsonSafe<JurisdictionStatus>(
+        `/api/cases/${encodeURIComponent(caseId)}/jurisdiction-status`,
+        { cache: 'no-store' },
+      ).catch(() => null)
+      if (status && !status.ready) {
+        setJurisdictionMissing({
+          status: status.status === 'pending' ? 'pending' : status.status === 'failed' ? 'failed' : 'missing',
+          error: status.research_error,
+        })
+        setGenerating(null)
+        return
+      }
+
       // Para witnesses, el `label` ES el nombre del testigo y se usa también
       // como llave estable (witness_name) que viaja al backend para resolver
       // el testigo correcto independiente del índice posicional.
       const witnessName = type === 'witness' ? label : undefined
 
       // Generate English (from case data)
-      const resEN = await fetch('/api/ai/generate-declaration', {
+      const dataEN = await fetchJsonSafe<GenerateDeclarationResp>('/api/ai/generate-declaration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -93,13 +141,11 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
           ...(witnessName ? { witness_name: witnessName } : {}),
         }),
       })
-      const dataEN = await resEN.json()
-      if (!resEN.ok) throw new Error(dataEN.error || 'Error EN')
 
       // Spanish is TRANSLATED from the English version (not generated from case).
       // Cheaper (~50%) y garantiza consistencia 1:1 entre ambas versiones —
       // mismos datos, mismas fechas, mismo orden de párrafos.
-      const resES = await fetch('/api/ai/generate-declaration', {
+      const dataES = await fetchJsonSafe<GenerateDeclarationResp>('/api/ai/generate-declaration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -111,8 +157,6 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
           ...(witnessName ? { witness_name: witnessName } : {}),
         }),
       })
-      const dataES = await resES.json()
-      if (!resES.ok) throw new Error(dataES.error || 'Error ES')
 
       const newDoc: GeneratedDoc = {
         type, index, label,
@@ -124,12 +168,12 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
         // witnessName que ocupaban este mismo índice (migración suave).
         const filtered = dropMatchingDoc(prev, newDoc)
         const updated = [...filtered, newDoc]
-        // Save to DB
-        fetch('/api/cases/saved-declarations', {
+        // Save to DB (fire-and-forget — errores de persistencia se loggean en consola)
+        fetchJsonSafe('/api/cases/saved-declarations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ case_id: caseId, declarations: updated }),
-        }).catch(() => {})
+        }).catch(err => console.error('saved-declarations persist failed', err))
         return updated
       })
       const missingEN: number = dataEN?.warnings?.missingCount ?? 0
@@ -264,7 +308,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
         newDoc = { ...found.base, contentES: editedContent }
       } else {
         // Se editó el EN → re-traducir el ES para mantener consistencia.
-        const resES = await fetch('/api/ai/generate-declaration', {
+        const dataES = await fetchJsonSafe<GenerateDeclarationResp>('/api/ai/generate-declaration', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -275,8 +319,6 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
             english_source: editedContent,
           }),
         })
-        const dataES = await resES.json()
-        if (!resES.ok) throw new Error(dataES.error || 'Error al re-traducir ES')
         newDoc = { ...found.base, content: editedContent, contentES: dataES.declaration }
       }
 
@@ -284,7 +326,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
       setDocs(updated)
 
       // Persist to DB
-      await fetch('/api/cases/saved-declarations', {
+      await fetchJsonSafe('/api/cases/saved-declarations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ case_id: caseId, declarations: updated }),
@@ -318,7 +360,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
 
     setApplyingCorrection(true)
     try {
-      const resCorrect = await fetch('/api/ai/correct-declaration', {
+      const dataC = await fetchJsonSafe<CorrectDeclarationResp>('/api/ai/correct-declaration', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -327,15 +369,13 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
           lang: found.isES ? 'es' : 'en',
         }),
       })
-      const dataC = await resCorrect.json()
-      if (!resCorrect.ok) throw new Error(dataC.error || 'Error al aplicar la corrección')
 
       let newDoc: GeneratedDoc
       if (found.isES) {
         newDoc = { ...found.base, contentES: dataC.corrected }
       } else {
         // Se corrigió el EN → re-traducir el ES.
-        const resES = await fetch('/api/ai/generate-declaration', {
+        const dataES = await fetchJsonSafe<GenerateDeclarationResp>('/api/ai/generate-declaration', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -346,15 +386,13 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
             english_source: dataC.corrected,
           }),
         })
-        const dataES = await resES.json()
-        if (!resES.ok) throw new Error(dataES.error || 'Error al re-traducir ES')
         newDoc = { ...found.base, content: dataC.corrected, contentES: dataES.declaration }
       }
 
       const updated = [...dropMatchingDoc(docs, found.base), newDoc]
       setDocs(updated)
 
-      await fetch('/api/cases/saved-declarations', {
+      await fetchJsonSafe('/api/cases/saved-declarations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ case_id: caseId, declarations: updated }),
@@ -618,6 +656,56 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
           {generating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileText className="w-4 h-4 mr-2" />}
           Generar Todas las Declaraciones
         </Button>
+      )}
+
+      {jurisdictionMissing && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={() => setJurisdictionMissing(null)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start gap-3 mb-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg font-bold text-gray-900">
+                  Falta la jurisdicción del caso
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {jurisdictionMissing.status === 'pending' ? (
+                    <>La investigación del tribunal está en curso. Vuelve a intentar en 1-2 minutos cuando termine — puedes cerrar esta pestaña y volver luego.</>
+                  ) : jurisdictionMissing.status === 'failed' ? (
+                    <>La investigación previa del tribunal falló. Ingresa a la pestaña <strong>&ldquo;Radicación&rdquo;</strong> y da click en <strong>&ldquo;Re-verificar&rdquo;</strong> para obtener la jurisdicción.</>
+                  ) : (
+                    <>Para generar esta declaración primero necesitamos identificar el tribunal competente. Ingresa a la pestaña <strong>&ldquo;Radicación&rdquo;</strong> de este caso y dispara la investigación.</>
+                  )}
+                </p>
+                {jurisdictionMissing.error && (
+                  <p className="text-xs text-amber-700 mt-2 italic">
+                    Detalle: {jurisdictionMissing.error}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <Button
+                variant="outline"
+                onClick={() => setJurisdictionMissing(null)}
+              >
+                Entendido
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

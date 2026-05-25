@@ -36,6 +36,7 @@ Tu trabajo es producir la versión corregida del documento aplicando EXACTAMENTE
 Solo el texto completo del documento corregido, tal como debe quedar en el PDF final. Nada antes ni después.`
 
 export async function POST(request: NextRequest) {
+  const startMs = Date.now()
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
@@ -50,7 +51,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
   }
 
-  const body = await request.json()
+  let body: { current_text?: unknown; feedback?: unknown; lang?: unknown }
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Body inválido (JSON requerido)' }, { status: 400 })
+  }
+
   const currentText = String(body.current_text || '').trim()
   const feedback = String(body.feedback || '').trim()
   const lang = body.lang === 'es' ? 'es' : 'en'
@@ -77,6 +84,8 @@ export async function POST(request: NextRequest) {
     const missingMatches = corrected.match(/\[FALTA:[^\]]*\]/gi) || []
     const missingFields = Array.from(new Set(missingMatches.map(m => m.trim())))
 
+    log.info('correction applied', { lang, feedbackLen: feedback.length, missingCount: missingFields.length, elapsedMs: Date.now() - startMs })
+
     return NextResponse.json({
       corrected,
       warnings: {
@@ -85,7 +94,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (err) {
-    log.error('Claude correction failed', err)
+    log.error('Claude correction failed', { err: err instanceof Error ? err.message : err, elapsedMs: Date.now() - startMs })
     const message = err instanceof Error ? err.message : String(err)
     return NextResponse.json({ error: `Error al aplicar la corrección: ${message}` }, { status: 500 })
   }

@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { resolveClientLocation } from '@/lib/legal/resolve-client-location'
-import { runJurisdictionResearchSync } from '@/lib/legal/trigger-research-async'
+import { ensureJurisdictionPlaceholder, runJurisdictionResearchSync } from '@/lib/legal/trigger-research-async'
 import { getInjectedFormsForState, mergeWithInjectedForms } from '@/lib/legal/automated-forms-registry'
+import { enqueueJob } from '@/lib/qstash/client'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('case-jurisdiction')
@@ -38,10 +39,14 @@ function enrichWithRegistryForms<T extends { state_code?: string | null; intake_
   } as T
 }
 
-// El research corre SÍNCRONO en este handler porque QStash y after() en
-// Vercel resultaron poco fiables para esta carga (deployment protection,
-// reciclaje de isolate). Con maxDuration=300 (Vercel Pro) cabe sin sobrar:
-// 15 web_searches + Claude Opus + persistencia ≈ 60-120s.
+// El research POST corre en background vía QStash worker (espejo del patrón
+// de generate-appeal-letter y generate-eoir26a-letter). Devolvemos `queued`
+// y placeholder pending inmediato — el frontend pollea cada 5s vía
+// jurisdiction-panel mientras research_status='pending', así Diana puede
+// cerrar la pestaña y volver luego.
+//
+// El GET sigue siendo síncrono (?research=true) por compatibilidad con flujos
+// pre-existentes que esperan la fila completa en el response.
 
 async function ensureAdminOrEmployee() {
   const supabase = await createClient()
@@ -128,16 +133,26 @@ export async function GET(req: NextRequest) {
  * POST /api/admin/case-jurisdiction
  * Body: { caseId: string, force?: boolean }
  *
- * `force: true` → borra cache + corre research SÍNCRONO. Usado por el
- * botón "Re-verificar" del panel admin. El admin ve spinner ~60-120s.
+ * Marca placeholder pending + encola job a QStash. Devuelve INMEDIATAMENTE
+ * con `{ queued: true, jurisdiction: pendingRow }`. El worker corre el
+ * research real con maxDuration=300 y persiste el resultado; el frontend
+ * pollea cada 5s vía jurisdiction-panel.
  *
- * Sin `force` se comporta como GET (idempotente).
+ * `force: true` → borra cache + encola un nuevo job. Idempotencia por
+ * deduplicationId: si Diana hace doble-clic, QStash descarta el segundo.
  */
 export async function POST(req: NextRequest) {
   const auth = await ensureAdminOrEmployee()
   if (!auth) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
 
-  const { caseId, force = false } = await req.json() as { caseId?: string; force?: boolean }
+  let body: { caseId?: string; force?: boolean }
+  try {
+    body = (await req.json()) as { caseId?: string; force?: boolean }
+  } catch {
+    return NextResponse.json({ error: 'Body inválido (JSON requerido)' }, { status: 400 })
+  }
+
+  const { caseId, force = false } = body
   if (!caseId) return NextResponse.json({ error: 'caseId requerido' }, { status: 400 })
 
   const { service } = auth
@@ -146,8 +161,31 @@ export async function POST(req: NextRequest) {
     await service.from('case_jurisdictions').delete().eq('case_id', caseId)
   }
 
-  const location = await resolveClientLocation(caseId, service)
-  if (!location) {
+  // Idempotencia: si ya hay row 'completed' y no es force, devolverla sin encolar.
+  if (!force) {
+    const cached = await readCachedRow(service, caseId)
+    if (cached && cached.research_status === 'completed') {
+      const location = await resolveClientLocation(caseId, service)
+      return NextResponse.json({
+        jurisdiction: enrichWithRegistryForms(cached),
+        clientLocation: location,
+        cached: true,
+      })
+    }
+    if (cached && cached.research_status === 'pending') {
+      const location = await resolveClientLocation(caseId, service)
+      return NextResponse.json({
+        jurisdiction: enrichWithRegistryForms(cached),
+        clientLocation: location,
+        queued: true,
+        reason: 'already_pending',
+      })
+    }
+  }
+
+  // UPSERT placeholder pending para que el frontend lo vea de inmediato.
+  const ensured = await ensureJurisdictionPlaceholder(caseId, service)
+  if (!ensured) {
     return NextResponse.json({
       jurisdiction: null,
       clientLocation: null,
@@ -155,24 +193,43 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // Idempotencia: si ya hay row 'completed' y no es force, devolverla.
-  if (!force) {
-    const cached = await readCachedRow(service, caseId)
-    if (cached && cached.research_status === 'completed') {
-      return NextResponse.json({ jurisdiction: enrichWithRegistryForms(cached), clientLocation: location, cached: true })
-    }
+  const { location } = ensured
+  const proto = req.headers.get('x-forwarded-proto') ?? 'https'
+  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host')
+  const workerUrl = `${proto}://${host}/api/workers/research-jurisdiction`
+
+  try {
+    const { messageId } = await enqueueJob({
+      endpoint: workerUrl,
+      body: { caseId },
+      deduplicationId: `research-jurisdiction:${caseId}`,
+    })
+    log.info('research encolado a QStash', { caseId, force, state: location.stateCode, messageId })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    log.error('enqueue QStash falló — fallback a sync', { caseId, err: msg })
+    // Fallback: si QStash no está disponible (dev sin token, fallo
+    // transitorio), corremos el research síncrono como antes.
+    await runJurisdictionResearchSync(caseId)
+    const final = await readCachedRow(service, caseId)
+    return NextResponse.json({
+      jurisdiction: enrichWithRegistryForms(final),
+      clientLocation: location,
+      cached: false,
+      queued: false,
+      fallback: 'sync',
+    })
   }
 
-  log.info('POST research síncrono iniciado', { caseId, force, state: location.stateCode })
-  await runJurisdictionResearchSync(caseId)
-  const final = await readCachedRow(service, caseId)
-
+  const pendingRow = await readCachedRow(service, caseId)
   return NextResponse.json({
-    jurisdiction: enrichWithRegistryForms(final),
+    jurisdiction: enrichWithRegistryForms(pendingRow),
     clientLocation: location,
-    cached: false,
+    queued: true,
   })
 }
 
-// Vercel Pro permite hasta 300s. El research síncrono toma 60-120s típico.
+// El GET puede correr sync (60-120s). El POST sólo encola a QStash y
+// devuelve rápido, así que el maxDuration alto sigue siendo necesario sólo
+// para el flujo GET con ?research=true.
 export const maxDuration = 300

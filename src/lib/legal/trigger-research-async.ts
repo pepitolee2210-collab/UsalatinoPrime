@@ -9,46 +9,20 @@ import { createLogger } from '@/lib/logger'
 const log = createLogger('trigger-research-async')
 
 /**
- * Encola investigación de jurisdicción en background — usado por el flujo
- * de creación de contrato (no hay admin esperando). Marca placeholder
- * pending y corre la investigación dentro de `after()`. Si `after()` no
- * sobrevive al reciclaje del isolate, la fila queda `pending`; el primer
- * "Re-verificar" manual del admin la arregla con la versión síncrona del
- * route handler.
+ * UPSERT del placeholder con `research_status='pending'` y la ubicación
+ * ya resuelta. Exportado para que el route handler de `case-jurisdiction`
+ * lo invoque ANTES de encolar el job a QStash — así el frontend ve la
+ * fila `pending` inmediatamente al hacer clic, sin esperar al worker.
  *
- * Para cuando hay admin esperando (botón Re-verificar), usa directamente
- * `runJurisdictionResearchSync` desde el route handler con maxDuration=300.
+ * Devuelve `null` si no se pudo resolver la ubicación del cliente (caso
+ * que el endpoint debe propagar al frontend antes de encolar el research).
  */
-export async function triggerJurisdictionResearchAsync(
+export async function ensureJurisdictionPlaceholder(
   caseId: string,
   service: SupabaseClient,
-  opts: { force?: boolean } = {},
-): Promise<{ triggered: boolean; reason: string }> {
-  const force = Boolean(opts.force)
-
-  if (!force) {
-    const { data: existing } = await service
-      .from('case_jurisdictions')
-      .select('case_id, research_status')
-      .eq('case_id', caseId)
-      .maybeSingle()
-
-    if (existing) {
-      if (existing.research_status === 'completed') {
-        return { triggered: false, reason: 'already_completed' }
-      }
-      if (existing.research_status === 'pending') {
-        return { triggered: false, reason: 'already_pending' }
-      }
-      // status='failed' → permitimos retry
-    }
-  }
-
+): Promise<{ location: NonNullable<Awaited<ReturnType<typeof resolveClientLocation>>> } | null> {
   const location = await resolveClientLocation(caseId, service)
-  if (!location) {
-    log.warn('trigger skipped — no location resoluble', { caseId })
-    return { triggered: false, reason: 'no_location' }
-  }
+  if (!location) return null
 
   const placeholder = {
     case_id: caseId,
@@ -86,7 +60,51 @@ export async function triggerJurisdictionResearchAsync(
     .upsert(placeholder, { onConflict: 'case_id' })
 
   if (upsertErr) {
-    log.error('placeholder upsert failed', upsertErr)
+    log.error('placeholder upsert failed', { caseId, err: upsertErr })
+    return null
+  }
+
+  return { location }
+}
+
+/**
+ * Encola investigación de jurisdicción en background — usado por el flujo
+ * de creación de contrato (no hay admin esperando). Marca placeholder
+ * pending y corre la investigación dentro de `after()`. Si `after()` no
+ * sobrevive al reciclaje del isolate, la fila queda `pending`; el primer
+ * "Re-verificar" manual del admin la arregla vía worker QStash.
+ *
+ * Para cuando hay admin esperando (botón Re-verificar), el route handler
+ * encola el job a `/api/workers/research-jurisdiction` y devuelve `queued`.
+ */
+export async function triggerJurisdictionResearchAsync(
+  caseId: string,
+  service: SupabaseClient,
+  opts: { force?: boolean } = {},
+): Promise<{ triggered: boolean; reason: string }> {
+  const force = Boolean(opts.force)
+
+  if (!force) {
+    const { data: existing } = await service
+      .from('case_jurisdictions')
+      .select('case_id, research_status')
+      .eq('case_id', caseId)
+      .maybeSingle()
+
+    if (existing) {
+      if (existing.research_status === 'completed') {
+        return { triggered: false, reason: 'already_completed' }
+      }
+      if (existing.research_status === 'pending') {
+        return { triggered: false, reason: 'already_pending' }
+      }
+      // status='failed' → permitimos retry
+    }
+  }
+
+  const ensured = await ensureJurisdictionPlaceholder(caseId, service)
+  if (!ensured) {
+    log.warn('trigger skipped — placeholder failed or no location', { caseId })
     return { triggered: false, reason: 'placeholder_failed' }
   }
 
@@ -153,24 +171,28 @@ export async function runJurisdictionResearchSync(caseId: string): Promise<void>
   // el tutor_guardian form. Si el cliente no ha llenado el form aún, devuelve
   // un default conservador (guardianship/low) y la IA usa el set ampliado.
   // Re-verificar después de que el cliente complete el form ajusta la ruta.
+  const proceduralStartMs = Date.now()
   const procedural = await inferProceduralRoute(caseId, service)
   log.info('procedural route inferred', {
     caseId,
     route: procedural.route,
     relation: procedural.petitionerRelation,
     confidence: procedural.confidence,
+    elapsedMs: Date.now() - proceduralStartMs,
   })
 
   log.info('research started', { caseId, state: location.stateCode, route: procedural.route })
 
-  // AbortSignal de seguridad: si Claude tarda > 240s (típico ~60-120s),
+  // AbortSignal de seguridad: si Claude tarda > 270s (típico ~60-120s),
   // rendimos antes de los 300s de Vercel para poder persistir `failed`.
   const safetyAbort = new AbortController()
-  const safetyTimer = setTimeout(() => safetyAbort.abort(new Error('Safety timeout 240s — research demoró demasiado')), 240_000)
+  const safetyTimer = setTimeout(() => safetyAbort.abort(new Error('safety_timeout_270s')), 270_000)
 
+  const researchStartMs = Date.now()
   try {
     const research = await researchJurisdiction(location, procedural, safetyAbort.signal)
     clearTimeout(safetyTimer)
+    log.info('researchJurisdiction completed', { caseId, elapsedMs: Date.now() - researchStartMs })
 
     // El research devuelve `_missing_families` cuando pasó por retry pero
     // no logró cubrir todas las familias core SIJS. En ese caso persistimos
@@ -234,13 +256,28 @@ export async function runJurisdictionResearchSync(caseId: string): Promise<void>
     })
   } catch (err) {
     clearTimeout(safetyTimer)
-    log.error('research failed', { caseId, err: err instanceof Error ? err.message : err })
+    const rawMessage = err instanceof Error ? err.message : String(err)
+    const isAbort =
+      (err instanceof Error && (err.name === 'AbortError' || /abort/i.test(rawMessage))) ||
+      rawMessage === 'safety_timeout_270s'
+
+    const userFacingMessage = isAbort
+      ? 'La investigación tardó más de 270 segundos. Reintenta — si vuelve a fallar, contacta al equipo técnico.'
+      : rawMessage
+
+    log.error('research failed', {
+      caseId,
+      err: rawMessage,
+      isAbort,
+      elapsedMs: Date.now() - startMs,
+      researchElapsedMs: Date.now() - researchStartMs,
+    })
 
     await service
       .from('case_jurisdictions')
       .update({
         research_status: 'failed',
-        research_error: err instanceof Error ? err.message : 'Error desconocido',
+        research_error: userFacingMessage,
         updated_at: new Date().toISOString(),
       })
       .eq('case_id', caseId)
