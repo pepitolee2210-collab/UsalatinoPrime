@@ -270,7 +270,7 @@ function Telemetry({ label, value, pulse }: { label: string; value: string; puls
   return (
     <span className="inline-flex items-center gap-2">
       <span style={{ color: 'var(--admin-fg-subtle)', letterSpacing: '0.12em' }}>{label}</span>
-      <span style={{ color: '#FFFFFF', fontWeight: 700, letterSpacing: '0.02em' }}>{value}</span>
+      <span style={{ color: 'var(--admin-fg)', fontWeight: 700, letterSpacing: '0.02em' }}>{value}</span>
       {pulse && (
         <span
           className="inline-block rounded-full"
@@ -438,7 +438,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
             <span
               className="material-symbols-outlined"
               data-fill="1"
-              style={{ fontSize: 24, color: '#FFFFFF' }}
+              style={{ fontSize: 24, color: 'var(--admin-fg)' }}
             >
               {meta.icon}
             </span>
@@ -470,7 +470,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
             fontWeight: 500,
             letterSpacing: '-0.025em',
             lineHeight: 1.1,
-            color: '#FFFFFF',
+            color: 'var(--admin-fg)',
             marginBottom: 12,
           }}
         >
@@ -501,7 +501,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
         {/* Bottom row */}
         <div className="flex items-center justify-between mt-5">
           <div className="flex items-center gap-1.5">
-            <span className="material-symbols-outlined" data-fill="1" style={{ fontSize: 14, color: '#FFFFFF' }}>
+            <span className="material-symbols-outlined" data-fill="1" style={{ fontSize: 14, color: 'var(--admin-fg)' }}>
               auto_awesome
             </span>
             <span
@@ -509,7 +509,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
                 fontFamily: 'var(--font-mono-tech)',
                 fontSize: 11,
                 fontWeight: 500,
-                color: '#FFFFFF',
+                color: 'var(--admin-fg)',
                 letterSpacing: '0.08em',
               }}
             >
@@ -524,7 +524,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
               fontSize: 11,
               fontWeight: 700,
               letterSpacing: '0.15em',
-              color: '#FFFFFF',
+              color: 'var(--admin-fg)',
             }}
           >
             ABRIR
@@ -539,7 +539,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
 function StatMono({ value, label }: { value: string; label: string }) {
   return (
     <div className="flex items-baseline gap-1.5" style={{ fontFamily: 'var(--font-mono-tech)' }}>
-      <span style={{ fontSize: 15, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em' }}>{value}</span>
+      <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--admin-fg)', letterSpacing: '-0.02em' }}>{value}</span>
       <span style={{ fontSize: 9, fontWeight: 500, color: 'var(--admin-fg-subtle)', letterSpacing: '0.18em' }}>{label}</span>
     </div>
   )

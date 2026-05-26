@@ -157,8 +157,8 @@ export function ProspectosView({ mode, hideHeader }: Props) {
         {!hideHeader && (
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: '#FFFFFF' }}>
-                <Bot className="w-6 h-6" style={{ color: '#FFFFFF' }} />
+              <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--admin-fg)' }}>
+                <Bot className="w-6 h-6" style={{ color: 'var(--admin-fg)' }} />
                 {title}
               </h1>
               <p style={{ fontSize: 13, color: 'var(--admin-fg-muted)' }}>{subtitle}</p>
@@ -300,7 +300,7 @@ export function ProspectosView({ mode, hideHeader }: Props) {
                 <div className="relative flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-2">
-                      <h3 style={{ fontSize: 17, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.018em' }}>
+                      <h3 style={{ fontSize: 17, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.018em' }}>
                         {p.guest_name || 'Sin nombre'}
                       </h3>
                       <ProsBadge kind="ai" label="IA" icon={<Bot className="w-3 h-3" />} />
@@ -341,7 +341,7 @@ export function ProspectosView({ mode, hideHeader }: Props) {
                         <a
                           href={`tel:${p.guest_phone}`}
                           className="inline-flex items-center gap-1.5 transition-opacity hover:opacity-80"
-                          style={{ color: '#FFFFFF', fontSize: 13, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em' }}
+                          style={{ color: 'var(--admin-fg)', fontSize: 13, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em' }}
                         >
                           <Phone className="w-3.5 h-3.5" />
                           {p.guest_phone}
@@ -379,7 +379,7 @@ export function ProspectosView({ mode, hideHeader }: Props) {
                         href="/admin/llamadas"
                         className="inline-flex items-center gap-1 mt-3 transition-opacity hover:opacity-80"
                         style={{
-                          color: '#FFFFFF',
+                          color: 'var(--admin-fg)',
                           fontFamily: 'var(--font-mono-tech)',
                           fontSize: 10,
                           fontWeight: 700,
@@ -520,7 +520,7 @@ function StatCard({
           {label.toUpperCase()}
         </p>
       </div>
-      <p style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.025em', color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>
+      <p style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.025em', color: 'var(--admin-fg)', fontVariantNumeric: 'tabular-nums' }}>
         {value}
       </p>
       {hint && (

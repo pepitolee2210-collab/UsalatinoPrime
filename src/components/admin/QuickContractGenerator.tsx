@@ -810,13 +810,13 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
             border: '0.5px solid rgba(255,255,255,0.15)',
           }}
         >
-          <FileText className="w-4 h-4" style={{ color: '#FFFFFF' }} />
+          <FileText className="w-4 h-4" style={{ color: 'var(--admin-fg)' }} />
         </div>
         <div>
           <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg-subtle)' }}>
             GENERADOR · NUEVO
           </p>
-          <h3 style={{ fontSize: 16, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.018em', marginTop: 2 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.018em', marginTop: 2 }}>
             Generar Contrato Rápido
           </h3>
           <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', marginTop: 3 }}>

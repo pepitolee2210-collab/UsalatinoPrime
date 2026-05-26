@@ -437,12 +437,12 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
                     onMouseLeave={(e) => (e.currentTarget.style.background = isOverdue ? 'rgba(248,113,113,0.04)' : 'transparent')}
                   >
                     <DarkTd>
-                      <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 12, fontWeight: 700, color: '#FFFFFF', letterSpacing: '0.02em' }}>
+                      <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 12, fontWeight: 700, color: 'var(--admin-fg)', letterSpacing: '0.02em' }}>
                         #{p.case?.case_number}
                       </span>
                     </DarkTd>
                     <DarkTd>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                         {p.client?.first_name} {p.client?.last_name}
                       </span>
                     </DarkTd>
@@ -455,7 +455,7 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
                       </span>
                     </DarkTd>
                     <DarkTd>
-                      <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 13, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                      <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 13, fontWeight: 700, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                         ${Number(p.amount).toLocaleString()}
                       </span>
                     </DarkTd>
@@ -686,7 +686,7 @@ const DARK_DIALOG_TITLE: React.CSSProperties = {
   fontSize: 20,
   fontWeight: 600,
   letterSpacing: '-0.022em',
-  color: '#FFFFFF',
+  color: 'var(--admin-fg)',
 }
 
 const DARK_BTN_GHOST =

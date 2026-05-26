@@ -111,7 +111,7 @@ export function ClientSearch() {
                 borderBottom: idx < results.length - 1 ? '0.5px solid var(--admin-accent-soft)' : 'none',
               }}
             >
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                 {r.first_name} {r.last_name}
               </p>
               <p style={{ fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 1 }}>

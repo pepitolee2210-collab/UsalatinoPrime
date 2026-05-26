@@ -270,12 +270,12 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
         fontFamily: 'var(--font-mono-tech)',
         fontSize: 10,
         fontWeight: 700,
-        color: '#FFFFFF',
+        color: 'var(--admin-fg)',
         letterSpacing: '0.05em',
       }}
     >
       {label}
-      <button onClick={onRemove} className="transition-opacity hover:opacity-60" style={{ color: '#FFFFFF' }}>
+      <button onClick={onRemove} className="transition-opacity hover:opacity-60" style={{ color: 'var(--admin-fg)' }}>
         <X className="w-3 h-3" />
       </button>
     </span>

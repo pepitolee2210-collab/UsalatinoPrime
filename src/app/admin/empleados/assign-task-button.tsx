@@ -147,7 +147,7 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
                   }}
                 >
                   <FolderOpen className="w-8 h-8 mx-auto mb-2" style={{ color: '#60A5FA' }} />
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                     Caso existente
                   </p>
                   <p style={{ fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 4, lineHeight: 1.4 }}>
@@ -163,7 +163,7 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
                   }}
                 >
                   <Plus className="w-8 h-8 mx-auto mb-2" style={{ color: '#FACC15' }} />
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                     Tarea nueva
                   </p>
                   <p style={{ fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 4, lineHeight: 1.4 }}>

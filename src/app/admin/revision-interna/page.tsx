@@ -229,8 +229,8 @@ export default function RevisionInternaAdminPage() {
               }}
             >
               <div className="flex items-center gap-2 mb-4 pb-3" style={{ borderBottom: '0.5px solid var(--admin-border)' }}>
-                <User className="w-4 h-4" style={{ color: '#FFFFFF' }} />
-                <p style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                <User className="w-4 h-4" style={{ color: 'var(--admin-fg)' }} />
+                <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                   {g.client ? `${g.client.first_name} ${g.client.last_name}` : 'Cliente sin nombre'}
                 </p>
                 <span
@@ -241,7 +241,7 @@ export default function RevisionInternaAdminPage() {
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 10,
                     fontWeight: 700,
-                    color: '#FFFFFF',
+                    color: 'var(--admin-fg)',
                     letterSpacing: '0.05em',
                   }}
                 >
@@ -303,7 +303,7 @@ export default function RevisionInternaAdminPage() {
           >
             <div className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5" style={{ color: '#F87171' }} />
-              <h3 style={{ fontSize: 17, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.018em' }}>
+              <h3 style={{ fontSize: 17, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.018em' }}>
                 Rechazar documento
               </h3>
             </div>
@@ -395,7 +395,7 @@ function StatCard({
           {label.toUpperCase()}
         </span>
       </div>
-      <p style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.025em', color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>
+      <p style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.025em', color: 'var(--admin-fg)', fontVariantNumeric: 'tabular-nums' }}>
         {value}
       </p>
       {hint && (
@@ -441,7 +441,7 @@ function DocRow({
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap mb-1.5">
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }} className="truncate">
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }} className="truncate">
               {doc.file_name}
             </p>
             <span
@@ -560,14 +560,14 @@ function PreviewModal({ doc, url, onClose }: { doc: DocumentRow; url: string | n
       >
         <div className="flex items-center gap-2.5 flex-1 min-w-0 mr-4">
           <FileText className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-fg-muted)' }} />
-          <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }} className="truncate">
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }} className="truncate">
             {doc.file_name}
           </p>
         </div>
         <button
           onClick={onClose}
           className="w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-white/10"
-          style={{ background: 'var(--admin-accent-soft)', color: '#FFFFFF', border: '0.5px solid var(--admin-border-strong)' }}
+          style={{ background: 'var(--admin-accent-soft)', color: 'var(--admin-fg)', border: '0.5px solid var(--admin-border-strong)' }}
         >
           ×
         </button>

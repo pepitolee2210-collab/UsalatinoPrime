@@ -117,7 +117,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
             color: 'var(--admin-fg-muted)',
           }}
         >
-          <span style={{ color: '#FFFFFF' }}>←</span>
+          <span style={{ color: 'var(--admin-fg)' }}>←</span>
           INDEX · SERVICIOS
         </Link>
 
@@ -226,7 +226,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
               >
                 EN CONSTRUCCIÓN
               </p>
-              <p style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.022em', color: '#FFFFFF' }}>
+              <p style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.022em', color: 'var(--admin-fg)' }}>
                 El guion de demo aún no está listo.
               </p>
             </div>
@@ -242,7 +242,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                 fontSize: 11,
                 fontWeight: 500,
                 letterSpacing: '0.2em',
-                color: '#FFFFFF',
+                color: 'var(--admin-fg)',
               }}
             >
               ESTRUCTURA · {realPhases.length.toString().padStart(2, '0')} FASES
@@ -300,7 +300,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                     <span
                       className="material-symbols-outlined"
                       data-fill="1"
-                      style={{ fontSize: 26, color: '#FFFFFF' }}
+                      style={{ fontSize: 26, color: 'var(--admin-fg)' }}
                     >
                       {phase.icon}
                     </span>
@@ -337,7 +337,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                       fontWeight: 500,
                       letterSpacing: '-0.025em',
                       lineHeight: 1.15,
-                      color: '#FFFFFF',
+                      color: 'var(--admin-fg)',
                     }}
                   >
                     {phase.label.replace(/^Fase \d+ — /, '')}

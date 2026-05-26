@@ -223,7 +223,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="flex flex-col">
             <p
               style={{
-                color: '#FFFFFF',
+                color: 'var(--admin-fg)',
                 fontSize: 16,
                 fontWeight: 600,
                 letterSpacing: '-0.02em',
@@ -521,7 +521,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {navContent}
           </SheetContent>
         </Sheet>
-        <h1 style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', color: '#FFFFFF' }}>
+        <h1 style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--admin-fg)' }}>
           UsaLatinoPrime <span style={{ color: 'var(--admin-fg-subtle)' }}>· Admin</span>
         </h1>
 

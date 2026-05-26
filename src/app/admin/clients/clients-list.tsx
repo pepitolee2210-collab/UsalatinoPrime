@@ -141,7 +141,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
                         style={{
                           fontSize: 13,
                           fontWeight: 600,
-                          color: '#FFFFFF',
+                          color: 'var(--admin-fg)',
                           letterSpacing: '-0.005em',
                         }}
                       >
@@ -168,7 +168,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
                             fontFamily: 'var(--font-mono-tech)',
                             fontSize: 11,
                             fontWeight: 700,
-                            color: '#FFFFFF',
+                            color: 'var(--admin-fg)',
                           }}
                         >
                           {c.case_count}

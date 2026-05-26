@@ -198,7 +198,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                     style={{
                       background: 'linear-gradient(135deg, rgba(255,255,255,0.15), var(--admin-accent-soft))',
                       border: '0.5px solid rgba(255,255,255,0.18)',
-                      color: '#FFFFFF',
+                      color: 'var(--admin-fg)',
                       fontSize: 12,
                       fontWeight: 700,
                     }}
@@ -206,7 +206,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                     {emp.first_name[0]}{emp.last_name[0]}
                   </div>
                   <div>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                       {emp.first_name} {emp.last_name}
                     </p>
                     <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: 'var(--admin-fg-subtle)', letterSpacing: '0.05em' }}>
@@ -316,7 +316,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-2 flex-wrap">
-                    <span style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                       {clientLabel}
                     </span>
                     {a.case && (
@@ -502,7 +502,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                         }}
                       >
                         <FileText className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#60A5FA' }} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }} className="truncate flex-1">
+                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }} className="truncate flex-1">
                           {doc.name}
                         </span>
                         <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: 'var(--admin-fg-subtle)', letterSpacing: '0.05em' }}>

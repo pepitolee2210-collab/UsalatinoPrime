@@ -273,7 +273,7 @@ export default function VoiceCallsPage() {
               <div className="relative flex items-start justify-between gap-4 flex-wrap">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-2">
-                    <span style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                       {call.lead?.prospect_name || call.appointment?.guest_name || 'Anónimo'}
                     </span>
                     <span
@@ -327,7 +327,7 @@ export default function VoiceCallsPage() {
                         fontFamily: 'var(--font-mono-tech)',
                         fontSize: 11,
                         fontWeight: 700,
-                        color: '#FFFFFF',
+                        color: 'var(--admin-fg)',
                         letterSpacing: '0.05em',
                       }}
                     >
@@ -444,7 +444,7 @@ function StatCard({
           {label.toUpperCase()}
         </p>
       </div>
-      <p style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.025em', color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>
+      <p style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.025em', color: 'var(--admin-fg)', fontVariantNumeric: 'tabular-nums' }}>
         {value}
       </p>
       {hint && (
@@ -543,7 +543,7 @@ function CallDetail({ call }: { call: VoiceCall }) {
             <CheckCircle className="w-3 h-3" />
             LEAD CAPTURADO
           </p>
-          <p style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>{call.lead.prospect_name}</p>
+          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>{call.lead.prospect_name}</p>
           <p style={{ fontSize: 11, color: '#93C5FD', fontFamily: 'var(--font-mono-tech)', marginTop: 2 }}>{call.lead.phone}</p>
           <p style={{ fontSize: 10, color: 'var(--admin-fg-subtle)', marginTop: 4, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.1em' }}>
             STATUS · {call.lead.status.toUpperCase()}
@@ -566,7 +566,7 @@ function CallDetail({ call }: { call: VoiceCall }) {
             <CalendarCheck className="w-3 h-3" />
             CITA AGENDADA
           </p>
-          <p style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
             {call.appointment.guest_name || 'Sin nombre'}
           </p>
           {call.appointment.guest_phone && (
@@ -619,7 +619,7 @@ function CallDetail({ call }: { call: VoiceCall }) {
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 11,
                     fontWeight: 600,
-                    color: '#FFFFFF',
+                    color: 'var(--admin-fg)',
                     background: 'var(--admin-accent-soft)',
                     border: '0.5px solid var(--admin-border-strong)',
                   }}
@@ -657,7 +657,7 @@ function Field({ label, value, mono }: { label: string; value: string; mono?: bo
         style={{
           fontSize: 13,
           fontWeight: 600,
-          color: '#FFFFFF',
+          color: 'var(--admin-fg)',
           letterSpacing: '-0.005em',
           fontFamily: mono ? 'var(--font-mono-tech)' : undefined,
         }}

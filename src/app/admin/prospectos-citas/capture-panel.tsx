@@ -131,7 +131,7 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
                 <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg-subtle)' }}>
                   EVALUACIÓN · EN VIVO
                 </p>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.02em', color: '#FFFFFF', lineHeight: 1.2 }}>
+                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--admin-fg)', lineHeight: 1.2 }}>
                   {prospecto.guest_name || 'Sin nombre'}
                 </h2>
               </div>
@@ -166,7 +166,7 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
           >
             <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#60A5FA' }} />
             <div style={{ fontSize: 12, color: '#93C5FD', lineHeight: 1.55 }}>
-              <strong style={{ color: '#FFFFFF' }}>Recordatorio:</strong> UsaLatino Prime es una plataforma que guía al usuario a organizar su propio expediente. Tu rol es acompañar al cliente, evaluar viabilidad y capturar los datos clave. No das asesoría legal.
+              <strong style={{ color: 'var(--admin-fg)' }}>Recordatorio:</strong> UsaLatino Prime es una plataforma que guía al usuario a organizar su propio expediente. Tu rol es acompañar al cliente, evaluar viabilidad y capturar los datos clave. No das asesoría legal.
             </div>
           </div>
 
@@ -358,7 +358,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
           fontSize: 10,
           fontWeight: 700,
           letterSpacing: '0.2em',
-          color: '#FFFFFF',
+          color: 'var(--admin-fg)',
           borderBottom: '0.5px solid var(--admin-border-strong)',
         }}
       >

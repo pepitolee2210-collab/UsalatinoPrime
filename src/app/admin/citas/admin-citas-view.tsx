@@ -279,8 +279,8 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
         }}
       >
         <div className="px-5 py-4 flex items-center gap-2.5" style={{ borderBottom: '0.5px solid var(--admin-border)' }}>
-          <CalendarClock className="w-4 h-4" style={{ color: '#FFFFFF' }} />
-          <h2 style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.012em' }}>
+          <CalendarClock className="w-4 h-4" style={{ color: 'var(--admin-fg)' }} />
+          <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.012em' }}>
             Citas
           </h2>
           <span
@@ -291,7 +291,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
               fontFamily: 'var(--font-mono-tech)',
               fontSize: 10,
               fontWeight: 700,
-              color: '#FFFFFF',
+              color: 'var(--admin-fg)',
               letterSpacing: '0.05em',
             }}
           >
@@ -342,7 +342,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
         style={{
           background: 'rgba(255,255,255,0.025)',
           border: '0.5px solid var(--admin-border-strong)',
-          color: '#FFFFFF',
+          color: 'var(--admin-fg)',
         }}
       >
         <span className="inline-flex items-center gap-2.5">
@@ -561,7 +561,7 @@ function AppointmentRow({
       >
         <Td>
           <div>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
               {formatDate(appointment.scheduled_at, viewTz)}
             </p>
             <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 2, letterSpacing: '0.02em' }}>
@@ -575,7 +575,7 @@ function AppointmentRow({
         <Td>
           {client ? (
             <div>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                 {client.first_name} {client.last_name}
               </p>
               <span
@@ -609,7 +609,7 @@ function AppointmentRow({
         <Td>
           {caseInfo ? (
             <div>
-              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 12, fontWeight: 700, color: '#FFFFFF', letterSpacing: '0.02em' }}>
+              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 12, fontWeight: 700, color: 'var(--admin-fg)', letterSpacing: '0.02em' }}>
                 #{caseInfo.case_number}
               </p>
               <p style={{ fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 2 }}>{service?.name || '—'}</p>
@@ -1125,13 +1125,13 @@ function Panel({
             style={{
               background: 'linear-gradient(135deg, var(--admin-border-strong), rgba(255,255,255,0.02))',
               border: '0.5px solid rgba(255,255,255,0.15)',
-              color: '#FFFFFF',
+              color: 'var(--admin-fg)',
             }}
           >
             {icon}
           </span>
           <div>
-            <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.018em', color: '#FFFFFF' }}>{title}</h2>
+            <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.018em', color: 'var(--admin-fg)' }}>{title}</h2>
             {description && (
               <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', marginTop: 3, letterSpacing: '-0.005em' }}>{description}</p>
             )}

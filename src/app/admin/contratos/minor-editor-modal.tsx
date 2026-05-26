@@ -116,7 +116,7 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
             >
               EDICIÓN · CORRECCIONES
             </p>
-            <h2 style={{ fontSize: 18, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.018em', marginTop: 2 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.018em', marginTop: 2 }}>
               Editar menores del contrato
             </h2>
             <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', marginTop: 4, lineHeight: 1.5 }}>
@@ -168,7 +168,7 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
                   fontSize: 10,
                   fontWeight: 700,
                   letterSpacing: '0.2em',
-                  color: '#FFFFFF',
+                  color: 'var(--admin-fg)',
                 }}
               >
                 MENOR #{(idx + 1).toString().padStart(2, '0')}

@@ -273,7 +273,7 @@ export default function AdminComunidadPage() {
                 <DollarSign className="w-5 h-5" />
               </div>
               <div>
-                <p style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                   Pagos Zelle
                 </p>
                 <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', marginTop: 2 }}>
@@ -539,7 +539,7 @@ export default function AdminComunidadPage() {
                     )}
                   </div>
                   {post.title && (
-                    <p style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                       {post.title}
                     </p>
                   )}
@@ -627,7 +627,7 @@ function Panel({
 }) {
   const tone = iconTone === 'yellow'
     ? { bg: 'rgba(250,204,21,0.12)', border: 'rgba(250,204,21,0.3)', color: '#FACC15' }
-    : { bg: 'var(--admin-accent-soft)', border: 'rgba(255,255,255,0.12)', color: '#FFFFFF' }
+    : { bg: 'var(--admin-accent-soft)', border: 'rgba(255,255,255,0.12)', color: 'var(--admin-fg)' }
 
   return (
     <div
@@ -656,7 +656,7 @@ function Panel({
             {icon}
           </span>
           <div>
-            <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.018em', color: '#FFFFFF' }}>{title}</h2>
+            <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.018em', color: 'var(--admin-fg)' }}>{title}</h2>
             {description && (
               <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', marginTop: 3, lineHeight: 1.55 }}>{description}</p>
             )}
@@ -686,7 +686,7 @@ function StatCard({ icon, label, value, tone }: { icon?: React.ReactNode; label:
       }}
     >
       {icon && (
-        <div className="mb-2 inline-flex items-center justify-center w-8 h-8 rounded-lg" style={{ background: 'var(--admin-accent-soft)', border: '0.5px solid rgba(255,255,255,0.12)', color: '#FFFFFF' }}>
+        <div className="mb-2 inline-flex items-center justify-center w-8 h-8 rounded-lg" style={{ background: 'var(--admin-accent-soft)', border: '0.5px solid rgba(255,255,255,0.12)', color: 'var(--admin-fg)' }}>
           {icon}
         </div>
       )}

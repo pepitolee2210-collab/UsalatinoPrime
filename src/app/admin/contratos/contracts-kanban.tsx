@@ -132,7 +132,7 @@ export function ContractsKanban({
                         <div>
                           <p
                             className="truncate"
-                            style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}
+                            style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}
                             title={c.client_full_name}
                           >
                             {c.client_full_name}
@@ -151,7 +151,7 @@ export function ContractsKanban({
                               fontFamily: 'var(--font-mono-tech)',
                               fontSize: 13,
                               fontWeight: 700,
-                              color: '#FFFFFF',
+                              color: 'var(--admin-fg)',
                               letterSpacing: '-0.005em',
                             }}
                           >

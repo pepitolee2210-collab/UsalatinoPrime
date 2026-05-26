@@ -429,7 +429,7 @@ export default function RevisorIAPage() {
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 14,
                     fontWeight: 700,
-                    color: '#FFFFFF',
+                    color: 'var(--admin-fg)',
                     letterSpacing: '0.02em',
                   }}
                 >
@@ -528,7 +528,7 @@ export default function RevisorIAPage() {
                     <div className="flex items-start gap-2.5">
                       <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#FACC15' }} />
                       <div>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                           {ex.title}
                         </p>
                         <p style={{ fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 3, lineHeight: 1.5 }}>
@@ -599,7 +599,7 @@ export default function RevisorIAPage() {
                     }}
                   >
                     <FileIcon className="w-3 h-3" style={{ color: 'var(--admin-fg-muted)' }} />
-                    <span style={{ fontWeight: 600, color: '#FFFFFF', maxWidth: 180 }} className="truncate">{a.filename}</span>
+                    <span style={{ fontWeight: 600, color: 'var(--admin-fg)', maxWidth: 180 }} className="truncate">{a.filename}</span>
                     <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: 'var(--admin-fg-subtle)' }}>
                       {formatFileSize(a.size_bytes)}
                     </span>
@@ -656,7 +656,7 @@ export default function RevisorIAPage() {
                 className="flex-1 bg-transparent border-none outline-none resize-none px-2 py-2 max-h-60"
                 style={{
                   fontSize: 13,
-                  color: '#FFFFFF',
+                  color: 'var(--admin-fg)',
                   letterSpacing: '-0.005em',
                 }}
               />
@@ -665,7 +665,7 @@ export default function RevisorIAPage() {
                 <button
                   onClick={handleStopStream}
                   className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-opacity hover:opacity-90"
-                  style={{ background: '#EF4444', color: '#FFFFFF' }}
+                  style={{ background: '#EF4444', color: 'var(--admin-fg)' }}
                   title="Detener"
                 >
                   <div className="w-3 h-3 bg-white rounded-sm" />

@@ -142,7 +142,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
               border: '0.5px solid rgba(255,255,255,0.12)',
             }}
           >
-            <Link2 className="w-3.5 h-3.5" style={{ color: '#FFFFFF' }} />
+            <Link2 className="w-3.5 h-3.5" style={{ color: 'var(--admin-fg)' }} />
           </span>
           <div>
             <p
@@ -170,7 +170,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
               }}
             >
               <div className="min-w-0">
-                <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }} className="truncate">
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }} className="truncate">
                   {fl.label}
                 </p>
                 <p
@@ -399,7 +399,7 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <Sparkles className="w-3.5 h-3.5" style={{ color: '#F2A900' }} />
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
               {agentLabel}
             </span>
             <span
@@ -455,7 +455,7 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
           style={{
             background: 'var(--admin-accent-soft)',
             border: '0.5px solid var(--admin-border-strong)',
-            color: '#FFFFFF',
+            color: 'var(--admin-fg)',
             fontSize: 11,
             fontWeight: 600,
             letterSpacing: '-0.005em',

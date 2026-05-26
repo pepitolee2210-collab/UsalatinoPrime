@@ -122,7 +122,7 @@ export function PageHeader({ eyebrow, title, accentDot, description, action, tel
               }}
             >
               <span style={{ color: 'var(--admin-fg-subtle)', letterSpacing: '0.15em' }}>{t.label.toUpperCase()}</span>
-              <span style={{ color: '#FFFFFF', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{t.value}</span>
+              <span style={{ color: 'var(--admin-fg)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{t.value}</span>
             </div>
           ))}
         </div>
@@ -151,7 +151,7 @@ export function PrimaryButton({ children, href, onClick, icon, variant = 'solid'
       }
     : {
         background: 'var(--admin-accent-soft)',
-        color: '#FFFFFF',
+        color: 'var(--admin-fg)',
         border: '0.5px solid rgba(255,255,255,0.15)',
       }
 
@@ -341,7 +341,7 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
         </span>
       </div>
       <div className="space-y-1.5">
-        <p style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.018em', color: '#FFFFFF' }}>{title}</p>
+        <p style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.018em', color: 'var(--admin-fg)' }}>{title}</p>
         {description && (
           <p style={{ fontSize: 14, color: 'var(--admin-fg-muted)', maxWidth: '44ch', lineHeight: 1.5 }}>{description}</p>
         )}

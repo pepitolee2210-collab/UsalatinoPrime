@@ -309,7 +309,7 @@ function ContratosInner({ basePath, hideHeader }: Props) {
           </div>
         )}
 
-        <h1 style={{ fontSize: 24, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.025em' }}>
+        <h1 style={{ fontSize: 24, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.025em' }}>
           {editingContract ? 'Editar Contrato' : 'Nuevo Contrato'}
         </h1>
 
@@ -328,7 +328,7 @@ function ContratosInner({ basePath, hideHeader }: Props) {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         {!hideHeader && (
-          <h1 style={{ fontSize: 24, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.025em' }}>
+          <h1 style={{ fontSize: 24, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.025em' }}>
             Contratos
           </h1>
         )}
@@ -568,7 +568,7 @@ function ContractCard({
         {/* Header row */}
         <div>
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <p style={{ fontSize: 15, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.012em' }}>
+            <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.012em' }}>
               {c.client_full_name}
             </p>
             <span
@@ -601,7 +601,7 @@ function ContractCard({
                 fontFamily: 'var(--font-mono-tech)',
                 fontSize: 16,
                 fontWeight: 700,
-                color: '#FFFFFF',
+                color: 'var(--admin-fg)',
                 letterSpacing: '-0.012em',
               }}
             >

@@ -617,7 +617,7 @@ function AgendaCard({
           <div className="flex-1 min-w-0">
             {/* Name + badges */}
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <h3 style={{ fontSize: 15, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.012em' }}>
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.012em' }}>
                 {item.prospect_name}
               </h3>
               <StatusBadge status={item.status} />
@@ -646,7 +646,7 @@ function AgendaCard({
               <a
                 href={`tel:${item.phone}`}
                 className="inline-flex items-center gap-1.5 transition-opacity hover:opacity-80"
-                style={{ color: '#FFFFFF', fontSize: 13, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em' }}
+                style={{ color: 'var(--admin-fg)', fontSize: 13, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em' }}
               >
                 <Phone className="w-3 h-3" />
                 {item.phone}

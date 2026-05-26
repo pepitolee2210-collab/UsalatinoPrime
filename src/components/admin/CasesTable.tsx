@@ -91,7 +91,7 @@ export function CasesTable({ cases }: CasesTableProps) {
                         fontFamily: 'var(--font-mono-tech)',
                         fontSize: 12,
                         fontWeight: 700,
-                        color: '#FFFFFF',
+                        color: 'var(--admin-fg)',
                         letterSpacing: '0.02em',
                       }}
                     >
@@ -99,7 +99,7 @@ export function CasesTable({ cases }: CasesTableProps) {
                     </Link>
                   </Td>
                   <Td>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                       {client?.first_name} {client?.last_name}
                     </p>
                     <p style={{ fontSize: 11, color: 'var(--admin-fg-subtle)', marginTop: 1 }}>{client?.email}</p>

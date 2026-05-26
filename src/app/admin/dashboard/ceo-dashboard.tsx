@@ -160,7 +160,7 @@ export function CeoDashboard({ data }: Props) {
           icon={<Sparkles className="w-4 h-4" strokeWidth={1.7} />}
           title="Auto-pilot"
           subtitle="Automatización progresiva del trabajo manual"
-          action={<span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', padding: '4px 8px', borderRadius: 4, background: 'var(--admin-border)', color: '#FFFFFF', border: '0.5px solid rgba(255,255,255,0.15)' }}>SOON</span>}
+          action={<span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', padding: '4px 8px', borderRadius: 4, background: 'var(--admin-border)', color: 'var(--admin-fg)', border: '0.5px solid rgba(255,255,255,0.15)' }}>SOON</span>}
         />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <AutoPilotCard
@@ -246,13 +246,13 @@ function SectionHeader({
           style={{
             background: 'linear-gradient(135deg, var(--admin-border-strong), rgba(255,255,255,0.02))',
             border: '0.5px solid rgba(255,255,255,0.15)',
-            color: '#FFFFFF',
+            color: 'var(--admin-fg)',
           }}
         >
           {icon}
         </div>
         <div>
-          <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.018em', color: '#FFFFFF' }}>{title}</h2>
+          <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.018em', color: 'var(--admin-fg)' }}>{title}</h2>
           {subtitle && (
             <p style={{ fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 2, letterSpacing: '-0.005em' }}>{subtitle}</p>
           )}
@@ -293,7 +293,7 @@ function KpiCard({
           style={{
             background: warning ? 'rgba(255,255,255,0.12)' : 'linear-gradient(135deg, var(--admin-border-strong), rgba(255,255,255,0.02))',
             border: '0.5px solid rgba(255,255,255,0.15)',
-            color: '#FFFFFF',
+            color: 'var(--admin-fg)',
           }}
         >
           {icon}
@@ -301,7 +301,7 @@ function KpiCard({
         <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-subtle)' }}>
           {label.toUpperCase()}
         </p>
-        <p style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.025em', color: '#FFFFFF', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+        <p style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.025em', color: 'var(--admin-fg)', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
           {value}
         </p>
         {hint && (
@@ -340,7 +340,7 @@ function FunnelChart({ stages }: { stages: CeoDashboardData['funnel'] }) {
           <div key={stage.key}>
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-2">
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>{stage.label}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>{stage.label}</span>
                 <span style={{ fontSize: 10, color: 'var(--admin-fg-subtle)' }}>{stage.description}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -357,7 +357,7 @@ function FunnelChart({ stages }: { stages: CeoDashboardData['funnel'] }) {
                     {conversion.toFixed(0)}%
                   </span>
                 )}
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-fg)', fontVariantNumeric: 'tabular-nums' }}>
                   {stage.count.toLocaleString()}
                 </span>
               </div>
@@ -403,11 +403,11 @@ function ServicesBreakdown({ services }: { services: CeoDashboardData['services'
         return (
           <div key={s.slug}>
             <div className="flex items-center justify-between mb-1">
-              <span style={{ fontSize: 13, fontWeight: 500, color: '#FFFFFF', letterSpacing: '-0.005em' }} className="truncate flex-1 mr-3">
+              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }} className="truncate flex-1 mr-3">
                 {s.name}
               </span>
               <span style={{ fontSize: 11, color: 'var(--admin-fg-muted)' }}>
-                {s.contracts} contratos · <span style={{ fontWeight: 700, color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>${s.revenue_signed.toLocaleString()}</span>
+                {s.contracts} contratos · <span style={{ fontWeight: 700, color: 'var(--admin-fg)', fontVariantNumeric: 'tabular-nums' }}>${s.revenue_signed.toLocaleString()}</span>
               </span>
             </div>
             <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--admin-accent-soft)' }}>
@@ -476,8 +476,8 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
                     boxShadow: '0 12px 24px rgba(0,0,0,0.6)',
                   }}
                 >
-                  <p style={{ fontSize: 11, fontWeight: 600, color: '#FFFFFF', textTransform: 'capitalize' }}>{p.label}</p>
-                  <p style={{ fontSize: 10, color: '#FFFFFF', marginTop: 2 }}>
+                  <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--admin-fg)', textTransform: 'capitalize' }}>{p.label}</p>
+                  <p style={{ fontSize: 10, color: 'var(--admin-fg)', marginTop: 2 }}>
                     Cobrado: <span style={{ fontWeight: 700 }}>${p.revenue_collected.toLocaleString()}</span>
                   </p>
                   <p style={{ fontSize: 10, color: 'var(--admin-fg-muted)' }}>
@@ -534,11 +534,11 @@ function OpStatCard({
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2" style={{ color: 'var(--admin-fg-muted)' }}>
           {icon}
-          <span style={{ fontSize: 11, fontWeight: 500, color: '#FFFFFF', letterSpacing: '-0.005em' }}>{label}</span>
+          <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>{label}</span>
         </div>
         <ArrowRight className="w-3 h-3 transition-transform duration-500 group-hover:translate-x-0.5" style={{ color: 'var(--admin-fg-subtle)' }} />
       </div>
-      <p style={{ fontSize: 22, fontWeight: 700, color: '#FFFFFF', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
+      <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--admin-fg)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
         {value}
       </p>
       {hint && (
@@ -575,7 +575,7 @@ function PendingSignatureList({ items }: { items: CeoDashboardData['ops']['pendi
         <div className="space-y-2">
           {items.slice(0, 5).map(c => (
             <div key={c.id} className="flex items-center justify-between gap-2">
-              <span className="truncate flex-1" style={{ fontSize: 12, fontWeight: 500, color: '#FFFFFF' }}>
+              <span className="truncate flex-1" style={{ fontSize: 12, fontWeight: 500, color: 'var(--admin-fg)' }}>
                 {c.client_name}
               </span>
               <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, color: 'var(--admin-fg-muted)', whiteSpace: 'nowrap' }}>
@@ -599,7 +599,7 @@ function OverdueClientsList({ items }: { items: CeoDashboardData['ops']['overdue
       }}
     >
       <div className="flex items-center justify-between mb-3">
-        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: '#FFFFFF' }}>
+        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg)' }}>
           ◆ CLIENTES CON DEUDA
         </p>
         <Link href="/admin/payments" style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: 'var(--admin-fg-subtle)', letterSpacing: '0.15em' }}>
@@ -614,11 +614,11 @@ function OverdueClientsList({ items }: { items: CeoDashboardData['ops']['overdue
         <div className="space-y-2">
           {items.slice(0, 5).map(c => (
             <div key={c.client_id} className="flex items-center justify-between gap-2">
-              <span className="truncate flex-1" style={{ fontSize: 12, fontWeight: 500, color: '#FFFFFF' }}>
+              <span className="truncate flex-1" style={{ fontSize: 12, fontWeight: 500, color: 'var(--admin-fg)' }}>
                 {c.name}
                 <span style={{ fontSize: 10, color: 'var(--admin-fg-subtle)', marginLeft: 6 }}>({c.installments_overdue})</span>
               </span>
-              <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap' }}>
+              <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, color: 'var(--admin-fg)', whiteSpace: 'nowrap' }}>
                 ${c.total_overdue.toLocaleString()}
               </span>
             </div>
@@ -649,7 +649,7 @@ function AutoPilotCard({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2" style={{ color: 'var(--admin-fg-muted)' }}>
           {icon}
-          <span style={{ fontSize: 11, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>{label}</span>
+          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>{label}</span>
         </div>
         <span
           style={{
@@ -667,7 +667,7 @@ function AutoPilotCard({
           {status === 'live' ? 'LIVE' : status === 'phase_2' ? 'FASE 2' : 'FASE 3'}
         </span>
       </div>
-      <p style={{ fontSize: 24, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.025em', fontVariantNumeric: 'tabular-nums' }}>
+      <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--admin-fg)', letterSpacing: '-0.025em', fontVariantNumeric: 'tabular-nums' }}>
         {value}
       </p>
       <p style={{ fontSize: 10, color: 'var(--admin-fg-subtle)', marginTop: 4, lineHeight: 1.5 }}>{description}</p>
