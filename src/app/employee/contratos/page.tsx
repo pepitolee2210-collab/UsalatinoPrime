@@ -15,7 +15,10 @@ export default async function EmployeeContratosPage() {
     .eq('id', user.id)
     .single()
 
-  if (profile?.employee_type !== 'contracts_manager') {
+  // Acceso: Andrium (contracts_manager) + Vanessa (senior_consultant).
+  // Vanessa supervisa los contratos asistida por Lex; Andrium ejecuta.
+  const allowedTypes = ['contracts_manager', 'senior_consultant']
+  if (!profile?.employee_type || !allowedTypes.includes(profile.employee_type)) {
     redirect('/employee/dashboard')
   }
 

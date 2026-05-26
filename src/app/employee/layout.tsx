@@ -43,8 +43,9 @@ const navConfig: Array<{
   { href: '/employee/whatsapp', label: 'WhatsApp SIJS', icon: MessageCircle, show: (t) => t === 'senior_consultant', badgeKey: 'whatsappActive' },
   // Agenda — exclusivo consultora senior
   { href: '/employee/agenda', label: 'Mi Agenda', icon: CalendarDays, show: (t) => t === 'senior_consultant' },
-  // Contratos — exclusivo contracts_manager
-  { href: '/employee/contratos', label: 'Contratos', icon: FileSignature, show: (t) => t === 'contracts_manager' },
+  // Contratos — contracts_manager (Andrium) y senior_consultant (Vanessa,
+  // asistida por Lex para crear/enviar/revisar contratos por voz).
+  { href: '/employee/contratos', label: 'Contratos', icon: FileSignature, show: (t) => t === 'contracts_manager' || t === 'senior_consultant' },
   // Métricas — exclusivo contracts_manager
   { href: '/employee/metricas', label: 'Métricas', icon: BarChart3, show: (t) => t === 'contracts_manager' },
   // Generales (todos)

@@ -20,12 +20,12 @@ export async function POST(request: Request) {
       .eq('id', user.id)
       .single()
 
-    // Admin siempre, y contracts_manager (Andrium) — su trabajo es justamente
-    // generar el link de firma cuando arma un contrato. Antes solo admin podía
-    // y le salía 'No autorizado' al intentarlo.
+    // Admin siempre, y contracts_manager (Andrium) o senior_consultant (Vanessa,
+    // asistida por Lex) — ambos roles tienen permitido generar link de firma.
     const isAdmin = profile?.role === 'admin'
     const isContractsManager = profile?.role === 'employee' && profile?.employee_type === 'contracts_manager'
-    if (!isAdmin && !isContractsManager) {
+    const isSeniorConsultant = profile?.role === 'employee' && profile?.employee_type === 'senior_consultant'
+    if (!isAdmin && !isContractsManager && !isSeniorConsultant) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 

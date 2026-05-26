@@ -30,7 +30,9 @@ export async function POST(request: NextRequest) {
     const isAdmin = profile?.role === 'admin'
     const isContractsManager =
       profile?.role === 'employee' && profile?.employee_type === 'contracts_manager'
-    if (!isAdmin && !isContractsManager) {
+    const isSeniorConsultant =
+      profile?.role === 'employee' && profile?.employee_type === 'senior_consultant'
+    if (!isAdmin && !isContractsManager && !isSeniorConsultant) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 403 })
     }
 
