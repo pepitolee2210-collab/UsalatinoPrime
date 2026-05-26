@@ -14,6 +14,7 @@ import {
   hasAnswerValue,
   type CFAnswers,
 } from '@/lib/legal/asilo-miedo-creible-form-schema'
+import { resolveApplicantCountry } from '@/lib/asylum/resolve-applicant-country'
 
 export type ValidationSeverity = 'blocker' | 'warning'
 
@@ -36,6 +37,19 @@ export async function validateCaseBeforeGeneration(
 ): Promise<ValidationResult> {
   const blockers: ValidationIssue[] = []
   const warnings: ValidationIssue[] = []
+
+  // 0. País de origen — necesario para Tavily, prompt v6 y narrativa I-589.
+  //    Consulta M2 → wizard I-589 → ai_extracted_data → profile. Si todo está
+  //    vacío, blocker accionable que apunta al campo más obvio para llenarlo.
+  const resolvedCountry = await resolveApplicantCountry({ supabase, caseId, profile: null })
+  if (!resolvedCountry.country) {
+    blockers.push({
+      severity: 'blocker',
+      module: 'M2',
+      message:
+        'Aún no sabemos tu país de origen. Completa la pregunta "País donde naciste" en el Módulo 2 del cuestionario.',
+    })
+  }
 
   // 1. Identificación: al menos 1 documento de la categoría 'documentos_legales'
   //    (incluye pasaporte, cédula, I-94, NTA, parole).
