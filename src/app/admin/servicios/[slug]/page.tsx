@@ -75,7 +75,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
           left: '-10%',
           width: '60%',
           height: '60%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 60%)',
+          background: 'radial-gradient(circle, var(--admin-accent-soft) 0%, transparent 60%)',
           filter: 'blur(80px)',
           animation: 'tech-aurora-a 28s ease-in-out infinite',
         }}
@@ -127,7 +127,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
             className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full"
             style={{
               background: 'var(--admin-accent-soft)',
-              border: '0.5px solid rgba(255,255,255,0.15)',
+              border: '0.5px solid var(--admin-border-strong)',
               animation: 'tech-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) both',
             }}
           >
@@ -138,7 +138,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
               />
               <span
                 className="relative rounded-full"
-                style={{ width: 6, height: 6, background: 'var(--admin-bg-elev)', boxShadow: '0 0 8px rgba(255,255,255,0.7)' }}
+                style={{ width: 6, height: 6, background: 'var(--admin-bg-elev)', boxShadow: '0 0 8px var(--admin-accent-glow)' }}
               />
             </span>
             <span
@@ -180,7 +180,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                 height: '0.5em',
                 borderRadius: '50%',
                 background: 'var(--admin-bg-elev)',
-                boxShadow: '0 0 24px rgba(255,255,255,0.8), 0 0 48px rgba(255,255,255,0.4)',
+                boxShadow: '0 0 24px var(--admin-accent), 0 0 48px var(--admin-accent-glow)',
                 animation: 'tech-glow-pulse 2.5s ease-in-out infinite',
               }}
             />
@@ -273,7 +273,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
               aria-hidden
               className="absolute left-[39px] top-10 bottom-10 w-px hidden md:block"
               style={{
-                background: 'linear-gradient(180deg, transparent, rgba(255,255,255,0.3) 30%, rgba(255,255,255,0.3) 70%, transparent)',
+                background: 'linear-gradient(180deg, transparent, var(--admin-accent-glow) 30%, var(--admin-accent-glow) 70%, transparent)',
               }}
             />
 
@@ -293,8 +293,8 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                   <div
                     className="relative w-14 h-14 rounded-2xl flex items-center justify-center"
                     style={{
-                      background: 'linear-gradient(135deg, var(--admin-border-strong), rgba(255,255,255,0.02))',
-                      border: '0.5px solid rgba(255,255,255,0.18)',
+                      background: 'linear-gradient(135deg, var(--admin-border-strong), var(--admin-bg-elev-2))',
+                      border: '0.5px solid var(--admin-border-strong)',
                     }}
                   >
                     <span
