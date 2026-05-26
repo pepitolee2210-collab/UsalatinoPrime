@@ -157,10 +157,10 @@ export function EmployeeTaskView({ assignment: initialAssignment, documents, sub
 
       {/* Instructions from Henry */}
       {assignment.task_description && (
-        <div className="p-4 rounded-2xl border-2 border-[#F2A900]/30 bg-[#F2A900]/5">
+        <div className="p-4 rounded-2xl border-2 border-[var(--admin-gold)] bg-[var(--admin-gold-soft)]">
           <div className="flex items-center gap-2 mb-2">
-            <MessageSquare className="w-4 h-4 text-[#F2A900]" />
-            <span className="text-xs font-bold text-[#9a6500] uppercase tracking-wider">Instrucciones del Abogado</span>
+            <MessageSquare className="w-4 h-4 text-[var(--admin-gold)]" />
+            <span className="text-xs font-bold text-[var(--admin-gold)] uppercase tracking-wider">Instrucciones del Abogado</span>
           </div>
           <p className="text-sm text-gray-800 whitespace-pre-wrap">{assignment.task_description}</p>
           <p className="text-[11px] text-gray-400 mt-2">
@@ -252,7 +252,7 @@ export function EmployeeTaskView({ assignment: initialAssignment, documents, sub
                 </Button>
               )}
             </div>
-            <Button onClick={handleSubmit} disabled={sending || (!content.trim() && !file)} className="bg-[#002855]">
+            <Button onClick={handleSubmit} disabled={sending || (!content.trim() && !file)} className="bg-[var(--admin-accent)]">
               {sending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
               Enviar al Abogado
             </Button>

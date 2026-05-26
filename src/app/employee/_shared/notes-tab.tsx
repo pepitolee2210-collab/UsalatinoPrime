@@ -400,7 +400,7 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
           <Button
             type="button"
             onClick={() => openNewNote()}
-            className="bg-[#002855] hover:bg-[#001f44] text-white shadow-sm"
+            className="bg-[var(--admin-accent)] hover:opacity-90 text-white shadow-sm"
           >
             <Plus className="w-4 h-4 mr-1.5" /> Nueva nota
           </Button>
@@ -411,7 +411,7 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               placeholder="Buscar texto o autor..."
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#F2A900]/30"
+              className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--admin-gold-soft)]"
             />
           </div>
           <button
@@ -419,13 +419,13 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
             onClick={() => setShowFilters((v) => !v)}
             className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
               activeFilterCount > 0
-                ? 'border-[#F2A900] bg-[#F2A900]/10 text-[#9a6500]'
+                ? 'border-[var(--admin-gold)] bg-[var(--admin-gold-soft)] text-[var(--admin-gold)]'
                 : 'border-gray-200 hover:bg-gray-50 text-gray-700'
             }`}
           >
             <Filter className="w-3.5 h-3.5" /> Filtros
             {activeFilterCount > 0 && (
-              <span className="text-[10px] bg-[#F2A900] text-white px-1.5 py-0.5 rounded-full">
+              <span className="text-[10px] bg-[var(--admin-gold)] text-white px-1.5 py-0.5 rounded-full">
                 {activeFilterCount}
               </span>
             )}
@@ -439,7 +439,7 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
                 key={c}
                 type="button"
                 onClick={() => toggleCategory(c)}
-                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#F2A900]/10 text-[#9a6500] hover:bg-[#F2A900]/20"
+                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--admin-gold-soft)] text-[var(--admin-gold)] hover:opacity-80"
               >
                 {CATEGORY_LABELS[c]} <X className="w-2.5 h-2.5" />
               </button>
@@ -448,7 +448,7 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
               <button
                 type="button"
                 onClick={() => setSelectedAuthor('all')}
-                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#F2A900]/10 text-[#9a6500] hover:bg-[#F2A900]/20"
+                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--admin-gold-soft)] text-[var(--admin-gold)] hover:opacity-80"
               >
                 {authorOptions.find((a) => a.id === selectedAuthor)?.label || 'Autor'}{' '}
                 <X className="w-2.5 h-2.5" />
@@ -458,7 +458,7 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
               <button
                 type="button"
                 onClick={() => setDatePreset('all')}
-                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#F2A900]/10 text-[#9a6500] hover:bg-[#F2A900]/20"
+                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--admin-gold-soft)] text-[var(--admin-gold)] hover:opacity-80"
               >
                 {DATE_PRESETS.find((p) => p.id === datePreset)?.label} <X className="w-2.5 h-2.5" />
               </button>
@@ -487,7 +487,7 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
                       onClick={() => toggleCategory(c)}
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
                         active
-                          ? 'border-[#F2A900] bg-[#F2A900]/10 text-[#9a6500]'
+                          ? 'border-[var(--admin-gold)] bg-[var(--admin-gold-soft)] text-[var(--admin-gold)]'
                           : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
                       }`}
                     >
@@ -574,7 +574,7 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
           <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center">
             <p className="text-sm font-semibold text-gray-700">Sin coincidencias</p>
             <p className="text-xs text-gray-500 mt-1">Prueba quitar algún filtro o búsqueda.</p>
-            <button onClick={clearFilters} className="mt-3 text-xs text-[#002855] hover:underline">
+            <button onClick={clearFilters} className="mt-3 text-xs text-[var(--admin-accent)] hover:underline">
               Limpiar filtros
             </button>
           </div>
@@ -758,8 +758,8 @@ function NoteCard({
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="rounded-2xl border border-dashed border-gray-200 bg-gradient-to-b from-white to-gray-50 p-10 text-center">
-      <div className="w-16 h-16 mx-auto rounded-full bg-[#F2A900]/10 flex items-center justify-center mb-4">
-        <StickyNote className="w-7 h-7 text-[#F2A900]" />
+      <div className="w-16 h-16 mx-auto rounded-full bg-[var(--admin-gold-soft)] flex items-center justify-center mb-4">
+        <StickyNote className="w-7 h-7 text-[var(--admin-gold)]" />
       </div>
       <h3 className="text-base font-bold text-gray-900">Sin notas todavía</h3>
       <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
@@ -767,7 +767,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
         del caso o asóciala a una cita específica.
       </p>
       <div className="flex items-center justify-center gap-2 mt-5">
-        <Button type="button" onClick={onCreate} className="bg-[#002855] hover:bg-[#001f44] text-white">
+        <Button type="button" onClick={onCreate} className="bg-[var(--admin-accent)] hover:opacity-90 text-white">
           <Plus className="w-4 h-4 mr-1.5" /> Crear primera nota
         </Button>
       </div>
@@ -903,7 +903,7 @@ function EditorModal({
             type="button"
             onClick={onSave}
             disabled={saving || !draftBody.trim()}
-            className="bg-[#002855] hover:bg-[#001f44] text-white"
+            className="bg-[var(--admin-accent)] hover:opacity-90 text-white"
           >
             {saving ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
             {editingNote ? 'Guardar cambios' : 'Crear nota'}

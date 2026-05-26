@@ -52,7 +52,7 @@ export function EmployeeCasosView({ cases }: { cases: CaseRow[] }) {
             placeholder="Buscar por nombre, # caso o servicio…"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#002855]/20 focus:border-[#002855]"
+            className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[var(--admin-accent-glow)] focus:border-[var(--admin-accent)]"
           />
         </div>
         <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
@@ -62,7 +62,7 @@ export function EmployeeCasosView({ cases }: { cases: CaseRow[] }) {
               key={f}
               onClick={() => setFilter(f)}
               className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                filter === f ? 'bg-white text-[#002855] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                filter === f ? 'bg-white text-[var(--admin-accent)] shadow-sm' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               {f}
@@ -83,10 +83,10 @@ export function EmployeeCasosView({ cases }: { cases: CaseRow[] }) {
             <Link
               key={c.id}
               href={`/employee/cases/${c.id}`}
-              className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-[#F2A900] hover:shadow-sm transition"
+              className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-xl hover:border-[var(--admin-gold)] hover:shadow-sm transition"
             >
-              <div className="w-10 h-10 rounded-lg bg-[#002855]/5 flex items-center justify-center flex-shrink-0">
-                <Briefcase className="w-5 h-5 text-[#002855]" />
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--admin-accent-soft)' }}>
+                <Briefcase className="w-5 h-5 text-[var(--admin-accent)]" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">

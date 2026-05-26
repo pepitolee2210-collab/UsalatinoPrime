@@ -515,7 +515,7 @@ function UploadBox({ uploading, onUpload, label }: UploadBoxProps) {
       className={`flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed rounded-xl cursor-pointer text-sm font-medium transition-colors ${
         uploading
           ? 'opacity-50 cursor-not-allowed border-gray-200 text-gray-400'
-          : 'border-gray-300 text-gray-500 hover:border-[#F2A900] hover:text-[#9a6500]'
+          : 'border-gray-300 text-gray-500 hover:border-[var(--admin-gold)] hover:text-[var(--admin-gold)]'
       }`}
     >
       <Upload className="w-4 h-4" />
@@ -665,7 +665,7 @@ function PreviewModal({ doc, onClose }: { doc: UploadFile; onClose: () => void }
                   href={downloadUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-[#F2A900] hover:underline mt-2 inline-block"
+                  className="text-sm text-[var(--admin-gold)] hover:underline mt-2 inline-block"
                 >
                   Descargar para abrir
                 </a>

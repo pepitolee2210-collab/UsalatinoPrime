@@ -365,7 +365,7 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               placeholder="Buscar evento o autor..."
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#F2A900]/30"
+              className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--admin-gold-soft)]"
             />
           </div>
           <button
@@ -373,13 +373,13 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
             onClick={() => setShowFilters((v) => !v)}
             className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
               activeFilterCount > 0
-                ? 'border-[#F2A900] bg-[#F2A900]/10 text-[#9a6500]'
+                ? 'border-[var(--admin-gold)] bg-[var(--admin-gold-soft)] text-[var(--admin-gold)]'
                 : 'border-gray-200 hover:bg-gray-50 text-gray-700'
             }`}
           >
             <Filter className="w-3.5 h-3.5" /> Filtros
             {activeFilterCount > 0 && (
-              <span className="text-[10px] bg-[#F2A900] text-white px-1.5 py-0.5 rounded-full">
+              <span className="text-[10px] bg-[var(--admin-gold)] text-white px-1.5 py-0.5 rounded-full">
                 {activeFilterCount}
               </span>
             )}
@@ -396,7 +396,7 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
                 key={c}
                 type="button"
                 onClick={() => toggleCategory(c)}
-                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#F2A900]/10 text-[#9a6500] hover:bg-[#F2A900]/20"
+                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--admin-gold-soft)] text-[var(--admin-gold)] hover:opacity-80"
               >
                 {CATEGORY_LABELS[c]} <X className="w-2.5 h-2.5" />
               </button>
@@ -405,7 +405,7 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
               <button
                 type="button"
                 onClick={() => setSelectedActor('all')}
-                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#F2A900]/10 text-[#9a6500] hover:bg-[#F2A900]/20"
+                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--admin-gold-soft)] text-[var(--admin-gold)] hover:opacity-80"
               >
                 {actorOptions.find((a) => a.id === selectedActor)?.label || 'Autor'}{' '}
                 <X className="w-2.5 h-2.5" />
@@ -415,7 +415,7 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
               <button
                 type="button"
                 onClick={() => setDatePreset('all')}
-                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#F2A900]/10 text-[#9a6500] hover:bg-[#F2A900]/20"
+                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--admin-gold-soft)] text-[var(--admin-gold)] hover:opacity-80"
               >
                 {DATE_PRESETS.find((p) => p.id === datePreset)?.label} <X className="w-2.5 h-2.5" />
               </button>
@@ -446,7 +446,7 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
                       onClick={() => toggleCategory(c)}
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
                         active
-                          ? 'border-[#F2A900] bg-[#F2A900]/10 text-[#9a6500]'
+                          ? 'border-[var(--admin-gold)] bg-[var(--admin-gold-soft)] text-[var(--admin-gold)]'
                           : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
                       }`}
                     >
@@ -506,7 +506,7 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
           <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center">
             <p className="text-sm font-semibold text-gray-700">Sin coincidencias</p>
             <p className="text-xs text-gray-500 mt-1">Prueba quitar algún filtro o búsqueda.</p>
-            <button onClick={clearFilters} className="mt-3 text-xs text-[#002855] hover:underline">
+            <button onClick={clearFilters} className="mt-3 text-xs text-[var(--admin-accent)] hover:underline">
               Limpiar filtros
             </button>
           </div>
