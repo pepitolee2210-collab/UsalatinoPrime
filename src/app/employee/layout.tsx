@@ -16,6 +16,8 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { CommandK } from '@/components/employee/command-k'
 import { ChatWidgetAutoMount } from '@/components/employee/chat-widget-mount'
+import { AdminThemeSwitcher } from '@/app/admin/_components/admin-theme-switcher'
+import { useAdminTheme } from '@/app/admin/_components/use-admin-theme'
 
 type EmployeeType = 'paralegal' | 'senior_consultant' | 'contracts_manager' | null
 
@@ -70,6 +72,9 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  // Diana / Vanessa / Andrium tienen el mismo switcher dark/institucional/
+  // light que Henry. Persistencia compartida vía localStorage `ulp-admin-theme`.
+  useAdminTheme()
 
   useEffect(() => {
     async function fetchProfile() {
@@ -116,34 +121,56 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
   const roleLabel = ROLE_LABEL[employeeType ?? 'default']
 
   const navContent = (
-    <div className="flex flex-col h-full">
+    <div
+      className="admin-sidebar flex flex-col h-full"
+      style={{
+        background: 'linear-gradient(180deg, var(--admin-bg) 0%, var(--admin-bg-deep) 100%)',
+      }}
+    >
       <div className="p-6">
         <div className="flex items-center gap-2">
-          <Briefcase className="w-6 h-6 text-[#002855]" />
-          <h2 className="text-xl font-bold text-gray-900">UsaLatino Prime</h2>
+          <Briefcase className="w-6 h-6" style={{ color: 'var(--admin-accent)' }} />
+          <h2 className="text-xl font-bold" style={{ color: 'var(--admin-fg)' }}>UsaLatino Prime</h2>
         </div>
-        <p className="text-sm text-gray-500">{roleLabel}</p>
+        <p className="text-sm" style={{ color: 'var(--admin-fg-subtle)' }}>{roleLabel}</p>
       </div>
-      <Separator />
+      <Separator style={{ backgroundColor: 'var(--admin-border)' }} />
       <nav className="flex-1 p-4 space-y-1">
         {visibleNavItems.map((item) => {
           const badgeCount = item.badgeKey ? counts[item.badgeKey] : 0
+          const isActive = pathname.startsWith(item.href)
           return (
             <Link
               key={item.href}
               href={item.href}
               onClick={() => setMobileOpen(false)}
               className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                pathname.startsWith(item.href)
-                  ? 'bg-[#002855]/10 text-[#002855]'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                'group relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors'
               )}
+              style={{
+                background: isActive ? 'var(--admin-accent-soft)' : 'transparent',
+                color: isActive ? 'var(--admin-fg)' : 'var(--admin-fg-muted)',
+                boxShadow: isActive ? 'var(--admin-shadow-gold, 0 4px 12px var(--admin-accent-glow))' : 'none',
+              }}
             >
+              {isActive && (
+                <span
+                  aria-hidden
+                  className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full"
+                  style={{ background: 'var(--admin-accent)', boxShadow: '0 0 8px var(--admin-accent-glow)' }}
+                />
+              )}
               <item.icon className="w-5 h-5" />
               <span className="flex-1">{item.label}</span>
               {badgeCount > 0 && (
-                <Badge className="bg-[#F2A900] text-white text-xs px-1.5 py-0 min-w-[20px] h-5 flex items-center justify-center">
+                <Badge
+                  className="text-xs px-1.5 py-0 min-w-[20px] h-5 flex items-center justify-center"
+                  style={{
+                    background: 'var(--admin-accent)',
+                    color: 'var(--admin-bg)',
+                    border: 'none',
+                  }}
+                >
                   {badgeCount}
                 </Badge>
               )}
@@ -151,33 +178,75 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
           )
         })}
       </nav>
-      <Separator />
-      <div className="p-4">
-        <p className="text-sm text-gray-700 mb-3">{userName || 'Empleado'}</p>
-        <Button variant="outline" size="sm" className="w-full" onClick={handleLogout}>
+      <Separator style={{ backgroundColor: 'var(--admin-border)' }} />
+      <div className="p-4 space-y-3">
+        <p className="text-sm" style={{ color: 'var(--admin-fg)' }}>{userName || 'Empleado'}</p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={handleLogout}
+          style={{
+            background: 'transparent',
+            color: 'var(--admin-fg-muted)',
+            border: '0.5px solid var(--admin-border-strong)',
+          }}
+        >
           <LogOut className="w-4 h-4 mr-2" />
           Cerrar Sesi&oacute;n
         </Button>
+        {/* Theme switcher — Diana/Vanessa/Andrium también eligen modo visual */}
+        <div className="flex items-center justify-between">
+          <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: 'var(--admin-fg-subtle)', letterSpacing: '0.18em' }}>
+            MODO
+          </p>
+          <AdminThemeSwitcher />
+        </div>
       </div>
     </div>
   )
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <aside className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col border-r bg-white">
+    <div
+      data-admin-theme="dark"
+      className="min-h-screen"
+      style={{ background: 'var(--admin-bg)', color: 'var(--admin-fg)' }}
+    >
+      <aside
+        className="hidden md:fixed md:inset-y-0 md:flex md:w-64 md:flex-col"
+        style={{ borderRight: '1px solid var(--admin-border)' }}
+      >
         {navContent}
       </aside>
-      <div className="sticky top-0 z-40 flex items-center gap-4 bg-white border-b px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:hidden">
+      <div
+        className="sticky top-0 z-40 flex items-center gap-4 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:hidden"
+        style={{
+          background: 'var(--admin-bg)',
+          borderBottom: '1px solid var(--admin-border)',
+        }}
+      >
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon"><Menu className="w-5 h-5" /></Button>
+            <Button variant="ghost" size="icon" style={{ color: 'var(--admin-fg)' }}><Menu className="w-5 h-5" /></Button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-64">{navContent}</SheetContent>
+          <SheetContent
+            side="left"
+            className="admin-sidebar p-0 w-64"
+            style={{ background: 'var(--admin-bg)' }}
+          >
+            {navContent}
+          </SheetContent>
         </Sheet>
-        <h1 className="font-semibold">UsaLatino Prime</h1>
+        <h1 className="font-semibold" style={{ color: 'var(--admin-fg)' }}>UsaLatino Prime</h1>
       </div>
       {/* Topbar desktop con buscador global Cmd+K */}
-      <div className="hidden md:flex md:ml-64 sticky top-0 z-30 items-center justify-end gap-2 bg-white/70 backdrop-blur-md border-b border-gray-100 px-6 h-12">
+      <div
+        className="hidden md:flex md:ml-64 sticky top-0 z-30 items-center justify-end gap-2 backdrop-blur-md px-6 h-12"
+        style={{
+          background: 'color-mix(in srgb, var(--admin-bg) 70%, transparent)',
+          borderBottom: '1px solid var(--admin-border)',
+        }}
+      >
         <CommandK />
       </div>
       <main className="md:ml-64 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">{children}</main>
