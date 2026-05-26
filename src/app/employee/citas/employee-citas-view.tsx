@@ -163,7 +163,7 @@ export function EmployeeCitasView({
             <div className="flex items-center justify-between p-4 border-b">
               <div>
                 <p className="font-bold text-gray-900 text-sm">{viewingNote.name}</p>
-                <p className="text-xs text-[#9a6500] flex items-center gap-1">
+                <p className="text-xs flex items-center gap-1" style={{ color: 'var(--admin-gold)' }}>
                   <MessageSquare className="w-3 h-3" /> Notas de seguimiento (histórica)
                 </p>
               </div>
@@ -197,7 +197,14 @@ export function EmployeeCitasView({
           <div className="ml-auto flex gap-2">
             <Dialog open={guestDialogOpen} onOpenChange={setGuestDialogOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="border-[#F2A900] text-[#002855] hover:bg-[#F2A900]/10">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  style={{
+                    borderColor: 'var(--admin-gold)',
+                    color: 'var(--admin-accent)',
+                  }}
+                >
                   <UserRound className="w-4 h-4 mr-2" />
                   Agendar No-Cliente
                 </Button>
@@ -216,7 +223,10 @@ export function EmployeeCitasView({
             </Dialog>
             <Dialog open={bookDialogOpen} onOpenChange={setBookDialogOpen}>
               <DialogTrigger asChild>
-                <Button size="sm" className="bg-[#002855] hover:bg-[#003570]">
+                <Button
+                  size="sm"
+                  style={{ background: 'var(--admin-accent)', color: 'var(--admin-bg)' }}
+                >
                   <UserPlus className="w-4 h-4 mr-2" />
                   Agendar para Cliente
                 </Button>
@@ -264,7 +274,7 @@ export function EmployeeCitasView({
               className="pl-10 h-10" />
           </div>
           <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)}
-            className="h-10 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40" />
+            className="h-10 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--admin-gold-soft)]" />
           {dateFilter && (
             <button onClick={() => setDateFilter('')}
               className="h-10 px-2 rounded-lg bg-red-50 text-red-500 text-xs font-medium hover:bg-red-100">
@@ -276,15 +286,17 @@ export function EmployeeCitasView({
         <div className="flex flex-wrap gap-1">
           <button onClick={() => setLetterFilter(null)}
             className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
-              !letterFilter ? 'bg-[#002855] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-            }`}>
+              !letterFilter ? '' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`}
+            style={!letterFilter ? { background: 'var(--admin-accent)', color: 'var(--admin-bg)' } : undefined}>
             All
           </button>
           {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => (
             <button key={l} onClick={() => setLetterFilter(letterFilter === l ? null : l)}
               className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
-                letterFilter === l ? 'bg-[#F2A900] text-[#001020]' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-              }`}>
+                letterFilter === l ? '' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
+              style={letterFilter === l ? { background: 'var(--admin-gold)', color: 'var(--admin-bg)' } : undefined}>
               {l}
             </button>
           ))}
@@ -298,8 +310,9 @@ export function EmployeeCitasView({
           ].map(f => (
             <button key={f.value} onClick={() => setFilter(f.value)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                filter === f.value ? 'bg-[#002855] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}>
+                filter === f.value ? '' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              style={filter === f.value ? { background: 'var(--admin-accent)', color: 'var(--admin-bg)' } : undefined}>
               {f.label}
             </button>
           ))}
@@ -381,11 +394,15 @@ export function EmployeeCitasView({
                     <button
                       type="button"
                       onClick={() => setViewingNote({ name: clientName, note: apt.employee_notes! })}
-                      className="mt-2 w-full text-left p-2.5 rounded-xl bg-[#F2A900]/5 border border-[#F2A900]/20 hover:bg-[#F2A900]/10 transition-colors"
+                      className="mt-2 w-full text-left p-2.5 rounded-xl border transition-colors"
+                      style={{
+                        background: 'var(--admin-gold-soft)',
+                        borderColor: 'var(--admin-gold-soft)',
+                      }}
                     >
                       <div className="flex items-center gap-1.5 mb-1">
-                        <MessageSquare className="w-3 h-3 text-[#F2A900]" />
-                        <span className="text-[10px] font-bold text-[#9a6500]">Notas históricas</span>
+                        <MessageSquare className="w-3 h-3" style={{ color: 'var(--admin-gold)' }} />
+                        <span className="text-[10px] font-bold" style={{ color: 'var(--admin-gold)' }}>Notas históricas</span>
                         <span className="text-[10px] text-gray-400 ml-auto">Toca para ver</span>
                       </div>
                       <p className="text-xs text-gray-700 line-clamp-2">{apt.employee_notes}</p>
@@ -397,7 +414,8 @@ export function EmployeeCitasView({
                     <div className="mt-2">
                       <Link
                         href={`/employee/clientes/${apt.client_id}`}
-                        className="inline-flex items-center gap-1 text-xs text-[#002855] hover:underline"
+                        className="inline-flex items-center gap-1 text-xs hover:underline"
+                        style={{ color: 'var(--admin-accent)' }}
                       >
                         Ver notas y bitácora del cliente <ChevronRight className="w-3 h-3" />
                       </Link>

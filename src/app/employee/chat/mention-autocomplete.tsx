@@ -113,8 +113,9 @@ export function MentionAutocomplete({ trigger, query, onSelect }: Props) {
               onMouseEnter={() => setSelectedIdx(i)}
               onClick={() => onSelect(item)}
               className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors ${
-                selectedIdx === i ? 'bg-[#F2A900]/15' : 'hover:bg-gray-50'
+                selectedIdx === i ? '' : 'hover:bg-gray-50'
               }`}
+              style={selectedIdx === i ? { background: 'var(--admin-gold-soft)' } : undefined}
             >
               {item.type === 'client' ? (
                 <User className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />

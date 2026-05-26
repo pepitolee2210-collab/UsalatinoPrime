@@ -40,9 +40,14 @@ export function ChatWidget({ currentUserId }: { currentUserId: string }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="fixed z-40 bottom-4 right-4 md:bottom-6 md:right-6 h-13 w-13 rounded-full bg-[#F2A900] hover:bg-[#D4940A] text-white shadow-lg shadow-amber-500/30 inline-flex items-center justify-center transition-transform active:scale-95"
+        className="fixed z-40 bottom-4 right-4 md:bottom-6 md:right-6 h-13 w-13 rounded-full shadow-lg shadow-amber-500/30 inline-flex items-center justify-center transition-transform active:scale-95"
         aria-label={open ? 'Cerrar chat' : 'Abrir chat'}
-        style={{ height: 52, width: 52 }}
+        style={{
+          height: 52,
+          width: 52,
+          background: 'var(--admin-gold)',
+          color: 'var(--admin-bg)',
+        }}
       >
         {open ? <X className="w-5 h-5" /> : <MessagesSquare className="w-5 h-5" />}
         {!open && unreadCount > 0 && (

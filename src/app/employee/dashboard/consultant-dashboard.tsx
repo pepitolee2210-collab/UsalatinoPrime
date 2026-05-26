@@ -237,7 +237,8 @@ export function ConsultantDashboard({ firstName, today, callNow, acceptedNoContr
                     </div>
                     <Button
                       size="sm"
-                      className="bg-[#002855] hover:bg-[#001d3d] text-white flex-shrink-0"
+                      className="flex-shrink-0"
+                      style={{ background: 'var(--admin-accent)', color: 'var(--admin-bg)' }}
                       onClick={() => convertToContract(p)}
                     >
                       <ArrowRight className="w-3.5 h-3.5" />

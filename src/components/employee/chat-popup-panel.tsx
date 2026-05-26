@@ -345,7 +345,7 @@ export function ChatPopupPanel({ currentUserId, onClose, onUnreadChange }: Props
               value={dmSearch}
               onChange={(e) => setDmSearch(e.target.value)}
               placeholder="Buscar persona..."
-              className="w-full pl-8 pr-3 h-9 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40"
+              className="w-full pl-8 pr-3 h-9 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--admin-gold-soft)]"
               autoFocus
             />
           </div>
@@ -432,7 +432,8 @@ export function ChatPopupPanel({ currentUserId, onClose, onUnreadChange }: Props
                 setView('new-dm')
                 loadStaff()
               }}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-[#F2A900] hover:underline"
+              className="inline-flex items-center gap-1.5 text-xs font-medium hover:underline"
+              style={{ color: 'var(--admin-gold)' }}
             >
               <Plus className="w-3.5 h-3.5" />
               Iniciar conversación
@@ -451,7 +452,10 @@ export function ChatPopupPanel({ currentUserId, onClose, onUnreadChange }: Props
                 className="w-full text-left flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors"
               >
                 {c.type === 'group' ? (
-                  <span className="flex-shrink-0 h-9 w-9 rounded-full bg-[#002855] text-white inline-flex items-center justify-center">
+                  <span
+                    className="flex-shrink-0 h-9 w-9 rounded-full inline-flex items-center justify-center"
+                    style={{ background: 'var(--admin-accent)', color: 'var(--admin-bg)' }}
+                  >
                     <Users className="w-4 h-4" />
                   </span>
                 ) : (
@@ -481,7 +485,10 @@ export function ChatPopupPanel({ currentUserId, onClose, onUnreadChange }: Props
                       {lastMessageSummary(c.last_message, currentUserId)}
                     </p>
                     {c.unread_count > 0 && (
-                      <span className="flex-shrink-0 h-4 min-w-[16px] px-1 rounded-full bg-[#F2A900] text-white text-[9px] font-bold inline-flex items-center justify-center">
+                      <span
+                        className="flex-shrink-0 h-4 min-w-[16px] px-1 rounded-full text-[9px] font-bold inline-flex items-center justify-center"
+                        style={{ background: 'var(--admin-gold)', color: 'var(--admin-bg)' }}
+                      >
                         {c.unread_count > 9 ? '9+' : c.unread_count}
                       </span>
                     )}
@@ -509,7 +516,11 @@ function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
   const classes = size === 'sm' ? 'h-8 w-8 text-[10px]' : 'h-9 w-9 text-xs'
   return (
     <span
-      className={`flex-shrink-0 ${classes} rounded-full bg-gradient-to-br from-[#002855] to-[#003b7a] text-white font-bold inline-flex items-center justify-center`}
+      className={`flex-shrink-0 ${classes} rounded-full font-bold inline-flex items-center justify-center`}
+      style={{
+        background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-accent))',
+        color: 'var(--admin-bg)',
+      }}
     >
       {initials}
     </span>

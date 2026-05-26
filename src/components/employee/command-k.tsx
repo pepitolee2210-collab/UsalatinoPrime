@@ -323,8 +323,9 @@ function HitRow({
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       className={`w-full text-left flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
-        selected ? 'bg-[#002855]/5' : 'hover:bg-gray-50'
+        selected ? '' : 'hover:bg-gray-50'
       }`}
+      style={selected ? { background: 'var(--admin-accent-soft)' } : undefined}
     >
       {icon}
       <div className="min-w-0 flex-1">

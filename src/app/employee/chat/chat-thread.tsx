@@ -215,7 +215,10 @@ export function ChatThread({
       {!hideHeader && (
         <div className="px-5 py-3 border-b border-gray-200 bg-white flex items-center gap-3">
           {isGroup ? (
-            <span className="h-9 w-9 rounded-full bg-[#002855] text-white inline-flex items-center justify-center">
+            <span
+              className="h-9 w-9 rounded-full inline-flex items-center justify-center"
+              style={{ background: 'var(--admin-accent)', color: 'var(--admin-bg)' }}
+            >
               <Users className="w-4 h-4" />
             </span>
           ) : (
@@ -330,13 +333,14 @@ export function ChatThread({
             placeholder="Escribe un mensaje... usa @ para clientes y # para casos"
             rows={1}
             disabled={sending}
-            className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/30 focus:border-[#F2A900] max-h-32"
+            className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--admin-gold-soft)] focus:border-[var(--admin-gold)] max-h-32"
             style={{ minHeight: '40px' }}
           />
           <button
             type="submit"
             disabled={(!draft.trim() && !pendingFile) || sending || uploading}
-            className="h-10 w-10 inline-flex items-center justify-center rounded-xl bg-[#F2A900] hover:bg-[#D4940A] disabled:bg-gray-200 disabled:text-gray-400 text-white transition-colors"
+            className="h-10 w-10 inline-flex items-center justify-center rounded-xl disabled:bg-gray-200 disabled:text-gray-400 transition-colors"
+            style={{ background: 'var(--admin-gold)', color: 'var(--admin-bg)' }}
             aria-label="Enviar"
           >
             {sending || uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -376,9 +380,10 @@ function MessageBubble({
         <div
           className={`rounded-2xl px-3.5 py-2 ${
             isMe
-              ? 'bg-[#F2A900] text-white rounded-br-md'
+              ? 'rounded-br-md'
               : 'bg-white border border-gray-200 text-gray-900 rounded-bl-md'
           }`}
+          style={isMe ? { background: 'var(--admin-gold)', color: 'var(--admin-bg)' } : undefined}
         >
           {message.body && (
             <MessageBody
@@ -413,7 +418,13 @@ function Avatar({ name }: { name: string }) {
     .map((p) => p[0]?.toUpperCase() || '')
     .join('') || '?'
   return (
-    <span className="h-9 w-9 rounded-full bg-gradient-to-br from-[#002855] to-[#003b7a] text-white text-xs font-bold inline-flex items-center justify-center">
+    <span
+      className="h-9 w-9 rounded-full text-xs font-bold inline-flex items-center justify-center"
+      style={{
+        background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-accent))',
+        color: 'var(--admin-bg)',
+      }}
+    >
       {initials}
     </span>
   )
