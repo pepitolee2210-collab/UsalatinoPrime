@@ -136,6 +136,32 @@ function ContratosInner({ basePath, hideHeader }: Props) {
     if (prefillFromVoice) setShowGenerator(true)
   }, [prefillFromVoice])
 
+  // Lex voice agent prefill — el agente Lex (en /employee/contratos) dispara
+  // este evento con datos completos (servicio, monto, cuotas, menores) cuando
+  // Vanessa dicta un contrato. Abrimos el generator con todos los campos
+  // pre-rellenados; Lex después dispara `lex:submitContractForm` para que
+  // QuickContractGenerator clickee Guardar por sí mismo.
+  const [voicePrefill, setVoicePrefill] = useState<{
+    clientName?: string
+    clientPhone?: string
+    serviceSlug?: string
+    clientPassport?: string
+    clientDob?: string
+    totalPrice?: number
+    installmentCount?: number
+    minors?: Array<{ fullName: string; dob?: string; passport?: string; birthplace?: string }>
+  } | null>(null)
+  useEffect(() => {
+    function onOpen(e: Event) {
+      const detail = (e as CustomEvent).detail
+      if (!detail) return
+      setVoicePrefill(detail)
+      setShowGenerator(true)
+    }
+    window.addEventListener('lex:openNewContractForm', onOpen)
+    return () => window.removeEventListener('lex:openNewContractForm', onOpen)
+  }, [])
+
   useEffect(() => {
     const v = searchParams.get('view')
     if (v === 'kanban' || v === 'list') setViewMode(v)
@@ -316,9 +342,14 @@ function ContratosInner({ basePath, hideHeader }: Props) {
         <QuickContractGenerator
           editData={editingContract as unknown as Parameters<typeof QuickContractGenerator>[0]['editData']}
           onSaved={handleGeneratorDone}
-          prefillName={prefillFromVoice?.name}
-          prefillPhone={prefillFromVoice?.phone}
-          prefillService={prefillFromVoice ? 'visa-juvenil' : undefined}
+          prefillName={voicePrefill?.clientName ?? prefillFromVoice?.name}
+          prefillPhone={voicePrefill?.clientPhone ?? prefillFromVoice?.phone}
+          prefillService={voicePrefill?.serviceSlug ?? (prefillFromVoice ? 'visa-juvenil' : undefined)}
+          prefillPassport={voicePrefill?.clientPassport}
+          prefillDob={voicePrefill?.clientDob}
+          prefillTotalPrice={voicePrefill?.totalPrice}
+          prefillInstallmentCount={voicePrefill?.installmentCount}
+          prefillMinors={voicePrefill?.minors}
         />
       </div>
     )

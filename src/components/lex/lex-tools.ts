@@ -80,9 +80,9 @@ export const LEX_TOOLS: LexFunctionDeclaration[] = [
     },
   },
   {
-    name: 'createContract',
+    name: 'openNewContractForm',
     description:
-      'Crea un contrato completo end-to-end con los datos dictados por Vanessa. Se guarda en estado "borrador" — Vanessa lo revisa en la lista. SOLO invoca esta tool DESPUÉS de que Vanessa confirme verbalmente todos los datos. Antes de invocar, repite cliente + teléfono + servicio + monto + cuotas y di "¿confirmas?". El precio y cuotas son OPCIONALES — si no se dictan, se usan los defaults del template del servicio.',
+      'Abre el formulario "Nuevo Contrato" de la sección y lo PRE-RELLENA con los datos que Vanessa dictó. El form se ve en pantalla con los campos ya completos — Vanessa puede revisar visualmente. NO guarda nada todavía. Después llama a submitContractForm para guardar y generar el PDF. Antes de invocar esta tool, repite los datos y pide "¿confirmas que abro el formulario con estos datos?".',
     parameters: {
       type: 'object',
       properties: {
@@ -138,6 +138,12 @@ export const LEX_TOOLS: LexFunctionDeclaration[] = [
   },
 
   // ── Mutaciones (SOLO después de confirmación verbal de Vanessa) ──────
+  {
+    name: 'submitContractForm',
+    description:
+      'Hace click en el botón "Generar contrato" del formulario abierto. Equivale a Vanessa clickeando Guardar — persiste el contrato en la BD, genera el PDF y crea el case asociado. SOLO invoca DESPUÉS de que Vanessa revise visualmente y diga "guárdalo" / "está bien" / "envíalo". Si Vanessa pide cambiar algún campo, dile que lo ajuste manualmente o vuelve a llamar openNewContractForm con los datos corregidos.',
+    parameters: { type: 'object', properties: {} },
+  },
   {
     name: 'sendSigningLink',
     description:
@@ -232,47 +238,40 @@ export async function executeLexTool(
         return { ok: true, message: 'Contrato resaltado' }
       }
 
-      case 'createContract': {
-        const payload = {
-          client_full_name: String(args.clientFullName || '').trim(),
-          client_phone: String(args.clientPhone || '').trim(),
-          service_slug: String(args.serviceSlug || '').trim(),
-          total_price: typeof args.totalPrice === 'number' ? args.totalPrice : undefined,
-          installment_count:
+      case 'openNewContractForm': {
+        const detail = {
+          clientName: args.clientFullName ? String(args.clientFullName).trim() : undefined,
+          clientPhone: args.clientPhone ? String(args.clientPhone).trim() : undefined,
+          serviceSlug: args.serviceSlug ? String(args.serviceSlug).trim() : undefined,
+          clientPassport: args.clientPassport ? String(args.clientPassport).trim() : undefined,
+          clientDob: args.clientDob ? String(args.clientDob).trim() : undefined,
+          totalPrice: typeof args.totalPrice === 'number' ? args.totalPrice : undefined,
+          installmentCount:
             typeof args.installmentCount === 'number' ? args.installmentCount : undefined,
-          client_passport: args.clientPassport ? String(args.clientPassport) : undefined,
-          client_dob: args.clientDob ? String(args.clientDob) : undefined,
           minors: Array.isArray(args.minors) ? args.minors : undefined,
         }
-        if (!payload.client_full_name || !payload.client_phone || !payload.service_slug) {
+        if (!detail.clientName || !detail.clientPhone || !detail.serviceSlug) {
           return {
             ok: false,
-            message: 'Faltan datos obligatorios (nombre, teléfono o servicio).',
+            message: 'Faltan datos para abrir el formulario (nombre, teléfono o servicio).',
           }
         }
-        const res = await fetch('/api/voice-agent/contracts/create', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}))
-          return { ok: false, message: err.error || `Error creando contrato (${res.status})` }
-        }
-        const data = await res.json()
-        dispatchLexEvent('lex:refreshContracts')
-        dispatchLexEvent('lex:notify', {
-          kind: 'success',
-          message: `Contrato creado en borrador (ID ${String(data.contract_id).slice(0, 8)}…)`,
-        })
-        if (data.contract_id) {
-          dispatchLexEvent('lex:scrollToContract', { contractId: data.contract_id })
-          dispatchLexEvent('lex:highlightContract', { contractId: data.contract_id })
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('lex:openNewContractForm', { detail }))
         }
         return {
           ok: true,
-          data,
-          message: `Contrato creado en borrador para ${payload.client_full_name}. Revisa los datos en la lista; cuando estés ok, dime "envía el link de firma".`,
+          message: `Formulario abierto y pre-rellenado para ${detail.clientName}. Revisa visualmente; cuando esté ok, dime "guárdalo" y lo genero.`,
+        }
+      }
+
+      case 'submitContractForm': {
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('lex:submitContractForm'))
+        }
+        return {
+          ok: true,
+          message: 'Disparé el botón Guardar. El sistema generará el PDF y creará el case automáticamente.',
         }
       }
 

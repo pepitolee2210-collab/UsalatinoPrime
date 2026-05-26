@@ -101,11 +101,28 @@ interface QuickContractGeneratorProps {
   prefillPhone?: string
   /** Auto-select this service slug when the form opens. */
   prefillService?: string
+  /** Extended pre-fills used by Lex (voice control of the form). */
+  prefillPassport?: string
+  prefillDob?: string
+  prefillTotalPrice?: number
+  prefillInstallmentCount?: number
+  prefillMinors?: Array<{ fullName: string; dob?: string; passport?: string; birthplace?: string }>
 }
 
 const emptyMinor = (): MinorData => ({ fullName: '', dob: '', birthplace: '', passport: '' })
 
-export function QuickContractGenerator({ editData, onSaved, prefillName, prefillPhone, prefillService }: QuickContractGeneratorProps) {
+export function QuickContractGenerator({
+  editData,
+  onSaved,
+  prefillName,
+  prefillPhone,
+  prefillService,
+  prefillPassport,
+  prefillDob,
+  prefillTotalPrice,
+  prefillInstallmentCount,
+  prefillMinors,
+}: QuickContractGeneratorProps) {
   const supabase = createClient()
   const [selectedSlug, setSelectedSlug] = useState('')
   const [selectedSubserviceSlug, setSelectedSubserviceSlug] = useState<string>('')
@@ -263,16 +280,57 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
   // Runs once on mount if we aren't editing an existing contract.
   useEffect(() => {
     if (editData) return
-    if (!prefillName && !prefillPhone && !prefillService) return
+    const hasAnyPrefill =
+      prefillName ||
+      prefillPhone ||
+      prefillService ||
+      prefillPassport ||
+      prefillDob ||
+      prefillTotalPrice !== undefined ||
+      prefillInstallmentCount !== undefined ||
+      (prefillMinors && prefillMinors.length > 0)
+    if (!hasAnyPrefill) return
     setContractForm(prev => ({
       ...prev,
       clientFullName: prefillName || prev.clientFullName,
       clientPhone: prefillPhone || prev.clientPhone,
+      clientPassport: prefillPassport || prev.clientPassport,
+      clientDOB: prefillDob || prev.clientDOB,
     }))
     if (prefillService) {
       // Use the existing service-change handler so the template loads too.
       handleServiceChange(prefillService)
     }
+    if (prefillTotalPrice !== undefined) {
+      setCustomPrice(String(prefillTotalPrice))
+      setUseCustomPrice(true)
+    }
+    if (prefillInstallmentCount !== undefined) {
+      setCustomInstallments(String(prefillInstallmentCount))
+      setUseCustomInstallments(true)
+    }
+    if (prefillMinors && prefillMinors.length > 0) {
+      setMinors(
+        prefillMinors.map(m => ({
+          fullName: m.fullName || '',
+          dob: m.dob || '',
+          passport: m.passport || '',
+          birthplace: m.birthplace || '',
+        })),
+      )
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Listener para que Lex pueda hacer click en "Generar contrato" por voz.
+  // Cuando Vanessa dice "guárdalo", la tool dispatcha este evento y nosotros
+  // ejecutamos handleGenerate exactamente como si Vanessa hubiera clickeado.
+  useEffect(() => {
+    function onLexSubmit() {
+      void handleGenerate()
+    }
+    window.addEventListener('lex:submitContractForm', onLexSubmit)
+    return () => window.removeEventListener('lex:submitContractForm', onLexSubmit)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
