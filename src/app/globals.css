@@ -1031,3 +1031,107 @@
   --ceo-bad: #F87171;
   --ceo-bad-soft: rgba(248, 113, 113, 0.08);
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   ADMIN THEMES — 3 modos seleccionables por Henry desde el sidebar.
+   Cada theme define el mismo set de tokens semánticos --admin-*.
+   El switcher añade data-admin-theme="dark|institutional|light" en el
+   root del admin layout. Default: dark.
+
+   Regla para componentes admin nuevos: SIEMPRE usar var(--admin-*) en
+   lugar de colores hardcoded. Los componentes legacy con #0A0A0A inline
+   siguen funcionando en dark pero NO responden al switch — se migran
+   incrementalmente.
+   ════════════════════════════════════════════════════════════════════ */
+
+[data-admin-theme='dark'] {
+  --admin-bg:           #0A0A0A;
+  --admin-bg-deep:      #000000;
+  --admin-bg-elev:      #161616;
+  --admin-bg-elev-2:    #1D1D1D;
+  --admin-fg:           #FAFAFA;
+  --admin-fg-muted:     #A1A1A1;
+  --admin-fg-subtle:    #525252;
+  --admin-fg-faint:     #262626;
+  --admin-accent:       #FAFAFA;
+  --admin-accent-soft:  rgba(255,255,255,0.08);
+  --admin-accent-glow:  rgba(255,255,255,0.18);
+  --admin-border:       rgba(255,255,255,0.08);
+  --admin-border-strong:rgba(255,255,255,0.16);
+  --admin-blue:         #3B82F6;
+  --admin-blue-soft:    rgba(59,130,246,0.12);
+  --admin-red:          #EF4444;
+  --admin-red-soft:     rgba(239,68,68,0.12);
+  --admin-gold:         #F2B234;
+  --admin-gold-soft:    rgba(242,178,52,0.12);
+  --admin-green:        #22C55E;
+  --admin-green-soft:   rgba(34,197,94,0.12);
+  --admin-panel-grad:   linear-gradient(180deg, rgba(20,20,20,0.95), rgba(8,8,8,0.95));
+  --admin-shadow:       0 10px 32px rgba(0,0,0,0.45);
+  --admin-shadow-lg:    0 24px 64px rgba(0,0,0,0.55);
+}
+
+[data-admin-theme='institutional'] {
+  --admin-bg:           #0A1A3A;
+  --admin-bg-deep:      #050D1F;
+  --admin-bg-elev:      #122850;
+  --admin-bg-elev-2:    #1A356A;
+  --admin-fg:           #FAFAFA;
+  --admin-fg-muted:     #A5BEDD;
+  --admin-fg-subtle:    #6B86A8;
+  --admin-fg-faint:     #1A356A;
+  --admin-accent:       #F2B234;
+  --admin-accent-soft:  rgba(242,178,52,0.14);
+  --admin-accent-glow:  rgba(242,178,52,0.28);
+  --admin-border:       rgba(91,155,255,0.18);
+  --admin-border-strong:rgba(91,155,255,0.32);
+  --admin-blue:         #5B9BFF;
+  --admin-blue-soft:    rgba(91,155,255,0.18);
+  --admin-red:          #FF4D6D;
+  --admin-red-soft:     rgba(255,77,109,0.16);
+  --admin-gold:         #F2B234;
+  --admin-gold-soft:    rgba(242,178,52,0.16);
+  --admin-green:        #22FFA0;
+  --admin-green-soft:   rgba(34,255,160,0.14);
+  --admin-panel-grad:   linear-gradient(180deg, rgba(18,40,80,0.95), rgba(10,26,58,0.95));
+  --admin-shadow:       0 10px 32px rgba(5,13,31,0.55);
+  --admin-shadow-lg:    0 24px 64px rgba(5,13,31,0.7);
+}
+
+[data-admin-theme='light'] {
+  --admin-bg:           #FAFBFC;
+  --admin-bg-deep:      #F1F3F5;
+  --admin-bg-elev:      #FFFFFF;
+  --admin-bg-elev-2:    #F8F9FB;
+  --admin-fg:           #0F172A;
+  --admin-fg-muted:     #475569;
+  --admin-fg-subtle:    #94A3B8;
+  --admin-fg-faint:     #E2E8F0;
+  --admin-accent:       #1E4EA8;
+  --admin-accent-soft:  rgba(30,78,168,0.08);
+  --admin-accent-glow:  rgba(30,78,168,0.18);
+  --admin-border:       #E5E7EB;
+  --admin-border-strong:#CBD5E1;
+  --admin-blue:         #1E4EA8;
+  --admin-blue-soft:    rgba(30,78,168,0.08);
+  --admin-red:          #B3253F;
+  --admin-red-soft:     rgba(179,37,63,0.08);
+  --admin-gold:         #C28611;
+  --admin-gold-soft:    rgba(194,134,17,0.10);
+  --admin-green:        #047857;
+  --admin-green-soft:   rgba(4,120,87,0.08);
+  --admin-panel-grad:   linear-gradient(180deg, #FFFFFF, #F8F9FB);
+  --admin-shadow:       0 4px 12px rgba(15,23,42,0.06);
+  --admin-shadow-lg:    0 12px 40px rgba(15,23,42,0.10);
+}
+
+/* Transición suave al cambiar de tema */
+@media (prefers-reduced-motion: no-preference) {
+  [data-admin-theme],
+  [data-admin-theme] * {
+    transition:
+      background-color 0.35s cubic-bezier(0.32, 0.72, 0, 1),
+      border-color 0.35s cubic-bezier(0.32, 0.72, 0, 1),
+      color 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+}

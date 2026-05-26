@@ -1,0 +1,64 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+
+/**
+ * Hook que gestiona el tema visual del admin (dark | institutional | light).
+ *
+ * El tema se aplica como `data-admin-theme` en el root del layout admin
+ * y todos los componentes con `var(--admin-*)` se actualizan
+ * automáticamente vía CSS variables.
+ *
+ * Persiste en localStorage con la clave `ulp-admin-theme`. Default: dark.
+ */
+
+export type AdminTheme = 'dark' | 'institutional' | 'light'
+
+export const ADMIN_THEMES: AdminTheme[] = ['dark', 'institutional', 'light']
+
+const STORAGE_KEY = 'ulp-admin-theme'
+const DEFAULT_THEME: AdminTheme = 'dark'
+
+function readStoredTheme(): AdminTheme {
+  if (typeof window === 'undefined') return DEFAULT_THEME
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (stored === 'dark' || stored === 'institutional' || stored === 'light') {
+      return stored
+    }
+  } catch {}
+  return DEFAULT_THEME
+}
+
+export function useAdminTheme() {
+  const [theme, setThemeState] = useState<AdminTheme>(DEFAULT_THEME)
+
+  // Al montar, leer el tema guardado y aplicarlo al root.
+  useEffect(() => {
+    const stored = readStoredTheme()
+    setThemeState(stored)
+    applyTheme(stored)
+  }, [])
+
+  function setTheme(next: AdminTheme) {
+    setThemeState(next)
+    applyTheme(next)
+    try {
+      localStorage.setItem(STORAGE_KEY, next)
+    } catch {}
+  }
+
+  return { theme, setTheme }
+}
+
+function applyTheme(theme: AdminTheme) {
+  if (typeof document === 'undefined') return
+  // Buscamos el root del admin layout (tiene data-admin-theme).
+  // Si no existe aún (mount inicial), aplicamos al <html> como fallback.
+  const adminRoot = document.querySelector('[data-admin-theme]')
+  if (adminRoot) {
+    adminRoot.setAttribute('data-admin-theme', theme)
+  } else {
+    document.documentElement.setAttribute('data-admin-theme', theme)
+  }
+}

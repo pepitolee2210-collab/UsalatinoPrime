@@ -15,6 +15,7 @@ import {
 import { ClientSearch } from '@/components/admin/ClientSearch'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { ChatWidgetAutoMount } from '@/components/employee/chat-widget-mount'
+import { AdminThemeSwitcher } from './_components/admin-theme-switcher'
 
 const interTight = Inter_Tight({
   subsets: ['latin'],
@@ -172,7 +173,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div
       className="flex flex-col h-full relative overflow-hidden"
       style={{
-        background: 'linear-gradient(180deg, #0A0A0A 0%, #000000 100%)',
+        background: 'linear-gradient(180deg, var(--admin-bg) 0%, var(--admin-bg-deep) 100%)',
         fontFamily: 'var(--font-tight), -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
       }}
     >
@@ -390,34 +391,41 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Footer */}
       <div className="relative">
-        <span className="block h-px mx-4" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)' }} />
+        <span className="block h-px mx-4" style={{ background: 'linear-gradient(90deg, transparent, var(--admin-border-strong), transparent)' }} />
         <div className="px-4 py-4 space-y-3">
           <div className="flex items-center gap-2.5 px-2">
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center"
               style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.04))',
-                border: '0.5px solid rgba(255,255,255,0.18)',
+                background: 'linear-gradient(135deg, var(--admin-accent-soft), var(--admin-border))',
+                border: '0.5px solid var(--admin-border-strong)',
               }}
             >
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#FFFFFF' }}>HO</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-fg)' }}>HO</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                 Henry
               </p>
-              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: '#525252', letterSpacing: '0.18em' }}>
+              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: 'var(--admin-fg-subtle)', letterSpacing: '0.18em' }}>
                 ADMIN · ONLINE
               </p>
             </div>
             <button
               onClick={handleLogout}
               className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-white/5"
-              style={{ color: '#A1A1A1', border: '0.5px solid rgba(255,255,255,0.1)' }}
+              style={{ color: 'var(--admin-fg-muted)', border: '0.5px solid var(--admin-border)' }}
               title="Cerrar sesión"
             >
               <LogOut className="w-3.5 h-3.5" />
             </button>
+          </div>
+          {/* Theme switcher — Henry elige el modo visual */}
+          <div className="flex items-center justify-between px-2">
+            <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: 'var(--admin-fg-subtle)', letterSpacing: '0.18em' }}>
+              MODO
+            </p>
+            <AdminThemeSwitcher />
           </div>
         </div>
       </div>
@@ -451,11 +459,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div
+      data-admin-theme="dark"
       className={`${interTight.variable} ${mono.variable} min-h-screen relative overflow-hidden`}
       style={{
-        background: '#000000',
+        background: 'var(--admin-bg-deep)',
         fontFamily: 'var(--font-tight), -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
-        color: '#FAFAFA',
+        color: 'var(--admin-fg)',
       }}
     >
       {/* Global aurora */}
