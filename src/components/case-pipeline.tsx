@@ -20,14 +20,14 @@ interface PipelineProps {
 }
 
 const STAGES = [
-  { key: 'appointment', label: 'Cita Agendada', icon: CalendarCheck, auto: true, color: 'from-blue-500 to-cyan-400' },
-  { key: 'documents', label: 'Documentos Subidos', icon: FileUp, auto: true, color: 'from-cyan-400 to-teal-400' },
-  { key: 'history', label: 'Historia Completada', icon: BookOpen, auto: true, color: 'from-teal-400 to-emerald-400' },
-  { key: 'declarations', label: 'Declaraciones Generadas', icon: FileText, auto: true, color: 'from-emerald-400 to-green-400' },
-  { key: 'client_docs', label: 'Docs Enviados al Cliente', icon: Download, auto: true, color: 'from-green-400 to-lime-400' },
-  { key: 'henry_reviewed', label: 'Revisión Henry', icon: UserCheck, auto: false, color: 'from-lime-400 to-yellow-400' },
-  { key: 'i360', label: 'Formulario I-360', icon: ClipboardList, auto: true, color: 'from-yellow-400 to-amber-400' },
-  { key: 'presented_to_court', label: 'Presentado ante Corte', icon: Scale, auto: false, color: 'from-amber-400 to-orange-500' },
+  { key: 'appointment', label: 'Cita Agendada', icon: CalendarCheck, auto: true },
+  { key: 'documents', label: 'Documentos Subidos', icon: FileUp, auto: true },
+  { key: 'history', label: 'Historia Completada', icon: BookOpen, auto: true },
+  { key: 'declarations', label: 'Declaraciones Generadas', icon: FileText, auto: true },
+  { key: 'client_docs', label: 'Docs Enviados al Cliente', icon: Download, auto: true },
+  { key: 'henry_reviewed', label: 'Revisión Henry', icon: UserCheck, auto: false },
+  { key: 'i360', label: 'Formulario I-360', icon: ClipboardList, auto: true },
+  { key: 'presented_to_court', label: 'Presentado ante Corte', icon: Scale, auto: false },
 ]
 
 export function CasePipeline({ caseId, hasAppointment, hasDocuments, hasHistory, hasDeclarations, hasClientDocs, hasI360, manualStages, canEdit }: PipelineProps) {
@@ -72,45 +72,83 @@ export function CasePipeline({ caseId, hasAppointment, hasDocuments, hasHistory,
   const currentStageIdx = STAGES.findIndex(s => !isComplete(s.key))
 
   return (
-    <div className="relative overflow-hidden rounded-2xl"
-      style={{ background: 'var(--admin-panel-grad)', border: '0.5px solid var(--admin-border)' }}>
-
-      {/* Ambient glow */}
-      <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20 blur-3xl"
-        style={{ background: 'radial-gradient(circle, #F2A900 0%, transparent 70%)' }} />
-      <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-10 blur-3xl"
-        style={{ background: 'radial-gradient(circle, #22d3ee 0%, transparent 70%)' }} />
+    <div
+      className="relative overflow-hidden rounded-2xl"
+      style={{
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border)',
+        boxShadow: 'var(--admin-shadow)',
+      }}
+    >
+      {/* Ambient glow (sutil — usa tokens accent + blue) */}
+      <div
+        className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20 blur-3xl pointer-events-none"
+        style={{ background: 'radial-gradient(circle, var(--admin-gold) 0%, transparent 70%)' }}
+      />
+      <div
+        className="absolute bottom-0 left-0 w-48 h-48 rounded-full opacity-10 blur-3xl pointer-events-none"
+        style={{ background: 'radial-gradient(circle, var(--admin-blue) 0%, transparent 70%)' }}
+      />
 
       <div className="relative z-10 p-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-[10px] font-bold tracking-[0.2em] uppercase" style={{ color: '#F2A900' }}>Pipeline del Caso</p>
-            <p className="text-lg font-black text-white mt-0.5">{completedCount} de {STAGES.length} etapas</p>
+            <p
+              className="text-[10px] font-bold uppercase"
+              style={{
+                color: 'var(--admin-gold)',
+                letterSpacing: '0.2em',
+                fontFamily: 'var(--font-mono-tech)',
+              }}
+            >
+              Pipeline del Caso
+            </p>
+            <p
+              className="text-lg font-black mt-0.5"
+              style={{ color: 'var(--admin-fg)' }}
+            >
+              {completedCount} de {STAGES.length} etapas
+            </p>
           </div>
           <div className="relative w-14 h-14">
             <svg className="w-14 h-14 -rotate-90" viewBox="0 0 56 56">
-              <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
-              <circle cx="28" cy="28" r="24" fill="none" stroke="url(#progressGrad)" strokeWidth="4"
-                strokeLinecap="round" strokeDasharray={`${progress * 1.508} 150.8`}
-                style={{ transition: 'stroke-dasharray 0.6s ease' }} />
+              <circle cx="28" cy="28" r="24" fill="none" stroke="var(--admin-border)" strokeWidth="4" />
+              <circle
+                cx="28" cy="28" r="24" fill="none"
+                stroke="url(#progressGrad)" strokeWidth="4"
+                strokeLinecap="round"
+                strokeDasharray={`${progress * 1.508} 150.8`}
+                style={{ transition: 'stroke-dasharray 0.6s ease' }}
+              />
               <defs>
                 <linearGradient id="progressGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#F2A900" />
-                  <stop offset="100%" stopColor="#22d3ee" />
+                  <stop offset="0%" stopColor="var(--admin-gold)" />
+                  <stop offset="100%" stopColor="var(--admin-blue)" />
                 </linearGradient>
               </defs>
             </svg>
-            <span className="absolute inset-0 flex items-center justify-center text-sm font-black text-white">
+            <span
+              className="absolute inset-0 flex items-center justify-center text-sm font-black"
+              style={{ color: 'var(--admin-fg)' }}
+            >
               {Math.round(progress)}%
             </span>
           </div>
         </div>
 
         {/* Progress bar */}
-        <div className="h-1 rounded-full bg-white/10 mb-5 overflow-hidden">
-          <div className="h-full rounded-full transition-all duration-700 ease-out"
-            style={{ width: `${Math.max(progress, 2)}%`, background: 'linear-gradient(90deg, #F2A900, #22d3ee)' }} />
+        <div
+          className="h-1.5 rounded-full mb-5 overflow-hidden"
+          style={{ background: 'var(--admin-bg-deep)' }}
+        >
+          <div
+            className="h-full rounded-full transition-all duration-700 ease-out"
+            style={{
+              width: `${Math.max(progress, 2)}%`,
+              background: 'linear-gradient(90deg, var(--admin-gold), var(--admin-blue))',
+            }}
+          />
         </div>
 
         {/* Stages */}
@@ -123,48 +161,82 @@ export function CasePipeline({ caseId, hasAppointment, hasDocuments, hasHistory,
             const Icon = stage.icon
 
             return (
-              <div key={stage.key}
-                className={`group relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-300 ${
-                  done ? 'bg-white/[0.08]' : isCurrent ? 'bg-white/[0.05] ring-1 ring-white/20' : 'bg-transparent opacity-50'
-                }`}
-                style={isCurrent ? { animation: 'pulseGlow 2s ease-in-out infinite' } : undefined}
+              <div
+                key={stage.key}
+                className="group relative flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-300"
+                style={{
+                  background: done
+                    ? 'var(--admin-accent-soft)'
+                    : isCurrent
+                      ? 'var(--admin-blue-soft)'
+                      : 'transparent',
+                  border: isCurrent ? '0.5px solid var(--admin-blue)' : '0.5px solid transparent',
+                  opacity: !done && !isCurrent ? 0.55 : 1,
+                }}
               >
                 {/* Connector line */}
                 {i < STAGES.length - 1 && (
-                  <div className={`absolute left-[1.65rem] top-[2.75rem] w-0.5 h-3 transition-colors duration-500 ${
-                    done ? 'bg-gradient-to-b ' + stage.color : 'bg-white/10'
-                  }`} style={{ opacity: done ? 0.6 : 1 }} />
+                  <div
+                    className="absolute left-[1.65rem] top-[2.75rem] w-0.5 h-3 transition-colors duration-500"
+                    style={{
+                      background: done ? 'var(--admin-gold)' : 'var(--admin-border)',
+                      opacity: done ? 0.6 : 1,
+                    }}
+                  />
                 )}
 
                 {/* Status indicator */}
-                <div className={`relative flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-500 ${
-                  done ? 'bg-gradient-to-br ' + stage.color + ' shadow-lg' : isCurrent ? 'bg-white/10 ring-1 ring-white/30' : 'bg-white/5'
-                }`}
-                  style={done ? { boxShadow: '0 0 20px rgba(242, 169, 0, 0.15)' } : undefined}>
+                <div
+                  className="relative flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-500"
+                  style={{
+                    background: done
+                      ? 'linear-gradient(135deg, var(--admin-gold), var(--admin-blue))'
+                      : isCurrent
+                        ? 'var(--admin-blue-soft)'
+                        : 'var(--admin-accent-soft)',
+                    border: done
+                      ? 'none'
+                      : isCurrent
+                        ? '0.5px solid var(--admin-blue)'
+                        : '0.5px solid var(--admin-border)',
+                    boxShadow: done ? '0 0 20px var(--admin-accent-glow)' : 'none',
+                  }}
+                >
                   {isSavingThis ? (
-                    <Loader2 className="w-4 h-4 text-white animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" style={{ color: '#FFFFFF' }} />
                   ) : done ? (
-                    <Check className="w-4 h-4 text-white" strokeWidth={3} />
+                    <Check className="w-4 h-4" strokeWidth={3} style={{ color: '#FFFFFF' }} />
                   ) : (
-                    <Icon className={`w-4 h-4 ${isCurrent ? 'text-white/80' : 'text-white/30'}`} />
+                    <Icon
+                      className="w-4 h-4"
+                      style={{ color: isCurrent ? 'var(--admin-blue)' : 'var(--admin-fg-muted)' }}
+                    />
                   )}
                 </div>
 
                 {/* Label */}
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-semibold transition-colors ${done ? 'text-white' : isCurrent ? 'text-white/80' : 'text-white/40'}`}>
+                  <p
+                    className="text-sm font-semibold transition-colors"
+                    style={{
+                      color: done || isCurrent ? 'var(--admin-fg)' : 'var(--admin-fg-muted)',
+                    }}
+                  >
                     {stage.label}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    {stage.auto ? (
-                      <span className={`text-[9px] font-medium tracking-wider uppercase ${done ? 'text-emerald-400' : 'text-white/20'}`}>
-                        {done ? 'Completado' : 'Automático'}
-                      </span>
-                    ) : (
-                      <span className={`text-[9px] font-medium tracking-wider uppercase ${done ? 'text-amber-400' : 'text-white/20'}`}>
-                        {done ? 'Marcado' : 'Manual'}
-                      </span>
-                    )}
+                    <span
+                      className="text-[9px] font-medium tracking-wider uppercase"
+                      style={{
+                        color: done
+                          ? stage.auto ? 'var(--admin-green)' : 'var(--admin-gold)'
+                          : 'var(--admin-fg-subtle)',
+                        fontFamily: 'var(--font-mono-tech)',
+                        letterSpacing: '0.15em',
+                      }}
+                    >
+                      {done ? (stage.auto ? 'Completado' : 'Marcado') : (stage.auto ? 'Automático' : 'Manual')}
+                    </span>
                   </div>
                 </div>
 
@@ -173,29 +245,30 @@ export function CasePipeline({ caseId, hasAppointment, hasDocuments, hasHistory,
                   <button
                     onClick={() => toggleManual(stage.key as 'henry_reviewed' | 'presented_to_court')}
                     disabled={isSavingThis}
-                    className={`flex-shrink-0 w-10 h-6 rounded-full transition-all duration-300 ${
-                      done ? 'bg-gradient-to-r from-amber-400 to-orange-500' : 'bg-white/10 hover:bg-white/20'
-                    }`}>
-                    <div className={`rounded-full bg-white shadow-md transition-all duration-300 mt-[3px] ${
-                      done ? 'ml-[22px]' : 'ml-[3px]'
-                    }`} style={{ width: '18px', height: '18px' }} />
+                    className="flex-shrink-0 w-10 h-6 rounded-full transition-all duration-300"
+                    style={{
+                      background: done
+                        ? 'linear-gradient(135deg, var(--admin-gold), var(--admin-blue))'
+                        : 'var(--admin-accent-soft)',
+                      border: done ? 'none' : '0.5px solid var(--admin-border-strong)',
+                    }}
+                  >
+                    <div
+                      className={`rounded-full shadow-md transition-all duration-300 mt-[3px] ${
+                        done ? 'ml-[22px]' : 'ml-[3px]'
+                      }`}
+                      style={{ width: '18px', height: '18px', background: '#FFFFFF' }}
+                    />
                   </button>
                 )}
                 {isManual && !canEdit && (
-                  <Lock className="w-3.5 h-3.5 text-white/20 flex-shrink-0" />
+                  <Lock className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--admin-fg-subtle)' }} />
                 )}
               </div>
             )
           })}
         </div>
       </div>
-
-      <style>{`
-        @keyframes pulseGlow {
-          0%, 100% { box-shadow: inset 0 0 0 0 rgba(242, 169, 0, 0); }
-          50% { box-shadow: inset 0 0 30px 0 rgba(242, 169, 0, 0.03); }
-        }
-      `}</style>
     </div>
   )
 }
