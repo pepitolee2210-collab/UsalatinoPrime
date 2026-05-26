@@ -1114,22 +1114,22 @@
   --admin-fg-faint:     #D8E1EE;            /* border base                         */
   --admin-accent:       #0B1F3A;            /* brand-navy — autoridad legal        */
   --admin-accent-soft:  #EAF1FF;            /* blue-soft — pills, hovers           */
-  --admin-accent-glow:  rgba(216,155,29,0.45);
+  --admin-accent-glow:  rgba(164,115,10,0.40);
   --admin-border:       #D8E1EE;            /* border gris azulado                 */
   --admin-border-strong:#C9D8F2;            /* blue-border                         */
   --admin-blue:         #1E4E9A;            /* brand-blue — secundario             */
   --admin-blue-soft:    #EAF1FF;
   --admin-red:          #B91C1C;            /* brand-red — solo errores/críticos   */
   --admin-red-soft:     #FEE2E2;
-  --admin-gold:         #D89B1D;            /* brand-gold — acento premium         */
-  --admin-gold-soft:    #FFF4D8;
-  --admin-gold-border:  #E8C46A;
+  --admin-gold:         #A4730A;            /* brand-gold — oro profundo saturado  */
+  --admin-gold-soft:    #FAEBC8;            /* fondo gold-soft con más cuerpo      */
+  --admin-gold-border:  #C9971B;
   --admin-green:        #15803D;
   --admin-green-soft:   #DCFCE7;
   --admin-panel-grad:   linear-gradient(180deg, #FFFFFF 0%, #F8FAFE 100%);
   --admin-shadow:       0 18px 45px rgba(11,31,58,0.08);
   --admin-shadow-lg:    0 24px 60px rgba(11,31,58,0.13);
-  --admin-shadow-gold:  0 18px 40px rgba(216,155,29,0.16);
+  --admin-shadow-gold:  0 18px 40px rgba(164,115,10,0.22);
 }
 
 /* Fondo global del modo claro — radial gradient sutil azul/dorado sobre
@@ -1137,7 +1137,7 @@
 [data-admin-theme='light'] {
   background:
     radial-gradient(circle at top center, rgba(30,78,154,0.07), transparent 34%),
-    radial-gradient(circle at bottom right, rgba(216,155,29,0.07), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(164,115,10,0.07), transparent 30%),
     #F6F8FC !important;
 }
 
@@ -1149,15 +1149,15 @@
 [data-admin-theme='light'] :where(.admin-sidebar) {
   --admin-bg:           #FFFFFF;            /* sidebar blanco                 */
   --admin-bg-deep:      #F8FAFE;            /* gradient suave inferior        */
-  --admin-bg-elev:      #D89B1D;            /* dorado pulse del logo          */
-  --admin-bg-elev-2:    #FFF4D8;            /* gold-soft hover                */
+  --admin-bg-elev:      #A4730A;            /* dorado profundo pulse del logo */
+  --admin-bg-elev-2:    #FAEBC8;            /* gold-soft hover                */
   --admin-fg:           #0B1F3A;            /* texto navy autoridad           */
   --admin-fg-muted:     #1E4E9A;            /* items en azul institucional    */
   --admin-fg-subtle:    #5F728E;            /* subtítulos                     */
   --admin-fg-faint:     #D8E1EE;
-  --admin-accent:       #D89B1D;            /* dorado activos                 */
-  --admin-accent-soft:  #FFF4D8;            /* gold-soft fondo item activo    */
-  --admin-accent-glow:  rgba(216,155,29,0.45);
+  --admin-accent:       #A4730A;            /* dorado profundo activos        */
+  --admin-accent-soft:  #FAEBC8;            /* gold-soft fondo item activo    */
+  --admin-accent-glow:  rgba(164,115,10,0.40);
   --admin-border:       #D8E1EE;
   --admin-border-strong:#C9D8F2;            /* blue-border divisores          */
 }
