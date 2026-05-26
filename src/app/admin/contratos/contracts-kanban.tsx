@@ -117,7 +117,7 @@ export function ContractsKanban({
                       className="relative rounded-xl p-3 cursor-pointer transition-all duration-300 hover:-translate-y-0.5"
                       onClick={() => onEdit(c.id)}
                       style={{
-                        background: 'rgba(255,255,255,0.03)',
+                        background: 'var(--admin-accent-soft)',
                         border: '0.5px solid var(--admin-border)',
                       }}
                     >
@@ -179,7 +179,7 @@ export function ContractsKanban({
                               fontFamily: 'var(--font-mono-tech)',
                               fontSize: 9,
                               fontWeight: 700,
-                              color: '#86EFAC',
+                              color: 'var(--admin-green)',
                               letterSpacing: '0.1em',
                             }}
                           >
@@ -201,7 +201,7 @@ export function ContractsKanban({
                                 onClick={() => onCopyLink(c.signing_token!)}
                                 title="Copiar enlace"
                                 className={ICON_BTN}
-                                style={{ color: '#FACC15' }}
+                                style={{ color: 'var(--admin-gold)' }}
                               >
                                 <Link2 className="w-3 h-3" />
                               </button>
@@ -210,7 +210,7 @@ export function ContractsKanban({
                                 onClick={() => onWhatsApp(c.id)}
                                 title="WhatsApp"
                                 className={ICON_BTN}
-                                style={{ color: '#4ADE80' }}
+                                style={{ color: 'var(--admin-green)' }}
                                 disabled={!c.client_phone}
                               >
                                 <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
@@ -219,7 +219,7 @@ export function ContractsKanban({
                               </button>
                             </>
                           ) : c.status === 'firmado' || c.status === 'activo' || c.status === 'completado' ? (
-                            <span className={ICON_BTN} style={{ color: '#4ADE80', opacity: 0.5 }}>
+                            <span className={ICON_BTN} style={{ color: 'var(--admin-green)', opacity: 0.5 }}>
                               <CheckCircle className="w-3 h-3" />
                             </span>
                           ) : (
@@ -228,7 +228,7 @@ export function ContractsKanban({
                               onClick={() => onSendToClient(c.id)}
                               title="Enviar para firma"
                               className={ICON_BTN}
-                              style={{ color: '#FACC15' }}
+                              style={{ color: 'var(--admin-gold)' }}
                             >
                               <Send className="w-3 h-3" />
                             </button>
@@ -256,7 +256,7 @@ export function ContractsKanban({
                             onClick={() => onDelete(c.id, c.client_full_name)}
                             title="Eliminar"
                             className={ICON_BTN + ' ml-auto'}
-                            style={{ color: '#FCA5A5' }}
+                            style={{ color: 'var(--admin-red)' }}
                           >
                             <Trash2 className="w-3 h-3" />
                           </button>

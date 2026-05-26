@@ -379,7 +379,7 @@ export default function RevisorIAPage() {
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDeleteSession(s.id) }}
                     className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    style={{ color: '#FCA5A5' }}
+                    style={{ color: 'var(--admin-red)' }}
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>
@@ -420,7 +420,7 @@ export default function RevisorIAPage() {
                   border: '0.5px solid rgba(250,204,21,0.3)',
                 }}
               >
-                <Scale className="w-4 h-4" style={{ color: '#FACC15' }} />
+                <Scale className="w-4 h-4" style={{ color: 'var(--admin-gold)' }} />
               </div>
               <div>
                 <p
@@ -439,7 +439,7 @@ export default function RevisorIAPage() {
                       fontFamily: 'var(--font-mono-tech)',
                       fontSize: 9,
                       fontWeight: 700,
-                      color: '#FACC15',
+                      color: 'var(--admin-gold)',
                       background: 'rgba(250,204,21,0.10)',
                       border: '0.5px solid rgba(250,204,21,0.3)',
                       padding: '2px 5px',
@@ -459,7 +459,7 @@ export default function RevisorIAPage() {
                     marginTop: 1,
                   }}
                 >
-                  <span style={{ color: '#FACC15' }}>▸</span> SISTEMA LEGAL · USA LATINO PRIME
+                  <span style={{ color: 'var(--admin-gold)' }}>▸</span> SISTEMA LEGAL · USA LATINO PRIME
                 </p>
               </div>
             </div>
@@ -478,7 +478,7 @@ export default function RevisorIAPage() {
                   boxShadow: '0 0 24px rgba(250,204,21,0.15)',
                 }}
               >
-                <Scale className="w-8 h-8" style={{ color: '#FACC15' }} />
+                <Scale className="w-8 h-8" style={{ color: 'var(--admin-gold)' }} />
               </div>
               <h2
                 style={{
@@ -489,7 +489,7 @@ export default function RevisorIAPage() {
                   marginBottom: 4,
                 }}
               >
-                <span style={{ color: '#FACC15' }}>LEX</span>
+                <span style={{ color: 'var(--admin-gold)' }}>LEX</span>
                 <span style={{ color: 'var(--admin-fg-subtle)' }}>.</span>
               </h2>
               <p
@@ -526,7 +526,7 @@ export default function RevisorIAPage() {
                     }}
                   >
                     <div className="flex items-start gap-2.5">
-                      <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#FACC15' }} />
+                      <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: 'var(--admin-gold)' }} />
                       <div>
                         <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                           {ex.title}
@@ -568,7 +568,7 @@ export default function RevisorIAPage() {
                   }}
                 >
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span style={{ color: '#FACC15' }}>▸</span> LEX ANALIZANDO…
+                  <span style={{ color: 'var(--admin-gold)' }}>▸</span> LEX ANALIZANDO…
                 </div>
               )}
               <div ref={messagesEndRef} />
@@ -717,7 +717,7 @@ function MessageBubble({ message, isStreaming = false }: { message: Message; isS
             boxShadow: '0 0 12px rgba(250,204,21,0.18)',
           }}
         >
-          <Scale className="w-4 h-4" style={{ color: '#FACC15' }} />
+          <Scale className="w-4 h-4" style={{ color: 'var(--admin-gold)' }} />
         </div>
       )}
       <div className={`max-w-[78%] ${isUser ? 'order-1' : ''}`}>

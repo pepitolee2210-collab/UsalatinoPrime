@@ -309,7 +309,7 @@ export default function AgendaPage() {
           style={{
             background: 'rgba(250,204,21,0.06)',
             border: '0.5px solid rgba(250,204,21,0.2)',
-            color: '#FDE68A',
+            color: 'var(--admin-gold)',
           }}
         >
           <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, letterSpacing: '0.18em', fontWeight: 700 }}>⚠ TRUNCATED</span>
@@ -660,7 +660,7 @@ function AgendaCard({
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 10,
                     fontWeight: 700,
-                    color: '#FDE68A',
+                    color: 'var(--admin-gold)',
                     letterSpacing: '0.05em',
                   }}
                 >
@@ -697,7 +697,7 @@ function AgendaCard({
               <div
                 className="mt-3 rounded-xl px-3.5 py-2.5"
                 style={{
-                  background: 'rgba(255,255,255,0.03)',
+                  background: 'var(--admin-accent-soft)',
                   border: '0.5px solid var(--admin-accent-soft)',
                 }}
               >
@@ -734,8 +734,8 @@ function AgendaCard({
               }}
             >
               <div className="flex items-center gap-2 flex-wrap">
-                <CalendarClock className="w-3.5 h-3.5 shrink-0" style={{ color: '#FACC15' }} />
-                <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', color: '#FACC15' }}>
+                <CalendarClock className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--admin-gold)' }} />
+                <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', color: 'var(--admin-gold)' }}>
                   PROGRAMAR
                 </span>
                 <input
@@ -771,7 +771,7 @@ function AgendaCard({
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 10,
                     fontWeight: 700,
-                    color: '#FDE68A',
+                    color: 'var(--admin-gold)',
                     letterSpacing: '0.05em',
                   }}
                 >
@@ -837,7 +837,7 @@ function AgendaCard({
             <button
               onClick={() => onDelete(item.id)}
               className={ICON_BTN}
-              style={{ color: '#FCA5A5' }}
+              style={{ color: 'var(--admin-red)' }}
             >
               <Trash2 className="w-3 h-3" />
             </button>
@@ -846,7 +846,7 @@ function AgendaCard({
 
         {/* Henry's notes — history log */}
         <div className="pt-4 space-y-2" style={{ borderTop: '0.5px solid var(--admin-border)' }}>
-          <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', color: '#FACC15' }}>
+          <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--admin-gold)' }}>
             NOTAS HENRY
           </label>
           {henryLog.length > 0 && (
@@ -860,7 +860,7 @@ function AgendaCard({
                     border: '0.5px solid rgba(250,204,21,0.2)',
                   }}
                 >
-                  <p style={{ fontSize: 12.5, color: '#FDE68A', lineHeight: 1.5 }}>{entry.text}</p>
+                  <p style={{ fontSize: 12.5, color: 'var(--admin-gold)', lineHeight: 1.5 }}>{entry.text}</p>
                   <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: 'var(--admin-fg-subtle)', marginTop: 4, letterSpacing: '0.05em' }}>
                     {format(new Date(entry.date), "d MMM yyyy, h:mma", { locale: es }).toUpperCase()}
                   </p>
@@ -919,7 +919,7 @@ function EditForm({
           <div
             className="rounded-xl px-3.5 py-3"
             style={{
-              background: 'rgba(255,255,255,0.03)',
+              background: 'var(--admin-accent-soft)',
               border: '0.5px solid var(--admin-accent-soft)',
             }}
           >
@@ -940,7 +940,7 @@ function EditForm({
                   border: '0.5px solid rgba(250,204,21,0.2)',
                 }}
               >
-                <p style={{ fontSize: 12.5, color: '#FDE68A', lineHeight: 1.5 }}>{entry.text}</p>
+                <p style={{ fontSize: 12.5, color: 'var(--admin-gold)', lineHeight: 1.5 }}>{entry.text}</p>
                 <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: 'var(--admin-fg-subtle)', marginTop: 4, letterSpacing: '0.05em' }}>
                   {format(new Date(entry.date), "d MMM yyyy, h:mma", { locale: es }).toUpperCase()}
                 </p>

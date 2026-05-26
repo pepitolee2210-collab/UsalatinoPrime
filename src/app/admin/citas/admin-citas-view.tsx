@@ -166,7 +166,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
             placeholder="Buscar por nombre, caso o notas…"
             className="w-full pl-10 pr-9 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/25"
             style={{
-              background: 'rgba(255,255,255,0.03)',
+              background: 'var(--admin-accent-soft)',
               border: '0.5px solid var(--admin-border-strong)',
               color: 'var(--admin-fg)',
               fontSize: 13,
@@ -182,7 +182,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
         <div
           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl"
           style={{
-            background: 'rgba(255,255,255,0.03)',
+            background: 'var(--admin-accent-soft)',
             border: '0.5px solid var(--admin-border-strong)',
           }}
         >
@@ -302,7 +302,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr style={{ borderBottom: '0.5px solid var(--admin-border)', background: 'rgba(255,255,255,0.02)' }}>
+              <tr style={{ borderBottom: '0.5px solid var(--admin-border)', background: 'var(--admin-accent-soft)' }}>
                 <Th>Fecha / Hora</Th>
                 <Th>Cliente</Th>
                 <Th>Caso / Servicio</Th>
@@ -340,7 +340,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
         onClick={() => setShowConfig(!showConfig)}
         className="w-full inline-flex items-center justify-between px-5 py-3 rounded-2xl transition-colors hover:bg-white/[0.04]"
         style={{
-          background: 'rgba(255,255,255,0.025)',
+          background: 'var(--admin-accent-soft)',
           border: '0.5px solid var(--admin-border-strong)',
           color: 'var(--admin-fg)',
         }}
@@ -597,10 +597,10 @@ function AppointmentRow({
             </div>
           ) : (
             <div>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#FDE68A', letterSpacing: '-0.005em' }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-gold)', letterSpacing: '-0.005em' }}>
                 {guestName || 'Sin nombre'}
               </p>
-              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', color: '#FACC15', marginTop: 2 }}>
+              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', color: 'var(--admin-gold)', marginTop: 2 }}>
                 NO CLIENTE
               </p>
             </div>
@@ -652,7 +652,7 @@ function AppointmentRow({
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 9,
                     fontWeight: 700,
-                    color: '#86EFAC',
+                    color: 'var(--admin-green)',
                     letterSpacing: '0.1em',
                   }}
                 >
@@ -710,7 +710,7 @@ function AppointmentRow({
                       <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando…
                     </div>
                   ) : rescheduleBlocked ? (
-                    <p style={{ fontSize: 12, color: '#FCA5A5' }}>Fecha bloqueada</p>
+                    <p style={{ fontSize: 12, color: 'var(--admin-red)' }}>Fecha bloqueada</p>
                   ) : rescheduleSlots.length === 0 ? (
                     <p style={{ fontSize: 12, color: 'var(--admin-fg-subtle)' }}>Sin horarios disponibles</p>
                   ) : (
@@ -922,7 +922,7 @@ function ScheduleConfigPanel({
                       <button
                         onClick={() => removeBlock(day.day_of_week, idx)}
                         className="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-red-500/10"
-                        style={{ color: '#FCA5A5' }}
+                        style={{ color: 'var(--admin-red)' }}
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -1072,7 +1072,7 @@ function BlockedDatesPanel({ blockedDates: initial }: { blockedDates: BlockedDat
                 }}
               >
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#FCA5A5' }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-red)' }}>
                     {new Date(d.blocked_date + 'T12:00:00').toLocaleDateString('es-US', {
                       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
                     })}
@@ -1084,7 +1084,7 @@ function BlockedDatesPanel({ blockedDates: initial }: { blockedDates: BlockedDat
                 <button
                   onClick={() => handleDelete(d.id)}
                   className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/15"
-                  style={{ color: '#FCA5A5' }}
+                  style={{ color: 'var(--admin-red)' }}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

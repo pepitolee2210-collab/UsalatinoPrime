@@ -189,7 +189,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                   key={emp.id}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl"
                   style={{
-                    background: 'rgba(255,255,255,0.025)',
+                    background: 'var(--admin-accent-soft)',
                     border: '0.5px solid var(--admin-border)',
                   }}
                 >
@@ -381,7 +381,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                       fontFamily: 'var(--font-mono-tech)',
                       fontSize: 10,
                       fontWeight: 700,
-                      color: '#FACC15',
+                      color: 'var(--admin-gold)',
                       letterSpacing: '0.18em',
                     }}
                   >
@@ -395,7 +395,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                         fontFamily: 'var(--font-mono-tech)',
                         fontSize: 10,
                         fontWeight: 700,
-                        color: '#FACC15',
+                        color: 'var(--admin-gold)',
                         letterSpacing: '0.1em',
                       }}
                     >
@@ -434,7 +434,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                     </div>
                   </div>
                 ) : (
-                  <p style={{ fontSize: 13, color: '#FDE68A', whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>
+                  <p style={{ fontSize: 13, color: 'var(--admin-gold)', whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>
                     {a.task_description || (
                       <span style={{ color: 'var(--admin-fg-subtle)', fontStyle: 'italic' }}>Sin notas — toca Editar para agregar</span>
                     )}
@@ -446,7 +446,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
               <div
                 className="p-3.5 rounded-xl mb-3"
                 style={{
-                  background: 'rgba(255,255,255,0.025)',
+                  background: 'var(--admin-accent-soft)',
                   border: '0.5px solid var(--admin-accent-soft)',
                 }}
               >
@@ -497,11 +497,11 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                         key={doc.id}
                         className="flex items-center gap-2 px-3 py-2 rounded-lg"
                         style={{
-                          background: 'rgba(255,255,255,0.03)',
+                          background: 'var(--admin-accent-soft)',
                           border: '0.5px solid var(--admin-accent-soft)',
                         }}
                       >
-                        <FileText className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#60A5FA' }} />
+                        <FileText className="w-3.5 h-3.5 flex-shrink-0" style={{ color: 'var(--admin-blue)' }} />
                         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }} className="truncate flex-1">
                           {doc.name}
                         </span>
@@ -516,7 +516,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                             fontFamily: 'var(--font-mono-tech)',
                             fontSize: 10,
                             fontWeight: 700,
-                            color: '#60A5FA',
+                            color: 'var(--admin-blue)',
                             letterSpacing: '0.1em',
                           }}
                           className="hover:underline"
@@ -545,7 +545,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                     </span>
                   )}
                   {a.submissionStats.approved > 0 && (
-                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, color: '#86EFAC', letterSpacing: '0.05em' }}>
+                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, color: 'var(--admin-green)', letterSpacing: '0.05em' }}>
                       {a.submissionStats.approved} APROBADO{a.submissionStats.approved !== 1 ? 'S' : ''}
                     </span>
                   )}
@@ -601,7 +601,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                   style={{
                     background: 'rgba(248,113,113,0.10)',
                     border: '0.5px solid rgba(248,113,113,0.25)',
-                    color: '#FCA5A5',
+                    color: 'var(--admin-red)',
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 9,
                     fontWeight: 700,

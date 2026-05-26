@@ -125,16 +125,16 @@ export function FreeTranslationTool() {
               border: '0.5px solid rgba(167,139,250,0.3)',
             }}
           >
-            <BookOpenText className="w-5 h-5" style={{ color: '#A78BFA' }} />
+            <BookOpenText className="w-5 h-5" style={{ color: 'var(--admin-blue)' }} />
           </div>
           <div>
-            <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: '#525252' }}>
+            <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg-subtle)' }}>
               TRADUCCIÓN · LIBRE
             </p>
-            <h2 style={{ fontSize: 17, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.018em', marginTop: 2 }}>
+            <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.018em', marginTop: 2 }}>
               Traducción libre de documentos
             </h2>
-            <p style={{ fontSize: 13, color: '#A1A1A1', marginTop: 6, lineHeight: 1.55 }}>
+            <p style={{ fontSize: 13, color: 'var(--admin-fg-muted)', marginTop: 6, lineHeight: 1.55 }}>
               Sube cualquier PDF (declaraciones, cartas, anexos, court orders, etc.) y obtén una traducción
               en formato de 2 columnas (original ↔ traducción). El sello, firma o código del original se
               menciona descriptivamente en la traducción — el original no se altera.
@@ -142,7 +142,7 @@ export function FreeTranslationTool() {
             <p
               style={{
                 fontSize: 10,
-                color: '#525252',
+                color: 'var(--admin-fg-subtle)',
                 marginTop: 8,
                 fontFamily: 'var(--font-mono-tech)',
                 letterSpacing: '0.05em',
@@ -163,7 +163,7 @@ export function FreeTranslationTool() {
             fontSize: 10,
             fontWeight: 500,
             letterSpacing: '0.18em',
-            color: '#A1A1A1',
+            color: 'var(--admin-fg-muted)',
           }}
         >
           DIRECCIÓN DE LA TRADUCCIÓN
@@ -191,7 +191,7 @@ export function FreeTranslationTool() {
             fontSize: 10,
             fontWeight: 700,
             letterSpacing: '0.15em',
-            color: '#A78BFA',
+            color: 'var(--admin-blue)',
           }}
         >
           <ArrowLeftRight className="w-3 h-3" />
@@ -208,7 +208,7 @@ export function FreeTranslationTool() {
             fontSize: 10,
             fontWeight: 500,
             letterSpacing: '0.18em',
-            color: '#A1A1A1',
+            color: 'var(--admin-fg-muted)',
           }}
         >
           DOCUMENTO (PDF O IMAGEN · MÁX 10 PÁGINAS · 16 MB)
@@ -250,16 +250,16 @@ export function FreeTranslationTool() {
                 border: '0.5px solid rgba(167,139,250,0.25)',
               }}
             >
-              <FileUp className="w-5 h-5" style={{ color: '#A78BFA' }} />
+              <FileUp className="w-5 h-5" style={{ color: 'var(--admin-blue)' }} />
             </div>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                 Click para seleccionar el documento
               </p>
               <p
                 style={{
                   fontSize: 11,
-                  color: '#525252',
+                  color: 'var(--admin-fg-subtle)',
                   marginTop: 4,
                   fontFamily: 'var(--font-mono-tech)',
                   letterSpacing: '0.05em',
@@ -284,19 +284,19 @@ export function FreeTranslationTool() {
                 border: '0.5px solid rgba(34,197,94,0.25)',
               }}
             >
-              <FileText className="w-4 h-4" style={{ color: '#4ADE80' }} />
+              <FileText className="w-4 h-4" style={{ color: 'var(--admin-green)' }} />
             </div>
             <div className="min-w-0 flex-1">
               <p
                 className="truncate"
-                style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}
+                style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}
               >
                 {file.name}
               </p>
               <p
                 style={{
                   fontSize: 10,
-                  color: '#86EFAC',
+                  color: 'var(--admin-green)',
                   fontFamily: 'var(--font-mono-tech)',
                   letterSpacing: '0.05em',
                   marginTop: 2,
@@ -313,7 +313,7 @@ export function FreeTranslationTool() {
                 if (inputRef.current) inputRef.current.value = ''
               }}
               className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-red-500/10"
-              style={{ color: '#FCA5A5' }}
+              style={{ color: 'var(--admin-red)' }}
               title="Quitar archivo"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -330,18 +330,18 @@ export function FreeTranslationTool() {
           border: '0.5px solid rgba(250,204,21,0.25)',
         }}
       >
-        <Sparkles className="w-4 h-4 mt-0.5 shrink-0" style={{ color: '#FACC15' }} />
+        <Sparkles className="w-4 h-4 mt-0.5 shrink-0" style={{ color: 'var(--admin-gold)' }} />
         <div className="space-y-1">
-          <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: '#FACC15' }}>
+          <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--admin-gold)' }}>
             CÓMO SE MANEJAN SELLOS Y FIRMAS
           </p>
-          <p style={{ fontSize: 13, fontWeight: 600, color: '#FDE68A' }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-gold)' }}>
             La traducción NO toca el documento original
           </p>
-          <p style={{ fontSize: 12, color: '#A1A1A1', lineHeight: 1.55 }}>
+          <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', lineHeight: 1.55 }}>
             Si el original tiene sello del notario, firma manuscrita, código QR o sello apostillado, en la traducción se cita
-            descriptivamente (ej. <span style={{ color: '#D4D4D8', fontStyle: 'italic' }}>[Sello del Notario]</span>,{' '}
-            <span style={{ color: '#D4D4D8', fontStyle: 'italic' }}>[Firma de Juan Pérez]</span>) y el original se entrega
+            descriptivamente (ej. <span style={{ color: 'var(--admin-fg-muted)', fontStyle: 'italic' }}>[Sello del Notario]</span>,{' '}
+            <span style={{ color: 'var(--admin-fg-muted)', fontStyle: 'italic' }}>[Firma de Juan Pérez]</span>) y el original se entrega
             junto con la traducción.
           </p>
         </div>
@@ -401,7 +401,7 @@ function DirectionOption({
         style={{
           fontSize: 14,
           fontWeight: 600,
-          color: active ? '#C4B5FD' : '#FFFFFF',
+          color: active ? 'var(--admin-blue)' : 'var(--admin-fg)',
           letterSpacing: '-0.005em',
         }}
       >
@@ -410,7 +410,7 @@ function DirectionOption({
       <p
         style={{
           fontSize: 11,
-          color: '#A1A1A1',
+          color: 'var(--admin-fg-muted)',
           marginTop: 3,
         }}
       >
@@ -436,7 +436,7 @@ function FreePreview({ result }: { result: FreeTranslationResult }) {
       <div
         className="px-5 py-3 flex items-center justify-between gap-3 flex-wrap"
         style={{
-          background: 'rgba(255,255,255,0.02)',
+          background: 'var(--admin-accent-soft)',
           borderBottom: '0.5px solid rgba(255,255,255,0.08)',
         }}
       >
@@ -447,12 +447,12 @@ function FreePreview({ result }: { result: FreeTranslationResult }) {
               fontSize: 10,
               fontWeight: 700,
               letterSpacing: '0.2em',
-              color: '#525252',
+              color: 'var(--admin-fg-subtle)',
             }}
           >
             VISTA PREVIA
           </p>
-          <h3 style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.005em', marginTop: 2 }}>
+          <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--admin-fg)', letterSpacing: '-0.005em', marginTop: 2 }}>
             {result.document_title}
           </h3>
         </div>
@@ -463,7 +463,7 @@ function FreePreview({ result }: { result: FreeTranslationResult }) {
             fontSize: 9,
             fontWeight: 700,
             letterSpacing: '0.15em',
-            color: '#FDE68A',
+            color: 'var(--admin-gold)',
           }}
         >
           <AlertTriangle className="w-3 h-3" />
@@ -485,12 +485,12 @@ function FreePreview({ result }: { result: FreeTranslationResult }) {
                 fontSize: 10,
                 fontWeight: 700,
                 letterSpacing: '0.15em',
-                color: '#A1A1A1',
+                color: 'var(--admin-fg-muted)',
               }}
             >
-              <span style={{ color: '#FFFFFF' }}>PÁGINA {i + 1}</span>
-              <span style={{ color: '#525252' }}>/ {result.pages.length}</span>
-              <ArrowRight className="w-3 h-3" style={{ color: '#A78BFA' }} />
+              <span style={{ color: 'var(--admin-fg)' }}>PÁGINA {i + 1}</span>
+              <span style={{ color: 'var(--admin-fg-subtle)' }}>/ {result.pages.length}</span>
+              <ArrowRight className="w-3 h-3" style={{ color: 'var(--admin-blue)' }} />
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <ColumnPreview label={sourceLabel} text={p.original} />
@@ -512,7 +512,7 @@ function ColumnPreview({ label, text, highlight }: { label: string; text: string
           fontSize: 9,
           fontWeight: 700,
           letterSpacing: '0.2em',
-          color: highlight ? '#A78BFA' : '#525252',
+          color: highlight ? 'var(--admin-blue)' : 'var(--admin-fg-subtle)',
           marginBottom: 6,
         }}
       >
@@ -524,13 +524,13 @@ function ColumnPreview({ label, text, highlight }: { label: string; text: string
           background: highlight ? 'rgba(167,139,250,0.06)' : 'rgba(255,255,255,0.03)',
           border: highlight ? '0.5px solid rgba(167,139,250,0.2)' : '0.5px solid rgba(255,255,255,0.08)',
           fontSize: 12,
-          color: '#D4D4D8',
+          color: 'var(--admin-fg-muted)',
           fontFamily: 'Georgia, serif',
           lineHeight: 1.6,
         }}
       >
         {text || (
-          <span style={{ color: '#525252', fontStyle: 'italic' }}>[vacío]</span>
+          <span style={{ color: 'var(--admin-fg-subtle)', fontStyle: 'italic' }}>[vacío]</span>
         )}
       </div>
     </div>

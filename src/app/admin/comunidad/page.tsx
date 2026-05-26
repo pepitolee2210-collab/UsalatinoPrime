@@ -379,7 +379,7 @@ export default function AdminComunidadPage() {
 
               {day.is_available ? (
                 <div className="flex items-center gap-2 flex-1">
-                  <Clock className="w-3 h-3 shrink-0" style={{ color: '#FACC15' }} />
+                  <Clock className="w-3 h-3 shrink-0" style={{ color: 'var(--admin-gold)' }} />
                   <HourSelect
                     value={day.start_hour}
                     onChange={(v) => updateDay(day.day_of_week, { start_hour: v })}
@@ -530,7 +530,7 @@ export default function AdminComunidadPage() {
                           fontFamily: 'var(--font-mono-tech)',
                           fontSize: 9,
                           fontWeight: 700,
-                          color: '#FDE68A',
+                          color: 'var(--admin-gold)',
                           letterSpacing: '0.1em',
                         }}
                       >
@@ -554,7 +554,7 @@ export default function AdminComunidadPage() {
                       style={{
                         fontFamily: 'var(--font-mono-tech)',
                         fontSize: 11,
-                        color: '#60A5FA',
+                        color: 'var(--admin-blue)',
                         letterSpacing: '0.02em',
                       }}
                     >
@@ -585,7 +585,7 @@ export default function AdminComunidadPage() {
                   <button
                     onClick={() => deletePost(post.id)}
                     className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/10"
-                    style={{ color: '#FCA5A5' }}
+                    style={{ color: 'var(--admin-red)' }}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -626,7 +626,7 @@ function Panel({
   iconTone?: 'white' | 'yellow'
 }) {
   const tone = iconTone === 'yellow'
-    ? { bg: 'rgba(250,204,21,0.12)', border: 'rgba(250,204,21,0.3)', color: '#FACC15' }
+    ? { bg: 'rgba(250,204,21,0.12)', border: 'rgba(250,204,21,0.3)', color: 'var(--admin-gold)' }
     : { bg: 'var(--admin-accent-soft)', border: 'rgba(255,255,255,0.12)', color: 'var(--admin-fg)' }
 
   return (

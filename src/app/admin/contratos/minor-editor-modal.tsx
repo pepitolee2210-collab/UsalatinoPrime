@@ -146,8 +146,8 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
                 border: '0.5px solid rgba(250,204,21,0.25)',
               }}
             >
-              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#FACC15' }} />
-              <p style={{ fontSize: 13, color: '#FDE68A' }}>
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--admin-gold)' }} />
+              <p style={{ fontSize: 13, color: 'var(--admin-gold)' }}>
                 Este contrato no tiene menores registrados.
               </p>
             </div>
@@ -158,7 +158,7 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
               key={idx}
               className="rounded-2xl p-5 space-y-4"
               style={{
-                background: 'rgba(255,255,255,0.025)',
+                background: 'var(--admin-accent-soft)',
                 border: '0.5px solid var(--admin-border)',
               }}
             >
