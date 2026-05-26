@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent } from '@/components/ui/card'
 import { toast } from 'sonner'
 import {
   Upload, Loader2, CheckCircle, XCircle, Clock, Send, RefreshCw, Eye,
@@ -12,6 +10,7 @@ import {
 import { format, formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { UploadModal, INTERNAL_CATEGORY_LABELS } from '@/components/internal-docs/upload-modal'
+import { PageHeader, AdminKeyframes } from '@/components/admin-ui'
 
 interface ClientOption {
   case_id: string
@@ -48,6 +47,50 @@ type TabKey = 'pending_review' | 'approved' | 'rejected' | 'published' | 'all'
 
 interface Props {
   currentUserId: string
+}
+
+// ─── Card base ─────────────────────────────────────────────────
+function AdminCard({
+  children, className = '',
+}: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={`rounded-2xl ${className}`}
+      style={{
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border)',
+        boxShadow: 'var(--admin-shadow, 0 1px 3px rgba(11,31,58,0.04))',
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function Pill({
+  tone, children,
+}: { tone: 'gold' | 'green' | 'red' | 'blue' | 'neutral'; children: React.ReactNode }) {
+  const map = {
+    gold:    { bg: 'var(--admin-gold-soft)',   text: 'var(--admin-gold)',   border: 'var(--admin-gold-border, var(--admin-gold))' },
+    green:   { bg: 'var(--admin-green-soft)',  text: 'var(--admin-green)',  border: 'var(--admin-green)' },
+    red:     { bg: 'var(--admin-red-soft)',    text: 'var(--admin-red)',    border: 'var(--admin-red)' },
+    blue:    { bg: 'var(--admin-blue-soft)',   text: 'var(--admin-blue)',   border: 'var(--admin-blue)' },
+    neutral: { bg: 'var(--admin-accent-soft)', text: 'var(--admin-fg-muted)', border: 'var(--admin-border-strong)' },
+  }[tone]
+  return (
+    <span
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+      style={{
+        background: map.bg,
+        color: map.text,
+        border: `0.5px solid ${map.border}`,
+        fontSize: 11,
+        fontWeight: 600,
+      }}
+    >
+      {children}
+    </span>
+  )
 }
 
 export function RevisionInternaClient({ currentUserId: _currentUserId }: Props) {
@@ -156,90 +199,134 @@ export function RevisionInternaClient({ currentUserId: _currentUserId }: Props) 
 
   return (
     <div className="space-y-5 max-w-6xl">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <FileText className="w-6 h-6" style={{ color: 'var(--admin-accent)' }} />
-            Revisión Interna
-          </h1>
-          <p className="text-sm text-gray-500">
-            Sube documentos finales de cada cliente. Henry los aprueba o rechaza antes de que tú los entregues al cliente.
-          </p>
-        </div>
-        <Button
-          onClick={() => setShowUpload(true)}
-          className="text-white hover:opacity-90"
-          style={{ background: 'var(--admin-gold)' }}
-        >
-          <Upload className="w-4 h-4 mr-1.5" />
-          Subir documento
-        </Button>
-      </div>
+      <AdminKeyframes />
+      <PageHeader
+        eyebrow="REVISIÓN INTERNA · QC"
+        title="Revisión Interna"
+        accentDot
+        description="Sube documentos finales de cada cliente. Henry los aprueba o rechaza antes de que tú los entregues al cliente."
+        telemetry={[
+          { label: 'En revisión', value: counts.pending_review.toString() },
+          { label: 'Aprobados', value: counts.approved.toString() },
+          { label: 'Rechazados', value: counts.rejected.toString() },
+        ]}
+        action={
+          <button
+            onClick={() => setShowUpload(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full transition-opacity hover:opacity-90"
+            style={{
+              background: 'linear-gradient(135deg, #F2C14E, var(--admin-gold))',
+              color: 'var(--admin-accent)',
+              border: '0.5px solid var(--admin-gold-border, rgba(255,255,255,0.2))',
+              boxShadow: 'var(--admin-shadow-gold, 0 12px 28px rgba(216,155,29,0.28))',
+              fontWeight: 700,
+              fontSize: 13,
+            }}
+          >
+            <Upload className="w-4 h-4" />
+            Subir documento
+          </button>
+        }
+      />
 
       {/* Stats / tabs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
-          icon={<Clock className="w-4 h-4 text-amber-600" />}
+          icon={<Clock className="w-4 h-4" style={{ color: 'var(--admin-gold)' }} />}
           label="En revisión"
           value={counts.pending_review}
-          accent="amber"
+          tone="gold"
           active={tab === 'pending_review'}
           onClick={() => setTab('pending_review')}
         />
         <StatCard
-          icon={<CheckCircle className="w-4 h-4 text-emerald-600" />}
+          icon={<CheckCircle className="w-4 h-4" style={{ color: 'var(--admin-green)' }} />}
           label="Aprobados"
           value={counts.approved}
           hint="listos para publicar"
-          accent="emerald"
+          tone="green"
           active={tab === 'approved'}
           onClick={() => setTab('approved')}
         />
         <StatCard
-          icon={<XCircle className="w-4 h-4 text-red-600" />}
+          icon={<XCircle className="w-4 h-4" style={{ color: 'var(--admin-red)' }} />}
           label="Rechazados"
           value={counts.rejected}
           hint="por corregir"
-          accent="red"
+          tone="red"
           active={tab === 'rejected'}
           onClick={() => setTab('rejected')}
         />
         <StatCard
-          icon={<Send className="w-4 h-4 text-blue-600" />}
+          icon={<Send className="w-4 h-4" style={{ color: 'var(--admin-blue)' }} />}
           label="Publicados"
           value={counts.published}
           hint="entregados al cliente"
-          accent="blue"
+          tone="blue"
           active={tab === 'published'}
           onClick={() => setTab('published')}
         />
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant={tab === 'all' ? 'default' : 'outline'} onClick={() => setTab('all')}>
+        <button
+          onClick={() => setTab('all')}
+          className="px-3 h-8 rounded-full transition-colors"
+          style={
+            tab === 'all'
+              ? {
+                  background: 'var(--admin-accent)',
+                  color: 'var(--admin-bg-elev)',
+                  border: '0.5px solid var(--admin-accent)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }
+              : {
+                  background: 'var(--admin-bg-elev)',
+                  color: 'var(--admin-fg-muted)',
+                  border: '0.5px solid var(--admin-border)',
+                  fontSize: 12,
+                  fontWeight: 500,
+                }
+          }
+        >
           Todos ({docs.length})
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => load()}>
-          <RefreshCw className="w-3 h-3 mr-1" /> Actualizar
-        </Button>
+        </button>
+        <button
+          onClick={() => load()}
+          className="inline-flex items-center gap-1 px-3 h-8 rounded-full transition-colors"
+          style={{
+            background: 'var(--admin-bg-elev)',
+            color: 'var(--admin-fg-muted)',
+            border: '0.5px solid var(--admin-border)',
+            fontSize: 12,
+            fontWeight: 500,
+          }}
+        >
+          <RefreshCw className="w-3 h-3" /> Actualizar
+        </button>
       </div>
 
       {/* Lista */}
       {loading ? (
-        <Card><CardContent className="p-8 text-center"><Loader2 className="w-5 h-5 animate-spin mx-auto text-gray-400" /></CardContent></Card>
+        <AdminCard className="p-8">
+          <div className="text-center">
+            <Loader2 className="w-5 h-5 animate-spin mx-auto" style={{ color: 'var(--admin-fg-subtle)' }} />
+          </div>
+        </AdminCard>
       ) : filtered.length === 0 ? (
-        <Card>
-          <CardContent className="p-10 text-center">
-            <Sparkles className="w-10 h-10 text-gray-200 mx-auto mb-2" />
-            <p className="text-sm text-gray-500">
+        <AdminCard className="p-10">
+          <div className="text-center">
+            <Sparkles className="w-10 h-10 mx-auto mb-2" style={{ color: 'var(--admin-fg-faint)' }} />
+            <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)' }}>
               {tab === 'pending_review' && 'No tienes documentos esperando revisión.'}
               {tab === 'approved' && 'No hay documentos aprobados pendientes de publicar.'}
               {tab === 'rejected' && '¡Sin rechazos!'}
               {tab === 'published' && 'Aún no has publicado documentos.'}
               {tab === 'all' && 'Aún no has subido documentos.'}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </AdminCard>
       ) : (
         <div className="space-y-2">
           {filtered.map(d => (
@@ -295,27 +382,49 @@ export function RevisionInternaClient({ currentUserId: _currentUserId }: Props) 
 }
 
 function StatCard({
-  icon, label, value, hint, accent, active, onClick,
+  icon, label, value, hint, tone, active, onClick,
 }: {
   icon: React.ReactNode
   label: string
   value: number
   hint?: string
-  accent: 'amber' | 'emerald' | 'red' | 'blue'
+  tone: 'gold' | 'green' | 'red' | 'blue'
   active: boolean
   onClick: () => void
 }) {
-  const accentClass = {
-    amber: active ? 'border-amber-400 ring-2 ring-amber-300/50 bg-amber-50' : 'border-amber-100 bg-amber-50/30 hover:border-amber-200',
-    emerald: active ? 'border-emerald-400 ring-2 ring-emerald-300/50 bg-emerald-50' : 'border-emerald-100 bg-emerald-50/30 hover:border-emerald-200',
-    red: active ? 'border-red-400 ring-2 ring-red-300/50 bg-red-50' : 'border-red-100 bg-red-50/30 hover:border-red-200',
-    blue: active ? 'border-blue-400 ring-2 ring-blue-300/50 bg-blue-50' : 'border-blue-100 bg-blue-50/30 hover:border-blue-200',
-  }[accent]
+  const palette = {
+    gold:  { bg: 'var(--admin-gold-soft)',  border: 'var(--admin-gold-border, var(--admin-gold))', ring: 'var(--admin-gold)' },
+    green: { bg: 'var(--admin-green-soft)', border: 'var(--admin-green)',  ring: 'var(--admin-green)' },
+    red:   { bg: 'var(--admin-red-soft)',   border: 'var(--admin-red)',    ring: 'var(--admin-red)' },
+    blue:  { bg: 'var(--admin-blue-soft)',  border: 'var(--admin-blue)',   ring: 'var(--admin-blue)' },
+  }[tone]
   return (
-    <button onClick={onClick} className={`text-left rounded-xl border ${accentClass} p-3 transition-all`}>
-      <div className="flex items-center gap-2 mb-1">{icon}<span className="text-xs font-medium text-gray-700">{label}</span></div>
-      <p className="text-2xl font-bold text-gray-900">{value}</p>
-      {hint && <p className="text-[10px] text-gray-500 mt-0.5">{hint}</p>}
+    <button
+      onClick={onClick}
+      className="text-left rounded-xl p-3 transition-all"
+      style={{
+        background: active ? palette.bg : 'var(--admin-panel-grad)',
+        border: `0.5px solid ${active ? palette.ring : 'var(--admin-border)'}`,
+        boxShadow: active ? `0 0 0 2px color-mix(in srgb, ${palette.ring} 25%, transparent)` : 'var(--admin-shadow, 0 1px 3px rgba(11,31,58,0.04))',
+      }}
+    >
+      <div className="flex items-center gap-2 mb-1">
+        {icon}
+        <span style={{
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: '0.16em',
+          color: 'var(--admin-fg-subtle)',
+          fontFamily: 'var(--font-mono-tech)',
+          textTransform: 'uppercase',
+        }}>
+          {label}
+        </span>
+      </div>
+      <p style={{ fontSize: 24, fontWeight: 700, color: 'var(--admin-fg)' }}>{value}</p>
+      {hint && (
+        <p style={{ fontSize: 10, color: 'var(--admin-fg-subtle)', marginTop: 2 }}>{hint}</p>
+      )}
     </button>
   )
 }
@@ -330,122 +439,215 @@ function DocRow({
   onResubmit: () => void
   onDelete: () => void
 }) {
-  const STATUS_META = {
-    pending_review: { label: 'En revisión', color: 'bg-amber-100 text-amber-800', icon: Clock },
-    approved: { label: 'Aprobado', color: 'bg-emerald-100 text-emerald-800', icon: CheckCircle },
-    rejected: { label: 'Rechazado', color: 'bg-red-100 text-red-800', icon: XCircle },
-    published: { label: 'Publicado', color: 'bg-blue-100 text-blue-800', icon: Send },
+  const STATUS_META: Record<DocumentRow['status'], { label: string; tone: 'gold' | 'green' | 'red' | 'blue'; icon: typeof Clock }> = {
+    pending_review: { label: 'En revisión', tone: 'gold', icon: Clock },
+    approved:       { label: 'Aprobado',    tone: 'green', icon: CheckCircle },
+    rejected:       { label: 'Rechazado',   tone: 'red', icon: XCircle },
+    published:      { label: 'Publicado',   tone: 'blue', icon: Send },
   }
   const meta = STATUS_META[doc.status]
   const Icon = meta.icon
   const clientName = doc.client ? `${doc.client.first_name} ${doc.client.last_name}` : 'Cliente'
 
   return (
-    <Card className="hover:shadow-sm transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap mb-1">
-              <p className="text-sm font-semibold text-gray-900 truncate">{doc.file_name}</p>
-              <Badge className={meta.color}>
-                <Icon className="w-3 h-3 mr-1" /> {meta.label}
-              </Badge>
-              {doc.version > 1 && (
-                <Badge className="bg-gray-100 text-gray-700">v{doc.version}</Badge>
-              )}
+    <AdminCard className="p-4 transition-shadow hover:shadow-lg">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <p
+              className="truncate flex items-center gap-1.5"
+              style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)' }}
+            >
+              <FileText className="w-3.5 h-3.5" style={{ color: 'var(--admin-fg-subtle)' }} />
+              {doc.file_name}
+            </p>
+            <Pill tone={meta.tone}>
+              <Icon className="w-3 h-3" />
+              {meta.label}
+            </Pill>
+            {doc.version > 1 && <Pill tone="neutral">v{doc.version}</Pill>}
+          </div>
+          <p style={{ fontSize: 11, color: 'var(--admin-fg-muted)' }}>
+            <span style={{ fontWeight: 600, color: 'var(--admin-fg)' }}>{clientName}</span>
+            {' · '}{doc.case?.case_number}
+            {' · '}{INTERNAL_CATEGORY_LABELS[doc.category] || doc.category}
+          </p>
+          <p style={{ fontSize: 11, color: 'var(--admin-fg-subtle)', marginTop: 2 }}>
+            Subido {formatDistanceToNow(new Date(doc.created_at), { locale: es, addSuffix: true })}
+            {doc.reviewed_at && ` · Revisado ${formatDistanceToNow(new Date(doc.reviewed_at), { locale: es, addSuffix: true })}`}
+          </p>
+
+          {doc.upload_notes && (
+            <p
+              className="rounded p-1.5 mt-1"
+              style={{
+                fontSize: 11,
+                color: 'var(--admin-fg-muted)',
+                background: 'var(--admin-bg-elev-2)',
+                border: '0.5px solid var(--admin-border)',
+              }}
+            >
+              Tu nota: {doc.upload_notes}
+            </p>
+          )}
+
+          {doc.status === 'rejected' && doc.review_comment && (
+            <div
+              className="mt-2 rounded-lg p-2"
+              style={{
+                background: 'var(--admin-red-soft)',
+                border: '0.5px solid var(--admin-red)',
+              }}
+            >
+              <p
+                className="flex items-center gap-1"
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.14em',
+                  color: 'var(--admin-red)',
+                  marginBottom: 2,
+                  fontFamily: 'var(--font-mono-tech)',
+                }}
+              >
+                <AlertCircle className="w-3 h-3" /> Motivo de rechazo
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--admin-red)' }}>{doc.review_comment}</p>
             </div>
-            <p className="text-[11px] text-gray-600">
-              <span className="font-medium">{clientName}</span> · {doc.case?.case_number} · {INTERNAL_CATEGORY_LABELS[doc.category] || doc.category}
+          )}
+
+          {doc.status === 'approved' && (
+            <p
+              style={{
+                fontSize: 11,
+                color: 'var(--admin-green)',
+                marginTop: 4,
+                fontWeight: 600,
+              }}
+            >
+              ✅ Henry aprobó · Listo para publicar al cliente
             </p>
-            <p className="text-[11px] text-gray-400 mt-0.5">
-              Subido {formatDistanceToNow(new Date(doc.created_at), { locale: es, addSuffix: true })}
-              {doc.reviewed_at && ` · Revisado ${formatDistanceToNow(new Date(doc.reviewed_at), { locale: es, addSuffix: true })}`}
+          )}
+
+          {doc.status === 'published' && doc.published_at && (
+            <p
+              style={{
+                fontSize: 11,
+                color: 'var(--admin-blue)',
+                marginTop: 4,
+              }}
+            >
+              📤 Entregado al cliente el {format(new Date(doc.published_at), 'd MMM yyyy', { locale: es })}
             </p>
-
-            {doc.upload_notes && (
-              <p className="text-[11px] text-gray-600 mt-1 bg-gray-50 rounded p-1.5">
-                Tu nota: {doc.upload_notes}
-              </p>
-            )}
-
-            {doc.status === 'rejected' && doc.review_comment && (
-              <div className="mt-2 rounded-lg bg-red-50 border border-red-200 p-2">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-red-700 mb-0.5 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> Motivo de rechazo
-                </p>
-                <p className="text-xs text-red-900">{doc.review_comment}</p>
-              </div>
-            )}
-
-            {doc.status === 'approved' && (
-              <p className="text-[11px] text-emerald-700 mt-1 font-medium">
-                ✅ Henry aprobó · Listo para publicar al cliente
-              </p>
-            )}
-
-            {doc.status === 'published' && doc.published_at && (
-              <p className="text-[11px] text-blue-700 mt-1">
-                📤 Entregado al cliente el {format(new Date(doc.published_at), "d MMM yyyy", { locale: es })}
-              </p>
-            )}
-          </div>
-
-          <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-            <Button size="sm" variant="outline" onClick={onPreview} className="h-7 text-[11px]">
-              <Eye className="w-3 h-3 mr-1" /> Ver
-            </Button>
-
-            {doc.status === 'approved' && (
-              <Button
-                size="sm"
-                onClick={onPublish}
-                disabled={acting}
-                className="h-7 text-[11px] bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                {acting ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Send className="w-3 h-3 mr-1" />}
-                Publicar
-              </Button>
-            )}
-
-            {doc.status === 'rejected' && (
-              <Button
-                size="sm"
-                onClick={onResubmit}
-                className="h-7 text-[11px] text-white hover:opacity-90"
-                style={{ background: 'var(--admin-gold)' }}
-              >
-                <ArrowUp className="w-3 h-3 mr-1" /> Subir corrección
-              </Button>
-            )}
-
-            {(doc.status === 'pending_review' || doc.status === 'rejected') && (
-              <Button size="sm" variant="ghost" onClick={onDelete} disabled={acting} className="h-7 text-[11px] text-red-600 hover:bg-red-50">
-                <Trash2 className="w-3 h-3 mr-1" /> Eliminar
-              </Button>
-            )}
-          </div>
+          )}
         </div>
-      </CardContent>
-    </Card>
+
+        <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onPreview}
+            className="h-7"
+            style={{
+              fontSize: 11,
+              background: 'var(--admin-bg-elev)',
+              color: 'var(--admin-blue)',
+              border: '0.5px solid var(--admin-border-strong)',
+            }}
+          >
+            <Eye className="w-3 h-3 mr-1" /> Ver
+          </Button>
+
+          {doc.status === 'approved' && (
+            <Button
+              size="sm"
+              onClick={onPublish}
+              disabled={acting}
+              className="h-7"
+              style={{
+                fontSize: 11,
+                background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-blue))',
+                color: '#FFFFFF',
+                border: '0.5px solid rgba(255,255,255,0.2)',
+                boxShadow: '0 8px 20px rgba(30,78,154,0.20)',
+                fontWeight: 600,
+              }}
+            >
+              {acting ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Send className="w-3 h-3 mr-1" />}
+              Publicar
+            </Button>
+          )}
+
+          {doc.status === 'rejected' && (
+            <Button
+              size="sm"
+              onClick={onResubmit}
+              className="h-7"
+              style={{
+                fontSize: 11,
+                background: 'linear-gradient(135deg, #F2C14E, var(--admin-gold))',
+                color: 'var(--admin-accent)',
+                boxShadow: 'var(--admin-shadow-gold, 0 8px 20px rgba(216,155,29,0.22))',
+                fontWeight: 700,
+                border: '0.5px solid var(--admin-gold-border, var(--admin-gold))',
+              }}
+            >
+              <ArrowUp className="w-3 h-3 mr-1" /> Subir corrección
+            </Button>
+          )}
+
+          {(doc.status === 'pending_review' || doc.status === 'rejected') && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={onDelete}
+              disabled={acting}
+              className="h-7"
+              style={{
+                fontSize: 11,
+                color: 'var(--admin-red)',
+                background: 'transparent',
+              }}
+            >
+              <Trash2 className="w-3 h-3 mr-1" /> Eliminar
+            </Button>
+          )}
+        </div>
+      </div>
+    </AdminCard>
   )
 }
 
 function PreviewModal({ doc, url, onClose }: { doc: DocumentRow; url: string | null; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'rgba(0,0,0,0.85)' }} onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex flex-col"
+      style={{ background: 'rgba(0,0,0,0.85)' }}
+      onClick={onClose}
+    >
       <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
-        <p className="text-white font-semibold text-sm truncate flex-1 mr-4">{doc.file_name}</p>
-        <button onClick={onClose} className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.12)' }}>
-          <span className="text-white">×</span>
+        <p
+          className="truncate flex-1 mr-4"
+          style={{ color: '#FFFFFF', fontWeight: 600, fontSize: 13 }}
+        >
+          {doc.file_name}
+        </p>
+        <button
+          onClick={onClose}
+          className="w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ background: 'rgba(255,255,255,0.12)' }}
+        >
+          <span style={{ color: '#FFFFFF' }}>×</span>
         </button>
       </div>
       <div className="flex-1 flex items-stretch justify-center px-4 pb-4" onClick={e => e.stopPropagation()}>
         {url ? (
-          <iframe src={url} className="w-full h-full rounded-xl bg-white" title={doc.file_name} />
+          <iframe src={url} className="w-full h-full rounded-xl" style={{ background: '#FFFFFF' }} title={doc.file_name} />
         ) : (
-          <div className="text-white text-center">
+          <div style={{ color: '#FFFFFF', textAlign: 'center' }}>
             <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-            <p className="text-sm">Cargando preview…</p>
+            <p style={{ fontSize: 13 }}>Cargando preview…</p>
           </div>
         )}
       </div>

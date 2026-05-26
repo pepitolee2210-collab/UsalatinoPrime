@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import { EmployeeClientesView } from './employee-clientes-view'
+import { PageHeader, AdminKeyframes } from '@/components/admin-ui'
 
 export default async function EmployeeClientesPage() {
   const supabase = await createClient()
@@ -45,8 +46,16 @@ export default async function EmployeeClientesPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
-      <p className="text-sm text-gray-500">Vista de solo lectura — {enriched.length} clientes registrados.</p>
+      <AdminKeyframes />
+      <PageHeader
+        eyebrow="CLIENTES · DIRECTORIO"
+        title="Clientes"
+        accentDot
+        description="Vista de solo lectura del directorio completo de clientes."
+        telemetry={[
+          { label: 'Total', value: enriched.length.toString() },
+        ]}
+      />
       <EmployeeClientesView clients={enriched} />
     </div>
   )

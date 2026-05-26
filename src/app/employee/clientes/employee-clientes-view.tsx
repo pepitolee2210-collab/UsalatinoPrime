@@ -17,15 +17,24 @@ interface Client {
 
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 
-const SERVICE_COLORS: Record<string, { bg: string; text: string; dot: string }> = {
-  'Visa Juvenil': { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-400' },
-  'Asilo Afirmativo': { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-400' },
-  'Asilo Defensivo': { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-400' },
-  'Ajuste de Estatus': { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-400' },
+// Mapa de servicios a colores semánticos del sistema admin.
+const SERVICE_COLORS: Record<string, { kind: 'green' | 'blue' | 'gold' | 'red' | 'accent' }> = {
+  'Visa Juvenil': { kind: 'green' },
+  'Asilo Afirmativo': { kind: 'blue' },
+  'Asilo Defensivo': { kind: 'accent' },
+  'Ajuste de Estatus': { kind: 'gold' },
 }
 
-function getServiceStyle(name: string) {
-  return SERVICE_COLORS[name] || { bg: 'bg-gray-50', text: 'text-gray-700', dot: 'bg-gray-400' }
+function getServiceTokens(name: string) {
+  const kind = SERVICE_COLORS[name]?.kind ?? 'accent'
+  const map = {
+    green:  { bg: 'var(--admin-green-soft)', text: 'var(--admin-green)', dot: 'var(--admin-green)' },
+    blue:   { bg: 'var(--admin-blue-soft)',  text: 'var(--admin-blue)',  dot: 'var(--admin-blue)' },
+    gold:   { bg: 'var(--admin-gold-soft)',  text: 'var(--admin-gold)',  dot: 'var(--admin-gold)' },
+    red:    { bg: 'var(--admin-red-soft)',   text: 'var(--admin-red)',   dot: 'var(--admin-red)' },
+    accent: { bg: 'var(--admin-accent-soft)', text: 'var(--admin-fg-muted)', dot: 'var(--admin-fg-subtle)' },
+  }
+  return map[kind]
 }
 
 export function EmployeeClientesView({ clients }: { clients: Client[] }) {
@@ -53,7 +62,7 @@ export function EmployeeClientesView({ clients }: { clients: Client[] }) {
     // El .includes() es sensible a tildes; normalizamos quitándolas en ambos
     // lados para que coincida sin importar acentos.
     const stripAccents = (s: string) =>
-      s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+      s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
     return clients.filter(c => {
       if (search.trim()) {
         const q = stripAccents(search)
@@ -100,31 +109,43 @@ export function EmployeeClientesView({ clients }: { clients: Client[] }) {
     <div className="space-y-4">
       {/* Search */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)}
+        <Search
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+          style={{ color: 'var(--admin-fg-subtle)' }}
+        />
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
           placeholder="Buscar por nombre, email o teléfono..."
-          className="w-full pl-10 pr-4 h-11 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--admin-gold)]/40 focus:border-[var(--admin-gold)]" />
+          className="w-full pl-10 pr-4 h-11 rounded-xl text-sm focus:outline-none transition-shadow"
+          style={{
+            background: 'var(--admin-bg-elev)',
+            border: '0.5px solid var(--admin-border)',
+            color: 'var(--admin-fg)',
+            boxShadow: 'var(--admin-shadow, 0 1px 2px rgba(11,31,58,0.04))',
+          }}
+        />
       </div>
 
       {/* Service filter */}
       <div className="flex gap-2 flex-wrap">
-        <button onClick={() => setServiceFilter(null)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-            !serviceFilter ? 'border-[var(--admin-gold)] bg-[var(--admin-gold)]/10 text-[var(--admin-gold)]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
-          }`}>
-          <Users className="w-3 h-3" /> Todos ({clients.length})
-        </button>
+        <FilterChip
+          active={!serviceFilter}
+          onClick={() => setServiceFilter(null)}
+          label={`Todos (${clients.length})`}
+          icon={<Users className="w-3 h-3" />}
+        />
         {allServices.map(s => {
-          const style = getServiceStyle(s)
+          const tokens = getServiceTokens(s)
           const count = clients.filter(c => c.services.includes(s)).length
           return (
-            <button key={s} onClick={() => setServiceFilter(serviceFilter === s ? null : s)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                serviceFilter === s ? `border-[var(--admin-gold)] bg-[var(--admin-gold)]/10 text-[var(--admin-gold)]` : 'border-gray-200 text-gray-500 hover:bg-gray-50'
-              }`}>
-              <span className={`w-2 h-2 rounded-full ${style.dot}`} />
-              {s} ({count})
-            </button>
+            <FilterChip
+              key={s}
+              active={serviceFilter === s}
+              onClick={() => setServiceFilter(serviceFilter === s ? null : s)}
+              label={`${s} (${count})`}
+              icon={<span className="w-2 h-2 rounded-full" style={{ background: tokens.dot }} />}
+            />
           )
         })}
       </div>
@@ -133,58 +154,98 @@ export function EmployeeClientesView({ clients }: { clients: Client[] }) {
       <div className="flex flex-wrap gap-1">
         {ALPHABET.map(letter => {
           const hasClients = usedLetters.has(letter)
+          const isActive = letterFilter === letter
           return (
-            <button key={letter}
+            <button
+              key={letter}
               disabled={!hasClients}
               onClick={() => setLetterFilter(letterFilter === letter ? null : letter)}
-              className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
-                letterFilter === letter
-                  ? ''
-                  : hasClients
-                    ? 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                    : 'bg-gray-50 text-gray-300 cursor-not-allowed'
-              }`}
+              className="w-8 h-8 rounded-lg text-xs font-bold transition-colors"
               style={
-                letterFilter === letter
-                  ? { background: 'var(--admin-accent)', color: 'var(--admin-bg)' }
-                  : undefined
-              }>
+                isActive
+                  ? {
+                      background: 'var(--admin-accent)',
+                      color: 'var(--admin-bg-elev)',
+                      border: '0.5px solid var(--admin-accent)',
+                    }
+                  : hasClients
+                    ? {
+                        background: 'var(--admin-bg-elev)',
+                        color: 'var(--admin-fg-muted)',
+                        border: '0.5px solid var(--admin-border)',
+                      }
+                    : {
+                        background: 'var(--admin-bg-elev-2)',
+                        color: 'var(--admin-fg-faint)',
+                        border: '0.5px solid var(--admin-border)',
+                        cursor: 'not-allowed',
+                      }
+              }
+            >
               {letter}
             </button>
           )
         })}
         {hasActiveFilters && (
-          <button onClick={() => { setLetterFilter(null); setServiceFilter(null) }}
-            className="px-3 h-8 rounded-lg text-xs font-medium bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+          <button
+            onClick={() => { setLetterFilter(null); setServiceFilter(null) }}
+            className="px-3 h-8 rounded-lg text-xs font-medium transition-colors"
+            style={{
+              background: 'var(--admin-red-soft)',
+              color: 'var(--admin-red)',
+              border: '0.5px solid var(--admin-red)',
+            }}
+          >
             Limpiar filtros
           </button>
         )}
       </div>
 
       {/* Results count */}
-      <p className="text-xs text-gray-400">
-        {filtered.length} cliente{filtered.length !== 1 ? 's' : ''}
-        {hasActiveFilters ? ' (filtrado)' : ''}
+      <p
+        style={{
+          fontFamily: 'var(--font-mono-tech)',
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: '0.14em',
+          color: 'var(--admin-fg-subtle)',
+          textTransform: 'uppercase',
+        }}
+      >
+        {filtered.length} CLIENTE{filtered.length !== 1 ? 'S' : ''}
+        {hasActiveFilters ? ' · FILTRADO' : ''}
       </p>
 
       {/* Client list */}
       {serviceFilter || !grouped ? (
         // Flat list when filtered by service
         <div className="space-y-2">
-          {filtered.length === 0 && <p className="text-center text-gray-400 py-8">No se encontraron clientes.</p>}
+          {filtered.length === 0 && (
+            <p className="text-center py-8" style={{ color: 'var(--admin-fg-subtle)' }}>
+              No se encontraron clientes.
+            </p>
+          )}
           {filtered.map(c => <ClientCard key={c.id} client={c} />)}
         </div>
       ) : (
         // Grouped by service
         <div className="space-y-6">
           {Array.from(grouped.entries()).map(([service, serviceClients]) => {
-            const style = getServiceStyle(service)
+            const tokens = getServiceTokens(service)
             return (
               <div key={service}>
-                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${style.bg} mb-2`}>
-                  <span className={`w-2.5 h-2.5 rounded-full ${style.dot}`} />
-                  <span className={`text-sm font-bold ${style.text}`}>{service}</span>
-                  <span className={`text-xs ${style.text} opacity-70`}>({serviceClients.length})</span>
+                <div
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg mb-2"
+                  style={{
+                    background: tokens.bg,
+                    border: '0.5px solid var(--admin-border)',
+                  }}
+                >
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ background: tokens.dot }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: tokens.text }}>{service}</span>
+                  <span style={{ fontSize: 11, color: tokens.text, opacity: 0.7 }}>
+                    ({serviceClients.length})
+                  </span>
                 </div>
                 <div className="space-y-2">
                   {serviceClients.map(c => <ClientCard key={`${service}-${c.id}`} client={c} />)}
@@ -198,34 +259,91 @@ export function EmployeeClientesView({ clients }: { clients: Client[] }) {
   )
 }
 
+function FilterChip({
+  active, onClick, label, icon,
+}: { active: boolean; onClick: () => void; label: string; icon: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+      style={
+        active
+          ? {
+              background: 'var(--admin-accent-soft)',
+              color: 'var(--admin-accent)',
+              border: '0.5px solid var(--admin-accent)',
+            }
+          : {
+              background: 'var(--admin-bg-elev)',
+              color: 'var(--admin-fg-muted)',
+              border: '0.5px solid var(--admin-border)',
+            }
+      }
+    >
+      {icon}
+      {label}
+    </button>
+  )
+}
+
 function ClientCard({ client: c }: { client: Client }) {
   return (
     <Link href={`/employee/clientes/${c.id}`}>
-      <div className="bg-white rounded-xl border p-4 hover:shadow-md hover:border-gray-300 transition-all cursor-pointer">
+      <div
+        className="rounded-xl p-4 transition-all cursor-pointer hover:shadow-lg"
+        style={{
+          background: 'var(--admin-panel-grad)',
+          border: '0.5px solid var(--admin-border)',
+          boxShadow: 'var(--admin-shadow, 0 1px 3px rgba(11,31,58,0.04))',
+        }}
+      >
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0"
-              style={{ background: 'var(--admin-accent)', color: 'var(--admin-bg)' }}
+              style={{
+                background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-blue))',
+                color: '#FFFFFF',
+              }}
             >
               {c.first_name[0]}{c.last_name[0]}
             </div>
-            <div>
-              <p className="font-semibold text-gray-900 text-sm">{c.first_name} {c.last_name}</p>
-              <div className="flex items-center gap-3 text-[11px] text-gray-400 mt-0.5">
-                {c.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{c.phone}</span>}
+            <div className="min-w-0">
+              <p
+                className="truncate"
+                style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)' }}
+              >
+                {c.first_name} {c.last_name}
+              </p>
+              <div
+                className="flex items-center gap-3 mt-0.5"
+                style={{ fontSize: 11, color: 'var(--admin-fg-subtle)' }}
+              >
+                {c.phone && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="w-3 h-3" />
+                    {c.phone}
+                  </span>
+                )}
                 <span>{c.case_count} caso{c.case_count !== 1 ? 's' : ''}</span>
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <div className="flex gap-1">
               {c.services.map(s => {
-                const style = getServiceStyle(s)
-                return <span key={s} className={`w-2 h-2 rounded-full ${style.dot}`} title={s} />
+                const tokens = getServiceTokens(s)
+                return (
+                  <span
+                    key={s}
+                    className="w-2 h-2 rounded-full"
+                    style={{ background: tokens.dot }}
+                    title={s}
+                  />
+                )
               })}
             </div>
-            <ChevronRight className="w-4 h-4 text-gray-300" />
+            <ChevronRight className="w-4 h-4" style={{ color: 'var(--admin-fg-subtle)' }} />
           </div>
         </div>
       </div>

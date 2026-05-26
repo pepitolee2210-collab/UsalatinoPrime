@@ -1,9 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { BarChart3, TrendingUp, AlertTriangle, Clock, Users, DollarSign, Timer, Target, Trophy } from 'lucide-react'
+import { TrendingUp, AlertTriangle, Clock, Users, DollarSign, Timer, Target, Trophy } from 'lucide-react'
+import { PageHeader, AdminKeyframes } from '@/components/admin-ui'
 
 interface Payment {
   id: string
@@ -31,6 +30,43 @@ interface Props {
 }
 
 type Filter = 'all' | 'overdue' | 'upcoming' | 'paid'
+
+// ─── Card / Pill helpers ───────────────────────────────────────
+function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={`rounded-2xl ${className}`}
+      style={{
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border)',
+        boxShadow: 'var(--admin-shadow, 0 1px 3px rgba(11,31,58,0.04))',
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+function Pill({ tone, children }: { tone: 'green' | 'red'; children: React.ReactNode }) {
+  const map = {
+    green: { bg: 'var(--admin-green-soft)', text: 'var(--admin-green)', border: 'var(--admin-green)' },
+    red:   { bg: 'var(--admin-red-soft)',   text: 'var(--admin-red)',   border: 'var(--admin-red)' },
+  }[tone]
+  return (
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded-full"
+      style={{
+        background: map.bg,
+        color: map.text,
+        border: `0.5px solid ${map.border}`,
+        fontSize: 11,
+        fontWeight: 600,
+      }}
+    >
+      {children}
+    </span>
+  )
+}
 
 export function MetricsClient({ payments, contracts }: Props) {
   const [filter, setFilter] = useState<Filter>('overdue')
@@ -119,7 +155,6 @@ export function MetricsClient({ payments, contracts }: Props) {
   const signedThisMonth = signedContracts.filter(
     c => new Date(c.signed_at!) >= monthStart
   ).length
-  // Mes anterior para comparar
   const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
   const signedPrevMonth = signedContracts.filter(c => {
     const d = new Date(c.signed_at!)
@@ -163,253 +198,364 @@ export function MetricsClient({ payments, contracts }: Props) {
 
   return (
     <div className="space-y-6 max-w-6xl">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <BarChart3 className="w-6 h-6" style={{ color: 'var(--admin-gold)' }} />
-          Métricas
-        </h1>
-        <p className="text-sm text-gray-500">
-          Análisis de cobros, contratos firmados y retención de clientes.
-        </p>
-      </div>
+      <AdminKeyframes />
+      <PageHeader
+        eyebrow="MÉTRICAS · COBRANZA"
+        title="Métricas"
+        accentDot
+        description="Análisis de cobros, contratos firmados y retención de clientes."
+        telemetry={[
+          { label: 'Cobrado total', value: `$${totalPaid.toLocaleString()}` },
+          { label: 'Vencido', value: `$${totalOverdue.toLocaleString()}` },
+          { label: 'Contratos activos', value: activeContracts.toString() },
+        ]}
+      />
 
       {/* KPIs financieros */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <KPI icon={<TrendingUp className="w-5 h-5 text-emerald-600" />} label="Cobrado total" value={`$${totalPaid.toLocaleString()}`} accent="emerald" />
-        <KPI icon={<Clock className="w-5 h-5 text-amber-600" />} label="Pendiente" value={`$${totalPending.toLocaleString()}`} accent="amber" />
-        <KPI icon={<AlertTriangle className="w-5 h-5 text-red-600" />} label="Vencido" value={`$${totalOverdue.toLocaleString()}`} accent="red" />
-        <KPI icon={<DollarSign className="w-5 h-5 text-blue-600" />} label="Facturación contratos" value={`$${contractsRevenue.toLocaleString()}`} accent="blue" />
-        <KPI icon={<Users className="w-5 h-5 text-purple-600" />} label="Contratos activos" value={String(activeContracts)} accent="purple" />
+        <KPI icon={<TrendingUp className="w-5 h-5" style={{ color: 'var(--admin-green)' }} />} label="COBRADO · TOTAL" value={`$${totalPaid.toLocaleString()}`} valueColor="var(--admin-green)" />
+        <KPI icon={<Clock className="w-5 h-5" style={{ color: 'var(--admin-gold)' }} />} label="PENDIENTE" value={`$${totalPending.toLocaleString()}`} valueColor="var(--admin-gold)" />
+        <KPI icon={<AlertTriangle className="w-5 h-5" style={{ color: 'var(--admin-red)' }} />} label="VENCIDO" value={`$${totalOverdue.toLocaleString()}`} valueColor="var(--admin-red)" />
+        <KPI icon={<DollarSign className="w-5 h-5" style={{ color: 'var(--admin-blue)' }} />} label="FACTURACIÓN · CONTRATOS" value={`$${contractsRevenue.toLocaleString()}`} valueColor="var(--admin-blue)" />
+        <KPI icon={<Users className="w-5 h-5" style={{ color: 'var(--admin-accent)' }} />} label="CONTRATOS · ACTIVOS" value={String(activeContracts)} valueColor="var(--admin-fg)" />
       </div>
 
       {/* Métricas personales de productividad */}
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex items-baseline justify-between flex-wrap gap-2 mb-4">
-            <h2 className="text-base font-bold text-gray-900">Tu productividad</h2>
-            <p className="text-[11px] text-gray-500">
-              Cómo vas cerrando contratos y cobrando este mes
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* Tiempo promedio creación → firma */}
-            <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Timer className="w-4 h-4 text-blue-600" />
-                <p className="text-xs text-gray-600 font-medium">Tiempo creación → firma</p>
-              </div>
-              <p className="text-2xl font-bold text-blue-900">
-                {avgDaysToSign != null ? `${avgDaysToSign.toFixed(1)} días` : '—'}
-              </p>
-              <p className="text-[11px] text-gray-500 mt-1">
-                {signedContracts.length > 0
-                  ? `Promedio sobre ${signedContracts.length} contratos firmados`
-                  : 'Aún no hay contratos firmados'}
-              </p>
-            </div>
+      <Card className="p-5">
+        <div className="flex items-baseline justify-between flex-wrap gap-2 mb-4">
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--admin-fg)' }}>
+            Tu productividad
+          </h2>
+          <p style={{ fontSize: 11, color: 'var(--admin-fg-subtle)' }}>
+            Cómo vas cerrando contratos y cobrando este mes
+          </p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Tiempo promedio creación → firma */}
+          <ProductivityTile
+            tone="blue"
+            icon={<Timer className="w-4 h-4" style={{ color: 'var(--admin-blue)' }} />}
+            label="Tiempo creación → firma"
+            value={avgDaysToSign != null ? `${avgDaysToSign.toFixed(1)} días` : '—'}
+            hint={signedContracts.length > 0
+              ? `Promedio sobre ${signedContracts.length} contratos firmados`
+              : 'Aún no hay contratos firmados'}
+          />
 
-            {/* Closing rate */}
-            <div className="rounded-xl border border-emerald-100 bg-emerald-50/40 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Target className="w-4 h-4 text-emerald-600" />
-                <p className="text-xs text-gray-600 font-medium">Tasa de cierre</p>
-              </div>
-              <p className="text-2xl font-bold text-emerald-900">
-                {closingRate != null ? `${closingRate.toFixed(0)}%` : '—'}
-              </p>
-              <p className="text-[11px] text-gray-500 mt-1">
-                {signedContracts.length} firmados de {sentContracts.length} enviados
-              </p>
-            </div>
+          {/* Closing rate */}
+          <ProductivityTile
+            tone="green"
+            icon={<Target className="w-4 h-4" style={{ color: 'var(--admin-green)' }} />}
+            label="Tasa de cierre"
+            value={closingRate != null ? `${closingRate.toFixed(0)}%` : '—'}
+            hint={`${signedContracts.length} firmados de ${sentContracts.length} enviados`}
+          />
 
-            {/* Contratos firmados este mes */}
-            <div className="rounded-xl border border-amber-100 bg-amber-50/40 p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Trophy className="w-4 h-4 text-amber-600" />
-                <p className="text-xs text-gray-600 font-medium">Firmados este mes</p>
-              </div>
-              <p className="text-2xl font-bold text-amber-900">{signedThisMonth}</p>
-              <p className="text-[11px] text-gray-500 mt-1">
-                {monthDelta === 0 ? (
-                  'Igual que el mes pasado'
-                ) : monthDelta > 0 ? (
-                  <span className="text-emerald-700">↑ {monthDelta} vs. mes pasado</span>
-                ) : (
-                  <span className="text-red-600">↓ {Math.abs(monthDelta)} vs. mes pasado</span>
-                )}
-              </p>
-            </div>
-          </div>
-        </CardContent>
+          {/* Contratos firmados este mes */}
+          <ProductivityTile
+            tone="gold"
+            icon={<Trophy className="w-4 h-4" style={{ color: 'var(--admin-gold)' }} />}
+            label="Firmados este mes"
+            value={signedThisMonth.toString()}
+            hint={
+              monthDelta === 0
+                ? 'Igual que el mes pasado'
+                : monthDelta > 0
+                  ? `↑ ${monthDelta} vs. mes pasado`
+                  : `↓ ${Math.abs(monthDelta)} vs. mes pasado`
+            }
+            hintColor={
+              monthDelta === 0
+                ? 'var(--admin-fg-subtle)'
+                : monthDelta > 0
+                  ? 'var(--admin-green)'
+                  : 'var(--admin-red)'
+            }
+          />
+        </div>
       </Card>
 
       {/* Top 5 clientes morosos */}
       {topMorose.length > 0 && (
-        <Card className="border-red-100">
-          <CardContent className="p-5">
-            <div className="flex items-baseline justify-between flex-wrap gap-2 mb-4">
-              <h2 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-red-600" />
-                Top 5 deudas pendientes
-              </h2>
-              <p className="text-[11px] text-gray-500">
-                Prioriza el contacto de mayor a menor
-              </p>
-            </div>
-            <div className="space-y-2">
-              {topMorose.map((m, idx) => (
-                <a
-                  key={m.clientId}
-                  href={`/employee/clientes/${m.clientId}`}
-                  className="flex items-center gap-3 rounded-lg border border-red-100 bg-white hover:bg-red-50/40 hover:border-red-200 transition-colors px-3 py-2.5"
+        <Card className="p-5" >
+          <div className="flex items-baseline justify-between flex-wrap gap-2 mb-4">
+            <h2
+              className="flex items-center gap-2"
+              style={{ fontSize: 16, fontWeight: 700, color: 'var(--admin-fg)' }}
+            >
+              <AlertTriangle className="w-4 h-4" style={{ color: 'var(--admin-red)' }} />
+              Top 5 deudas pendientes
+            </h2>
+            <p style={{ fontSize: 11, color: 'var(--admin-fg-subtle)' }}>
+              Prioriza el contacto de mayor a menor
+            </p>
+          </div>
+          <div className="space-y-2">
+            {topMorose.map((m, idx) => (
+              <a
+                key={m.clientId}
+                href={`/employee/clientes/${m.clientId}`}
+                className="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:shadow-sm"
+                style={{
+                  background: 'var(--admin-bg-elev)',
+                  border: '0.5px solid var(--admin-red)',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--admin-red-soft)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'var(--admin-bg-elev)')}
+              >
+                <span
+                  className="flex-shrink-0 h-7 w-7 rounded-full inline-flex items-center justify-center"
+                  style={{
+                    background: 'var(--admin-red-soft)',
+                    color: 'var(--admin-red)',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    border: '0.5px solid var(--admin-red)',
+                  }}
                 >
-                  <span className="flex-shrink-0 h-7 w-7 rounded-full bg-red-100 text-red-700 inline-flex items-center justify-center text-xs font-bold">
-                    {idx + 1}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{m.name}</p>
-                    <p className="text-[11px] text-gray-500">
-                      {m.overdueCount} cuota{m.overdueCount !== 1 ? 's' : ''} vencida{m.overdueCount !== 1 ? 's' : ''} · más vieja: {m.daysOldest}d
-                    </p>
-                  </div>
-                  <p className="text-sm font-bold text-red-700 flex-shrink-0">
-                    ${m.overdueAmount.toLocaleString()}
+                  {idx + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="truncate"
+                    style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)' }}
+                  >
+                    {m.name}
                   </p>
-                </a>
-              ))}
-            </div>
-          </CardContent>
+                  <p style={{ fontSize: 11, color: 'var(--admin-fg-subtle)' }}>
+                    {m.overdueCount} cuota{m.overdueCount !== 1 ? 's' : ''} vencida{m.overdueCount !== 1 ? 's' : ''} · más vieja: {m.daysOldest}d
+                  </p>
+                </div>
+                <p
+                  className="flex-shrink-0"
+                  style={{ fontSize: 14, fontWeight: 700, color: 'var(--admin-red)' }}
+                >
+                  ${m.overdueAmount.toLocaleString()}
+                </p>
+              </a>
+            ))}
+          </div>
         </Card>
       )}
 
       {/* Gráfico mensual */}
-      <Card>
-        <CardContent className="p-5">
-          <h2 className="text-base font-bold text-gray-900 mb-4">Cobros — últimos 6 meses</h2>
-          <div className="space-y-3">
-            {monthlyData.map(m => (
-              <div key={m.key}>
-                <div className="flex items-center justify-between text-xs mb-1">
-                  <span className="font-medium text-gray-700 capitalize">{m.label}</span>
-                  <span className="text-gray-500">
-                    Cobrado <span className="text-emerald-700 font-semibold">${m.paid.toLocaleString()}</span>
-                    {' '}de esperado <span className="text-amber-700 font-semibold">${m.due.toLocaleString()}</span>
+      <Card className="p-5">
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--admin-fg)', marginBottom: 16 }}>
+          Cobros — últimos 6 meses
+        </h2>
+        <div className="space-y-3">
+          {monthlyData.map(m => (
+            <div key={m.key}>
+              <div className="flex items-center justify-between mb-1" style={{ fontSize: 12 }}>
+                <span style={{ fontWeight: 500, color: 'var(--admin-fg)', textTransform: 'capitalize' }}>
+                  {m.label}
+                </span>
+                <span style={{ color: 'var(--admin-fg-subtle)' }}>
+                  Cobrado{' '}
+                  <span style={{ color: 'var(--admin-green)', fontWeight: 700 }}>
+                    ${m.paid.toLocaleString()}
                   </span>
-                </div>
-                <div className="relative h-6 rounded-md bg-gray-100 overflow-hidden">
-                  <div
-                    className="absolute left-0 top-0 h-full bg-amber-200"
-                    style={{ width: `${(m.due / maxValue) * 100}%` }}
-                  />
-                  <div
-                    className="absolute left-0 top-0 h-full bg-emerald-500"
-                    style={{ width: `${(m.paid / maxValue) * 100}%` }}
-                  />
-                </div>
+                  {' '}de esperado{' '}
+                  <span style={{ color: 'var(--admin-gold)', fontWeight: 700 }}>
+                    ${m.due.toLocaleString()}
+                  </span>
+                </span>
               </div>
-            ))}
-          </div>
-          <div className="flex items-center gap-4 text-xs text-gray-500 mt-4">
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded bg-emerald-500" /> Cobrado
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded bg-amber-200" /> Esperado
-            </span>
-          </div>
-        </CardContent>
+              <div
+                className="relative h-6 rounded-md overflow-hidden"
+                style={{ background: 'var(--admin-bg-elev-2)' }}
+              >
+                <div
+                  className="absolute left-0 top-0 h-full"
+                  style={{
+                    width: `${(m.due / maxValue) * 100}%`,
+                    background: 'var(--admin-gold-soft)',
+                  }}
+                />
+                <div
+                  className="absolute left-0 top-0 h-full"
+                  style={{
+                    width: `${(m.paid / maxValue) * 100}%`,
+                    background: 'var(--admin-green)',
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-4 mt-4" style={{ fontSize: 11, color: 'var(--admin-fg-subtle)' }}>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded" style={{ background: 'var(--admin-green)' }} /> Cobrado
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-3 h-3 rounded" style={{ background: 'var(--admin-gold-soft)' }} /> Esperado
+          </span>
+        </div>
       </Card>
 
       {/* Tabla de cuotas */}
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
-            <h2 className="text-base font-bold text-gray-900">Cuotas</h2>
-            <div className="flex gap-1">
-              {([
-                { key: 'overdue', label: 'Vencidas' },
-                { key: 'upcoming', label: 'Próx. 7 días' },
-                { key: 'paid', label: 'Pagadas' },
-                { key: 'all', label: 'Todas' },
-              ] as const).map(t => (
+      <Card className="p-5">
+        <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--admin-fg)' }}>Cuotas</h2>
+          <div className="flex gap-1">
+            {([
+              { key: 'overdue', label: 'Vencidas' },
+              { key: 'upcoming', label: 'Próx. 7 días' },
+              { key: 'paid', label: 'Pagadas' },
+              { key: 'all', label: 'Todas' },
+            ] as const).map(t => {
+              const active = filter === t.key
+              return (
                 <button
                   key={t.key}
                   onClick={() => setFilter(t.key)}
-                  className={`text-xs px-3 h-8 rounded-full font-medium transition-colors ${
-                    filter === t.key ? '' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
+                  className="px-3 h-8 rounded-full transition-colors"
                   style={
-                    filter === t.key
-                      ? { background: 'var(--admin-accent)', color: 'var(--admin-bg)' }
-                      : undefined
+                    active
+                      ? {
+                          background: 'var(--admin-accent)',
+                          color: 'var(--admin-bg-elev)',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          border: '0.5px solid var(--admin-accent)',
+                        }
+                      : {
+                          background: 'var(--admin-bg-elev-2)',
+                          color: 'var(--admin-fg-muted)',
+                          fontSize: 12,
+                          fontWeight: 500,
+                          border: '0.5px solid var(--admin-border)',
+                        }
                   }
                 >
                   {t.label}
                 </button>
-              ))}
-            </div>
+              )
+            })}
           </div>
+        </div>
 
-          {filteredPayments.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">Sin cuotas en esta categoría.</p>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {filteredPayments.map(p => {
-                const overdueDays = p.due_date ? Math.floor((now.getTime() - new Date(p.due_date).getTime()) / 86400_000) : 0
-                return (
-                  <div key={p.id} className="py-3 flex items-center justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-gray-900 truncate">
-                        {p.client ? `${p.client.first_name} ${p.client.last_name}` : '—'}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {p.due_date && `Vence ${p.due_date}`}
-                        {p.paid_at && ` · Pagada ${new Date(p.paid_at).toLocaleDateString('es-US')}`}
-                        {p.client?.phone && ` · ${p.client.phone}`}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      {p.status === 'pending' && p.due_date && p.due_date < todayStr && (
-                        <Badge className="bg-red-100 text-red-700">
-                          {overdueDays}d vencida
-                        </Badge>
-                      )}
-                      {p.status === 'completed' && (
-                        <Badge className="bg-emerald-100 text-emerald-700">Pagada</Badge>
-                      )}
-                      <span className={`text-sm font-bold ${p.status === 'completed' ? 'text-emerald-700' : 'text-gray-900'}`}>
-                        ${Number(p.amount).toLocaleString()}
-                      </span>
-                    </div>
+        {filteredPayments.length === 0 ? (
+          <p
+            className="text-center py-8"
+            style={{ fontSize: 13, color: 'var(--admin-fg-subtle)' }}
+          >
+            Sin cuotas en esta categoría.
+          </p>
+        ) : (
+          <div>
+            {filteredPayments.map((p, idx) => {
+              const overdueDays = p.due_date
+                ? Math.floor((now.getTime() - new Date(p.due_date).getTime()) / 86400_000)
+                : 0
+              const isOverdue = p.status === 'pending' && p.due_date && p.due_date < todayStr
+              return (
+                <div
+                  key={p.id}
+                  className="py-3 flex items-center justify-between gap-3"
+                  style={{
+                    borderBottom: idx < filteredPayments.length - 1
+                      ? '0.5px solid var(--admin-border)'
+                      : 'none',
+                  }}
+                >
+                  <div className="min-w-0 flex-1">
+                    <p
+                      className="truncate"
+                      style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)' }}
+                    >
+                      {p.client ? `${p.client.first_name} ${p.client.last_name}` : '—'}
+                    </p>
+                    <p style={{ fontSize: 11, color: 'var(--admin-fg-subtle)' }}>
+                      {p.due_date && `Vence ${p.due_date}`}
+                      {p.paid_at && ` · Pagada ${new Date(p.paid_at).toLocaleDateString('es-US')}`}
+                      {p.client?.phone && ` · ${p.client.phone}`}
+                    </p>
                   </div>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {isOverdue && (
+                      <Pill tone="red">{overdueDays}d vencida</Pill>
+                    )}
+                    {p.status === 'completed' && (
+                      <Pill tone="green">Pagada</Pill>
+                    )}
+                    <span
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: p.status === 'completed' ? 'var(--admin-green)' : 'var(--admin-fg)',
+                      }}
+                    >
+                      ${Number(p.amount).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </Card>
     </div>
   )
 }
 
-function KPI({ icon, label, value, accent }: { icon: React.ReactNode; label: string; value: string; accent: 'emerald' | 'amber' | 'red' | 'blue' | 'purple' }) {
-  const bg = {
-    emerald: 'bg-emerald-50 border-emerald-100',
-    amber: 'bg-amber-50 border-amber-100',
-    red: 'bg-red-50 border-red-100',
-    blue: 'bg-blue-50 border-blue-100',
-    purple: 'bg-purple-50 border-purple-100',
-  }[accent]
-
+function KPI({
+  icon, label, value, valueColor,
+}: { icon: React.ReactNode; label: string; value: string; valueColor: string }) {
   return (
-    <Card className={`${bg} border`}>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-2">
-          {icon}
-          <p className="text-xs text-gray-600 font-medium">{label}</p>
-        </div>
-        <p className="text-xl font-bold text-gray-900">{value}</p>
-      </CardContent>
+    <Card className="p-4">
+      <div className="flex items-center gap-2 mb-2">
+        {icon}
+        <p style={{
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: '0.18em',
+          color: 'var(--admin-fg-subtle)',
+          fontFamily: 'var(--font-mono-tech)',
+        }}>
+          {label}
+        </p>
+      </div>
+      <p style={{ fontSize: 22, fontWeight: 700, color: valueColor }}>{value}</p>
     </Card>
+  )
+}
+
+function ProductivityTile({
+  tone, icon, label, value, hint, hintColor,
+}: {
+  tone: 'blue' | 'green' | 'gold'
+  icon: React.ReactNode
+  label: string
+  value: string
+  hint: string
+  hintColor?: string
+}) {
+  const palette = {
+    blue:  { bg: 'var(--admin-blue-soft)',  border: 'var(--admin-blue)',  value: 'var(--admin-blue)' },
+    green: { bg: 'var(--admin-green-soft)', border: 'var(--admin-green)', value: 'var(--admin-green)' },
+    gold:  { bg: 'var(--admin-gold-soft)',  border: 'var(--admin-gold-border, var(--admin-gold))', value: 'var(--admin-gold)' },
+  }[tone]
+  return (
+    <div
+      className="rounded-xl p-4"
+      style={{
+        background: palette.bg,
+        border: `0.5px solid ${palette.border}`,
+      }}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        {icon}
+        <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--admin-fg-muted)' }}>
+          {label}
+        </p>
+      </div>
+      <p style={{ fontSize: 24, fontWeight: 700, color: palette.value }}>
+        {value}
+      </p>
+      <p style={{ fontSize: 11, color: hintColor || 'var(--admin-fg-subtle)', marginTop: 4 }}>
+        {hint}
+      </p>
+    </div>
   )
 }

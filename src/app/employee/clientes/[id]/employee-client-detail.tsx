@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { ArrowLeft, Mail, Phone } from 'lucide-react'
@@ -13,6 +12,7 @@ import { useCaseOverview } from '@/app/employee/_shared/use-case-overview'
 import { BitacoraTab } from '@/app/employee/_shared/bitacora-tab'
 import { CollectionTab, type CollectionContract, type CollectionPayment } from '@/components/payments/collection-tab'
 import { AsiloGeneradoresTab } from '@/app/admin/cases/[id]/asilo-generadores-tab'
+import { AdminKeyframes } from '@/components/admin-ui'
 import type { CasePhase } from '@/types/database'
 import { isAsylumService } from '@/lib/services/asylum'
 
@@ -106,20 +106,65 @@ export function EmployeeClientDetail({
 
   return (
     <div className="space-y-5">
+      <AdminKeyframes />
+
       {/* Header */}
-      <div className="flex items-start gap-3">
-        <Link href="/employee/clientes">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-        </Link>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-900">{clientName}</h1>
-          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 mt-1">
-            <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{client.email}</span>
-            {client.phone && (
-              <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{client.phone}</span>
-            )}
+      <div
+        className="rounded-2xl p-5"
+        style={{
+          background: 'var(--admin-panel-grad)',
+          border: '0.5px solid var(--admin-border)',
+          boxShadow: 'var(--admin-shadow, 0 1px 3px rgba(11,31,58,0.04))',
+        }}
+      >
+        <div className="flex items-start gap-3">
+          <Link href="/employee/clientes">
+            <Button
+              variant="ghost"
+              size="icon"
+              style={{ color: 'var(--admin-fg-muted)' }}
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+          </Link>
+          <div className="flex-1">
+            <p
+              style={{
+                fontFamily: 'var(--font-mono-tech)',
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: '0.2em',
+                color: 'var(--admin-accent)',
+              }}
+            >
+              CLIENTE · DETALLE
+            </p>
+            <h1
+              style={{
+                fontSize: 24,
+                fontWeight: 700,
+                color: 'var(--admin-fg)',
+                marginTop: 4,
+                letterSpacing: '-0.02em',
+              }}
+            >
+              {clientName}
+            </h1>
+            <div
+              className="flex flex-wrap items-center gap-4 mt-2"
+              style={{ fontSize: 12, color: 'var(--admin-fg-subtle)' }}
+            >
+              <span className="flex items-center gap-1.5">
+                <Mail className="w-3 h-3" />
+                {client.email}
+              </span>
+              {client.phone && (
+                <span className="flex items-center gap-1.5">
+                  <Phone className="w-3 h-3" />
+                  {client.phone}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -127,26 +172,53 @@ export function EmployeeClientDetail({
       {/* Case selector */}
       {cases.length > 1 && (
         <div className="flex gap-2 flex-wrap">
-          {cases.map(c => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setSelectedCaseId(c.id)}
-              className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                selectedCaseId === c.id
-                  ? 'border-[var(--admin-gold)] bg-[var(--admin-gold)]/10 text-[var(--admin-gold)]'
-                  : 'border-gray-200 text-gray-500 hover:bg-gray-50'
-              }`}
-            >
-              #{c.case_number} — {c.service?.name || '—'}
-            </button>
-          ))}
+          {cases.map(c => {
+            const isActive = selectedCaseId === c.id
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setSelectedCaseId(c.id)}
+                className="px-3 py-1.5 rounded-lg transition-colors"
+                style={
+                  isActive
+                    ? {
+                        background: 'var(--admin-accent-soft)',
+                        color: 'var(--admin-accent)',
+                        border: '0.5px solid var(--admin-accent)',
+                        fontSize: 12,
+                        fontWeight: 600,
+                      }
+                    : {
+                        background: 'var(--admin-bg-elev)',
+                        color: 'var(--admin-fg-muted)',
+                        border: '0.5px solid var(--admin-border)',
+                        fontSize: 12,
+                        fontWeight: 500,
+                      }
+                }
+              >
+                #{c.case_number} — {c.service?.name || '—'}
+              </button>
+            )
+          })}
         </div>
       )}
       {cases.length === 1 && activeCase && (
-        <Badge variant="secondary" className="text-[10px]">
-          #{activeCase.case_number} — {activeCase.service?.name}
-        </Badge>
+        <span
+          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+          style={{
+            background: 'var(--admin-accent-soft)',
+            border: '0.5px solid var(--admin-border-strong)',
+            fontFamily: 'var(--font-mono-tech)',
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: '0.1em',
+            color: 'var(--admin-fg-muted)',
+          }}
+        >
+          #{activeCase.case_number.toUpperCase()} — {activeCase.service?.name?.toUpperCase()}
+        </span>
       )}
 
       {/* SIJS Phase Panel — Diana puede avanzar fases sin Henry */}
