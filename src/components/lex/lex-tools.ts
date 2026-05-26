@@ -16,10 +16,10 @@ import { dispatchLexEvent } from './lex-events'
  * en lowercase OpenAPI standard. El SDK enum `Type` serializa UPPERCASE
  * y la API de Gemini Live no las reconoce — toca usar strings literales.
  */
-interface LexFunctionDeclaration {
+export interface LexFunctionDeclaration {
   name: string
   description: string
-  parametersJsonSchema: unknown
+  parameters: unknown
 }
 
 export const LEX_TOOLS: LexFunctionDeclaration[] = [
@@ -28,7 +28,7 @@ export const LEX_TOOLS: LexFunctionDeclaration[] = [
     name: 'listContracts',
     description:
       'Lista los contratos del sistema filtrados por status. Úsala cuando Vanessa pregunta "¿qué contratos hay pendientes?" o "muéstrame los firmados de esta semana". Retorna un resumen verbal — Vanessa también los ve en la lista en pantalla.',
-    parametersJsonSchema: {
+    parameters: {
       type: 'object',
       properties: {
         status: {
@@ -48,7 +48,7 @@ export const LEX_TOOLS: LexFunctionDeclaration[] = [
     name: 'searchContract',
     description:
       'Busca un contrato por nombre del cliente o teléfono. Úsala cuando Vanessa dice "busca el contrato de María Pérez" o "trae el de teléfono +1 555 123".',
-    parametersJsonSchema: {
+    parameters: {
       type: 'object',
       properties: {
         query: {
@@ -63,7 +63,7 @@ export const LEX_TOOLS: LexFunctionDeclaration[] = [
     name: 'summarizeContracts',
     description:
       'Resumen ejecutivo: cuántos contratos hay por status, ingreso pendiente, etc. Úsala cuando Vanessa dice "dime cómo va el día" o "qué tengo hoy".',
-    parametersJsonSchema: { type: 'object', properties: {} },
+    parameters: { type: 'object', properties: {} },
   },
 
   // ── UI helpers (sin mutar datos) ─────────────────────────────────────
@@ -71,7 +71,7 @@ export const LEX_TOOLS: LexFunctionDeclaration[] = [
     name: 'highlightContract',
     description:
       'Resalta visualmente un contrato en la lista y hace scroll a él. Úsala después de searchContract para que Vanessa vea cuál es.',
-    parametersJsonSchema: {
+    parameters: {
       type: 'object',
       properties: {
         contractId: { type: 'string', description: 'UUID del contrato.' },
@@ -83,7 +83,7 @@ export const LEX_TOOLS: LexFunctionDeclaration[] = [
     name: 'createContract',
     description:
       'Crea un contrato completo end-to-end con los datos dictados por Vanessa. Se guarda en estado "borrador" — Vanessa lo revisa en la lista. SOLO invoca esta tool DESPUÉS de que Vanessa confirme verbalmente todos los datos. Antes de invocar, repite cliente + teléfono + servicio + monto + cuotas y di "¿confirmas?". El precio y cuotas son OPCIONALES — si no se dictan, se usan los defaults del template del servicio.',
-    parametersJsonSchema: {
+    parameters: {
       type: 'object',
       properties: {
         clientFullName: {
@@ -142,7 +142,7 @@ export const LEX_TOOLS: LexFunctionDeclaration[] = [
     name: 'sendSigningLink',
     description:
       'Genera y envía el link de firma electrónica al cliente del contrato indicado. SOLO invoca esta tool DESPUÉS de que Vanessa confirme verbalmente con "sí, envíalo" o "confirma". Antes de invocar, REPITE el nombre del cliente y el monto para que ella pueda confirmar o corregir.',
-    parametersJsonSchema: {
+    parameters: {
       type: 'object',
       properties: {
         contractId: { type: 'string', description: 'UUID del contrato.' },
@@ -154,7 +154,7 @@ export const LEX_TOOLS: LexFunctionDeclaration[] = [
     name: 'updateContractStatus',
     description:
       'Cambia el status del contrato (ej. marcarlo como firmado, activo, completado, cancelado). SOLO después de confirmación verbal. Antes de invocar, di "voy a marcar el contrato de [cliente] como [status], ¿confirmas?".',
-    parametersJsonSchema: {
+    parameters: {
       type: 'object',
       properties: {
         contractId: { type: 'string', description: 'UUID del contrato.' },
@@ -173,7 +173,7 @@ export const LEX_TOOLS: LexFunctionDeclaration[] = [
     name: 'closeAgent',
     description:
       'Cierra el panel de Lex. Úsala cuando Vanessa diga "gracias eso es todo" o "puedes cerrarte".',
-    parametersJsonSchema: { type: 'object', properties: {} },
+    parameters: { type: 'object', properties: {} },
   },
 ]
 

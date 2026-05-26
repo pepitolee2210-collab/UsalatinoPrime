@@ -21,6 +21,17 @@ import {
 import { LEX_SYSTEM_PROMPT } from './lex-prompt'
 import { LEX_TOOLS, executeLexTool } from './lex-tools'
 
+// Mirror exacto del patrón landing: las tools tienen `parameters` pero
+// el SDK Live espera `parametersJsonSchema`. Renombramos al construir.
+// Ver lex-tools.ts para por qué usamos lowercase ('object', 'string').
+function toApiDecls() {
+  return LEX_TOOLS.map((d): { name: string; description: string; parametersJsonSchema: unknown } => ({
+    name: d.name,
+    description: d.description,
+    parametersJsonSchema: d.parameters,
+  }))
+}
+
 export type LexState = 'idle' | 'connecting' | 'listening' | 'speaking' | 'error' | 'closed'
 
 interface UseLexAgentOptions {
@@ -114,9 +125,11 @@ export function useLexAgent({ onTranscript }: UseLexAgentOptions = {}) {
     // 1) Tool calls (las tools devuelven Promise<ToolResult>)
     if (msg.toolCall?.functionCalls && msg.toolCall.functionCalls.length > 0) {
       const calls = msg.toolCall.functionCalls
+      console.log('[lex] Tool calls received:', calls.map((c) => ({ name: c.name, args: c.args })))
       Promise.all(
         calls.map(async (call) => {
           const result = await executeLexTool(call.name || '', call.args || {})
+          console.log('[lex] Tool result:', call.name, result)
           return { id: call.id, name: call.name, response: { result } }
         }),
       ).then((responses) => {
@@ -200,12 +213,8 @@ export function useLexAgent({ onTranscript }: UseLexAgentOptions = {}) {
           slidingWindow: { targetTokens: '52428' },
         },
         sessionResumption: resumeHandle ? { handle: resumeHandle } : { handle: '' },
-        // Cast: el SDK tipa `parametersJsonSchema` con su propio Type enum
-        // (UPPERCASE), pero Gemini Live API espera el formato OpenAPI
-        // estándar lowercase ('object', 'string') — por eso declaramos las
-        // tools como literales en lex-tools.ts y casteamos aquí.
         tools: [
-          { functionDeclarations: LEX_TOOLS as unknown as FunctionDeclaration[] },
+          { functionDeclarations: toApiDecls() as unknown as FunctionDeclaration[] },
         ],
         inputAudioTranscription: {},
         outputAudioTranscription: {},
