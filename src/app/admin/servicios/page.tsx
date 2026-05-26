@@ -108,7 +108,7 @@ export default function ServiciosPage() {
           >
             <span
               style={{
-                background: 'linear-gradient(180deg, #FFFFFF 30%, #525252 100%)',
+                background: 'linear-gradient(180deg, var(--admin-fg) 0%, var(--admin-fg-muted) 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
@@ -137,7 +137,7 @@ export default function ServiciosPage() {
           <div
             className="inline-flex items-center gap-6 px-6 py-3 rounded-full"
             style={{
-              background: 'rgba(255,255,255,0.03)',
+              background: 'var(--admin-accent-soft)',
               border: '0.5px solid var(--admin-border-strong)',
               backdropFilter: 'blur(20px)',
               fontFamily: 'var(--font-mono-tech)',
@@ -221,7 +221,7 @@ function SystemBadge() {
       className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full"
       style={{
         background: 'var(--admin-accent-soft)',
-        border: '0.5px solid rgba(255,255,255,0.15)',
+        border: '0.5px solid var(--admin-border-strong)',
         animation: 'tech-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both',
       }}
     >
@@ -232,7 +232,7 @@ function SystemBadge() {
         />
         <span
           className="relative rounded-full"
-          style={{ width: 8, height: 8, background: 'var(--admin-bg-elev)', boxShadow: '0 0 12px rgba(255,255,255,0.7)' }}
+          style={{ width: 8, height: 8, background: 'var(--admin-bg-elev)', boxShadow: '0 0 12px var(--admin-accent)' }}
         />
       </span>
       <span
@@ -259,7 +259,7 @@ function GlowDot() {
         height: '0.55em',
         borderRadius: '50%',
         background: 'var(--admin-bg-elev)',
-        boxShadow: '0 0 24px rgba(255,255,255,0.8), 0 0 48px rgba(255,255,255,0.4)',
+        boxShadow: '0 0 24px var(--admin-accent-glow), 0 0 48px var(--admin-accent-glow)',
         animation: 'tech-glow-pulse 2.5s ease-in-out infinite',
       }}
     />
@@ -278,7 +278,7 @@ function Telemetry({ label, value, pulse }: { label: string; value: string; puls
             width: 6,
             height: 6,
             background: 'var(--admin-bg-elev)',
-            boxShadow: '0 0 12px rgba(255,255,255,0.8)',
+            boxShadow: '0 0 12px var(--admin-accent-glow)',
             animation: 'tech-glow-pulse 1.4s ease-in-out infinite',
           }}
         />
@@ -306,7 +306,7 @@ function Aurora() {
           left: '-10%',
           width: '60%',
           height: '70%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 60%)',
+          background: 'radial-gradient(circle, var(--admin-accent-soft) 0%, transparent 60%)',
           filter: 'blur(80px)',
           animation: 'tech-aurora-a 24s ease-in-out infinite',
         }}
@@ -368,7 +368,7 @@ function ScanLines() {
       className="absolute inset-0 pointer-events-none opacity-[0.4]"
       style={{
         backgroundImage:
-          'linear-gradient(0deg, transparent 0%, transparent 50%, rgba(255,255,255,0.03) 50%, rgba(255,255,255,0.03) 51%, transparent 51%)',
+          'linear-gradient(0deg, transparent 0%, transparent 50%, var(--admin-accent-soft) 50%, var(--admin-accent-soft) 51%, transparent 51%)',
         backgroundSize: '100% 3px',
       }}
     />
@@ -402,7 +402,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
         className="absolute -inset-px rounded-[24px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"
         style={{
           background:
-            'conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(255,255,255,0.6) 60deg, transparent 120deg, transparent 240deg, rgba(255,255,255,0.6) 300deg, transparent 360deg)',
+            'conic-gradient(from 0deg at 50% 50%, transparent 0deg, var(--admin-accent) 60deg, transparent 120deg, transparent 240deg, var(--admin-accent) 300deg, transparent 360deg)',
           animation: 'tech-conic-rotate 4s linear infinite',
         }}
       />
@@ -421,7 +421,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
           aria-hidden
           className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
           style={{
-            background: 'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.12), transparent 60%)',
+            background: 'radial-gradient(circle at 50% 0%, var(--admin-accent-soft), transparent 60%)',
             filter: 'blur(40px)',
           }}
         />
@@ -431,8 +431,8 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
           <div
             className="relative w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-500 group-hover:scale-110"
             style={{
-              background: 'linear-gradient(135deg, var(--admin-border-strong), rgba(255,255,255,0.02))',
-              border: '0.5px solid rgba(255,255,255,0.15)',
+              background: 'linear-gradient(135deg, var(--admin-border-strong), var(--admin-accent-soft))',
+              border: '0.5px solid var(--admin-border-strong)',
             }}
           >
             <span
@@ -445,7 +445,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
             <span
               aria-hidden
               className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"
-              style={{ boxShadow: '0 0 32px rgba(255,255,255,0.35), inset 0 0 16px var(--admin-border)' }}
+              style={{ boxShadow: '0 0 32px var(--admin-accent-glow), inset 0 0 16px var(--admin-border)' }}
             />
           </div>
 
