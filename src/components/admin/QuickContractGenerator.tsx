@@ -792,7 +792,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
     <div
       className="relative rounded-2xl overflow-hidden"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        background: 'var(--admin-panel-grad)',
         border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
@@ -1580,7 +1580,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                 disabled={generating}
                 className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
                 style={{
-                  background: '#FFFFFF',
+                  background: 'var(--admin-bg-elev)',
                   color: 'var(--admin-bg-deep)',
                   fontSize: 13,
                   fontWeight: 600,

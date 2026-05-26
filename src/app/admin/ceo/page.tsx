@@ -41,7 +41,7 @@ export default async function AdminCeoPage() {
   // dashboard ejecutivo conserve EXACTAMENTE su layout original con su
   // propio max-width y paddings internos.
   return (
-    <div className="-m-6" style={{ background: '#0A0A0B', minHeight: 'calc(100vh - 0px)' }}>
+    <div className="-m-6" style={{ background: 'var(--admin-bg)', minHeight: 'calc(100vh - 0px)' }}>
       <CeoDashboardV2 data={data} firstName={firstName} />
     </div>
   )

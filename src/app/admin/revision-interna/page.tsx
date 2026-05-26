@@ -193,7 +193,7 @@ export default function RevisionInternaAdminPage() {
         <div
           className="rounded-2xl p-12 text-center"
           style={{
-            background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
+            background: 'var(--admin-panel-grad)',
             border: '0.5px solid var(--admin-border)',
           }}
         >
@@ -203,7 +203,7 @@ export default function RevisionInternaAdminPage() {
         <div
           className="rounded-2xl py-16 text-center"
           style={{
-            background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
+            background: 'var(--admin-panel-grad)',
             border: '0.5px solid var(--admin-border)',
           }}
         >
@@ -223,7 +223,7 @@ export default function RevisionInternaAdminPage() {
               key={g.client_id}
               className="relative rounded-2xl p-5 overflow-hidden"
               style={{
-                background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+                background: 'var(--admin-panel-grad)',
                 border: '0.5px solid var(--admin-border-strong)',
                 backdropFilter: 'blur(20px)',
               }}
@@ -295,7 +295,7 @@ export default function RevisionInternaAdminPage() {
             onClick={(e) => e.stopPropagation()}
             className="w-full max-w-md rounded-2xl p-6 space-y-3"
             style={{
-              background: 'linear-gradient(180deg, rgba(20,20,20,0.98), rgba(8,8,8,0.98))',
+              background: 'var(--admin-panel-grad)',
               border: '0.5px solid rgba(255,255,255,0.12)',
               backdropFilter: 'blur(20px)',
               boxShadow: '0 32px 64px rgba(0,0,0,0.6)',
@@ -374,7 +374,7 @@ function StatCard({
       style={{
         background: active
           ? `linear-gradient(180deg, ${t.bg}, rgba(20,20,20,0.92))`
-          : 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+          : 'var(--admin-panel-grad)',
         border: active ? `0.5px solid ${t.activeBorder}` : `0.5px solid var(--admin-border-strong)`,
         boxShadow: active ? `0 0 24px ${t.bg}` : 'none',
         backdropFilter: 'blur(20px)',

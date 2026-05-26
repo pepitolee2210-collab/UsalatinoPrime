@@ -26,7 +26,7 @@ export function CeoDashboard({ data }: Props) {
       <div
         className="rounded-2xl px-6 py-5 flex items-center justify-between gap-4 flex-wrap relative overflow-hidden"
         style={{
-          background: 'linear-gradient(180deg, rgba(20,20,20,0.95), rgba(8,8,8,0.95))',
+          background: 'var(--admin-panel-grad)',
           border: '0.5px solid var(--admin-border-strong)',
           backdropFilter: 'blur(20px)',
         }}
@@ -40,11 +40,11 @@ export function CeoDashboard({ data }: Props) {
           <span className="relative flex items-center justify-center" style={{ width: 8, height: 8 }}>
             <span
               className="absolute inset-0 rounded-full"
-              style={{ background: '#FFFFFF', animation: 'dash-ping 2s ease-in-out infinite' }}
+              style={{ background: 'var(--admin-bg-elev)', animation: 'dash-ping 2s ease-in-out infinite' }}
             />
             <span
               className="relative rounded-full"
-              style={{ width: 8, height: 8, background: '#FFFFFF', boxShadow: '0 0 10px rgba(255,255,255,0.7)' }}
+              style={{ width: 8, height: 8, background: 'var(--admin-bg-elev)', boxShadow: '0 0 10px rgba(255,255,255,0.7)' }}
             />
           </span>
           <div>
@@ -206,7 +206,7 @@ function DashCard({ children, accent }: { children: React.ReactNode; accent?: bo
     <div
       className="relative rounded-2xl p-5 space-y-5 overflow-hidden"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        background: 'var(--admin-panel-grad)',
         border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
@@ -277,7 +277,7 @@ function KpiCard({
     <div
       className="group relative overflow-hidden rounded-2xl p-4 transition-all duration-500 hover:-translate-y-0.5"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        background: 'var(--admin-panel-grad)',
         border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
@@ -501,7 +501,7 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
       </div>
       <div className="flex items-center gap-4 pt-3" style={{ fontSize: 10, color: 'var(--admin-fg-muted)', borderTop: '0.5px solid var(--admin-accent-soft)' }}>
         <span className="inline-flex items-center gap-1.5">
-          <span style={{ width: 10, height: 10, borderRadius: 2, background: '#FFFFFF' }} />
+          <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--admin-bg-elev)' }} />
           Cobrado
         </span>
         <span className="inline-flex items-center gap-1.5">

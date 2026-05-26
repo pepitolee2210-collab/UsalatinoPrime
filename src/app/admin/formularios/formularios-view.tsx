@@ -111,7 +111,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
             href="/admin/cambio-corte/nuevo"
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95"
             style={{
-              background: '#FFFFFF',
+              background: 'var(--admin-bg-elev)',
               color: 'var(--admin-bg-deep)',
               fontSize: 12,
               fontWeight: 600,
@@ -129,7 +129,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
       <div
         className="rounded-2xl p-5 relative overflow-hidden"
         style={{
-          background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+          background: 'var(--admin-panel-grad)',
           border: '0.5px solid var(--admin-border-strong)',
           backdropFilter: 'blur(20px)',
         }}
@@ -339,7 +339,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
         <div
           className="rounded-2xl py-16 text-center"
           style={{
-            background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
+            background: 'var(--admin-panel-grad)',
             border: '0.5px solid var(--admin-border)',
           }}
         >
@@ -380,7 +380,7 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
     <div
       className="relative rounded-2xl p-5 overflow-hidden transition-all duration-300"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        background: 'var(--admin-panel-grad)',
         border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}

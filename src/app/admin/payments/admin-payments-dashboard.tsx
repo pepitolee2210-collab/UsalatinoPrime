@@ -400,7 +400,7 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
       <div
         className="rounded-2xl overflow-hidden"
         style={{
-          background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+          background: 'var(--admin-panel-grad)',
           border: '0.5px solid var(--admin-border-strong)',
           backdropFilter: 'blur(20px)',
         }}
@@ -484,7 +484,7 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
                           disabled={markPaidLoading === p.id}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95"
                           style={{
-                            background: '#FFFFFF',
+                            background: 'var(--admin-bg-elev)',
                             color: 'var(--admin-bg-deep)',
                             fontSize: 11,
                             fontWeight: 600,
@@ -540,7 +540,7 @@ function DarkStat({ icon, label, value, tone }: { icon: React.ReactNode; label: 
     <div
       className="group relative rounded-2xl p-5 overflow-hidden transition-transform duration-300 hover:-translate-y-0.5"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        background: 'var(--admin-panel-grad)',
         border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
@@ -805,7 +805,7 @@ function DarkSubmit({ onClick, loading, children }: { onClick: () => void; loadi
       disabled={loading}
       className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
       style={{
-        background: '#FFFFFF',
+        background: 'var(--admin-bg-elev)',
         color: 'var(--admin-bg-deep)',
         fontSize: 13,
         fontWeight: 600,

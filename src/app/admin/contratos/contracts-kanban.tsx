@@ -59,7 +59,7 @@ export function ContractsKanban({
               key={col.id}
               className="rounded-2xl p-3 flex flex-col gap-2 min-h-[220px]"
               style={{
-                background: 'linear-gradient(180deg, rgba(20,20,20,0.85), rgba(8,8,8,0.85))',
+                background: 'var(--admin-panel-grad)',
                 border: `0.5px solid ${col.border}`,
                 backdropFilter: 'blur(20px)',
               }}

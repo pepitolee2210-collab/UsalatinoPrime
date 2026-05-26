@@ -96,7 +96,7 @@ export function ClientSearch() {
         <div
           className="absolute top-full left-0 right-0 mt-2 rounded-xl z-50 max-h-64 overflow-y-auto admin-scroll"
           style={{
-            background: 'linear-gradient(180deg, rgba(15,15,15,0.98), rgba(8,8,8,0.98))',
+            background: 'var(--admin-panel-grad)',
             border: '0.5px solid rgba(255,255,255,0.12)',
             backdropFilter: 'blur(20px)',
             boxShadow: '0 20px 40px rgba(0,0,0,0.6), 0 0 0 0.5px var(--admin-accent-soft) inset',
@@ -125,7 +125,7 @@ export function ClientSearch() {
         <div
           className="absolute top-full left-0 right-0 mt-2 rounded-xl z-50 p-4"
           style={{
-            background: 'linear-gradient(180deg, rgba(15,15,15,0.98), rgba(8,8,8,0.98))',
+            background: 'var(--admin-panel-grad)',
             border: '0.5px solid rgba(255,255,255,0.12)',
             backdropFilter: 'blur(20px)',
           }}

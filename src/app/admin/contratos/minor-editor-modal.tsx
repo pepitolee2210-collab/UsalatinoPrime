@@ -90,7 +90,7 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
         className="w-full max-w-2xl max-h-[90vh] overflow-y-auto admin-scroll rounded-2xl"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'linear-gradient(180deg, rgba(15,15,15,0.98), rgba(8,8,8,0.98))',
+          background: 'var(--admin-panel-grad)',
           border: '0.5px solid rgba(255,255,255,0.12)',
           backdropFilter: 'blur(20px)',
           boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
@@ -221,7 +221,7 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
                   disabled={savingIndex === idx}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50"
                   style={{
-                    background: '#FFFFFF',
+                    background: 'var(--admin-bg-elev)',
                     color: 'var(--admin-bg-deep)',
                     fontSize: 12,
                     fontWeight: 600,

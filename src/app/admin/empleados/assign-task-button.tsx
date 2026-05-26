@@ -392,7 +392,7 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
                 onClick={handleSubmit}
                 className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
                 style={{
-                  background: '#FFFFFF',
+                  background: 'var(--admin-bg-elev)',
                   color: 'var(--admin-bg-deep)',
                   fontSize: 13,
                   fontWeight: 600,

@@ -47,11 +47,11 @@ export function PageHeader({ eyebrow, title, accentDot, description, action, tel
               <span className="relative flex items-center justify-center" style={{ width: 6, height: 6 }}>
                 <span
                   className="absolute inset-0 rounded-full"
-                  style={{ background: '#FFFFFF', animation: 'ulp-ping 2s ease-in-out infinite' }}
+                  style={{ background: 'var(--admin-bg-elev)', animation: 'ulp-ping 2s ease-in-out infinite' }}
                 />
                 <span
                   className="relative rounded-full"
-                  style={{ width: 6, height: 6, background: '#FFFFFF', boxShadow: '0 0 8px rgba(255,255,255,0.7)' }}
+                  style={{ width: 6, height: 6, background: 'var(--admin-bg-elev)', boxShadow: '0 0 8px rgba(255,255,255,0.7)' }}
                 />
               </span>
               <p
@@ -92,7 +92,7 @@ export function PageHeader({ eyebrow, title, accentDot, description, action, tel
                   width: '0.45em',
                   height: '0.45em',
                   borderRadius: '50%',
-                  background: '#FFFFFF',
+                  background: 'var(--admin-bg-elev)',
                   boxShadow: '0 0 20px rgba(255,255,255,0.7)',
                   animation: 'ulp-glow 2.5s ease-in-out infinite',
                 }}
@@ -145,7 +145,7 @@ interface PrimaryButtonProps {
 export function PrimaryButton({ children, href, onClick, icon, variant = 'solid' }: PrimaryButtonProps) {
   const styles: React.CSSProperties = variant === 'solid'
     ? {
-        background: '#FFFFFF',
+        background: 'var(--admin-bg-elev)',
         color: 'var(--admin-bg-deep)',
         boxShadow: '0 4px 24px rgba(255,255,255,0.18), 0 0 0 0.5px rgba(255,255,255,0.4) inset',
       }
@@ -193,7 +193,7 @@ export function DataCard({ children, className = '', padding = 'md', accentTop }
     <div
       className={`relative rounded-2xl overflow-hidden ${pad} ${className}`}
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        background: 'var(--admin-panel-grad)',
         border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
@@ -232,7 +232,7 @@ export function StatTile({ label, value, hint, icon, warning }: StatTileProps) {
     <div
       className="relative rounded-2xl p-4 overflow-hidden transition-transform duration-300 hover:-translate-y-0.5"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        background: 'var(--admin-panel-grad)',
         border: '0.5px solid var(--admin-border-strong)',
       }}
     >

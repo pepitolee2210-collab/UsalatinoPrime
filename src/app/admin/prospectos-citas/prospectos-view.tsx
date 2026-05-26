@@ -255,7 +255,7 @@ export function ProspectosView({ mode, hideHeader }: Props) {
             <div
               className="rounded-2xl py-16 text-center"
               style={{
-                background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
+                background: 'var(--admin-panel-grad)',
                 border: '0.5px solid var(--admin-border)',
               }}
             >
@@ -284,7 +284,7 @@ export function ProspectosView({ mode, hideHeader }: Props) {
                 key={p.id}
                 className="relative rounded-2xl p-5 transition-all duration-500 group"
                 style={{
-                  background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+                  background: 'var(--admin-panel-grad)',
                   border: isEnCurso ? '0.5px solid rgba(96,165,250,0.4)' : '0.5px solid var(--admin-border-strong)',
                   backdropFilter: 'blur(20px)',
                   boxShadow: isEnCurso ? '0 0 24px rgba(96,165,250,0.18)' : 'none',
@@ -490,7 +490,7 @@ function StatCard({
     <div
       className="relative rounded-2xl p-4 overflow-hidden transition-transform duration-300 hover:-translate-y-0.5"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        background: 'var(--admin-panel-grad)',
         border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}

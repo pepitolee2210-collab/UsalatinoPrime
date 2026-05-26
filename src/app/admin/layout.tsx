@@ -213,11 +213,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <span className="relative flex items-center justify-center" style={{ width: 10, height: 10 }}>
             <span
               className="absolute inset-0 rounded-full"
-              style={{ background: '#FFFFFF', animation: 'admin-ping 2s ease-in-out infinite' }}
+              style={{ background: 'var(--admin-bg-elev)', animation: 'admin-ping 2s ease-in-out infinite' }}
             />
             <span
               className="relative rounded-full"
-              style={{ width: 10, height: 10, background: '#FFFFFF', boxShadow: '0 0 12px rgba(255,255,255,0.7)' }}
+              style={{ width: 10, height: 10, background: 'var(--admin-bg-elev)', boxShadow: '0 0 12px rgba(255,255,255,0.7)' }}
             />
           </span>
           <div className="flex flex-col">
@@ -329,7 +329,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           aria-hidden
                           className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full"
                           style={{
-                            background: '#FFFFFF',
+                            background: 'var(--admin-bg-elev)',
                             boxShadow: '0 0 8px rgba(255,255,255,0.6)',
                           }}
                         />
@@ -354,7 +354,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             letterSpacing: '0.15em',
                             padding: '2px 5px',
                             borderRadius: 3,
-                            background: '#FFFFFF',
+                            background: 'var(--admin-bg-elev)',
                             color: 'var(--admin-bg-deep)',
                           }}
                         >

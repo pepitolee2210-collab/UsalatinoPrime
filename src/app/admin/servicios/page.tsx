@@ -228,11 +228,11 @@ function SystemBadge() {
       <span className="relative flex items-center justify-center" style={{ width: 8, height: 8 }}>
         <span
           className="absolute inset-0 rounded-full"
-          style={{ background: '#FFFFFF', animation: 'tech-ping 2s ease-in-out infinite' }}
+          style={{ background: 'var(--admin-bg-elev)', animation: 'tech-ping 2s ease-in-out infinite' }}
         />
         <span
           className="relative rounded-full"
-          style={{ width: 8, height: 8, background: '#FFFFFF', boxShadow: '0 0 12px rgba(255,255,255,0.7)' }}
+          style={{ width: 8, height: 8, background: 'var(--admin-bg-elev)', boxShadow: '0 0 12px rgba(255,255,255,0.7)' }}
         />
       </span>
       <span
@@ -258,7 +258,7 @@ function GlowDot() {
         width: '0.55em',
         height: '0.55em',
         borderRadius: '50%',
-        background: '#FFFFFF',
+        background: 'var(--admin-bg-elev)',
         boxShadow: '0 0 24px rgba(255,255,255,0.8), 0 0 48px rgba(255,255,255,0.4)',
         animation: 'tech-glow-pulse 2.5s ease-in-out infinite',
       }}
@@ -277,7 +277,7 @@ function Telemetry({ label, value, pulse }: { label: string; value: string; puls
           style={{
             width: 6,
             height: 6,
-            background: '#FFFFFF',
+            background: 'var(--admin-bg-elev)',
             boxShadow: '0 0 12px rgba(255,255,255,0.8)',
             animation: 'tech-glow-pulse 1.4s ease-in-out infinite',
           }}

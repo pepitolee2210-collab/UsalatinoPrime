@@ -273,7 +273,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
       <div
         className="rounded-2xl overflow-hidden"
         style={{
-          background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+          background: 'var(--admin-panel-grad)',
           border: '0.5px solid var(--admin-border-strong)',
           backdropFilter: 'blur(20px)',
         }}
@@ -1108,7 +1108,7 @@ function Panel({
     <div
       className="relative rounded-2xl p-5 overflow-hidden"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        background: 'var(--admin-panel-grad)',
         border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}

@@ -252,7 +252,7 @@ export default function AdminComunidadPage() {
           style={{
             background: stats.zellePending > 0
               ? 'linear-gradient(180deg, rgba(250,204,21,0.10), rgba(20,20,20,0.92))'
-              : 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+              : 'var(--admin-panel-grad)',
             border: stats.zellePending > 0
               ? '0.5px solid rgba(250,204,21,0.3)'
               : '0.5px solid var(--admin-border-strong)',
@@ -497,7 +497,7 @@ export default function AdminComunidadPage() {
               key={post.id}
               className="rounded-2xl p-4"
               style={{
-                background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+                background: 'var(--admin-panel-grad)',
                 border: post.pinned ? '0.5px solid rgba(250,204,21,0.3)' : '0.5px solid var(--admin-border-strong)',
                 backdropFilter: 'blur(20px)',
               }}
@@ -597,7 +597,7 @@ export default function AdminComunidadPage() {
             <div
               className="rounded-2xl py-16 text-center"
               style={{
-                background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
+                background: 'var(--admin-panel-grad)',
                 border: '0.5px solid var(--admin-border)',
               }}
             >
@@ -633,7 +633,7 @@ function Panel({
     <div
       className="relative rounded-2xl p-5 overflow-hidden"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        background: 'var(--admin-panel-grad)',
         border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
@@ -680,7 +680,7 @@ function StatCard({ icon, label, value, tone }: { icon?: React.ReactNode; label:
     <div
       className="rounded-2xl p-4 text-center transition-transform duration-300 hover:-translate-y-0.5"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        background: 'var(--admin-panel-grad)',
         border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}

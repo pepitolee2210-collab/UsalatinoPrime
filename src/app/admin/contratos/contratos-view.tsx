@@ -434,7 +434,7 @@ function ContratosInner({ basePath, hideHeader }: Props) {
         <div
           className="rounded-2xl py-16 text-center space-y-4"
           style={{
-            background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
+            background: 'var(--admin-panel-grad)',
             border: '0.5px dashed rgba(255,255,255,0.12)',
           }}
         >
@@ -553,7 +553,7 @@ function ContractCard({
     <div
       className="relative rounded-2xl p-5 overflow-hidden transition-all duration-300 group"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        background: 'var(--admin-panel-grad)',
         border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}

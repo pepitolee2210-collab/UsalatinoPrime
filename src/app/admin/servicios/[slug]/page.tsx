@@ -134,11 +134,11 @@ export default async function ServicioDetallePage({ params }: PageProps) {
             <span className="relative flex items-center justify-center" style={{ width: 6, height: 6 }}>
               <span
                 className="absolute inset-0 rounded-full"
-                style={{ background: '#FFFFFF', animation: 'tech-ping 2s ease-in-out infinite' }}
+                style={{ background: 'var(--admin-bg-elev)', animation: 'tech-ping 2s ease-in-out infinite' }}
               />
               <span
                 className="relative rounded-full"
-                style={{ width: 6, height: 6, background: '#FFFFFF', boxShadow: '0 0 8px rgba(255,255,255,0.7)' }}
+                style={{ width: 6, height: 6, background: 'var(--admin-bg-elev)', boxShadow: '0 0 8px rgba(255,255,255,0.7)' }}
               />
             </span>
             <span
@@ -179,7 +179,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                 width: '0.5em',
                 height: '0.5em',
                 borderRadius: '50%',
-                background: '#FFFFFF',
+                background: 'var(--admin-bg-elev)',
                 boxShadow: '0 0 24px rgba(255,255,255,0.8), 0 0 48px rgba(255,255,255,0.4)',
                 animation: 'tech-glow-pulse 2.5s ease-in-out infinite',
               }}
@@ -210,7 +210,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
             <div
               className="rounded-[24px] p-16 text-center space-y-3"
               style={{
-                background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+                background: 'var(--admin-panel-grad)',
                 border: '0.5px solid var(--admin-border-strong)',
                 backdropFilter: 'blur(20px)',
               }}
@@ -282,7 +282,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                 key={phase.code}
                 className="relative rounded-[20px] p-6 md:p-8 flex flex-col md:flex-row gap-6 items-start transition-all duration-500 hover:translate-x-1"
                 style={{
-                  background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
+                  background: 'var(--admin-panel-grad)',
                   border: '0.5px solid var(--admin-border-strong)',
                   backdropFilter: 'blur(20px)',
                   animation: `tech-card-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both`,

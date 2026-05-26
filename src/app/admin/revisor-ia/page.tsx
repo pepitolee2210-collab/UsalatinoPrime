@@ -293,7 +293,7 @@ export default function RevisorIAPage() {
       <aside
         className={`${sidebarOpen ? 'w-72' : 'w-0'} flex flex-col transition-all overflow-hidden`}
         style={{
-          background: 'linear-gradient(180deg, rgba(15,15,15,0.95), rgba(8,8,8,0.95))',
+          background: 'var(--admin-panel-grad)',
           borderRight: '0.5px solid var(--admin-border)',
         }}
       >
@@ -302,7 +302,7 @@ export default function RevisorIAPage() {
             onClick={handleNewSession}
             className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95"
             style={{
-              background: '#FFFFFF',
+              background: 'var(--admin-bg-elev)',
               color: 'var(--admin-bg-deep)',
               fontSize: 12,
               fontWeight: 600,
@@ -521,7 +521,7 @@ export default function RevisorIAPage() {
                     onClick={() => setInput(ex.title)}
                     className="text-left p-3.5 rounded-2xl transition-all duration-300 hover:-translate-y-0.5"
                     style={{
-                      background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+                      background: 'var(--admin-panel-grad)',
                       border: '0.5px solid var(--admin-border-strong)',
                     }}
                   >
@@ -726,13 +726,13 @@ function MessageBubble({ message, isStreaming = false }: { message: Message; isS
           style={
             isUser
               ? {
-                  background: '#FFFFFF',
+                  background: 'var(--admin-bg-elev)',
                   color: 'var(--admin-bg-deep)',
                   padding: '12px 16px',
                   boxShadow: '0 4px 18px rgba(255,255,255,0.12)',
                 }
               : {
-                  background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+                  background: 'var(--admin-panel-grad)',
                   border: '0.5px solid var(--admin-border-strong)',
                   padding: '16px 20px',
                   backdropFilter: 'blur(20px)',
