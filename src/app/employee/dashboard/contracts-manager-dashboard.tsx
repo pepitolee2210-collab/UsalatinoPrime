@@ -134,7 +134,7 @@ export function ContractsManagerDashboard({
     <div className="space-y-6 max-w-6xl">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <FileSignature className="w-6 h-6 text-[#F2A900]" />
+          <FileSignature className="w-6 h-6" style={{ color: 'var(--admin-gold)' }} />
           Hola, {firstName}
         </h1>
         <p className="text-sm text-gray-500">
@@ -144,10 +144,16 @@ export function ContractsManagerDashboard({
 
       {/* ZONA 1: ACCIONES DE HOY */}
       {(pendingSignature.length > 0 || todayAppointments.length > 0) && (
-        <Card className="border-2 border-[#F2A900]/30 bg-gradient-to-r from-[#F2A900]/5 to-transparent">
+        <Card
+          className="border-2"
+          style={{
+            borderColor: 'color-mix(in srgb, var(--admin-gold) 30%, transparent)',
+            backgroundImage: 'linear-gradient(to right, color-mix(in srgb, var(--admin-gold) 5%, transparent), transparent)',
+          }}
+        >
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
-              <Send className="w-5 h-5 text-[#F2A900]" />
+              <Send className="w-5 h-5" style={{ color: 'var(--admin-gold)' }} />
               Acciones urgentes
             </CardTitle>
           </CardHeader>
@@ -192,7 +198,8 @@ export function ContractsManagerDashboard({
                   {pendingSignature.length > 4 && (
                     <Link
                       href="/employee/contratos"
-                      className="block text-xs text-[#F2A900] hover:underline text-right pt-1"
+                      className="block text-xs hover:underline text-right pt-1"
+                      style={{ color: 'var(--admin-gold)' }}
                     >
                       Ver {pendingSignature.length - 4} más →
                     </Link>

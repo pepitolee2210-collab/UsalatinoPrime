@@ -159,7 +159,7 @@ export function RevisionInternaClient({ currentUserId: _currentUserId }: Props) 
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <FileText className="w-6 h-6 text-[#002855]" />
+            <FileText className="w-6 h-6" style={{ color: 'var(--admin-accent)' }} />
             Revisión Interna
           </h1>
           <p className="text-sm text-gray-500">
@@ -168,7 +168,8 @@ export function RevisionInternaClient({ currentUserId: _currentUserId }: Props) 
         </div>
         <Button
           onClick={() => setShowUpload(true)}
-          className="bg-[#F2A900] hover:bg-[#D4940A] text-white"
+          className="text-white hover:opacity-90"
+          style={{ background: 'var(--admin-gold)' }}
         >
           <Upload className="w-4 h-4 mr-1.5" />
           Subir documento
@@ -410,7 +411,8 @@ function DocRow({
               <Button
                 size="sm"
                 onClick={onResubmit}
-                className="h-7 text-[11px] bg-[#F2A900] hover:bg-[#D4940A] text-white"
+                className="h-7 text-[11px] text-white hover:opacity-90"
+                style={{ background: 'var(--admin-gold)' }}
               >
                 <ArrowUp className="w-3 h-3 mr-1" /> Subir corrección
               </Button>

@@ -134,7 +134,7 @@ export function EmployeeClientDetail({
               onClick={() => setSelectedCaseId(c.id)}
               className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
                 selectedCaseId === c.id
-                  ? 'border-[#F2A900] bg-[#F2A900]/10 text-[#9a6500]'
+                  ? 'border-[var(--admin-gold)] bg-[var(--admin-gold)]/10 text-[var(--admin-gold)]'
                   : 'border-gray-200 text-gray-500 hover:bg-gray-50'
               }`}
             >

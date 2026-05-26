@@ -165,7 +165,7 @@ export function MetricsClient({ payments, contracts }: Props) {
     <div className="space-y-6 max-w-6xl">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <BarChart3 className="w-6 h-6 text-[#F2A900]" />
+          <BarChart3 className="w-6 h-6" style={{ color: 'var(--admin-gold)' }} />
           Métricas
         </h1>
         <p className="text-sm text-gray-500">
@@ -336,8 +336,13 @@ export function MetricsClient({ payments, contracts }: Props) {
                   key={t.key}
                   onClick={() => setFilter(t.key)}
                   className={`text-xs px-3 h-8 rounded-full font-medium transition-colors ${
-                    filter === t.key ? 'bg-[#002855] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    filter === t.key ? '' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
+                  style={
+                    filter === t.key
+                      ? { background: 'var(--admin-accent)', color: 'var(--admin-bg)' }
+                      : undefined
+                  }
                 >
                   {t.label}
                 </button>

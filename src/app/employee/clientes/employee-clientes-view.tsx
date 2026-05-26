@@ -103,14 +103,14 @@ export function EmployeeClientesView({ clients }: { clients: Client[] }) {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Buscar por nombre, email o teléfono..."
-          className="w-full pl-10 pr-4 h-11 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/40 focus:border-[#F2A900]" />
+          className="w-full pl-10 pr-4 h-11 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--admin-gold)]/40 focus:border-[var(--admin-gold)]" />
       </div>
 
       {/* Service filter */}
       <div className="flex gap-2 flex-wrap">
         <button onClick={() => setServiceFilter(null)}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-            !serviceFilter ? 'border-[#F2A900] bg-[#F2A900]/10 text-[#9a6500]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+            !serviceFilter ? 'border-[var(--admin-gold)] bg-[var(--admin-gold)]/10 text-[var(--admin-gold)]' : 'border-gray-200 text-gray-500 hover:bg-gray-50'
           }`}>
           <Users className="w-3 h-3" /> Todos ({clients.length})
         </button>
@@ -120,7 +120,7 @@ export function EmployeeClientesView({ clients }: { clients: Client[] }) {
           return (
             <button key={s} onClick={() => setServiceFilter(serviceFilter === s ? null : s)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                serviceFilter === s ? `border-[#F2A900] bg-[#F2A900]/10 text-[#9a6500]` : 'border-gray-200 text-gray-500 hover:bg-gray-50'
+                serviceFilter === s ? `border-[var(--admin-gold)] bg-[var(--admin-gold)]/10 text-[var(--admin-gold)]` : 'border-gray-200 text-gray-500 hover:bg-gray-50'
               }`}>
               <span className={`w-2 h-2 rounded-full ${style.dot}`} />
               {s} ({count})
@@ -139,11 +139,16 @@ export function EmployeeClientesView({ clients }: { clients: Client[] }) {
               onClick={() => setLetterFilter(letterFilter === letter ? null : letter)}
               className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
                 letterFilter === letter
-                  ? 'bg-[#002855] text-white'
+                  ? ''
                   : hasClients
                     ? 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
                     : 'bg-gray-50 text-gray-300 cursor-not-allowed'
-              }`}>
+              }`}
+              style={
+                letterFilter === letter
+                  ? { background: 'var(--admin-accent)', color: 'var(--admin-bg)' }
+                  : undefined
+              }>
               {letter}
             </button>
           )
@@ -199,7 +204,10 @@ function ClientCard({ client: c }: { client: Client }) {
       <div className="bg-white rounded-xl border p-4 hover:shadow-md hover:border-gray-300 transition-all cursor-pointer">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#002855] flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm flex-shrink-0"
+              style={{ background: 'var(--admin-accent)', color: 'var(--admin-bg)' }}
+            >
               {c.first_name[0]}{c.last_name[0]}
             </div>
             <div>
