@@ -165,7 +165,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
           >
             <span
               style={{
-                background: 'linear-gradient(180deg, #FFFFFF 30%, #525252 100%)',
+                background: 'linear-gradient(180deg, var(--admin-fg) 0%, var(--admin-fg-muted) 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
@@ -257,7 +257,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
             >
               <span
                 style={{
-                  background: 'linear-gradient(180deg, #FFFFFF 30%, #525252 100%)',
+                  background: 'linear-gradient(180deg, var(--admin-fg) 0%, var(--admin-fg-muted) 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   backgroundClip: 'text',
