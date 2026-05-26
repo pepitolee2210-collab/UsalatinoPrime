@@ -233,6 +233,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
             side="left"
             className="admin-sidebar p-0 w-64"
             style={{ background: 'var(--admin-bg)' }}
+            onOpenAutoFocus={(e) => e.preventDefault()}
           >
             {navContent}
           </SheetContent>

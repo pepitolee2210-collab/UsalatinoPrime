@@ -519,7 +519,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Menu className="w-4 h-4" />
             </button>
           </SheetTrigger>
-          <SheetContent side="left" className="admin-sidebar p-0 w-[260px] border-r-0 border-l-0" style={{ background: 'var(--admin-bg-deep)' }}>
+          <SheetContent
+            side="left"
+            className="admin-sidebar p-0 w-[260px] border-r-0 border-l-0"
+            style={{ background: 'var(--admin-bg-deep)' }}
+            onOpenAutoFocus={(e) => e.preventDefault()}
+          >
             {navContent}
           </SheetContent>
         </Sheet>
