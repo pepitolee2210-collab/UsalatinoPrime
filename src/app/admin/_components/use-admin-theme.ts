@@ -53,12 +53,13 @@ export function useAdminTheme() {
 
 function applyTheme(theme: AdminTheme) {
   if (typeof document === 'undefined') return
-  // Buscamos el root del admin layout (tiene data-admin-theme).
-  // Si no existe aún (mount inicial), aplicamos al <html> como fallback.
-  const adminRoot = document.querySelector('[data-admin-theme]')
+  // Aplicamos el atributo al div del layout admin Y al <html> para que
+  // portals (Radix Sheet/Dialog/etc) también hereden los tokens
+  // var(--admin-*) — sin esto, el menú mobile queda sin tokens y se ve
+  // transparente.
+  const adminRoot = document.querySelector('[data-admin-theme]:not(html)')
   if (adminRoot) {
     adminRoot.setAttribute('data-admin-theme', theme)
-  } else {
-    document.documentElement.setAttribute('data-admin-theme', theme)
   }
+  document.documentElement.setAttribute('data-admin-theme', theme)
 }
