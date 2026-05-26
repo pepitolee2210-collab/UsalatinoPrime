@@ -8,7 +8,6 @@
 import { useState } from 'react'
 import { Loader2, X, CheckCircle, XCircle, AlertTriangle, Info } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
-import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 
 export type DialogMode = 'complete' | 'cancel' | 'no_show'
@@ -19,6 +18,15 @@ interface CompleteAppointmentDialogProps {
   mode: DialogMode
   onClose: () => void
   onDone: () => void
+}
+
+const LABEL_STYLE: React.CSSProperties = {
+  fontFamily: 'var(--font-mono-tech)',
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: '0.16em',
+  color: 'var(--admin-fg-subtle)',
+  textTransform: 'uppercase',
 }
 
 export function CompleteAppointmentDialog({
@@ -92,29 +100,65 @@ export function CompleteAppointmentDialog({
 
   const icon =
     mode === 'complete' ? (
-      <CheckCircle className="w-5 h-5 text-emerald-600" />
+      <CheckCircle className="w-5 h-5" style={{ color: 'var(--admin-green)' }} />
     ) : mode === 'no_show' ? (
-      <AlertTriangle className="w-5 h-5 text-red-600" />
+      <AlertTriangle className="w-5 h-5" style={{ color: 'var(--admin-red)' }} />
     ) : (
-      <XCircle className="w-5 h-5 text-gray-600" />
+      <XCircle className="w-5 h-5" style={{ color: 'var(--admin-fg-muted)' }} />
     )
+
+  const confirmStyle: React.CSSProperties =
+    mode === 'complete'
+      ? {
+          background: 'linear-gradient(135deg, var(--admin-green), #16A34A)',
+          color: '#FFFFFF',
+          boxShadow: '0 12px 28px rgba(21,128,61,0.25)',
+        }
+      : mode === 'no_show'
+        ? {
+            background: 'linear-gradient(135deg, var(--admin-red), #DC2626)',
+            color: '#FFFFFF',
+            boxShadow: '0 12px 28px rgba(185,28,28,0.25)',
+          }
+        : {
+            background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-blue))',
+            color: '#FFFFFF',
+            boxShadow: '0 12px 28px rgba(30,78,154,0.25)',
+          }
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.55)' }}
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
       onClick={tryClose}
     >
       <div
-        className="bg-white rounded-2xl max-w-md w-full shadow-2xl"
+        className="rounded-2xl max-w-md w-full overflow-hidden"
+        style={{
+          background: 'var(--admin-bg-elev)',
+          border: '0.5px solid var(--admin-border-strong)',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.30)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-4 border-b">
+        <div
+          className="flex items-center justify-between p-4"
+          style={{ borderBottom: '0.5px solid var(--admin-border)' }}
+        >
           <div className="flex items-center gap-2">
             {icon}
-            <p className="font-bold text-gray-900">{title}</p>
+            <p className="font-bold" style={{ color: 'var(--admin-fg)' }}>
+              {title}
+            </p>
           </div>
-          <button onClick={tryClose} className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 hover:bg-gray-200">
+          <button
+            onClick={tryClose}
+            className="w-8 h-8 rounded-full flex items-center justify-center transition-colors hover:opacity-80"
+            style={{
+              background: 'var(--admin-bg-elev-2)',
+              color: 'var(--admin-fg-muted)',
+            }}
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -122,27 +166,40 @@ export function CompleteAppointmentDialog({
         <div className="p-4 space-y-4">
           {mode === 'complete' && (
             <>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+              <div
+                className="rounded-xl p-3"
+                style={{
+                  background: 'var(--admin-bg-elev-2)',
+                  border: '0.5px solid var(--admin-border)',
+                }}
+              >
                 <label className="flex items-start gap-3 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={objectiveCompleted}
                     onChange={(e) => setObjectiveCompleted(e.target.checked)}
                     className="mt-1 w-4 h-4"
+                    style={{ accentColor: 'var(--admin-green)' }}
                   />
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">
-                      Se logró el objetivo de esta sesión
+                    <p
+                      className="text-sm font-semibold"
+                      style={{ color: 'var(--admin-fg)' }}
+                    >
+                      Se logro el objetivo de esta sesion
                     </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p
+                      className="text-xs mt-0.5"
+                      style={{ color: 'var(--admin-fg-muted)' }}
+                    >
                       {objectiveCompleted ? (
                         <>
-                          La próxima cita del caso será la <strong>sesión #{sessionNumber + 1}</strong>.
+                          La proxima cita del caso sera la <strong>sesion #{sessionNumber + 1}</strong>.
                         </>
                       ) : (
                         <>
-                          La cita queda registrada como ocurrida, pero la próxima cita seguirá siendo
-                          la <strong>sesión #{sessionNumber}</strong> (se retoma el objetivo pendiente).
+                          La cita queda registrada como ocurrida, pero la proxima cita seguira siendo
+                          la <strong>sesion #{sessionNumber}</strong> (se retoma el objetivo pendiente).
                         </>
                       )}
                     </p>
@@ -151,8 +208,8 @@ export function CompleteAppointmentDialog({
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1.5">
-                  Notas de la sesión (opcional, visible a todo staff)
+                <label className="block mb-1.5" style={LABEL_STYLE}>
+                  Notas de la sesion (opcional, visible a todo staff)
                 </label>
                 <Textarea
                   value={noteBody}
@@ -161,8 +218,11 @@ export function CompleteAppointmentDialog({
                   placeholder="¿Qué se cubrió en la cita? ¿Qué quedó pendiente? ¿En qué quedaste con el cliente?"
                   className="text-sm"
                 />
-                <p className="text-[10px] text-gray-400 mt-1">
-                  Se guardará como una nota nueva (no sobrescribe notas anteriores).
+                <p
+                  className="text-[10px] mt-1"
+                  style={{ color: 'var(--admin-fg-subtle)' }}
+                >
+                  Se guardara como una nota nueva (no sobrescribe notas anteriores).
                 </p>
               </div>
             </>
@@ -170,16 +230,22 @@ export function CompleteAppointmentDialog({
 
           {mode === 'cancel' && (
             <>
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-start gap-2">
-                <Info className="w-4 h-4 text-amber-700 mt-0.5" />
-                <p className="text-xs text-amber-800">
-                  La sesión <strong>#{sessionNumber}</strong> queda como no realizada.
-                  La próxima cita conservará este número de sesión.
+              <div
+                className="rounded-xl p-3 flex items-start gap-2"
+                style={{
+                  background: 'var(--admin-gold-soft)',
+                  border: '0.5px solid var(--admin-gold)',
+                }}
+              >
+                <Info className="w-4 h-4 mt-0.5" style={{ color: 'var(--admin-gold)' }} />
+                <p className="text-xs" style={{ color: 'var(--admin-gold)' }}>
+                  La sesion <strong>#{sessionNumber}</strong> queda como no realizada.
+                  La proxima cita conservara este numero de sesion.
                 </p>
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1.5">
-                  Razón de cancelación
+                <label className="block mb-1.5" style={LABEL_STYLE}>
+                  Razon de cancelacion
                 </label>
                 <Textarea
                   value={cancelReason}
@@ -190,7 +256,7 @@ export function CompleteAppointmentDialog({
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1.5">
+                <label className="block mb-1.5" style={LABEL_STYLE}>
                   Nota adicional (opcional)
                 </label>
                 <Textarea
@@ -206,15 +272,21 @@ export function CompleteAppointmentDialog({
 
           {mode === 'no_show' && (
             <>
-              <div className="rounded-lg border border-red-200 bg-red-50 p-3 flex items-start gap-2">
-                <Info className="w-4 h-4 text-red-700 mt-0.5" />
-                <p className="text-xs text-red-800">
-                  El cliente no se presentó. La sesión <strong>#{sessionNumber}</strong>
-                  conserva su número — la próxima cita seguirá siendo la misma sesión.
+              <div
+                className="rounded-xl p-3 flex items-start gap-2"
+                style={{
+                  background: 'var(--admin-red-soft)',
+                  border: '0.5px solid var(--admin-red)',
+                }}
+              >
+                <Info className="w-4 h-4 mt-0.5" style={{ color: 'var(--admin-red)' }} />
+                <p className="text-xs" style={{ color: 'var(--admin-red)' }}>
+                  El cliente no se presento. La sesion <strong>#{sessionNumber}</strong>
+                  conserva su numero — la proxima cita seguira siendo la misma sesion.
                 </p>
               </div>
               <div>
-                <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1.5">
+                <label className="block mb-1.5" style={LABEL_STYLE}>
                   Nota (opcional)
                 </label>
                 <Textarea
@@ -229,30 +301,36 @@ export function CompleteAppointmentDialog({
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 p-4 border-t bg-gray-50">
+        <div
+          className="flex items-center justify-end gap-2 p-4"
+          style={{
+            background: 'var(--admin-bg-deep)',
+            borderTop: '0.5px solid var(--admin-border)',
+          }}
+        >
           <button
             type="button"
             onClick={tryClose}
             disabled={saving}
-            className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-100 rounded-lg"
+            className="px-3 py-1.5 text-xs font-semibold rounded-full transition-opacity hover:opacity-80 disabled:opacity-50"
+            style={{
+              background: 'var(--admin-bg-elev)',
+              color: 'var(--admin-fg-muted)',
+              border: '0.5px solid var(--admin-border-strong)',
+            }}
           >
             Cancelar
           </button>
-          <Button
+          <button
             type="button"
             onClick={handleSubmit}
             disabled={saving}
-            className={
-              mode === 'complete'
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                : mode === 'no_show'
-                ? 'bg-red-600 hover:bg-red-700 text-white'
-                : 'bg-gray-700 hover:bg-gray-800 text-white'
-            }
+            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
+            style={confirmStyle}
           >
-            {saving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : null}
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
             Confirmar
-          </Button>
+          </button>
         </div>
       </div>
     </div>

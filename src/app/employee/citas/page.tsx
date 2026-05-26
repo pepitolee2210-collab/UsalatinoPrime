@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import { EmployeeCitasView } from './employee-citas-view'
+import { PageHeader, AdminKeyframes } from '@/components/admin-ui'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -78,14 +79,27 @@ export default async function EmployeeCitasPage() {
     } as unknown as Parameters<typeof EmployeeCitasView>[0]['appointments'][number]
   })
 
+  const scheduledCount = normalized.filter(a => a.status === 'scheduled').length
+  const completedCount = normalized.filter(a => a.status === 'completed').length
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Citas</h1>
-      <p className="text-sm text-gray-500">
-        {canManageStatus
-          ? 'Cierra citas con su objetivo (logrado o pendiente) para que el contador avance correctamente.'
-          : 'Vista de solo lectura — contacta a Henry o a una paralegal para cambios.'}
-      </p>
+      <AdminKeyframes />
+      <PageHeader
+        eyebrow="OPERACION · CITAS"
+        title="Citas"
+        accentDot
+        description={
+          canManageStatus
+            ? 'Cierra citas con su objetivo (logrado o pendiente) para que el contador avance correctamente.'
+            : 'Vista de solo lectura — contacta a Henry o a una paralegal para cambios.'
+        }
+        telemetry={[
+          { label: 'Agendadas', value: scheduledCount.toString() },
+          { label: 'Completadas', value: completedCount.toString() },
+          { label: 'Total', value: normalized.length.toString() },
+        ]}
+      />
       <EmployeeCitasView
         appointments={normalized}
         canManageStatus={canManageStatus}

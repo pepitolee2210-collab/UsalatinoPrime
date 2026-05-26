@@ -266,27 +266,41 @@ export function ChatPopupPanel({ currentUserId, onClose, onUnreadChange }: Props
     return (
       <div className="flex flex-col h-full">
         {/* Header con back */}
-        <div className="px-3 py-2.5 border-b border-gray-100 flex items-center gap-2 bg-white">
+        <div
+          className="px-3 py-2.5 flex items-center gap-2"
+          style={{
+            background: 'var(--admin-bg-elev)',
+            borderBottom: '0.5px solid var(--admin-border)',
+          }}
+        >
           <button
             type="button"
             onClick={() => setView('list')}
-            className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-600"
+            className="h-8 w-8 inline-flex items-center justify-center rounded-md transition-opacity hover:opacity-80"
+            style={{ color: 'var(--admin-fg-muted)' }}
             aria-label="Volver"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-gray-900 truncate">
+            <p
+              className="text-sm font-bold truncate"
+              style={{ color: 'var(--admin-fg)' }}
+            >
               {convDisplayName(activeConv)}
             </p>
-            <p className="text-[10px] text-gray-500 truncate">
+            <p
+              className="text-[10px] truncate"
+              style={{ color: 'var(--admin-fg-muted)' }}
+            >
               {convDisplaySubtitle(activeConv)}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-400"
+            className="h-8 w-8 inline-flex items-center justify-center rounded-md transition-opacity hover:opacity-80"
+            style={{ color: 'var(--admin-fg-subtle)' }}
             aria-label="Cerrar"
           >
             <X className="w-4 h-4" />
@@ -318,58 +332,94 @@ export function ChatPopupPanel({ currentUserId, onClose, onUnreadChange }: Props
     })
     return (
       <div className="flex flex-col h-full">
-        <div className="px-3 py-2.5 border-b border-gray-100 flex items-center gap-2 bg-white">
+        <div
+          className="px-3 py-2.5 flex items-center gap-2"
+          style={{
+            background: 'var(--admin-bg-elev)',
+            borderBottom: '0.5px solid var(--admin-border)',
+          }}
+        >
           <button
             type="button"
             onClick={() => setView('list')}
-            className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-600"
+            className="h-8 w-8 inline-flex items-center justify-center rounded-md transition-opacity hover:opacity-80"
+            style={{ color: 'var(--admin-fg-muted)' }}
             aria-label="Volver"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <p className="text-sm font-bold text-gray-900 flex-1">Nuevo mensaje</p>
+          <p className="text-sm font-bold flex-1" style={{ color: 'var(--admin-fg)' }}>
+            Nuevo mensaje
+          </p>
           <button
             type="button"
             onClick={onClose}
-            className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-400"
+            className="h-8 w-8 inline-flex items-center justify-center rounded-md transition-opacity hover:opacity-80"
+            style={{ color: 'var(--admin-fg-subtle)' }}
             aria-label="Cerrar"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="px-3 py-2 border-b border-gray-100">
+        <div
+          className="px-3 py-2"
+          style={{ borderBottom: '0.5px solid var(--admin-border)' }}
+        >
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+            <Search
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
+              style={{ color: 'var(--admin-fg-subtle)' }}
+            />
             <input
               type="text"
               value={dmSearch}
               onChange={(e) => setDmSearch(e.target.value)}
               placeholder="Buscar persona..."
-              className="w-full pl-8 pr-3 h-9 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[var(--admin-gold-soft)]"
+              className="w-full pl-8 pr-3 h-9 rounded-lg text-xs focus:outline-none focus:ring-2"
+              style={{
+                background: 'var(--admin-bg-elev)',
+                color: 'var(--admin-fg)',
+                border: '0.5px solid var(--admin-border-strong)',
+              }}
               autoFocus
             />
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div
+          className="flex-1 overflow-y-auto"
+          style={{ background: 'var(--admin-bg-elev)' }}
+        >
           {filteredStaff.length === 0 ? (
-            <p className="text-xs text-gray-400 px-3 py-6 text-center">
+            <p
+              className="text-xs px-3 py-6 text-center"
+              style={{ color: 'var(--admin-fg-subtle)' }}
+            >
               {staff.length === 0 ? 'Cargando equipo...' : 'Sin resultados'}
             </p>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div>
               {filteredStaff.map((s) => (
                 <button
                   key={s.id}
                   type="button"
                   onClick={() => handleStartDM(s.id)}
-                  className="w-full text-left flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors"
+                  className="w-full text-left flex items-center gap-3 px-3 py-2.5 transition-colors"
+                  style={{ borderBottom: '0.5px solid var(--admin-border)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--admin-bg-elev-2)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                 >
                   <Avatar name={`${s.first_name || ''} ${s.last_name || ''}`} size="sm" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p
+                      className="text-sm font-medium truncate"
+                      style={{ color: 'var(--admin-fg)' }}
+                    >
                       {`${s.first_name || ''} ${s.last_name || ''}`.trim() || s.email}
                     </p>
-                    <p className="text-[10px] text-gray-500 truncate">
+                    <p
+                      className="text-[10px] truncate"
+                      style={{ color: 'var(--admin-fg-muted)' }}
+                    >
                       {staffRoleLabel(s.role, s.employee_type)}
                     </p>
                   </div>
@@ -385,11 +435,22 @@ export function ChatPopupPanel({ currentUserId, onClose, onUnreadChange }: Props
   // Vista lista (default)
   return (
     <div className="flex flex-col h-full">
-      <div className="px-3 py-2.5 border-b border-gray-100 flex items-center gap-2 bg-white">
+      <div
+        className="px-3 py-2.5 flex items-center gap-2"
+        style={{
+          background: 'var(--admin-bg-elev)',
+          borderBottom: '0.5px solid var(--admin-border)',
+        }}
+      >
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-gray-900">Chat del equipo</p>
-          <p className="text-[10px] text-gray-500">
-            {totalUnread > 0 ? `${totalUnread} sin leer` : 'Al día'}
+          <p className="text-sm font-bold" style={{ color: 'var(--admin-fg)' }}>
+            Chat del equipo
+          </p>
+          <p
+            className="text-[10px]"
+            style={{ color: 'var(--admin-fg-muted)' }}
+          >
+            {totalUnread > 0 ? `${totalUnread} sin leer` : 'Al dia'}
           </p>
         </div>
         <button
@@ -398,7 +459,8 @@ export function ChatPopupPanel({ currentUserId, onClose, onUnreadChange }: Props
             setView('new-dm')
             loadStaff()
           }}
-          className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-600"
+          className="h-8 w-8 inline-flex items-center justify-center rounded-md transition-opacity hover:opacity-80"
+          style={{ color: 'var(--admin-fg-muted)' }}
           aria-label="Nueva conversación"
           title="Nueva conversación"
         >
@@ -407,24 +469,36 @@ export function ChatPopupPanel({ currentUserId, onClose, onUnreadChange }: Props
         <button
           type="button"
           onClick={onClose}
-          className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-gray-100 text-gray-400"
+          className="h-8 w-8 inline-flex items-center justify-center rounded-md transition-opacity hover:opacity-80"
+          style={{ color: 'var(--admin-fg-subtle)' }}
           aria-label="Cerrar"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div
+        className="flex-1 overflow-y-auto"
+        style={{ background: 'var(--admin-bg-elev)' }}
+      >
         {loadingConvs && conversations.length === 0 ? (
           <div className="px-4 py-8 text-center">
-            <Loader2 className="w-5 h-5 text-gray-400 animate-spin mx-auto mb-2" />
-            <p className="text-xs text-gray-400">Cargando conversaciones...</p>
+            <Loader2
+              className="w-5 h-5 animate-spin mx-auto mb-2"
+              style={{ color: 'var(--admin-fg-muted)' }}
+            />
+            <p className="text-xs" style={{ color: 'var(--admin-fg-subtle)' }}>
+              Cargando conversaciones...
+            </p>
           </div>
         ) : conversations.length === 0 ? (
           <div className="px-4 py-8 text-center">
-            <MessageCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-xs text-gray-500 mb-3">
-              Aún no tienes conversaciones.
+            <MessageCircle
+              className="w-8 h-8 mx-auto mb-2"
+              style={{ color: 'var(--admin-fg-faint)' }}
+            />
+            <p className="text-xs mb-3" style={{ color: 'var(--admin-fg-muted)' }}>
+              Aun no tienes conversaciones.
             </p>
             <button
               type="button"
@@ -432,15 +506,15 @@ export function ChatPopupPanel({ currentUserId, onClose, onUnreadChange }: Props
                 setView('new-dm')
                 loadStaff()
               }}
-              className="inline-flex items-center gap-1.5 text-xs font-medium hover:underline"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold hover:underline"
               style={{ color: 'var(--admin-gold)' }}
             >
               <Plus className="w-3.5 h-3.5" />
-              Iniciar conversación
+              Iniciar conversacion
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div>
             {conversations.map((c) => (
               <button
                 key={c.id}
@@ -449,12 +523,18 @@ export function ChatPopupPanel({ currentUserId, onClose, onUnreadChange }: Props
                   setActiveConvId(c.id)
                   setView('thread')
                 }}
-                className="w-full text-left flex items-start gap-3 px-3 py-2.5 hover:bg-gray-50 transition-colors"
+                className="w-full text-left flex items-start gap-3 px-3 py-2.5 transition-colors"
+                style={{ borderBottom: '0.5px solid var(--admin-border)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--admin-bg-elev-2)' }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
               >
                 {c.type === 'group' ? (
                   <span
                     className="flex-shrink-0 h-9 w-9 rounded-full inline-flex items-center justify-center"
-                    style={{ background: 'var(--admin-accent)', color: 'var(--admin-bg)' }}
+                    style={{
+                      background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-blue))',
+                      color: '#FFFFFF',
+                    }}
                   >
                     <Users className="w-4 h-4" />
                   </span>
@@ -464,30 +544,43 @@ export function ChatPopupPanel({ currentUserId, onClose, onUnreadChange }: Props
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-1">
                     <p
-                      className={`text-sm truncate ${
-                        c.unread_count > 0 ? 'font-bold text-gray-900' : 'font-medium text-gray-800'
-                      }`}
+                      className="text-sm truncate"
+                      style={{
+                        color: 'var(--admin-fg)',
+                        fontWeight: c.unread_count > 0 ? 700 : 500,
+                      }}
                     >
                       {convDisplayName(c)}
                     </p>
                     {c.last_message && (
-                      <p className="text-[10px] text-gray-400 flex-shrink-0">
+                      <p
+                        className="text-[10px] flex-shrink-0"
+                        style={{
+                          color: 'var(--admin-fg-subtle)',
+                          fontFamily: 'var(--font-mono-tech)',
+                        }}
+                      >
                         {formatRelativeTime(c.last_message.created_at)}
                       </p>
                     )}
                   </div>
                   <div className="flex items-center justify-between gap-2 mt-0.5">
                     <p
-                      className={`text-[11px] truncate ${
-                        c.unread_count > 0 ? 'text-gray-700' : 'text-gray-500'
-                      }`}
+                      className="text-[11px] truncate"
+                      style={{
+                        color: c.unread_count > 0 ? 'var(--admin-fg)' : 'var(--admin-fg-muted)',
+                      }}
                     >
                       {lastMessageSummary(c.last_message, currentUserId)}
                     </p>
                     {c.unread_count > 0 && (
                       <span
                         className="flex-shrink-0 h-4 min-w-[16px] px-1 rounded-full text-[9px] font-bold inline-flex items-center justify-center"
-                        style={{ background: 'var(--admin-gold)', color: 'var(--admin-bg)' }}
+                        style={{
+                          background: 'linear-gradient(135deg, #F2C14E, var(--admin-gold))',
+                          color: 'var(--admin-accent)',
+                          boxShadow: '0 4px 10px rgba(216,155,29,0.28)',
+                        }}
                       >
                         {c.unread_count > 9 ? '9+' : c.unread_count}
                       </span>
@@ -518,8 +611,9 @@ function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' }) {
     <span
       className={`flex-shrink-0 ${classes} rounded-full font-bold inline-flex items-center justify-center`}
       style={{
-        background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-accent))',
-        color: 'var(--admin-bg)',
+        background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-blue))',
+        color: '#FFFFFF',
+        boxShadow: '0 0 0 0.5px rgba(255,255,255,0.18) inset',
       }}
     >
       {initials}

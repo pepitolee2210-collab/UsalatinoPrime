@@ -71,11 +71,14 @@ export function MessageBody({ body, mentions, isMe }: Props) {
             : `/employee/casos`
         const cls = isMe
           ? 'font-semibold underline decoration-white/60 hover:decoration-white'
+          : 'font-semibold hover:underline'
+        const style: React.CSSProperties | undefined = isMe
+          ? undefined
           : m.type === 'client'
-            ? 'font-semibold text-blue-700 hover:underline'
-            : 'font-semibold text-emerald-700 hover:underline'
+            ? { color: 'var(--admin-blue)' }
+            : { color: 'var(--admin-green)' }
         return (
-          <Link key={i} href={href} className={cls}>
+          <Link key={i} href={href} className={cls} style={style}>
             {p.value}
           </Link>
         )

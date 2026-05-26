@@ -3,12 +3,10 @@
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
 import {
   Phone, CalendarClock, Clock, CheckCircle, XCircle, AlertTriangle,
   MessageSquare, X, Search, ChevronRight, Globe, UserPlus, UserRound,
@@ -31,11 +29,35 @@ import { GuestBookForm } from '@/components/appointments/guest-book-form'
 
 const TZ_STORAGE_KEY = 'ulp:employee-citas:viewTz'
 
-const statusColors: Record<string, string> = {
-  scheduled: 'bg-blue-100 text-blue-800',
-  completed: 'bg-green-100 text-green-800',
-  cancelled: 'bg-gray-100 text-gray-800',
-  no_show: 'bg-red-100 text-red-800',
+interface StatusToken {
+  bg: string
+  color: string
+}
+
+const statusTokens: Record<string, StatusToken> = {
+  scheduled: { bg: 'var(--admin-blue-soft)', color: 'var(--admin-blue)' },
+  completed: { bg: 'var(--admin-green-soft)', color: 'var(--admin-green)' },
+  cancelled: { bg: 'var(--admin-bg-elev-2)', color: 'var(--admin-fg-muted)' },
+  no_show: { bg: 'var(--admin-red-soft)', color: 'var(--admin-red)' },
+}
+
+function statusChipStyle(status: string): React.CSSProperties {
+  const t = statusTokens[status] ?? statusTokens.cancelled
+  return {
+    background: t.bg,
+    color: t.color,
+    border: `0.5px solid ${t.color}`,
+    fontFamily: 'var(--font-mono-tech)',
+    fontSize: 10,
+    fontWeight: 600,
+    letterSpacing: '0.1em',
+    textTransform: 'uppercase',
+    padding: '2px 8px',
+    borderRadius: 9999,
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+  }
 }
 
 const statusLabels: Record<string, string> = {
@@ -156,24 +178,53 @@ export function EmployeeCitasView({
     <div className="space-y-4">
       {/* Note viewing modal (legacy: visualizar nota previa de appointment) */}
       {viewingNote && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.6)' }}
-          onClick={() => setViewingNote(null)}>
-          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto shadow-2xl"
-            onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-4 border-b">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+          onClick={() => setViewingNote(null)}
+        >
+          <div
+            className="rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto"
+            style={{
+              background: 'var(--admin-bg-elev)',
+              border: '0.5px solid var(--admin-border-strong)',
+              boxShadow: '0 24px 60px rgba(0,0,0,0.30)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div
+              className="flex items-center justify-between p-4"
+              style={{ borderBottom: '0.5px solid var(--admin-border)' }}
+            >
               <div>
-                <p className="font-bold text-gray-900 text-sm">{viewingNote.name}</p>
-                <p className="text-xs flex items-center gap-1" style={{ color: 'var(--admin-gold)' }}>
-                  <MessageSquare className="w-3 h-3" /> Notas de seguimiento (histórica)
+                <p className="font-bold text-sm" style={{ color: 'var(--admin-fg)' }}>
+                  {viewingNote.name}
+                </p>
+                <p
+                  className="text-xs flex items-center gap-1 mt-0.5"
+                  style={{ color: 'var(--admin-gold)' }}
+                >
+                  <MessageSquare className="w-3 h-3" /> Notas de seguimiento (historica)
                 </p>
               </div>
-              <button onClick={() => setViewingNote(null)}
-                className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 hover:bg-gray-200">
-                <X className="w-4 h-4 text-gray-600" />
+              <button
+                onClick={() => setViewingNote(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-opacity hover:opacity-80"
+                style={{
+                  background: 'var(--admin-bg-elev-2)',
+                  color: 'var(--admin-fg-muted)',
+                }}
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
             <div className="p-5">
-              <p className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">{viewingNote.note}</p>
+              <p
+                className="text-sm whitespace-pre-wrap leading-relaxed"
+                style={{ color: 'var(--admin-fg)' }}
+              >
+                {viewingNote.note}
+              </p>
             </div>
           </div>
         </div>
@@ -181,15 +232,21 @@ export function EmployeeCitasView({
 
       {/* TZ selector + acciones de booking */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-2 py-1">
-          <Globe className="w-3.5 h-3.5 text-gray-400" />
-          <span className="text-xs text-gray-500">Ver en</span>
+        <div
+          className="flex items-center gap-2 rounded-lg px-2 py-1"
+          style={{
+            background: 'var(--admin-bg-elev)',
+            border: '0.5px solid var(--admin-border)',
+          }}
+        >
+          <Globe className="w-3.5 h-3.5" style={{ color: 'var(--admin-fg-subtle)' }} />
+          <span className="text-xs" style={{ color: 'var(--admin-fg-muted)' }}>Ver en</span>
           <div className="w-56">
             <TimezoneSelector value={viewTz} onChange={changeViewTz} size="sm" />
           </div>
         </div>
         {!tzIsOffice && (
-          <span className="text-[11px] text-gray-400">
+          <span className="text-[11px]" style={{ color: 'var(--admin-fg-subtle)' }}>
             Mountain Time (oficina) se muestra debajo de cada hora.
           </span>
         )}
@@ -197,17 +254,18 @@ export function EmployeeCitasView({
           <div className="ml-auto flex gap-2">
             <Dialog open={guestDialogOpen} onOpenChange={setGuestDialogOpen}>
               <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-90"
                   style={{
-                    borderColor: 'var(--admin-gold)',
-                    color: 'var(--admin-accent)',
+                    background: 'var(--admin-bg-elev)',
+                    color: 'var(--admin-gold)',
+                    border: '0.5px solid var(--admin-gold)',
                   }}
                 >
-                  <UserRound className="w-4 h-4 mr-2" />
+                  <UserRound className="w-4 h-4" />
                   Agendar No-Cliente
-                </Button>
+                </button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
@@ -223,13 +281,19 @@ export function EmployeeCitasView({
             </Dialog>
             <Dialog open={bookDialogOpen} onOpenChange={setBookDialogOpen}>
               <DialogTrigger asChild>
-                <Button
-                  size="sm"
-                  style={{ background: 'var(--admin-accent)', color: 'var(--admin-bg)' }}
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:opacity-90 active:scale-95"
+                  style={{
+                    background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-blue))',
+                    color: '#FFFFFF',
+                    boxShadow: '0 12px 28px rgba(30,78,154,0.25)',
+                    border: '0.5px solid rgba(255,255,255,0.2)',
+                  }}
                 >
-                  <UserPlus className="w-4 h-4 mr-2" />
+                  <UserPlus className="w-4 h-4" />
                   Agendar para Cliente
-                </Button>
+                </button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
@@ -250,86 +314,123 @@ export function EmployeeCitasView({
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white rounded-xl border p-3 text-center">
-          <p className="text-xl font-bold text-blue-600">{scheduled}</p>
-          <p className="text-xs text-gray-500">Agendadas</p>
-        </div>
-        <div className="bg-white rounded-xl border p-3 text-center">
-          <p className="text-xl font-bold text-green-600">{completed}</p>
-          <p className="text-xs text-gray-500">Completadas</p>
-        </div>
-        <div className="bg-white rounded-xl border p-3 text-center">
-          <p className="text-xl font-bold text-gray-600">{appointments.length}</p>
-          <p className="text-xs text-gray-500">Total</p>
-        </div>
+        <StatBox value={scheduled} label="Agendadas" color="var(--admin-blue)" />
+        <StatBox value={completed} label="Completadas" color="var(--admin-green)" />
+        <StatBox value={appointments.length} label="Total" color="var(--admin-fg)" />
       </div>
 
       {/* Search + filters */}
       <div className="space-y-3">
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Buscar por nombre o teléfono..."
-              className="pl-10 h-10" />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
+              style={{ color: 'var(--admin-fg-subtle)' }}
+            />
+            <Input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar por nombre o telefono..."
+              className="pl-10 h-10"
+            />
           </div>
-          <input type="date" value={dateFilter} onChange={e => setDateFilter(e.target.value)}
-            className="h-10 px-3 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--admin-gold-soft)]" />
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={e => setDateFilter(e.target.value)}
+            className="h-10 px-3 rounded-lg text-sm focus:outline-none focus:ring-2"
+            style={{
+              background: 'var(--admin-bg-elev)',
+              color: 'var(--admin-fg)',
+              border: '0.5px solid var(--admin-border-strong)',
+            }}
+          />
           {dateFilter && (
-            <button onClick={() => setDateFilter('')}
-              className="h-10 px-2 rounded-lg bg-red-50 text-red-500 text-xs font-medium hover:bg-red-100">
+            <button
+              onClick={() => setDateFilter('')}
+              className="h-10 px-2 rounded-lg text-xs font-medium transition-opacity hover:opacity-80"
+              style={{
+                background: 'var(--admin-red-soft)',
+                color: 'var(--admin-red)',
+                border: '0.5px solid var(--admin-red)',
+              }}
+            >
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
 
         <div className="flex flex-wrap gap-1">
-          <button onClick={() => setLetterFilter(null)}
-            className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
-              !letterFilter ? '' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-            }`}
-            style={!letterFilter ? { background: 'var(--admin-accent)', color: 'var(--admin-bg)' } : undefined}>
+          <FilterChip
+            active={!letterFilter}
+            onClick={() => setLetterFilter(null)}
+            variant="primary"
+          >
             All
-          </button>
+          </FilterChip>
           {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => (
-            <button key={l} onClick={() => setLetterFilter(letterFilter === l ? null : l)}
-              className={`w-8 h-8 rounded-lg text-xs font-bold transition-colors ${
-                letterFilter === l ? '' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-              }`}
-              style={letterFilter === l ? { background: 'var(--admin-gold)', color: 'var(--admin-bg)' } : undefined}>
+            <FilterChip
+              key={l}
+              active={letterFilter === l}
+              onClick={() => setLetterFilter(letterFilter === l ? null : l)}
+              variant="gold"
+            >
               {l}
-            </button>
+            </FilterChip>
           ))}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap items-center">
           {[
             { value: 'all', label: 'Todas' },
             { value: 'scheduled', label: 'Agendadas' },
             { value: 'completed', label: 'Completadas' },
           ].map(f => (
-            <button key={f.value} onClick={() => setFilter(f.value)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                filter === f.value ? '' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-              style={filter === f.value ? { background: 'var(--admin-accent)', color: 'var(--admin-bg)' } : undefined}>
+            <FilterChip
+              key={f.value}
+              active={filter === f.value}
+              onClick={() => setFilter(f.value)}
+              variant="primary"
+              wide
+            >
               {f.label}
-            </button>
+            </FilterChip>
           ))}
           {(search || letterFilter || dateFilter) && (
-            <button onClick={() => { setSearch(''); setLetterFilter(null); setDateFilter('') }}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 bg-red-50 hover:bg-red-100">
+            <button
+              onClick={() => { setSearch(''); setLetterFilter(null); setDateFilter('') }}
+              className="px-3 py-1.5 rounded-full text-xs font-medium transition-opacity hover:opacity-80"
+              style={{
+                background: 'var(--admin-red-soft)',
+                color: 'var(--admin-red)',
+                border: '0.5px solid var(--admin-red)',
+              }}
+            >
               Limpiar filtros
             </button>
           )}
-          <span className="ml-auto text-xs text-gray-400 self-center">{filtered.length} resultado{filtered.length !== 1 ? 's' : ''}</span>
+          <span
+            className="ml-auto text-xs self-center"
+            style={{
+              color: 'var(--admin-fg-subtle)',
+              fontFamily: 'var(--font-mono-tech)',
+              letterSpacing: '0.1em',
+            }}
+          >
+            {filtered.length} RESULTADO{filtered.length !== 1 ? 'S' : ''}
+          </span>
         </div>
       </div>
 
       {/* List */}
       <div className="space-y-2">
         {filtered.length === 0 && (
-          <p className="text-center text-gray-400 py-8">No hay citas en esta categoría.</p>
+          <p
+            className="text-center py-8"
+            style={{ color: 'var(--admin-fg-subtle)' }}
+          >
+            No hay citas en esta categoria.
+          </p>
         )}
         {filtered.map(apt => {
           const StatusIcon = statusIcons[apt.status] || Clock
@@ -338,37 +439,80 @@ export function EmployeeCitasView({
             : apt.guest_name || 'Sin nombre'
           const sessionN = apt.session_number ?? 1
           const isScheduled = apt.status === 'scheduled'
+          const isUrgent = apt.status === 'no_show'
 
           return (
-            <div key={apt.id} className="bg-white rounded-xl border p-4">
+            <div
+              key={apt.id}
+              className="rounded-2xl p-4 transition-shadow hover:shadow-md"
+              style={{
+                background: isUrgent ? 'var(--admin-red-soft)' : 'var(--admin-panel-grad)',
+                border: `0.5px solid ${isUrgent ? 'var(--admin-red)' : 'var(--admin-border)'}`,
+                boxShadow: 'var(--admin-shadow, 0 6px 18px rgba(11,31,58,0.05))',
+              }}
+            >
               <div className="flex items-start justify-between gap-3 flex-wrap">
                 <div className="flex-1 min-w-0">
                   {/* Client name + visit badge + status */}
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="font-semibold text-gray-900 text-sm">{clientName}</span>
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span
+                      className="font-semibold text-sm"
+                      style={{ color: 'var(--admin-fg)' }}
+                    >
+                      {clientName}
+                    </span>
                     {apt.case_id && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 9999,
+                          background: 'var(--admin-blue-soft)',
+                          color: 'var(--admin-blue)',
+                          border: '0.5px solid var(--admin-blue)',
+                          fontFamily: 'var(--font-mono-tech)',
+                          letterSpacing: '0.08em',
+                          textTransform: 'uppercase',
+                        }}
+                      >
                         {visitLabel(sessionN)}
                       </span>
                     )}
-                    <Badge className={statusColors[apt.status] || ''}>
-                      <StatusIcon className="w-3 h-3 mr-1" />
+                    <span style={statusChipStyle(apt.status)}>
+                      <StatusIcon className="w-3 h-3" />
                       {statusLabels[apt.status] || apt.status}
-                    </Badge>
+                    </span>
                     {apt.status === 'completed' && apt.objective_completed === false && (
-                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: '2px 8px',
+                          borderRadius: 9999,
+                          background: 'var(--admin-gold-soft)',
+                          color: 'var(--admin-gold)',
+                          border: '0.5px solid var(--admin-gold)',
+                          fontFamily: 'var(--font-mono-tech)',
+                          letterSpacing: '0.08em',
+                          textTransform: 'uppercase',
+                        }}
+                      >
                         Objetivo pendiente
                       </span>
                     )}
                   </div>
 
                   {/* Date, phone, case */}
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                  <div
+                    className="flex flex-wrap items-center gap-3 text-xs"
+                    style={{ color: 'var(--admin-fg-muted)' }}
+                  >
                     <span className="flex items-center gap-1">
                       <CalendarClock className="w-3 h-3" />
                       {formatDateTimeShort(apt.scheduled_at, viewTz)} {tzShortLabel(viewTz)}
                       {!tzIsOffice && (
-                        <span className="text-gray-300">
+                        <span style={{ color: 'var(--admin-fg-subtle)' }}>
                           {' '}· {formatTime(apt.scheduled_at, OFFICE_TIMEZONE)} MT
                         </span>
                       )}
@@ -380,13 +524,22 @@ export function EmployeeCitasView({
                       </span>
                     )}
                     {apt.case && (
-                      <span>#{apt.case.case_number} — {apt.case.service?.name || '—'}</span>
+                      <span>#{apt.case.case_number} · {apt.case.service?.name || '—'}</span>
                     )}
                   </div>
 
                   {/* Henry's notes (legacy) */}
                   {apt.notes && (
-                    <p className="text-xs text-gray-500 mt-1.5 bg-gray-50 rounded-lg p-2">{apt.notes}</p>
+                    <p
+                      className="text-xs mt-2 rounded-lg p-2"
+                      style={{
+                        background: 'var(--admin-bg-elev-2)',
+                        color: 'var(--admin-fg-muted)',
+                        border: '0.5px solid var(--admin-border)',
+                      }}
+                    >
+                      {apt.notes}
+                    </p>
                   )}
 
                   {/* Notas históricas inline (legacy employee_notes) */}
@@ -394,18 +547,39 @@ export function EmployeeCitasView({
                     <button
                       type="button"
                       onClick={() => setViewingNote({ name: clientName, note: apt.employee_notes! })}
-                      className="mt-2 w-full text-left p-2.5 rounded-xl border transition-colors"
+                      className="mt-2 w-full text-left p-2.5 rounded-xl transition-opacity hover:opacity-90"
                       style={{
                         background: 'var(--admin-gold-soft)',
-                        borderColor: 'var(--admin-gold-soft)',
+                        border: '0.5px solid var(--admin-gold)',
                       }}
                     >
                       <div className="flex items-center gap-1.5 mb-1">
                         <MessageSquare className="w-3 h-3" style={{ color: 'var(--admin-gold)' }} />
-                        <span className="text-[10px] font-bold" style={{ color: 'var(--admin-gold)' }}>Notas históricas</span>
-                        <span className="text-[10px] text-gray-400 ml-auto">Toca para ver</span>
+                        <span
+                          style={{
+                            fontSize: 10,
+                            fontWeight: 700,
+                            color: 'var(--admin-gold)',
+                            fontFamily: 'var(--font-mono-tech)',
+                            letterSpacing: '0.16em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          Notas historicas
+                        </span>
+                        <span
+                          className="ml-auto"
+                          style={{ fontSize: 10, color: 'var(--admin-fg-subtle)' }}
+                        >
+                          Toca para ver
+                        </span>
                       </div>
-                      <p className="text-xs text-gray-700 line-clamp-2">{apt.employee_notes}</p>
+                      <p
+                        className="text-xs line-clamp-2"
+                        style={{ color: 'var(--admin-fg)' }}
+                      >
+                        {apt.employee_notes}
+                      </p>
                     </button>
                   )}
 
@@ -415,9 +589,9 @@ export function EmployeeCitasView({
                       <Link
                         href={`/employee/clientes/${apt.client_id}`}
                         className="inline-flex items-center gap-1 text-xs hover:underline"
-                        style={{ color: 'var(--admin-accent)' }}
+                        style={{ color: 'var(--admin-blue)' }}
                       >
-                        Ver notas y bitácora del cliente <ChevronRight className="w-3 h-3" />
+                        Ver notas y bitacora del cliente <ChevronRight className="w-3 h-3" />
                       </Link>
                     </div>
                   )}
@@ -429,21 +603,36 @@ export function EmployeeCitasView({
                     <button
                       type="button"
                       onClick={() => openDialog(apt, 'complete')}
-                      className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700"
+                      className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:opacity-90 active:scale-95"
+                      style={{
+                        background: 'linear-gradient(135deg, var(--admin-green), #16A34A)',
+                        color: '#FFFFFF',
+                        boxShadow: '0 8px 20px rgba(21,128,61,0.22)',
+                      }}
                     >
                       <CheckCircle className="w-3.5 h-3.5" /> Cerrar cita
                     </button>
                     <button
                       type="button"
                       onClick={() => openDialog(apt, 'no_show')}
-                      className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-700 text-xs font-semibold hover:bg-red-100"
+                      className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+                      style={{
+                        background: 'var(--admin-red-soft)',
+                        color: 'var(--admin-red)',
+                        border: '0.5px solid var(--admin-red)',
+                      }}
                     >
                       <AlertTriangle className="w-3.5 h-3.5" /> No-show
                     </button>
                     <button
                       type="button"
                       onClick={() => openDialog(apt, 'cancel')}
-                      className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs font-semibold hover:bg-gray-200"
+                      className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-opacity hover:opacity-80"
+                      style={{
+                        background: 'var(--admin-bg-elev-2)',
+                        color: 'var(--admin-fg-muted)',
+                        border: '0.5px solid var(--admin-border-strong)',
+                      }}
                     >
                       <XCircle className="w-3.5 h-3.5" /> Cancelar
                     </button>
@@ -466,5 +655,82 @@ export function EmployeeCitasView({
         />
       )}
     </div>
+  )
+}
+
+function StatBox({ value, label, color }: { value: number | string; label: string; color: string }) {
+  return (
+    <div
+      className="rounded-xl p-3 text-center"
+      style={{
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border)',
+        boxShadow: 'var(--admin-shadow, 0 4px 14px rgba(11,31,58,0.04))',
+      }}
+    >
+      <p
+        className="text-xl font-bold"
+        style={{ color, fontVariantNumeric: 'tabular-nums' }}
+      >
+        {value}
+      </p>
+      <p
+        style={{
+          fontSize: 10,
+          color: 'var(--admin-fg-subtle)',
+          fontFamily: 'var(--font-mono-tech)',
+          letterSpacing: '0.14em',
+          textTransform: 'uppercase',
+          marginTop: 2,
+        }}
+      >
+        {label}
+      </p>
+    </div>
+  )
+}
+
+function FilterChip({
+  active, onClick, children, variant, wide,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+  variant: 'primary' | 'gold'
+  wide?: boolean
+}) {
+  const activeStyle: React.CSSProperties =
+    variant === 'gold'
+      ? {
+          background: 'linear-gradient(135deg, #F2C14E, var(--admin-gold))',
+          color: 'var(--admin-accent)',
+          boxShadow: 'var(--admin-shadow-gold, 0 6px 14px rgba(216,155,29,0.22))',
+          border: '0.5px solid var(--admin-gold-border, rgba(255,255,255,0.2))',
+          fontWeight: 700,
+        }
+      : {
+          background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-blue))',
+          color: '#FFFFFF',
+          boxShadow: '0 6px 14px rgba(30,78,154,0.22)',
+          border: '0.5px solid rgba(255,255,255,0.18)',
+          fontWeight: 600,
+        }
+  const inactiveStyle: React.CSSProperties = {
+    background: 'var(--admin-bg-elev-2)',
+    color: 'var(--admin-fg-muted)',
+    border: '0.5px solid var(--admin-border)',
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`${wide ? 'px-3 py-1.5' : 'w-8 h-8'} rounded-full text-xs font-semibold transition-all hover:opacity-90 ${
+        wide ? '' : 'flex items-center justify-center'
+      }`}
+      style={active ? activeStyle : inactiveStyle}
+    >
+      {children}
+    </button>
   )
 }

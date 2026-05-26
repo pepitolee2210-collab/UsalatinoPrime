@@ -213,11 +213,17 @@ export function ChatThread({
     <>
       {/* Header */}
       {!hideHeader && (
-        <div className="px-5 py-3 border-b border-gray-200 bg-white flex items-center gap-3">
+        <div
+          className="px-5 py-3 flex items-center gap-3"
+          style={{
+            background: 'var(--admin-bg-elev)',
+            borderBottom: '0.5px solid var(--admin-border)',
+          }}
+        >
           {isGroup ? (
             <span
               className="h-9 w-9 rounded-full inline-flex items-center justify-center"
-              style={{ background: 'var(--admin-accent)', color: 'var(--admin-bg)' }}
+              style={{ background: 'var(--admin-accent)', color: '#FFFFFF' }}
             >
               <Users className="w-4 h-4" />
             </span>
@@ -225,8 +231,18 @@ export function ChatThread({
             <Avatar name={headerName} />
           )}
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-gray-900 truncate">{headerName}</p>
-            <p className="text-[11px] text-gray-500 truncate">{headerSub}</p>
+            <p
+              className="text-sm font-bold truncate"
+              style={{ color: 'var(--admin-fg)' }}
+            >
+              {headerName}
+            </p>
+            <p
+              className="text-[11px] truncate"
+              style={{ color: 'var(--admin-fg-muted)' }}
+            >
+              {headerSub}
+            </p>
           </div>
         </div>
       )}
@@ -239,7 +255,8 @@ export function ChatThread({
               type="button"
               onClick={onLoadOlder}
               disabled={loading}
-              className="text-[11px] text-gray-500 hover:text-gray-700 disabled:opacity-50 inline-flex items-center gap-1.5"
+              className="text-[11px] disabled:opacity-50 inline-flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+              style={{ color: 'var(--admin-fg-muted)' }}
             >
               {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
               Cargar mensajes anteriores
@@ -247,8 +264,11 @@ export function ChatThread({
           </div>
         )}
         {messages.length === 0 && !loading ? (
-          <p className="text-xs text-gray-400 text-center py-8">
-            Aún no hay mensajes. Sé el primero en escribir 👇
+          <p
+            className="text-xs text-center py-8"
+            style={{ color: 'var(--admin-fg-subtle)' }}
+          >
+            Aún no hay mensajes. Sé el primero en escribir.
           </p>
         ) : (
           <div className="space-y-3">
@@ -276,7 +296,14 @@ export function ChatThread({
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="relative px-4 py-3 border-t border-gray-200 bg-white">
+      <form
+        onSubmit={handleSubmit}
+        className="relative px-4 py-3"
+        style={{
+          background: 'var(--admin-bg-elev)',
+          borderTop: '0.5px solid var(--admin-border)',
+        }}
+      >
         {mentionState && (
           <div className="absolute left-4 right-4 bottom-full">
             <MentionAutocomplete
@@ -287,11 +314,20 @@ export function ChatThread({
           </div>
         )}
         {pendingFile && (
-          <div className="mb-2 flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
-            <Paperclip className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
-            <p className="text-xs text-gray-700 truncate flex-1">
+          <div
+            className="mb-2 flex items-center gap-2 rounded-lg px-3 py-2"
+            style={{
+              background: 'var(--admin-bg-elev-2)',
+              border: '0.5px solid var(--admin-border)',
+            }}
+          >
+            <Paperclip
+              className="w-3.5 h-3.5 flex-shrink-0"
+              style={{ color: 'var(--admin-fg-muted)' }}
+            />
+            <p className="text-xs truncate flex-1" style={{ color: 'var(--admin-fg)' }}>
               {pendingFile.name}{' '}
-              <span className="text-gray-400">
+              <span style={{ color: 'var(--admin-fg-subtle)' }}>
                 ({Math.round(pendingFile.size / 1024)} KB)
               </span>
             </p>
@@ -301,7 +337,8 @@ export function ChatThread({
                 setPendingFile(null)
                 if (fileInputRef.current) fileInputRef.current.value = ''
               }}
-              className="h-6 w-6 inline-flex items-center justify-center rounded text-gray-400 hover:bg-gray-200"
+              className="h-6 w-6 inline-flex items-center justify-center rounded transition-colors hover:opacity-80"
+              style={{ color: 'var(--admin-fg-subtle)' }}
               aria-label="Quitar archivo"
             >
               <X className="w-3.5 h-3.5" />
@@ -320,7 +357,12 @@ export function ChatThread({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={sending || uploading}
-            className="h-10 w-10 inline-flex items-center justify-center rounded-xl border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 text-gray-500 transition-colors"
+            className="h-10 w-10 inline-flex items-center justify-center rounded-xl disabled:opacity-50 transition-colors hover:opacity-80"
+            style={{
+              background: 'var(--admin-bg-elev)',
+              border: '0.5px solid var(--admin-border-strong)',
+              color: 'var(--admin-fg-muted)',
+            }}
             title="Adjuntar archivo"
           >
             <Paperclip className="w-4 h-4" />
@@ -333,21 +375,43 @@ export function ChatThread({
             placeholder="Escribe un mensaje... usa @ para clientes y # para casos"
             rows={1}
             disabled={sending}
-            className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--admin-gold-soft)] focus:border-[var(--admin-gold)] max-h-32"
-            style={{ minHeight: '40px' }}
+            className="flex-1 resize-none rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 max-h-32"
+            style={{
+              minHeight: '40px',
+              background: 'var(--admin-bg-elev)',
+              border: '0.5px solid var(--admin-border-strong)',
+              color: 'var(--admin-fg)',
+            }}
           />
           <button
             type="submit"
             disabled={(!draft.trim() && !pendingFile) || sending || uploading}
-            className="h-10 w-10 inline-flex items-center justify-center rounded-xl disabled:bg-gray-200 disabled:text-gray-400 transition-colors"
-            style={{ background: 'var(--admin-gold)', color: 'var(--admin-bg)' }}
+            className="h-10 w-10 inline-flex items-center justify-center rounded-xl transition-all hover:opacity-90 active:scale-95"
+            style={{
+              background:
+                (!draft.trim() && !pendingFile) || sending || uploading
+                  ? 'var(--admin-bg-elev-2)'
+                  : 'linear-gradient(135deg, var(--admin-accent), var(--admin-blue))',
+              color:
+                (!draft.trim() && !pendingFile) || sending || uploading
+                  ? 'var(--admin-fg-subtle)'
+                  : '#FFFFFF',
+              border: '0.5px solid rgba(255,255,255,0.2)',
+              boxShadow:
+                (!draft.trim() && !pendingFile) || sending || uploading
+                  ? 'none'
+                  : '0 12px 28px rgba(30,78,154,0.25)',
+            }}
             aria-label="Enviar"
           >
             {sending || uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </button>
         </div>
-        <p className="text-[10px] text-gray-400 mt-1.5 px-1">
-          Enter para enviar · Shift+Enter para nueva línea · Adjuntos hasta 10 MB
+        <p
+          className="text-[10px] mt-1.5 px-1"
+          style={{ color: 'var(--admin-fg-subtle)' }}
+        >
+          Enter para enviar · Shift+Enter para nueva linea · Adjuntos hasta 10 MB
         </p>
       </form>
     </>
@@ -371,19 +435,33 @@ function MessageBubble({
     minute: '2-digit',
   })
 
+  const sentStyle: React.CSSProperties = {
+    background: 'var(--admin-blue)',
+    color: '#FFFFFF',
+    boxShadow: '0 4px 12px rgba(30,78,154,0.18)',
+  }
+  const receivedStyle: React.CSSProperties = {
+    background: 'var(--admin-bg-elev-2)',
+    color: 'var(--admin-fg)',
+    border: '0.5px solid var(--admin-border)',
+  }
+
   return (
     <div className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
       <div className={`max-w-[80%] ${isMe ? 'items-end' : 'items-start'} flex flex-col`}>
         {showHeader && !isMe && isGroup && (
-          <p className="text-[11px] text-gray-500 font-medium mb-1 px-2">{senderName}</p>
+          <p
+            className="text-[11px] font-medium mb-1 px-2"
+            style={{ color: 'var(--admin-fg-muted)' }}
+          >
+            {senderName}
+          </p>
         )}
         <div
           className={`rounded-2xl px-3.5 py-2 ${
-            isMe
-              ? 'rounded-br-md'
-              : 'bg-white border border-gray-200 text-gray-900 rounded-bl-md'
+            isMe ? 'rounded-br-md' : 'rounded-bl-md'
           }`}
-          style={isMe ? { background: 'var(--admin-gold)', color: 'var(--admin-bg)' } : undefined}
+          style={isMe ? sentStyle : receivedStyle}
         >
           {message.body && (
             <MessageBody
@@ -402,7 +480,14 @@ function MessageBubble({
             />
           )}
         </div>
-        <p className={`text-[10px] text-gray-400 mt-0.5 px-2 ${isMe ? 'text-right' : 'text-left'}`}>
+        <p
+          className={`text-[10px] mt-0.5 px-2 ${isMe ? 'text-right' : 'text-left'}`}
+          style={{
+            color: 'var(--admin-fg-subtle)',
+            fontFamily: 'var(--font-mono-tech)',
+            fontSize: 11,
+          }}
+        >
           {timeStr}
         </p>
       </div>
@@ -421,8 +506,9 @@ function Avatar({ name }: { name: string }) {
     <span
       className="h-9 w-9 rounded-full text-xs font-bold inline-flex items-center justify-center"
       style={{
-        background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-accent))',
-        color: 'var(--admin-bg)',
+        background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-blue))',
+        color: '#FFFFFF',
+        boxShadow: '0 0 0 0.5px rgba(255,255,255,0.18) inset',
       }}
     >
       {initials}

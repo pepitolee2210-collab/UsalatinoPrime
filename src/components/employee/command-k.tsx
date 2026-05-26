@@ -167,12 +167,25 @@ export function CommandK() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="hidden md:inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white hover:bg-gray-50 px-2.5 h-8 text-xs text-gray-500 transition-colors"
+        className="hidden md:inline-flex items-center gap-2 rounded-full px-2.5 h-8 text-xs transition-opacity hover:opacity-80"
+        style={{
+          background: 'var(--admin-bg-elev)',
+          color: 'var(--admin-fg-muted)',
+          border: '0.5px solid var(--admin-border-strong)',
+        }}
         title="Buscar (Cmd+K)"
       >
         <Search className="w-3.5 h-3.5" />
         <span>Buscar</span>
-        <kbd className="ml-1 hidden lg:inline-flex items-center gap-0.5 rounded border border-gray-200 bg-gray-50 px-1 py-0.5 text-[10px] font-mono text-gray-500">
+        <kbd
+          className="ml-1 hidden lg:inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px]"
+          style={{
+            background: 'var(--admin-bg-elev-2)',
+            color: 'var(--admin-fg-subtle)',
+            border: '0.5px solid var(--admin-border)',
+            fontFamily: 'var(--font-mono-tech)',
+          }}
+        >
           ⌘K
         </kbd>
       </button>
@@ -180,12 +193,29 @@ export function CommandK() {
       {open && (
         <div className="fixed inset-0 z-[100] flex items-start justify-center p-4 pt-[10vh]">
           <div
-            className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+            className="absolute inset-0"
+            style={{
+              background: 'rgba(0,0,0,0.45)',
+              backdropFilter: 'blur(4px)',
+            }}
             onClick={() => setOpen(false)}
           />
-          <div className="relative w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-gray-200 overflow-hidden">
-            <div className="flex items-center gap-2 px-4 border-b border-gray-100">
-              <Search className="w-4 h-4 text-gray-400" />
+          <div
+            className="relative w-full max-w-xl rounded-2xl overflow-hidden"
+            style={{
+              background: 'var(--admin-bg-elev)',
+              border: '0.5px solid var(--admin-border-strong)',
+              boxShadow: '0 24px 60px rgba(0,0,0,0.30)',
+            }}
+          >
+            <div
+              className="flex items-center gap-2 px-4"
+              style={{ borderBottom: '0.5px solid var(--admin-border)' }}
+            >
+              <Search
+                className="w-4 h-4"
+                style={{ color: 'var(--admin-fg-subtle)' }}
+              />
               <input
                 ref={inputRef}
                 type="text"
@@ -193,13 +223,20 @@ export function CommandK() {
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={onKeyDown}
                 placeholder="Buscar cliente, contrato, caso..."
-                className="flex-1 h-12 bg-transparent text-sm outline-none placeholder:text-gray-400"
+                className="flex-1 h-12 bg-transparent text-sm outline-none"
+                style={{ color: 'var(--admin-fg)' }}
               />
-              {loading && <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />}
+              {loading && (
+                <Loader2
+                  className="w-4 h-4 animate-spin"
+                  style={{ color: 'var(--admin-fg-muted)' }}
+                />
+              )}
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="h-7 w-7 inline-flex items-center justify-center rounded text-gray-400 hover:bg-gray-100"
+                className="h-7 w-7 inline-flex items-center justify-center rounded transition-opacity hover:opacity-80"
+                style={{ color: 'var(--admin-fg-subtle)' }}
                 aria-label="Cerrar"
               >
                 <X className="w-4 h-4" />
@@ -208,11 +245,17 @@ export function CommandK() {
 
             <div className="max-h-[60vh] overflow-y-auto">
               {query.trim().length < 2 ? (
-                <p className="px-4 py-6 text-center text-xs text-gray-400">
+                <p
+                  className="px-4 py-6 text-center text-xs"
+                  style={{ color: 'var(--admin-fg-subtle)' }}
+                >
                   Escribe al menos 2 caracteres para buscar.
                 </p>
               ) : hits.length === 0 && !loading ? (
-                <p className="px-4 py-6 text-center text-xs text-gray-400">
+                <p
+                  className="px-4 py-6 text-center text-xs"
+                  style={{ color: 'var(--admin-fg-subtle)' }}
+                >
                   Sin resultados para &quot;{query}&quot;.
                 </p>
               ) : (
@@ -225,7 +268,7 @@ export function CommandK() {
                           selected={selectedIdx === i}
                           onClick={() => go(`/employee/clientes/${c.id}`)}
                           onMouseEnter={() => setSelectedIdx(i)}
-                          icon={<User className="w-4 h-4 text-blue-500" />}
+                          icon={<User className="w-4 h-4" style={{ color: 'var(--admin-blue)' }} />}
                           primary={`${c.first_name} ${c.last_name}`.trim() || c.email}
                           secondary={c.email}
                         />
@@ -248,7 +291,9 @@ export function CommandK() {
                               )
                             }
                             onMouseEnter={() => setSelectedIdx(idx)}
-                            icon={<FileSignature className="w-4 h-4 text-amber-500" />}
+                            icon={
+                              <FileSignature className="w-4 h-4" style={{ color: 'var(--admin-gold)' }} />
+                            }
                             primary={ct.client_full_name}
                             secondary={`${ct.service_name} · $${Number(ct.total_price).toLocaleString()}`}
                           />
@@ -272,7 +317,7 @@ export function CommandK() {
                               )
                             }
                             onMouseEnter={() => setSelectedIdx(idx)}
-                            icon={<Briefcase className="w-4 h-4 text-emerald-500" />}
+                            icon={<Briefcase className="w-4 h-4" style={{ color: 'var(--admin-green)' }} />}
                             primary={`Caso ${cs.case_number}`}
                             secondary={cs.service?.name || '—'}
                           />
@@ -284,7 +329,14 @@ export function CommandK() {
               )}
             </div>
 
-            <div className="border-t border-gray-100 px-4 py-2 flex items-center gap-3 text-[10px] text-gray-400">
+            <div
+              className="px-4 py-2 flex items-center gap-3 text-[10px]"
+              style={{
+                borderTop: '0.5px solid var(--admin-border)',
+                color: 'var(--admin-fg-subtle)',
+                background: 'var(--admin-bg-deep)',
+              }}
+            >
               <Hotkey label="↑↓" desc="Navegar" />
               <Hotkey label="↵" desc="Abrir" />
               <Hotkey label="Esc" desc="Cerrar" />
@@ -299,7 +351,17 @@ export function CommandK() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="px-1 pb-2">
-      <p className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+      <p
+        className="px-3 py-1.5"
+        style={{
+          fontFamily: 'var(--font-mono-tech)',
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: '0.18em',
+          color: 'var(--admin-fg-subtle)',
+          textTransform: 'uppercase',
+        }}
+      >
         {title}
       </p>
       <div>{children}</div>
@@ -322,15 +384,27 @@ function HitRow({
       type="button"
       onClick={onClick}
       onMouseEnter={onMouseEnter}
-      className={`w-full text-left flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
-        selected ? '' : 'hover:bg-gray-50'
-      }`}
-      style={selected ? { background: 'var(--admin-accent-soft)' } : undefined}
+      className="w-full text-left flex items-center gap-3 px-3 py-2 rounded-md transition-colors"
+      style={
+        selected
+          ? { background: 'var(--admin-blue-soft)' }
+          : undefined
+      }
     >
       {icon}
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-gray-900 truncate">{primary}</p>
-        <p className="text-[11px] text-gray-500 truncate">{secondary}</p>
+        <p
+          className="text-sm font-medium truncate"
+          style={{ color: 'var(--admin-fg)' }}
+        >
+          {primary}
+        </p>
+        <p
+          className="text-[11px] truncate"
+          style={{ color: 'var(--admin-fg-muted)' }}
+        >
+          {secondary}
+        </p>
       </div>
     </button>
   )
@@ -339,7 +413,15 @@ function HitRow({
 function Hotkey({ label, desc }: { label: string; desc: string }) {
   return (
     <span className="inline-flex items-center gap-1">
-      <kbd className="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 font-mono">
+      <kbd
+        className="rounded px-1 py-0.5"
+        style={{
+          background: 'var(--admin-bg-elev)',
+          border: '0.5px solid var(--admin-border-strong)',
+          color: 'var(--admin-fg-muted)',
+          fontFamily: 'var(--font-mono-tech)',
+        }}
+      >
         {label}
       </kbd>
       <span>{desc}</span>

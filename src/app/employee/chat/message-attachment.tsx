@@ -53,11 +53,15 @@ export function MessageAttachment({ path, type, name, size, isMe }: Props) {
         href={url || '#'}
         target="_blank"
         rel="noopener noreferrer"
-        className="block mt-1 rounded-lg overflow-hidden bg-black/5 max-w-[280px]"
+        className="block mt-1 rounded-lg overflow-hidden max-w-[280px]"
+        style={{ background: 'var(--admin-bg-elev-2)' }}
       >
         {loading || !url ? (
-          <div className="h-40 w-[260px] flex items-center justify-center bg-gray-100">
-            <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+          <div
+            className="h-40 w-[260px] flex items-center justify-center"
+            style={{ background: 'var(--admin-bg-elev-2)' }}
+          >
+            <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--admin-fg-muted)' }} />
           </div>
         ) : (
           <img
@@ -72,10 +76,20 @@ export function MessageAttachment({ path, type, name, size, isMe }: Props) {
 
   // Documento
   const sizeKb = size ? Math.round(size / 1024) : null
-  const containerClasses = isMe
-    ? 'bg-white/15 border-white/20 text-white'
-    : 'bg-gray-50 border-gray-200 text-gray-900'
-  const iconBg = isMe ? 'bg-white/20' : 'bg-white border border-gray-200'
+  const containerStyle: React.CSSProperties = isMe
+    ? {
+        background: 'rgba(255,255,255,0.16)',
+        border: '0.5px solid rgba(255,255,255,0.22)',
+        color: '#FFFFFF',
+      }
+    : {
+        background: 'var(--admin-bg-elev-2)',
+        border: '0.5px solid var(--admin-border)',
+        color: 'var(--admin-fg)',
+      }
+  const iconStyle: React.CSSProperties = isMe
+    ? { background: 'rgba(255,255,255,0.22)' }
+    : { background: 'var(--admin-bg-elev)', border: '0.5px solid var(--admin-border)' }
 
   return (
     <a
@@ -83,24 +97,42 @@ export function MessageAttachment({ path, type, name, size, isMe }: Props) {
       target="_blank"
       rel="noopener noreferrer"
       download={name || undefined}
-      className={`mt-1 flex items-center gap-2.5 rounded-lg border px-2.5 py-2 max-w-[280px] transition-opacity ${containerClasses} ${
+      className={`mt-1 flex items-center gap-2.5 rounded-lg px-2.5 py-2 max-w-[280px] transition-opacity ${
         !url ? 'pointer-events-none opacity-70' : 'hover:opacity-90'
       }`}
+      style={containerStyle}
     >
-      <span className={`h-9 w-9 rounded-md inline-flex items-center justify-center flex-shrink-0 ${iconBg}`}>
+      <span
+        className="h-9 w-9 rounded-md inline-flex items-center justify-center flex-shrink-0"
+        style={iconStyle}
+      >
         {type === 'document' ? (
-          <FileText className={`w-4 h-4 ${isMe ? 'text-white' : 'text-gray-600'}`} />
+          <FileText
+            className="w-4 h-4"
+            style={{ color: isMe ? '#FFFFFF' : 'var(--admin-fg-muted)' }}
+          />
         ) : (
-          <ImageIcon className={`w-4 h-4 ${isMe ? 'text-white' : 'text-gray-600'}`} />
+          <ImageIcon
+            className="w-4 h-4"
+            style={{ color: isMe ? '#FFFFFF' : 'var(--admin-fg-muted)' }}
+          />
         )}
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-xs font-semibold truncate">{name || 'Documento'}</p>
-        <p className={`text-[10px] ${isMe ? 'text-white/70' : 'text-gray-500'}`}>
+        <p
+          className="text-[10px]"
+          style={{ color: isMe ? 'rgba(255,255,255,0.75)' : 'var(--admin-fg-subtle)' }}
+        >
           {loading ? 'Generando enlace...' : sizeKb ? `${sizeKb} KB` : ''}
         </p>
       </div>
-      {url && <Download className={`w-3.5 h-3.5 flex-shrink-0 ${isMe ? 'text-white/70' : 'text-gray-400'}`} />}
+      {url && (
+        <Download
+          className="w-3.5 h-3.5 flex-shrink-0"
+          style={{ color: isMe ? 'rgba(255,255,255,0.75)' : 'var(--admin-fg-subtle)' }}
+        />
+      )}
     </a>
   )
 }

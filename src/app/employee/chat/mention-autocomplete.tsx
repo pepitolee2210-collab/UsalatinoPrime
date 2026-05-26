@@ -93,16 +93,40 @@ export function MentionAutocomplete({ trigger, query, onSelect }: Props) {
   if (query.trim().length === 0 && visibleItems.length === 0 && !loading) return null
 
   return (
-    <div className="absolute bottom-full left-0 mb-2 w-full max-w-sm rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden z-20">
-      <div className="px-3 py-1.5 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+    <div
+      className="absolute bottom-full left-0 mb-2 w-full max-w-sm rounded-xl overflow-hidden z-20"
+      style={{
+        background: 'var(--admin-bg-elev)',
+        border: '0.5px solid var(--admin-border-strong)',
+        boxShadow: 'var(--admin-shadow, 0 12px 28px rgba(11,31,58,0.18))',
+      }}
+    >
+      <div
+        className="px-3 py-2 flex items-center justify-between"
+        style={{
+          background: 'var(--admin-bg-deep)',
+          borderBottom: '0.5px solid var(--admin-border)',
+        }}
+      >
+        <p
+          style={{
+            fontFamily: 'var(--font-mono-tech)',
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: '0.14em',
+            color: 'var(--admin-fg-subtle)',
+            textTransform: 'uppercase',
+          }}
+        >
           {trigger === '@' ? 'Mencionar cliente' : 'Referenciar caso'}
         </p>
-        {loading && <Loader2 className="w-3 h-3 text-gray-400 animate-spin" />}
+        {loading && (
+          <Loader2 className="w-3 h-3 animate-spin" style={{ color: 'var(--admin-fg-muted)' }} />
+        )}
       </div>
       <div className="max-h-[200px] overflow-y-auto py-1">
         {visibleItems.length === 0 ? (
-          <p className="px-3 py-2 text-[11px] text-gray-400">
+          <p className="px-3 py-2 text-[11px]" style={{ color: 'var(--admin-fg-subtle)' }}>
             {query ? 'Sin resultados' : `Escribe para buscar ${trigger === '@' ? 'clientes' : 'casos'}...`}
           </p>
         ) : (
@@ -112,17 +136,25 @@ export function MentionAutocomplete({ trigger, query, onSelect }: Props) {
               type="button"
               onMouseEnter={() => setSelectedIdx(i)}
               onClick={() => onSelect(item)}
-              className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors ${
-                selectedIdx === i ? '' : 'hover:bg-gray-50'
-              }`}
-              style={selectedIdx === i ? { background: 'var(--admin-gold-soft)' } : undefined}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors"
+              style={
+                selectedIdx === i
+                  ? { background: 'var(--admin-blue-soft)' }
+                  : undefined
+              }
             >
               {item.type === 'client' ? (
-                <User className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />
+                <User
+                  className="w-3.5 h-3.5 flex-shrink-0"
+                  style={{ color: 'var(--admin-blue)' }}
+                />
               ) : (
-                <Briefcase className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+                <Briefcase
+                  className="w-3.5 h-3.5 flex-shrink-0"
+                  style={{ color: 'var(--admin-green)' }}
+                />
               )}
-              <span className="text-sm text-gray-900 truncate">
+              <span className="text-sm truncate" style={{ color: 'var(--admin-fg)' }}>
                 {item.type === 'case' ? `#${item.label}` : item.label}
               </span>
             </button>
