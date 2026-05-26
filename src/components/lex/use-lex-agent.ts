@@ -16,6 +16,7 @@ import {
   Modality,
   type Session,
   type LiveServerMessage,
+  type FunctionDeclaration,
 } from '@google/genai'
 import { LEX_SYSTEM_PROMPT } from './lex-prompt'
 import { LEX_TOOLS, executeLexTool } from './lex-tools'
@@ -182,23 +183,32 @@ export function useLexAgent({ onTranscript }: UseLexAgentOptions = {}) {
   const connectSession = async (resumeHandle: string | null = null): Promise<Session> => {
     const ai = aiRef.current!
     const model = modelRef.current!
+    const fullModel = model.startsWith('models/') ? model : `models/${model}`
+    console.log('[lex] Connecting to Gemini Live with model:', fullModel)
+
     const session = await ai.live.connect({
-      model,
+      model: fullModel,
       config: {
         responseModalities: [Modality.AUDIO],
         mediaResolution: MediaResolution.MEDIA_RESOLUTION_MEDIUM,
+        systemInstruction: LEX_SYSTEM_PROMPT,
+        speechConfig: {
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
+        },
         contextWindowCompression: {
           triggerTokens: '104857',
           slidingWindow: { targetTokens: '52428' },
         },
-        systemInstruction: { parts: [{ text: LEX_SYSTEM_PROMPT }] },
-        tools: [{ functionDeclarations: LEX_TOOLS }],
-        speechConfig: {
-          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Zephyr' } },
-        },
+        sessionResumption: resumeHandle ? { handle: resumeHandle } : { handle: '' },
+        // Cast: el SDK tipa `parametersJsonSchema` con su propio Type enum
+        // (UPPERCASE), pero Gemini Live API espera el formato OpenAPI
+        // estándar lowercase ('object', 'string') — por eso declaramos las
+        // tools como literales en lex-tools.ts y casteamos aquí.
+        tools: [
+          { functionDeclarations: LEX_TOOLS as unknown as FunctionDeclaration[] },
+        ],
         inputAudioTranscription: {},
         outputAudioTranscription: {},
-        sessionResumption: resumeHandle ? { handle: resumeHandle } : {},
       },
       callbacks: {
         onopen: () => {

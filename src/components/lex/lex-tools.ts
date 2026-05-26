@@ -9,26 +9,36 @@
  * directamente. Las que mutan o navegan UI piden confirmación.
  */
 
-import { Type, type FunctionDeclaration } from '@google/genai'
 import { dispatchLexEvent } from './lex-events'
 
-export const LEX_TOOLS: FunctionDeclaration[] = [
+/**
+ * Declaración compatible con FunctionDeclaration del SDK pero con tipos
+ * en lowercase OpenAPI standard. El SDK enum `Type` serializa UPPERCASE
+ * y la API de Gemini Live no las reconoce — toca usar strings literales.
+ */
+interface LexFunctionDeclaration {
+  name: string
+  description: string
+  parametersJsonSchema: unknown
+}
+
+export const LEX_TOOLS: LexFunctionDeclaration[] = [
   // ── Consulta (sin confirmación) ──────────────────────────────────────
   {
     name: 'listContracts',
     description:
       'Lista los contratos del sistema filtrados por status. Úsala cuando Vanessa pregunta "¿qué contratos hay pendientes?" o "muéstrame los firmados de esta semana". Retorna un resumen verbal — Vanessa también los ve en la lista en pantalla.',
     parametersJsonSchema: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         status: {
-          type: Type.STRING,
+          type: 'string',
           description:
             'Status a filtrar. Opciones: "borrador" (no enviado), "pendiente_firma" (link enviado, cliente no firmó), "firmado" (firmado por cliente), "activo" (caso en curso), "completado", "cancelado". Si vacío, retorna todos.',
           enum: ['borrador', 'pendiente_firma', 'firmado', 'activo', 'completado', 'cancelado', 'all'],
         },
         limit: {
-          type: Type.NUMBER,
+          type: 'number',
           description: 'Cantidad máxima a retornar. Default 10.',
         },
       },
@@ -39,10 +49,10 @@ export const LEX_TOOLS: FunctionDeclaration[] = [
     description:
       'Busca un contrato por nombre del cliente o teléfono. Úsala cuando Vanessa dice "busca el contrato de María Pérez" o "trae el de teléfono +1 555 123".',
     parametersJsonSchema: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         query: {
-          type: Type.STRING,
+          type: 'string',
           description: 'Nombre completo, parcial, o teléfono del cliente.',
         },
       },
@@ -53,7 +63,7 @@ export const LEX_TOOLS: FunctionDeclaration[] = [
     name: 'summarizeContracts',
     description:
       'Resumen ejecutivo: cuántos contratos hay por status, ingreso pendiente, etc. Úsala cuando Vanessa dice "dime cómo va el día" o "qué tengo hoy".',
-    parametersJsonSchema: { type: Type.OBJECT, properties: {} },
+    parametersJsonSchema: { type: 'object', properties: {} },
   },
 
   // ── UI helpers (sin mutar datos) ─────────────────────────────────────
@@ -62,9 +72,9 @@ export const LEX_TOOLS: FunctionDeclaration[] = [
     description:
       'Resalta visualmente un contrato en la lista y hace scroll a él. Úsala después de searchContract para que Vanessa vea cuál es.',
     parametersJsonSchema: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
-        contractId: { type: Type.STRING, description: 'UUID del contrato.' },
+        contractId: { type: 'string', description: 'UUID del contrato.' },
       },
       required: ['contractId'],
     },
@@ -74,50 +84,50 @@ export const LEX_TOOLS: FunctionDeclaration[] = [
     description:
       'Crea un contrato completo end-to-end con los datos dictados por Vanessa. Se guarda en estado "borrador" — Vanessa lo revisa en la lista. SOLO invoca esta tool DESPUÉS de que Vanessa confirme verbalmente todos los datos. Antes de invocar, repite cliente + teléfono + servicio + monto + cuotas y di "¿confirmas?". El precio y cuotas son OPCIONALES — si no se dictan, se usan los defaults del template del servicio.',
     parametersJsonSchema: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
         clientFullName: {
-          type: Type.STRING,
+          type: 'string',
           description: 'Nombre completo del cliente, ej "María Pérez González".',
         },
         clientPhone: {
-          type: Type.STRING,
+          type: 'string',
           description: 'Teléfono del cliente, ej "+1 555 0000".',
         },
         serviceSlug: {
-          type: Type.STRING,
+          type: 'string',
           description:
             'Slug del servicio. Opciones: visa-juvenil, asilo-politico, reforzar-asilo, cambio-de-corte, cambio-de-estatus, ajuste-de-estatus, taxes, itin-number, licencia-de-conducir, mociones, apelacion.',
         },
         totalPrice: {
-          type: Type.NUMBER,
+          type: 'number',
           description:
             'Monto total acordado en USD. OPCIONAL — si no se dicta, usa el precio default del template.',
         },
         installmentCount: {
-          type: Type.NUMBER,
+          type: 'number',
           description:
             'Número de cuotas. OPCIONAL — default es el del template (1 = pago único, normalmente 10 para servicios largos).',
         },
         clientPassport: {
-          type: Type.STRING,
+          type: 'string',
           description: 'Número de pasaporte del cliente. OPCIONAL — se puede completar después.',
         },
         clientDob: {
-          type: Type.STRING,
+          type: 'string',
           description: 'Fecha de nacimiento del cliente en formato YYYY-MM-DD. OPCIONAL.',
         },
         minors: {
-          type: Type.ARRAY,
+          type: 'array',
           description:
             'Lista de menores para servicios SIJS (visa-juvenil). OPCIONAL — solo si Vanessa los menciona y el servicio los requiere.',
           items: {
-            type: Type.OBJECT,
+            type: 'object',
             properties: {
-              fullName: { type: Type.STRING, description: 'Nombre completo del menor' },
-              dob: { type: Type.STRING, description: 'Fecha nacimiento YYYY-MM-DD' },
-              passport: { type: Type.STRING, description: 'Pasaporte si lo tiene' },
-              birthplace: { type: Type.STRING, description: 'Lugar de nacimiento' },
+              fullName: { type: 'string', description: 'Nombre completo del menor' },
+              dob: { type: 'string', description: 'Fecha nacimiento YYYY-MM-DD' },
+              passport: { type: 'string', description: 'Pasaporte si lo tiene' },
+              birthplace: { type: 'string', description: 'Lugar de nacimiento' },
             },
             required: ['fullName'],
           },
@@ -133,9 +143,9 @@ export const LEX_TOOLS: FunctionDeclaration[] = [
     description:
       'Genera y envía el link de firma electrónica al cliente del contrato indicado. SOLO invoca esta tool DESPUÉS de que Vanessa confirme verbalmente con "sí, envíalo" o "confirma". Antes de invocar, REPITE el nombre del cliente y el monto para que ella pueda confirmar o corregir.',
     parametersJsonSchema: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
-        contractId: { type: Type.STRING, description: 'UUID del contrato.' },
+        contractId: { type: 'string', description: 'UUID del contrato.' },
       },
       required: ['contractId'],
     },
@@ -145,11 +155,11 @@ export const LEX_TOOLS: FunctionDeclaration[] = [
     description:
       'Cambia el status del contrato (ej. marcarlo como firmado, activo, completado, cancelado). SOLO después de confirmación verbal. Antes de invocar, di "voy a marcar el contrato de [cliente] como [status], ¿confirmas?".',
     parametersJsonSchema: {
-      type: Type.OBJECT,
+      type: 'object',
       properties: {
-        contractId: { type: Type.STRING, description: 'UUID del contrato.' },
+        contractId: { type: 'string', description: 'UUID del contrato.' },
         newStatus: {
-          type: Type.STRING,
+          type: 'string',
           enum: ['firmado', 'activo', 'completado', 'cancelado'],
           description: 'Nuevo status. NO se puede usar para borrar — para eso usa deleteContract.',
         },
@@ -163,7 +173,7 @@ export const LEX_TOOLS: FunctionDeclaration[] = [
     name: 'closeAgent',
     description:
       'Cierra el panel de Lex. Úsala cuando Vanessa diga "gracias eso es todo" o "puedes cerrarte".',
-    parametersJsonSchema: { type: Type.OBJECT, properties: {} },
+    parametersJsonSchema: { type: 'object', properties: {} },
   },
 ]
 
