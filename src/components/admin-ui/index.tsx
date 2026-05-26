@@ -47,20 +47,20 @@ export function PageHeader({ eyebrow, title, accentDot, description, action, tel
               <span className="relative flex items-center justify-center" style={{ width: 6, height: 6 }}>
                 <span
                   className="absolute inset-0 rounded-full"
-                  style={{ background: 'var(--admin-bg-elev)', animation: 'ulp-ping 2s ease-in-out infinite' }}
+                  style={{ background: 'var(--admin-accent)', animation: 'ulp-ping 2s ease-in-out infinite' }}
                 />
                 <span
                   className="relative rounded-full"
-                  style={{ width: 6, height: 6, background: 'var(--admin-bg-elev)', boxShadow: '0 0 8px rgba(255,255,255,0.7)' }}
+                  style={{ width: 6, height: 6, background: 'var(--admin-accent)', boxShadow: '0 0 8px var(--admin-accent-glow)' }}
                 />
               </span>
               <p
                 style={{
                   fontFamily: 'var(--font-mono-tech)',
                   fontSize: 10,
-                  fontWeight: 500,
+                  fontWeight: 600,
                   letterSpacing: '0.2em',
-                  color: 'var(--admin-fg-muted)',
+                  color: 'var(--admin-accent)',
                 }}
               >
                 {eyebrow.toUpperCase()}
@@ -70,14 +70,15 @@ export function PageHeader({ eyebrow, title, accentDot, description, action, tel
           <h1
             style={{
               fontSize: 'clamp(34px, 4.5vw, 48px)',
-              fontWeight: 600,
+              fontWeight: 700,
               letterSpacing: '-0.035em',
               lineHeight: 1.05,
+              color: 'var(--admin-fg)',
             }}
           >
             <span
               style={{
-                background: 'linear-gradient(180deg, #FFFFFF 30%, #A1A1A1 100%)',
+                background: 'linear-gradient(180deg, var(--admin-fg) 0%, var(--admin-fg-muted) 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
@@ -87,13 +88,13 @@ export function PageHeader({ eyebrow, title, accentDot, description, action, tel
             </span>
             {accentDot && (
               <span
-                className="inline-block align-baseline ml-1"
+                className="inline-block align-baseline ml-2"
                 style={{
-                  width: '0.45em',
-                  height: '0.45em',
+                  width: '0.4em',
+                  height: '0.4em',
                   borderRadius: '50%',
-                  background: 'var(--admin-bg-elev)',
-                  boxShadow: '0 0 20px rgba(255,255,255,0.7)',
+                  background: 'var(--admin-accent)',
+                  boxShadow: '0 0 16px var(--admin-accent-glow)',
                   animation: 'ulp-glow 2.5s ease-in-out infinite',
                 }}
               />
@@ -116,13 +117,13 @@ export function PageHeader({ eyebrow, title, accentDot, description, action, tel
               className="inline-flex items-baseline gap-2 px-3 py-1.5 rounded-full"
               style={{
                 background: 'var(--admin-accent-soft)',
-                border: '0.5px solid var(--admin-border)',
+                border: '0.5px solid var(--admin-border-strong)',
                 fontFamily: 'var(--font-mono-tech)',
                 fontSize: 11,
               }}
             >
-              <span style={{ color: 'var(--admin-fg-subtle)', letterSpacing: '0.15em' }}>{t.label.toUpperCase()}</span>
-              <span style={{ color: 'var(--admin-fg)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{t.value}</span>
+              <span style={{ color: 'var(--admin-fg-muted)', letterSpacing: '0.15em', fontWeight: 600 }}>{t.label.toUpperCase()}</span>
+              <span style={{ color: 'var(--admin-accent)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{t.value}</span>
             </div>
           ))}
         </div>
