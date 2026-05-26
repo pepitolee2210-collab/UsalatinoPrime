@@ -19,7 +19,6 @@ import {
 } from '@google/genai'
 import { LEX_SYSTEM_PROMPT } from './lex-prompt'
 import { LEX_TOOLS, executeLexTool } from './lex-tools'
-import { AUDIO_WORKLET_SRC } from './audio-worklet-source'
 
 export type LexState = 'idle' | 'connecting' | 'listening' | 'speaking' | 'error' | 'closed'
 
@@ -286,12 +285,12 @@ export function useLexAgent({ onTranscript }: UseLexAgentOptions = {}) {
       mediaStreamRef.current = stream
 
       // 4) AudioContext + worklet
+      // Cargamos el worklet desde /public/lex-audio-worklet.js (archivo
+      // estático) en lugar de blob URL — la CSP del admin no permite
+      // script-src blob:, así que servimos vía 'self'.
       const ctx = new AudioContext({ sampleRate: INPUT_SAMPLE_RATE })
       audioCtxRef.current = ctx
-      const blob = new Blob([AUDIO_WORKLET_SRC], { type: 'application/javascript' })
-      const workletUrl = URL.createObjectURL(blob)
-      await ctx.audioWorklet.addModule(workletUrl)
-      URL.revokeObjectURL(workletUrl)
+      await ctx.audioWorklet.addModule('/lex-audio-worklet.js')
 
       const sourceNode = ctx.createMediaStreamSource(stream)
       const worklet = new AudioWorkletNode(ctx, 'lex-audio-capture')
@@ -299,8 +298,9 @@ export function useLexAgent({ onTranscript }: UseLexAgentOptions = {}) {
       workletNodeRef.current = worklet
       worklet.port.onmessage = (e) => {
         if (mutedRef.current) return
-        const buf = e.data as ArrayBuffer
-        const base64 = arrayBufferToBase64(buf)
+        if (e.data?.type !== 'chunk') return
+        const buffer = e.data.buffer as ArrayBuffer
+        const base64 = arrayBufferToBase64(buffer)
         sessionRef.current?.sendRealtimeInput({
           audio: { data: base64, mimeType: 'audio/pcm;rate=16000' },
         })
