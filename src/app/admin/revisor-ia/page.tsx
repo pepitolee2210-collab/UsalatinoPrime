@@ -396,7 +396,7 @@ export default function RevisorIAPage() {
         <div
           className="px-5 py-3 flex items-center justify-between"
           style={{
-            background: 'rgba(10,10,10,0.85)',
+            background: 'var(--admin-bg-deep)',
             backdropFilter: 'blur(20px)',
             borderBottom: '0.5px solid var(--admin-border)',
           }}
@@ -580,7 +580,7 @@ export default function RevisorIAPage() {
         <div
           className="p-4"
           style={{
-            background: 'rgba(10,10,10,0.85)',
+            background: 'var(--admin-bg-deep)',
             backdropFilter: 'blur(20px)',
             borderTop: '0.5px solid var(--admin-border)',
           }}

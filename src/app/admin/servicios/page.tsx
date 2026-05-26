@@ -410,7 +410,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
       <article
         className="relative h-full rounded-[24px] p-7 flex flex-col overflow-hidden transition-all duration-500 ease-out group-hover:-translate-y-1"
         style={{
-          background: 'linear-gradient(180deg, rgba(18,18,18,0.92), rgba(8,8,8,0.92))',
+          background: 'var(--admin-panel-grad)',
           border: '0.5px solid var(--admin-border-strong)',
           backdropFilter: 'blur(20px)',
           minHeight: 360,

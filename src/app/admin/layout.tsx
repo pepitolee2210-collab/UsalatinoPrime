@@ -504,7 +504,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div
         className="sticky top-0 z-40 flex items-center gap-4 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:hidden relative"
         style={{
-          background: 'rgba(10,10,10,0.85)',
+          background: 'var(--admin-bg-deep)',
           backdropFilter: 'blur(20px)',
         }}
       >

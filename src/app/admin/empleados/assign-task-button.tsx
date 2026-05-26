@@ -142,7 +142,7 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
                   onClick={() => setMode('case')}
                   className="p-5 rounded-2xl text-center transition-all duration-300 hover:-translate-y-0.5"
                   style={{
-                    background: 'linear-gradient(180deg, rgba(96,165,250,0.06), rgba(20,20,20,0.92))',
+                    background: 'linear-gradient(180deg, rgba(96,165,250,0.06), var(--admin-bg-elev))',
                     border: '0.5px solid rgba(96,165,250,0.25)',
                   }}
                 >
@@ -158,7 +158,7 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
                   onClick={() => setMode('standalone')}
                   className="p-5 rounded-2xl text-center transition-all duration-300 hover:-translate-y-0.5"
                   style={{
-                    background: 'linear-gradient(180deg, rgba(250,204,21,0.06), rgba(20,20,20,0.92))',
+                    background: 'linear-gradient(180deg, rgba(250,204,21,0.06), var(--admin-bg-elev))',
                     border: '0.5px solid rgba(250,204,21,0.25)',
                   }}
                 >

@@ -111,7 +111,7 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
         <div
           className="sticky top-0 z-10 px-6 py-4 flex items-center justify-between"
           style={{
-            background: 'rgba(10,10,10,0.85)',
+            background: 'var(--admin-bg-deep)',
             backdropFilter: 'blur(20px)',
             borderBottom: '0.5px solid var(--admin-border)',
           }}
@@ -282,7 +282,7 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
         <div
           className="sticky bottom-0 px-6 py-4 flex flex-wrap gap-2 justify-between"
           style={{
-            background: 'rgba(10,10,10,0.92)',
+            background: 'var(--admin-bg-deep)',
             backdropFilter: 'blur(20px)',
             borderTop: '0.5px solid var(--admin-border)',
           }}

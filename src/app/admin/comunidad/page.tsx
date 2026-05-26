@@ -251,7 +251,7 @@ export default function AdminComunidadPage() {
           className="rounded-2xl p-4 transition-all duration-300 cursor-pointer hover:-translate-y-0.5"
           style={{
             background: stats.zellePending > 0
-              ? 'linear-gradient(180deg, rgba(250,204,21,0.10), rgba(20,20,20,0.92))'
+              ? 'linear-gradient(180deg, rgba(250,204,21,0.10), var(--admin-bg-elev))'
               : 'var(--admin-panel-grad)',
             border: stats.zellePending > 0
               ? '0.5px solid rgba(250,204,21,0.3)'

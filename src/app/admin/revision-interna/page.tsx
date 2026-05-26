@@ -373,7 +373,7 @@ function StatCard({
       className="text-left rounded-2xl p-4 transition-all duration-300 hover:-translate-y-0.5"
       style={{
         background: active
-          ? `linear-gradient(180deg, ${t.bg}, rgba(20,20,20,0.92))`
+          ? `linear-gradient(180deg, ${t.bg}, var(--admin-bg-elev))`
           : 'var(--admin-panel-grad)',
         border: active ? `0.5px solid ${t.activeBorder}` : `0.5px solid var(--admin-border-strong)`,
         boxShadow: active ? `0 0 24px ${t.bg}` : 'none',

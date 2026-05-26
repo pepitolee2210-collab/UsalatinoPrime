@@ -710,7 +710,7 @@ function ContractPipeline({
           const pct = (s.count / totalCount) * 100
           return (
             <div key={s.status} className="px-5 py-6"
-              style={{ background: 'rgba(20, 20, 22, 1)' }}>
+              style={{ background: 'var(--admin-bg-elev)' }}>
               <div className="flex items-center gap-2 mb-4">
                 <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ background: color }} />
                 <p className="font-mono-ceo text-[11px] uppercase tracking-[0.18em] text-white/75 font-medium truncate">

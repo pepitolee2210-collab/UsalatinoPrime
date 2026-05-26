@@ -470,7 +470,7 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
                 <div
                   className="absolute bottom-full mb-2 px-3 py-2 rounded-lg whitespace-nowrap z-10"
                   style={{
-                    background: 'rgba(20,20,20,0.98)',
+                    background: 'var(--admin-bg-elev)',
                     border: '0.5px solid rgba(255,255,255,0.15)',
                     backdropFilter: 'blur(20px)',
                     boxShadow: '0 12px 24px rgba(0,0,0,0.6)',

@@ -99,7 +99,7 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
         <header
           className="sticky top-0 z-10 flex items-start justify-between px-6 py-4"
           style={{
-            background: 'rgba(15,15,15,0.95)',
+            background: 'var(--admin-bg-elev)',
             backdropFilter: 'blur(20px)',
             borderBottom: '0.5px solid var(--admin-border)',
           }}
