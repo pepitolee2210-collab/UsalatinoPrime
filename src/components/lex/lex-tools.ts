@@ -70,21 +70,60 @@ export const LEX_TOOLS: FunctionDeclaration[] = [
     },
   },
   {
-    name: 'openNewContract',
+    name: 'createContract',
     description:
-      'Abre el formulario de nuevo contrato con datos pre-cargados (si Vanessa ya dictó algunos). Úsala cuando ella dice "hagamos uno nuevo para María, visa juvenil, $2500".',
+      'Crea un contrato completo end-to-end con los datos dictados por Vanessa. Se guarda en estado "borrador" — Vanessa lo revisa en la lista. SOLO invoca esta tool DESPUÉS de que Vanessa confirme verbalmente todos los datos. Antes de invocar, repite cliente + teléfono + servicio + monto + cuotas y di "¿confirmas?". El precio y cuotas son OPCIONALES — si no se dictan, se usan los defaults del template del servicio.',
     parametersJsonSchema: {
       type: Type.OBJECT,
       properties: {
-        clientName: { type: Type.STRING, description: 'Nombre completo del cliente si Vanessa lo dio.' },
-        clientPhone: { type: Type.STRING, description: 'Teléfono del cliente si Vanessa lo dio.' },
+        clientFullName: {
+          type: Type.STRING,
+          description: 'Nombre completo del cliente, ej "María Pérez González".',
+        },
+        clientPhone: {
+          type: Type.STRING,
+          description: 'Teléfono del cliente, ej "+1 555 0000".',
+        },
         serviceSlug: {
           type: Type.STRING,
           description:
-            'Servicio: visa-juvenil, asilo-politico, cambio-corte, cambio-estatus, ajuste-estatus, taxes, itin, licencia, mociones.',
+            'Slug del servicio. Opciones: visa-juvenil, asilo-politico, reforzar-asilo, cambio-de-corte, cambio-de-estatus, ajuste-de-estatus, taxes, itin-number, licencia-de-conducir, mociones, apelacion.',
         },
-        totalAmount: { type: Type.NUMBER, description: 'Monto total acordado.' },
+        totalPrice: {
+          type: Type.NUMBER,
+          description:
+            'Monto total acordado en USD. OPCIONAL — si no se dicta, usa el precio default del template.',
+        },
+        installmentCount: {
+          type: Type.NUMBER,
+          description:
+            'Número de cuotas. OPCIONAL — default es el del template (1 = pago único, normalmente 10 para servicios largos).',
+        },
+        clientPassport: {
+          type: Type.STRING,
+          description: 'Número de pasaporte del cliente. OPCIONAL — se puede completar después.',
+        },
+        clientDob: {
+          type: Type.STRING,
+          description: 'Fecha de nacimiento del cliente en formato YYYY-MM-DD. OPCIONAL.',
+        },
+        minors: {
+          type: Type.ARRAY,
+          description:
+            'Lista de menores para servicios SIJS (visa-juvenil). OPCIONAL — solo si Vanessa los menciona y el servicio los requiere.',
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              fullName: { type: Type.STRING, description: 'Nombre completo del menor' },
+              dob: { type: Type.STRING, description: 'Fecha nacimiento YYYY-MM-DD' },
+              passport: { type: Type.STRING, description: 'Pasaporte si lo tiene' },
+              birthplace: { type: Type.STRING, description: 'Lugar de nacimiento' },
+            },
+            required: ['fullName'],
+          },
+        },
       },
+      required: ['clientFullName', 'clientPhone', 'serviceSlug'],
     },
   },
 
@@ -183,9 +222,48 @@ export async function executeLexTool(
         return { ok: true, message: 'Contrato resaltado' }
       }
 
-      case 'openNewContract': {
-        dispatchLexEvent('lex:openNewContract', { prefill: args })
-        return { ok: true, message: 'Formulario abierto con los datos pre-cargados. Vanessa puede revisar antes de guardar.' }
+      case 'createContract': {
+        const payload = {
+          client_full_name: String(args.clientFullName || '').trim(),
+          client_phone: String(args.clientPhone || '').trim(),
+          service_slug: String(args.serviceSlug || '').trim(),
+          total_price: typeof args.totalPrice === 'number' ? args.totalPrice : undefined,
+          installment_count:
+            typeof args.installmentCount === 'number' ? args.installmentCount : undefined,
+          client_passport: args.clientPassport ? String(args.clientPassport) : undefined,
+          client_dob: args.clientDob ? String(args.clientDob) : undefined,
+          minors: Array.isArray(args.minors) ? args.minors : undefined,
+        }
+        if (!payload.client_full_name || !payload.client_phone || !payload.service_slug) {
+          return {
+            ok: false,
+            message: 'Faltan datos obligatorios (nombre, teléfono o servicio).',
+          }
+        }
+        const res = await fetch('/api/voice-agent/contracts/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}))
+          return { ok: false, message: err.error || `Error creando contrato (${res.status})` }
+        }
+        const data = await res.json()
+        dispatchLexEvent('lex:refreshContracts')
+        dispatchLexEvent('lex:notify', {
+          kind: 'success',
+          message: `Contrato creado en borrador (ID ${String(data.contract_id).slice(0, 8)}…)`,
+        })
+        if (data.contract_id) {
+          dispatchLexEvent('lex:scrollToContract', { contractId: data.contract_id })
+          dispatchLexEvent('lex:highlightContract', { contractId: data.contract_id })
+        }
+        return {
+          ok: true,
+          data,
+          message: `Contrato creado en borrador para ${payload.client_full_name}. Revisa los datos en la lista; cuando estés ok, dime "envía el link de firma".`,
+        }
       }
 
       case 'sendSigningLink': {

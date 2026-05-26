@@ -10,7 +10,6 @@
 export type LexEvent =
   | { type: 'lex:close' }
   | { type: 'lex:highlightContract'; payload: { contractId: string } }
-  | { type: 'lex:openNewContract'; payload: { prefill?: Record<string, unknown> } }
   | { type: 'lex:refreshContracts' }
   | { type: 'lex:scrollToContract'; payload: { contractId: string } }
   | { type: 'lex:notify'; payload: { kind: 'success' | 'info' | 'error'; message: string } }
