@@ -47,20 +47,20 @@ export function PageHeader({ eyebrow, title, accentDot, description, action, tel
               <span className="relative flex items-center justify-center" style={{ width: 6, height: 6 }}>
                 <span
                   className="absolute inset-0 rounded-full"
-                  style={{ background: '#FFFFFF', animation: 'ulp-ping 2s ease-in-out infinite' }}
+                  style={{ background: 'var(--admin-accent)', animation: 'ulp-ping 2s ease-in-out infinite' }}
                 />
                 <span
                   className="relative rounded-full"
-                  style={{ width: 6, height: 6, background: '#FFFFFF', boxShadow: '0 0 8px rgba(255,255,255,0.7)' }}
+                  style={{ width: 6, height: 6, background: 'var(--admin-accent)', boxShadow: '0 0 8px var(--admin-accent-glow)' }}
                 />
               </span>
               <p
                 style={{
                   fontFamily: 'var(--font-mono-tech)',
                   fontSize: 10,
-                  fontWeight: 500,
+                  fontWeight: 600,
                   letterSpacing: '0.2em',
-                  color: '#A1A1A1',
+                  color: 'var(--admin-accent)',
                 }}
               >
                 {eyebrow.toUpperCase()}
@@ -70,14 +70,15 @@ export function PageHeader({ eyebrow, title, accentDot, description, action, tel
           <h1
             style={{
               fontSize: 'clamp(34px, 4.5vw, 48px)',
-              fontWeight: 600,
+              fontWeight: 700,
               letterSpacing: '-0.035em',
               lineHeight: 1.05,
+              color: 'var(--admin-fg)',
             }}
           >
             <span
               style={{
-                background: 'linear-gradient(180deg, #FFFFFF 30%, #A1A1A1 100%)',
+                background: 'linear-gradient(180deg, var(--admin-fg) 0%, var(--admin-fg-muted) 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
@@ -87,20 +88,20 @@ export function PageHeader({ eyebrow, title, accentDot, description, action, tel
             </span>
             {accentDot && (
               <span
-                className="inline-block align-baseline ml-1"
+                className="inline-block align-baseline ml-2"
                 style={{
-                  width: '0.45em',
-                  height: '0.45em',
+                  width: '0.4em',
+                  height: '0.4em',
                   borderRadius: '50%',
-                  background: '#FFFFFF',
-                  boxShadow: '0 0 20px rgba(255,255,255,0.7)',
+                  background: 'var(--admin-accent)',
+                  boxShadow: '0 0 16px var(--admin-accent-glow)',
                   animation: 'ulp-glow 2.5s ease-in-out infinite',
                 }}
               />
             )}
           </h1>
           {description && (
-            <p style={{ fontSize: 16, color: '#A1A1A1', maxWidth: '52ch', lineHeight: 1.5, letterSpacing: '-0.01em' }}>
+            <p style={{ fontSize: 16, color: 'var(--admin-fg-muted)', maxWidth: '52ch', lineHeight: 1.5, letterSpacing: '-0.01em' }}>
               {description}
             </p>
           )}
@@ -115,14 +116,14 @@ export function PageHeader({ eyebrow, title, accentDot, description, action, tel
               key={t.label}
               className="inline-flex items-baseline gap-2 px-3 py-1.5 rounded-full"
               style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '0.5px solid rgba(255,255,255,0.08)',
+                background: 'var(--admin-accent-soft)',
+                border: '0.5px solid var(--admin-border-strong)',
                 fontFamily: 'var(--font-mono-tech)',
                 fontSize: 11,
               }}
             >
-              <span style={{ color: '#525252', letterSpacing: '0.15em' }}>{t.label.toUpperCase()}</span>
-              <span style={{ color: '#FFFFFF', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{t.value}</span>
+              <span style={{ color: 'var(--admin-fg-muted)', letterSpacing: '0.15em', fontWeight: 600 }}>{t.label.toUpperCase()}</span>
+              <span style={{ color: 'var(--admin-accent)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{t.value}</span>
             </div>
           ))}
         </div>
@@ -139,21 +140,32 @@ interface PrimaryButtonProps {
   href?: string
   onClick?: () => void
   icon?: React.ReactNode
-  variant?: 'solid' | 'ghost'
+  /** solid = primary navy/blue gradient · gold = premium dorado · ghost = blanco */
+  variant?: 'solid' | 'ghost' | 'gold'
 }
 
 export function PrimaryButton({ children, href, onClick, icon, variant = 'solid' }: PrimaryButtonProps) {
-  const styles: React.CSSProperties = variant === 'solid'
-    ? {
-        background: '#FFFFFF',
-        color: '#000000',
-        boxShadow: '0 4px 24px rgba(255,255,255,0.18), 0 0 0 0.5px rgba(255,255,255,0.4) inset',
-      }
-    : {
-        background: 'rgba(255,255,255,0.06)',
-        color: '#FFFFFF',
-        border: '0.5px solid rgba(255,255,255,0.15)',
-      }
+  const styles: React.CSSProperties =
+    variant === 'gold'
+      ? {
+          background: 'linear-gradient(135deg, #F2C14E, var(--admin-gold))',
+          color: 'var(--admin-accent)',
+          border: '0.5px solid var(--admin-gold-border, rgba(255,255,255,0.2))',
+          boxShadow: 'var(--admin-shadow-gold, 0 12px 28px rgba(216,155,29,0.28))',
+          fontWeight: 700,
+        }
+      : variant === 'ghost'
+        ? {
+            background: 'var(--admin-bg-elev)',
+            color: 'var(--admin-blue)',
+            border: '0.5px solid var(--admin-border-strong)',
+          }
+        : {
+            background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-blue))',
+            color: '#FFFFFF',
+            border: '0.5px solid rgba(255,255,255,0.2)',
+            boxShadow: '0 12px 28px rgba(30,78,154,0.25), 0 0 0 0.5px rgba(255,255,255,0.4) inset',
+          }
 
   const cls = "inline-flex items-center gap-2 px-4 py-2.5 rounded-full transition-all duration-300 hover:opacity-90 active:scale-95"
   const inner = (
@@ -193,8 +205,8 @@ export function DataCard({ children, className = '', padding = 'md', accentTop }
     <div
       className={`relative rounded-2xl overflow-hidden ${pad} ${className}`}
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -232,21 +244,21 @@ export function StatTile({ label, value, hint, icon, warning }: StatTileProps) {
     <div
       className="relative rounded-2xl p-4 overflow-hidden transition-transform duration-300 hover:-translate-y-0.5"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border-strong)',
       }}
     >
       <span
         aria-hidden
         className="absolute inset-0 pointer-events-none opacity-0 hover:opacity-100 transition-opacity duration-500"
-        style={{ background: 'radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 60%)' }}
+        style={{ background: 'radial-gradient(circle at top, var(--admin-accent-soft), transparent 60%)' }}
       />
       <div className="relative">
         {icon && (
           <div
             className="inline-flex w-8 h-8 rounded-lg items-center justify-center mb-3"
             style={{
-              background: warning ? 'rgba(248,113,113,0.12)' : 'rgba(255,255,255,0.06)',
+              background: warning ? 'rgba(248,113,113,0.12)' : 'var(--admin-accent-soft)',
               border: warning ? '0.5px solid rgba(248,113,113,0.3)' : '0.5px solid rgba(255,255,255,0.12)',
               color: warning ? '#FCA5A5' : '#FFFFFF',
             }}
@@ -254,14 +266,14 @@ export function StatTile({ label, value, hint, icon, warning }: StatTileProps) {
             {icon}
           </div>
         )}
-        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#525252' }}>
+        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-subtle)' }}>
           {label.toUpperCase()}
         </p>
         <p style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.025em', color: warning ? '#FCA5A5' : '#FFFFFF', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
           {value}
         </p>
         {hint && (
-          <p style={{ fontSize: 11, color: '#A1A1A1', marginTop: 3, letterSpacing: '-0.005em' }}>
+          <p style={{ fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 3, letterSpacing: '-0.005em' }}>
             {hint}
           </p>
         )}
@@ -278,10 +290,10 @@ type StatusKind = 'active' | 'pending' | 'completed' | 'paused' | 'warning' | 'n
 const STATUS_COLORS: Record<StatusKind, { bg: string; border: string; dot: string; text: string }> = {
   active:    { bg: 'rgba(34,197,94,0.10)',  border: 'rgba(34,197,94,0.3)',  dot: '#4ADE80', text: '#86EFAC' },
   pending:   { bg: 'rgba(250,204,21,0.10)', border: 'rgba(250,204,21,0.3)', dot: '#FACC15', text: '#FDE68A' },
-  completed: { bg: 'rgba(255,255,255,0.08)', border: 'rgba(255,255,255,0.18)', dot: '#FFFFFF', text: '#FFFFFF' },
+  completed: { bg: 'var(--admin-border)', border: 'rgba(255,255,255,0.18)', dot: '#FFFFFF', text: '#FFFFFF' },
   paused:    { bg: 'rgba(148,163,184,0.10)', border: 'rgba(148,163,184,0.3)', dot: '#94A3B8', text: '#CBD5E1' },
   warning:   { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', dot: '#F87171', text: '#FCA5A5' },
-  neutral:   { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)', dot: '#A1A1A1', text: '#A1A1A1' },
+  neutral:   { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-fg-muted)', text: 'var(--admin-fg-muted)' },
 }
 
 export function StatusPill({ kind, label, pulse }: { kind: StatusKind; label: string; pulse?: boolean }) {
@@ -332,18 +344,18 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
       <div
         className="inline-flex items-center justify-center w-16 h-16 rounded-2xl"
         style={{
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))',
+          background: 'linear-gradient(135deg, var(--admin-border), rgba(255,255,255,0.02))',
           border: '0.5px solid rgba(255,255,255,0.12)',
         }}
       >
-        <span className="material-symbols-outlined" style={{ fontSize: 32, color: '#A1A1A1' }}>
+        <span className="material-symbols-outlined" style={{ fontSize: 32, color: 'var(--admin-fg-muted)' }}>
           {icon}
         </span>
       </div>
       <div className="space-y-1.5">
-        <p style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.018em', color: '#FFFFFF' }}>{title}</p>
+        <p style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.018em', color: 'var(--admin-fg)' }}>{title}</p>
         {description && (
-          <p style={{ fontSize: 14, color: '#A1A1A1', maxWidth: '44ch', lineHeight: 1.5 }}>{description}</p>
+          <p style={{ fontSize: 14, color: 'var(--admin-fg-muted)', maxWidth: '44ch', lineHeight: 1.5 }}>{description}</p>
         )}
       </div>
       {action}
@@ -358,23 +370,23 @@ export function SectionDivider({ label }: { label?: string }) {
   if (label) {
     return (
       <div className="flex items-center gap-3 my-6">
-        <span className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1))' }} />
+        <span className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, transparent, var(--admin-border-strong))' }} />
         <span
           style={{
             fontFamily: 'var(--font-mono-tech)',
             fontSize: 9,
             fontWeight: 500,
             letterSpacing: '0.25em',
-            color: '#525252',
+            color: 'var(--admin-fg-subtle)',
           }}
         >
           {label.toUpperCase()}
         </span>
-        <span className="flex-1 h-px" style={{ background: 'linear-gradient(-90deg, transparent, rgba(255,255,255,0.1))' }} />
+        <span className="flex-1 h-px" style={{ background: 'linear-gradient(-90deg, transparent, var(--admin-border-strong))' }} />
       </div>
     )
   }
-  return <span className="block h-px my-4" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)' }} />
+  return <span className="block h-px my-4" style={{ background: 'linear-gradient(90deg, transparent, var(--admin-border), transparent)' }} />
 }
 
 // ─────────────────────────────────────────────────────────────

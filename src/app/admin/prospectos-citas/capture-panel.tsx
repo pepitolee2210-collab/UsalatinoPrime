@@ -102,18 +102,18 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
         className="w-full max-w-2xl h-full overflow-y-auto admin-scroll"
         style={{
           background: 'linear-gradient(180deg, #0B0B0E 0%, #050505 100%)',
-          borderLeft: '0.5px solid rgba(255,255,255,0.1)',
+          borderLeft: '0.5px solid var(--admin-border-strong)',
           boxShadow: '-40px 0 80px rgba(0,0,0,0.5)',
-          color: '#FAFAFA',
+          color: 'var(--admin-fg)',
         }}
       >
         {/* Header */}
         <div
           className="sticky top-0 z-10 px-6 py-4 flex items-center justify-between"
           style={{
-            background: 'rgba(10,10,10,0.85)',
+            background: 'var(--admin-bg-deep)',
             backdropFilter: 'blur(20px)',
-            borderBottom: '0.5px solid rgba(255,255,255,0.08)',
+            borderBottom: '0.5px solid var(--admin-border)',
           }}
         >
           <div>
@@ -128,28 +128,28 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
                 <PhoneCall className="w-4 h-4" style={{ color: '#60A5FA' }} />
               </span>
               <div>
-                <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.2em', color: '#525252' }}>
+                <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg-subtle)' }}>
                   EVALUACIÓN · EN VIVO
                 </p>
-                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.02em', color: '#FFFFFF', lineHeight: 1.2 }}>
+                <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--admin-fg)', lineHeight: 1.2 }}>
                   {prospecto.guest_name || 'Sin nombre'}
                 </h2>
               </div>
               {saving && (
-                <span className="inline-flex items-center gap-1 ml-2" style={{ fontSize: 10, color: '#A1A1A1', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.1em' }}>
+                <span className="inline-flex items-center gap-1 ml-2" style={{ fontSize: 10, color: 'var(--admin-fg-muted)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.1em' }}>
                   <Loader2 className="w-3 h-3 animate-spin" />
                   GUARDANDO…
                 </span>
               )}
             </div>
-            <p style={{ fontSize: 12, color: '#A1A1A1', marginLeft: 44, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em' }}>
+            <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', marginLeft: 44, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em' }}>
               {prospecto.guest_phone || 'sin teléfono'}
             </p>
           </div>
           <button
             onClick={onClose}
             className="w-9 h-9 rounded-full transition-colors hover:bg-white/10 flex items-center justify-center"
-            style={{ color: '#A1A1A1', border: '0.5px solid rgba(255,255,255,0.1)' }}
+            style={{ color: 'var(--admin-fg-muted)', border: '0.5px solid var(--admin-border-strong)' }}
           >
             <X className="w-4 h-4" />
           </button>
@@ -166,7 +166,7 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
           >
             <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#60A5FA' }} />
             <div style={{ fontSize: 12, color: '#93C5FD', lineHeight: 1.55 }}>
-              <strong style={{ color: '#FFFFFF' }}>Recordatorio:</strong> UsaLatino Prime es una plataforma que guía al usuario a organizar su propio expediente. Tu rol es acompañar al cliente, evaluar viabilidad y capturar los datos clave. No das asesoría legal.
+              <strong style={{ color: 'var(--admin-fg)' }}>Recordatorio:</strong> UsaLatino Prime es una plataforma que guía al usuario a organizar su propio expediente. Tu rol es acompañar al cliente, evaluar viabilidad y capturar los datos clave. No das asesoría legal.
             </div>
           </div>
 
@@ -242,9 +242,9 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
               placeholder="Escribe cualquier detalle del caso que sea relevante…"
               className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 resize-y"
               style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '0.5px solid rgba(255,255,255,0.1)',
-                color: '#FAFAFA',
+                background: 'var(--admin-accent-soft)',
+                border: '0.5px solid var(--admin-border-strong)',
+                color: 'var(--admin-fg)',
                 fontSize: 13,
                 letterSpacing: '-0.005em',
                 minHeight: 100,
@@ -282,9 +282,9 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
         <div
           className="sticky bottom-0 px-6 py-4 flex flex-wrap gap-2 justify-between"
           style={{
-            background: 'rgba(10,10,10,0.92)',
+            background: 'var(--admin-bg-deep)',
             backdropFilter: 'blur(20px)',
-            borderTop: '0.5px solid rgba(255,255,255,0.08)',
+            borderTop: '0.5px solid var(--admin-border)',
           }}
         >
           <button
@@ -358,8 +358,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
           fontSize: 10,
           fontWeight: 700,
           letterSpacing: '0.2em',
-          color: '#FFFFFF',
-          borderBottom: '0.5px solid rgba(255,255,255,0.1)',
+          color: 'var(--admin-fg)',
+          borderBottom: '0.5px solid var(--admin-border-strong)',
         }}
       >
         {title.toUpperCase()}
@@ -382,7 +382,7 @@ function Field({ label, value, onChange, placeholder }: { label: string; value: 
           fontSize: 9,
           fontWeight: 500,
           letterSpacing: '0.18em',
-          color: '#A1A1A1',
+          color: 'var(--admin-fg-muted)',
         }}
       >
         {label.toUpperCase()}
@@ -394,9 +394,9 @@ function Field({ label, value, onChange, placeholder }: { label: string; value: 
         placeholder={placeholder}
         className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30"
         style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '0.5px solid rgba(255,255,255,0.1)',
-          color: '#FAFAFA',
+          background: 'var(--admin-accent-soft)',
+          border: '0.5px solid var(--admin-border-strong)',
+          color: 'var(--admin-fg)',
           fontSize: 13,
           letterSpacing: '-0.005em',
         }}
@@ -421,7 +421,7 @@ function RadioGroup({
           fontSize: 9,
           fontWeight: 500,
           letterSpacing: '0.18em',
-          color: '#A1A1A1',
+          color: 'var(--admin-fg-muted)',
         }}
       >
         {label.toUpperCase()}
@@ -436,9 +436,9 @@ function RadioGroup({
               onClick={() => onChange(opt.value)}
               className="px-3 py-1.5 rounded-full transition-all duration-200"
               style={{
-                background: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.04)',
-                color: isActive ? '#000000' : '#A1A1A1',
-                border: isActive ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.1)',
+                background: isActive ? '#FFFFFF' : 'var(--admin-accent-soft)',
+                color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
+                border: isActive ? '0.5px solid #FFFFFF' : '0.5px solid var(--admin-border-strong)',
                 fontSize: 12,
                 fontWeight: isActive ? 700 : 500,
                 letterSpacing: '-0.005em',

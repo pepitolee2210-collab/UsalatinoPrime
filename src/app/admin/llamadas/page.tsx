@@ -91,7 +91,7 @@ function outcomeLabel(call: VoiceCall): OutcomeStyle {
     return { label: 'Error', icon: AlertCircle, bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', text: '#FCA5A5', dot: '#F87171' }
   }
   if (!call.ended_at) return { label: 'En curso', icon: Activity, bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.3)', text: '#C4B5FD', dot: '#A78BFA' }
-  return { label: 'Sin resultado', icon: PhoneOff, bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)', text: '#A1A1A1', dot: '#A1A1A1' }
+  return { label: 'Sin resultado', icon: PhoneOff, bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', text: 'var(--admin-fg-muted)', dot: 'var(--admin-fg-muted)' }
 }
 
 function formatDuration(sec: number | null): string {
@@ -143,7 +143,7 @@ export default function VoiceCallsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-5 h-5 animate-spin" style={{ color: '#A1A1A1' }} />
+        <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--admin-fg-muted)' }} />
       </div>
     )
   }
@@ -161,8 +161,8 @@ export default function VoiceCallsPage() {
             <div
               className="inline-flex items-center gap-1 p-1 rounded-full"
               style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '0.5px solid rgba(255,255,255,0.08)',
+                background: 'var(--admin-accent-soft)',
+                border: '0.5px solid var(--admin-border)',
               }}
             >
               {[7, 14, 30, 90].map(d => {
@@ -174,7 +174,7 @@ export default function VoiceCallsPage() {
                     className="px-3 py-1.5 rounded-full transition-all duration-300"
                     style={{
                       background: isActive ? '#FFFFFF' : 'transparent',
-                      color: isActive ? '#000000' : '#A1A1A1',
+                      color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
                       fontFamily: 'var(--font-mono-tech)',
                       fontSize: 11,
                       fontWeight: isActive ? 700 : 500,
@@ -240,12 +240,12 @@ export default function VoiceCallsPage() {
           <div
             className="rounded-2xl py-16 text-center"
             style={{
-              background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
-              border: '0.5px solid rgba(255,255,255,0.08)',
+              background: 'var(--admin-panel-grad)',
+              border: '0.5px solid var(--admin-border)',
             }}
           >
-            <Bot className="w-10 h-10 mx-auto mb-3" style={{ color: '#525252' }} />
-            <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+            <Bot className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--admin-fg-subtle)' }} />
+            <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
               SIN LLAMADAS EN ÚLTIMOS {days} DÍAS
             </p>
           </div>
@@ -259,21 +259,21 @@ export default function VoiceCallsPage() {
               onClick={() => setSelected(call)}
               className="w-full text-left relative rounded-2xl p-4 overflow-hidden transition-all duration-300 group"
               style={{
-                background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-                border: '0.5px solid rgba(255,255,255,0.1)',
+                background: 'var(--admin-panel-grad)',
+                border: '0.5px solid var(--admin-border-strong)',
                 backdropFilter: 'blur(20px)',
               }}
             >
               <span
                 aria-hidden
                 className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                style={{ background: 'radial-gradient(ellipse at top, rgba(255,255,255,0.04), transparent 60%)' }}
+                style={{ background: 'radial-gradient(ellipse at top, var(--admin-accent-soft), transparent 60%)' }}
               />
 
               <div className="relative flex items-start justify-between gap-4 flex-wrap">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-2">
-                    <span style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                       {call.lead?.prospect_name || call.appointment?.guest_name || 'Anónimo'}
                     </span>
                     <span
@@ -315,7 +315,7 @@ export default function VoiceCallsPage() {
                       style={{
                         fontFamily: 'var(--font-mono-tech)',
                         fontSize: 11,
-                        color: '#525252',
+                        color: 'var(--admin-fg-subtle)',
                         letterSpacing: '0.05em',
                       }}
                     >
@@ -327,7 +327,7 @@ export default function VoiceCallsPage() {
                         fontFamily: 'var(--font-mono-tech)',
                         fontSize: 11,
                         fontWeight: 700,
-                        color: '#FFFFFF',
+                        color: 'var(--admin-fg)',
                         letterSpacing: '0.05em',
                       }}
                     >
@@ -384,7 +384,7 @@ export default function VoiceCallsPage() {
         <DialogContent className={DARK_DIALOG_CLS}>
           <DialogHeader>
             <DialogTitle className="text-white" style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.018em' }}>
-              <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: '#525252', display: 'block' }}>
+              <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg-subtle)', display: 'block' }}>
                 LLAMADA · DETALLE
               </span>
               Conversación con la IA
@@ -424,8 +424,8 @@ function StatCard({
     <div
       className="relative rounded-2xl p-4 overflow-hidden transition-transform duration-300 hover:-translate-y-0.5"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -440,15 +440,15 @@ function StatCard({
         >
           {icon}
         </span>
-        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#525252' }}>
+        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-subtle)' }}>
           {label.toUpperCase()}
         </p>
       </div>
-      <p style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.025em', color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>
+      <p style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-0.025em', color: 'var(--admin-fg)', fontVariantNumeric: 'tabular-nums' }}>
         {value}
       </p>
       {hint && (
-        <p style={{ fontSize: 10, color: '#525252', marginTop: 4, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+        <p style={{ fontSize: 10, color: 'var(--admin-fg-subtle)', marginTop: 4, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
           {hint.toUpperCase()}
         </p>
       )}
@@ -543,9 +543,9 @@ function CallDetail({ call }: { call: VoiceCall }) {
             <CheckCircle className="w-3 h-3" />
             LEAD CAPTURADO
           </p>
-          <p style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>{call.lead.prospect_name}</p>
+          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>{call.lead.prospect_name}</p>
           <p style={{ fontSize: 11, color: '#93C5FD', fontFamily: 'var(--font-mono-tech)', marginTop: 2 }}>{call.lead.phone}</p>
-          <p style={{ fontSize: 10, color: '#525252', marginTop: 4, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.1em' }}>
+          <p style={{ fontSize: 10, color: 'var(--admin-fg-subtle)', marginTop: 4, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.1em' }}>
             STATUS · {call.lead.status.toUpperCase()}
           </p>
         </div>
@@ -566,7 +566,7 @@ function CallDetail({ call }: { call: VoiceCall }) {
             <CalendarCheck className="w-3 h-3" />
             CITA AGENDADA
           </p>
-          <p style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
             {call.appointment.guest_name || 'Sin nombre'}
           </p>
           {call.appointment.guest_phone && (
@@ -593,7 +593,7 @@ function CallDetail({ call }: { call: VoiceCall }) {
         <div>
           <p
             className="inline-flex items-center gap-1.5 mb-2"
-            style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', color: '#A1A1A1' }}
+            style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--admin-fg-muted)' }}
           >
             <TrendingUp className="w-3 h-3" />
             HERRAMIENTAS INVOCADAS
@@ -605,7 +605,7 @@ function CallDetail({ call }: { call: VoiceCall }) {
                 className="flex items-center gap-2 px-3 py-2 rounded-lg"
                 style={{
                   background: 'rgba(255,255,255,0.025)',
-                  border: '0.5px solid rgba(255,255,255,0.06)',
+                  border: '0.5px solid var(--admin-accent-soft)',
                 }}
               >
                 {t.ok ? (
@@ -619,9 +619,9 @@ function CallDetail({ call }: { call: VoiceCall }) {
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 11,
                     fontWeight: 600,
-                    color: '#FFFFFF',
-                    background: 'rgba(255,255,255,0.06)',
-                    border: '0.5px solid rgba(255,255,255,0.1)',
+                    color: 'var(--admin-fg)',
+                    background: 'var(--admin-accent-soft)',
+                    border: '0.5px solid var(--admin-border-strong)',
                   }}
                 >
                   {t.name}
@@ -630,7 +630,7 @@ function CallDetail({ call }: { call: VoiceCall }) {
                   style={{
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 10,
-                    color: '#525252',
+                    color: 'var(--admin-fg-subtle)',
                     letterSpacing: '0.05em',
                     marginLeft: 'auto',
                   }}
@@ -649,7 +649,7 @@ function CallDetail({ call }: { call: VoiceCall }) {
 function Field({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
-      <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#525252' }}>
+      <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-subtle)' }}>
         {label}
       </p>
       <p
@@ -657,7 +657,7 @@ function Field({ label, value, mono }: { label: string; value: string; mono?: bo
         style={{
           fontSize: 13,
           fontWeight: 600,
-          color: '#FFFFFF',
+          color: 'var(--admin-fg)',
           letterSpacing: '-0.005em',
           fontFamily: mono ? 'var(--font-mono-tech)' : undefined,
         }}

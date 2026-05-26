@@ -1014,7 +1014,8 @@
   font-feature-settings: 'tnum' on, 'zero' on;
 }
 
-/* CSS variables del CEO dashboard — scope local con .ceo-scope */
+/* CSS variables del CEO dashboard — scope local con .ceo-scope.
+   Default = paleta dark (ejecutiva, alta densidad de datos).        */
 .ceo-scope {
   --ceo-bg: #0A0A0B;
   --ceo-surface: #0F0F11;
@@ -1030,4 +1031,223 @@
   --ceo-good-soft: rgba(74, 222, 128, 0.08);
   --ceo-bad: #F87171;
   --ceo-bad-soft: rgba(248, 113, 113, 0.08);
+}
+
+/* ── Override Vista CEO en modo claro ────────────────────────────────
+   Mapea los tokens --ceo-* a la paleta institucional clara
+   (azul navy + dorado profundo + blanco premium).                    */
+[data-admin-theme='light'] .ceo-scope {
+  --ceo-bg:           #F6F8FC;
+  --ceo-surface:      #FFFFFF;
+  --ceo-surface-2:    #F9FAFD;
+  --ceo-line:         #D8E1EE;
+  --ceo-line-strong:  #C9D8F2;
+  --ceo-text:         #0B1F3A;             /* navy autoridad */
+  --ceo-text-2:       #3D5A80;
+  --ceo-text-3:       #5F728E;
+  --ceo-gold:         #A4730A;             /* oro profundo */
+  --ceo-gold-soft:    #FAEBC8;
+  --ceo-good:         #15803D;
+  --ceo-good-soft:    #DCFCE7;
+  --ceo-bad:          #B91C1C;
+  --ceo-bad-soft:     #FEE2E2;
+}
+
+/* En modo claro, las clases Tailwind `text-white/XX` y `bg-white/[X]`
+   pintarían blanco sobre blanco (invisible). Reemplazamos por color
+   semántico del scope. Usar opacity reduce el peso visual sin perder
+   contraste contra el bg claro.                                      */
+[data-admin-theme='light'] .ceo-scope .text-white,
+[data-admin-theme='light'] .ceo-scope [class*="text-white/"] {
+  color: var(--ceo-text) !important;
+}
+[data-admin-theme='light'] .ceo-scope .text-white\/55,
+[data-admin-theme='light'] .ceo-scope .text-white\/65,
+[data-admin-theme='light'] .ceo-scope .text-white\/60 {
+  color: var(--ceo-text-3) !important;
+}
+[data-admin-theme='light'] .ceo-scope .text-white\/75,
+[data-admin-theme='light'] .ceo-scope .text-white\/78,
+[data-admin-theme='light'] .ceo-scope .text-white\/80 {
+  color: var(--ceo-text-2) !important;
+}
+[data-admin-theme='light'] .ceo-scope [class*="bg-white/"] {
+  background-color: var(--ceo-surface-2) !important;
+}
+[data-admin-theme='light'] .ceo-scope [class*="border-white/"] {
+  border-color: var(--ceo-line) !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   ADMIN THEMES — 3 modos seleccionables por Henry desde el sidebar.
+   Cada theme define el mismo set de tokens semánticos --admin-*.
+   El switcher añade data-admin-theme="dark|institutional|light" en el
+   root del admin layout. Default: dark.
+
+   Regla para componentes admin nuevos: SIEMPRE usar var(--admin-*) en
+   lugar de colores hardcoded. Los componentes legacy con #0A0A0A inline
+   siguen funcionando en dark pero NO responden al switch — se migran
+   incrementalmente.
+   ════════════════════════════════════════════════════════════════════ */
+
+[data-admin-theme='dark'] {
+  --admin-bg:           #0A0A0A;
+  --admin-bg-deep:      #000000;
+  --admin-bg-elev:      #161616;
+  --admin-bg-elev-2:    #1D1D1D;
+  --admin-fg:           #FAFAFA;
+  --admin-fg-muted:     #A1A1A1;
+  --admin-fg-subtle:    #525252;
+  --admin-fg-faint:     #262626;
+  --admin-accent:       #FAFAFA;
+  --admin-accent-soft:  rgba(255,255,255,0.08);
+  --admin-accent-glow:  rgba(255,255,255,0.18);
+  --admin-border:       rgba(255,255,255,0.08);
+  --admin-border-strong:rgba(255,255,255,0.16);
+  --admin-blue:         #3B82F6;
+  --admin-blue-soft:    rgba(59,130,246,0.12);
+  --admin-red:          #EF4444;
+  --admin-red-soft:     rgba(239,68,68,0.12);
+  --admin-gold:         #F2B234;
+  --admin-gold-soft:    rgba(242,178,52,0.12);
+  --admin-green:        #22C55E;
+  --admin-green-soft:   rgba(34,197,94,0.12);
+  --admin-panel-grad:   linear-gradient(180deg, rgba(20,20,20,0.95), rgba(8,8,8,0.95));
+  --admin-shadow:       0 10px 32px rgba(0,0,0,0.45);
+  --admin-shadow-lg:    0 24px 64px rgba(0,0,0,0.55);
+}
+
+[data-admin-theme='institutional'] {
+  --admin-bg:           #0A1A3A;
+  --admin-bg-deep:      #050D1F;
+  --admin-bg-elev:      #122850;
+  --admin-bg-elev-2:    #1A356A;
+  --admin-fg:           #FAFAFA;
+  --admin-fg-muted:     #A5BEDD;
+  --admin-fg-subtle:    #6B86A8;
+  --admin-fg-faint:     #1A356A;
+  --admin-accent:       #F2B234;
+  --admin-accent-soft:  rgba(242,178,52,0.14);
+  --admin-accent-glow:  rgba(242,178,52,0.28);
+  --admin-border:       rgba(91,155,255,0.18);
+  --admin-border-strong:rgba(91,155,255,0.32);
+  --admin-blue:         #5B9BFF;
+  --admin-blue-soft:    rgba(91,155,255,0.18);
+  --admin-red:          #FF4D6D;
+  --admin-red-soft:     rgba(255,77,109,0.16);
+  --admin-gold:         #F2B234;
+  --admin-gold-soft:    rgba(242,178,52,0.16);
+  --admin-green:        #22FFA0;
+  --admin-green-soft:   rgba(34,255,160,0.14);
+  --admin-panel-grad:   linear-gradient(180deg, rgba(18,40,80,0.95), rgba(10,26,58,0.95));
+  --admin-shadow:       0 10px 32px rgba(5,13,31,0.55);
+  --admin-shadow-lg:    0 24px 64px rgba(5,13,31,0.7);
+}
+
+[data-admin-theme='light'] {
+  /* ════════════════════════════════════════════════════════════════
+     MODO CLARO PREMIUM — Brief UI/UX UsaLatinoPrime
+     Paleta: blanco (80%) + azul institucional (15%) + dorado (4%) + rojo (1%)
+     Identidad: legal-tech moderno, despacho premium, CRM con IA.
+     ════════════════════════════════════════════════════════════════ */
+  --admin-bg:           #F6F8FC;            /* gris-azulado suave (NO blanco puro) */
+  --admin-bg-deep:      #ECF0F8;            /* tablas / hover sutil               */
+  --admin-bg-elev:      #FFFFFF;            /* cards blancas                       */
+  --admin-bg-elev-2:    #F9FAFD;            /* surface-soft                        */
+  --admin-fg:           #10233F;            /* text-main — navy oscuro             */
+  --admin-fg-muted:     #5F728E;            /* text-muted                          */
+  --admin-fg-subtle:    #8EA0B8;            /* text-light                          */
+  --admin-fg-faint:     #D8E1EE;            /* border base                         */
+  --admin-accent:       #0B1F3A;            /* brand-navy — autoridad legal        */
+  --admin-accent-soft:  #EAF1FF;            /* blue-soft — pills, hovers           */
+  --admin-accent-glow:  rgba(164,115,10,0.40);
+  --admin-border:       #D8E1EE;            /* border gris azulado                 */
+  --admin-border-strong:#C9D8F2;            /* blue-border                         */
+  --admin-blue:         #1E4E9A;            /* brand-blue — secundario             */
+  --admin-blue-soft:    #EAF1FF;
+  --admin-red:          #B91C1C;            /* brand-red — solo errores/críticos   */
+  --admin-red-soft:     #FEE2E2;
+  --admin-gold:         #A4730A;            /* brand-gold — oro profundo saturado  */
+  --admin-gold-soft:    #FAEBC8;            /* fondo gold-soft con más cuerpo      */
+  --admin-gold-border:  #C9971B;
+  --admin-green:        #15803D;
+  --admin-green-soft:   #DCFCE7;
+  --admin-panel-grad:   linear-gradient(180deg, #FFFFFF 0%, #F8FAFE 100%);
+  --admin-shadow:       0 18px 45px rgba(11,31,58,0.08);
+  --admin-shadow-lg:    0 24px 60px rgba(11,31,58,0.13);
+  --admin-shadow-gold:  0 18px 40px rgba(164,115,10,0.22);
+}
+
+/* Fondo global del modo claro — radial gradient sutil azul/dorado sobre
+   el bg base. Le da profundidad sin saturar (4% dorado, 7% azul).      */
+[data-admin-theme='light'] {
+  background:
+    radial-gradient(circle at top center, rgba(30,78,154,0.07), transparent 34%),
+    radial-gradient(circle at bottom right, rgba(164,115,10,0.07), transparent 30%),
+    #F6F8FC !important;
+}
+
+/* ── Sidebar premium en modo claro ───────────────────────────────────
+   Brief UsaLatinoPrime: fondo blanco con gradient leve hacia gris azulado,
+   border-derecho azul suave, item activo con fondo dorado + border-left
+   dorado + texto navy + shadow dorado.                                 */
+[data-admin-theme='light'] .admin-sidebar,
+[data-admin-theme='light'] :where(.admin-sidebar) {
+  --admin-bg:           #FFFFFF;            /* sidebar blanco                 */
+  --admin-bg-deep:      #F8FAFE;            /* gradient suave inferior        */
+  --admin-bg-elev:      #A4730A;            /* dorado profundo pulse del logo */
+  --admin-bg-elev-2:    #FAEBC8;            /* gold-soft hover                */
+  --admin-fg:           #0B1F3A;            /* texto navy autoridad           */
+  --admin-fg-muted:     #1E4E9A;            /* items en azul institucional    */
+  --admin-fg-subtle:    #5F728E;            /* subtítulos                     */
+  --admin-fg-faint:     #D8E1EE;
+  --admin-accent:       #A4730A;            /* dorado profundo activos        */
+  --admin-accent-soft:  #FAEBC8;            /* gold-soft fondo item activo    */
+  --admin-accent-glow:  rgba(164,115,10,0.40);
+  --admin-border:       #D8E1EE;
+  --admin-border-strong:#C9D8F2;            /* blue-border divisores          */
+}
+
+/* En modo claro: desactivar la animación "neón amarillo" de los
+   encabezados de grupo (SHOWCASE, OPERACIÓN…) — en fondo blanco se
+   veía como "medio plateado" sin contraste. Reemplazo por color sólido
+   navy institucional con peso tipográfico. Misma solución para chevron
+   y elementos auxiliares que estaban hardcoded en amarillo neón.      */
+[data-admin-theme='light'] .admin-sidebar .neon-letter {
+  animation: none !important;
+  color: #1E4E9A !important;       /* azul institucional */
+  text-shadow: none !important;
+  font-weight: 700;
+}
+[data-admin-theme='light'] .admin-sidebar .neon-heading-wrap:hover .neon-letter {
+  color: #D89B1D !important;       /* dorado al hover */
+  transform: translateY(-1px);
+}
+
+/* Border-right azul suave del sidebar en modo claro (brief premium) */
+[data-admin-theme='light'] .admin-sidebar {
+  border-right: 1px solid #C9D8F2;
+}
+
+/* ── Transición de cambio de tema ────────────────────────────────────
+   El selector `[data-admin-theme] *` aplica transition a TODOS los
+   elementos del admin en TODOS sus cambios de estado (hover/focus/
+   click), no solo al cambiar de tema. En mobile genera jank fuerte
+   porque cada interacción anima 1000+ nodos.
+
+   Solución: aplicar el transition SOLO durante el switch de tema vía
+   flag temporal `data-theme-switching` (350ms) que pone el hook al
+   click del switcher, y en mobile se desactiva por completo — el
+   cambio es snap instantáneo, lo cual es UX más rápida que esperar
+   una transición lenta. */
+@media (prefers-reduced-motion: no-preference) and (min-width: 769px) {
+  [data-theme-switching],
+  [data-theme-switching] *,
+  [data-theme-switching] *::before,
+  [data-theme-switching] *::after {
+    transition:
+      background-color 0.28s cubic-bezier(0.32, 0.72, 0, 1),
+      border-color 0.28s cubic-bezier(0.32, 0.72, 0, 1),
+      color 0.28s cubic-bezier(0.32, 0.72, 0, 1) !important;
+  }
 }

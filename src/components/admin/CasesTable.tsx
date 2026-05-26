@@ -41,8 +41,8 @@ export function CasesTable({ cases }: CasesTableProps) {
     <div
       className="rounded-2xl overflow-hidden"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -51,7 +51,7 @@ export function CasesTable({ cases }: CasesTableProps) {
           <thead>
             <tr
               style={{
-                borderBottom: '0.5px solid rgba(255,255,255,0.08)',
+                borderBottom: '0.5px solid var(--admin-border)',
                 background: 'rgba(255,255,255,0.02)',
               }}
             >
@@ -78,7 +78,7 @@ export function CasesTable({ cases }: CasesTableProps) {
                   key={c.id as string}
                   className="transition-colors"
                   style={{
-                    borderBottom: idx < cases.length - 1 ? '0.5px solid rgba(255,255,255,0.04)' : 'none',
+                    borderBottom: idx < cases.length - 1 ? '0.5px solid var(--admin-accent-soft)' : 'none',
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -91,7 +91,7 @@ export function CasesTable({ cases }: CasesTableProps) {
                         fontFamily: 'var(--font-mono-tech)',
                         fontSize: 12,
                         fontWeight: 700,
-                        color: '#FFFFFF',
+                        color: 'var(--admin-fg)',
                         letterSpacing: '0.02em',
                       }}
                     >
@@ -99,13 +99,13 @@ export function CasesTable({ cases }: CasesTableProps) {
                     </Link>
                   </Td>
                   <Td>
-                    <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                       {client?.first_name} {client?.last_name}
                     </p>
-                    <p style={{ fontSize: 11, color: '#525252', marginTop: 1 }}>{client?.email}</p>
+                    <p style={{ fontSize: 11, color: 'var(--admin-fg-subtle)', marginTop: 1 }}>{client?.email}</p>
                   </Td>
                   <Td>
-                    <span style={{ fontSize: 12, color: '#A1A1A1', letterSpacing: '-0.005em' }}>
+                    <span style={{ fontSize: 12, color: 'var(--admin-fg-muted)', letterSpacing: '-0.005em' }}>
                       {service?.name || '—'}
                     </span>
                   </Td>
@@ -116,7 +116,7 @@ export function CasesTable({ cases }: CasesTableProps) {
                     <ProgressIndicator docCount={docCount} subTotal={subTotal} subDone={subDone} />
                   </Td>
                   <Td>
-                    <span style={{ fontSize: 11, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+                    <span style={{ fontSize: 11, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
                       {format(new Date(c.created_at as string), 'd MMM yyyy', { locale: es }).toUpperCase()}
                     </span>
                   </Td>
@@ -125,7 +125,7 @@ export function CasesTable({ cases }: CasesTableProps) {
                       onClick={() => handleDelete(c.id as string, c.case_number as string)}
                       disabled={deleting === c.id}
                       className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/10"
-                      style={{ color: deleting === c.id ? '#525252' : '#FCA5A5' }}
+                      style={{ color: deleting === c.id ? 'var(--admin-fg-subtle)' : '#FCA5A5' }}
                     >
                       {deleting === c.id ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -140,7 +140,7 @@ export function CasesTable({ cases }: CasesTableProps) {
             {cases.length === 0 && (
               <tr>
                 <td colSpan={7} className="text-center py-12">
-                  <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+                  <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
                     SIN CASOS REGISTRADOS
                   </p>
                 </td>
@@ -162,7 +162,7 @@ function Th({ children, className }: { children?: React.ReactNode; className?: s
         fontSize: 10,
         fontWeight: 500,
         letterSpacing: '0.18em',
-        color: '#525252',
+        color: 'var(--admin-fg-subtle)',
       }}
     >
       {typeof children === 'string' ? children.toUpperCase() : children}
@@ -191,9 +191,9 @@ function mapStatusVariant(status: string): StatusVariant {
 const STATUS_STYLES: Record<StatusVariant, { bg: string; border: string; dot: string; text: string }> = {
   active:    { bg: 'rgba(34,197,94,0.10)', border: 'rgba(34,197,94,0.3)', dot: '#4ADE80', text: '#86EFAC' },
   pending:   { bg: 'rgba(250,204,21,0.10)', border: 'rgba(250,204,21,0.3)', dot: '#FACC15', text: '#FDE68A' },
-  completed: { bg: 'rgba(255,255,255,0.08)', border: 'rgba(255,255,255,0.18)', dot: '#FFFFFF', text: '#FFFFFF' },
+  completed: { bg: 'var(--admin-border)', border: 'rgba(255,255,255,0.18)', dot: '#FFFFFF', text: '#FFFFFF' },
   paused:    { bg: 'rgba(148,163,184,0.10)', border: 'rgba(148,163,184,0.3)', dot: '#94A3B8', text: '#CBD5E1' },
-  neutral:   { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)', dot: '#A1A1A1', text: '#A1A1A1' },
+  neutral:   { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-fg-muted)', text: 'var(--admin-fg-muted)' },
 }
 
 function StatusBadge({ label, variant }: { label: string; variant: StatusVariant }) {
@@ -223,7 +223,7 @@ function ProgressIndicator({ docCount, subTotal, subDone }: { docCount: number; 
   const allSubmitted = subTotal > 0 && subDone === subTotal
 
   if (!hasDocs && !hasSubmissions) {
-    return <span style={{ fontSize: 11, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>—</span>
+    return <span style={{ fontSize: 11, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>—</span>
   }
 
   return (
@@ -232,11 +232,11 @@ function ProgressIndicator({ docCount, subTotal, subDone }: { docCount: number; 
         <span
           className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded"
           style={{
-            background: 'rgba(255,255,255,0.05)',
-            border: '0.5px solid rgba(255,255,255,0.1)',
+            background: 'var(--admin-accent-soft)',
+            border: '0.5px solid var(--admin-border-strong)',
             fontFamily: 'var(--font-mono-tech)',
             fontSize: 10,
-            color: '#A1A1A1',
+            color: 'var(--admin-fg-muted)',
             fontWeight: 600,
             letterSpacing: '0.02em',
           }}

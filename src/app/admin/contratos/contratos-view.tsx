@@ -78,11 +78,11 @@ const STATUS_KIND: Record<string, StatusKind> = {
 }
 
 const STATUS_STYLES: Record<StatusKind, { bg: string; border: string; dot: string; text: string }> = {
-  neutral:   { bg: 'rgba(255,255,255,0.04)',  border: 'rgba(255,255,255,0.1)',  dot: '#A1A1A1', text: '#A1A1A1' },
+  neutral:   { bg: 'var(--admin-accent-soft)',  border: 'var(--admin-border-strong)',  dot: 'var(--admin-fg-muted)', text: 'var(--admin-fg-muted)' },
   warning:   { bg: 'rgba(250,204,21,0.10)',   border: 'rgba(250,204,21,0.3)',   dot: '#FACC15', text: '#FDE68A' },
   info:      { bg: 'rgba(96,165,250,0.10)',   border: 'rgba(96,165,250,0.3)',   dot: '#60A5FA', text: '#93C5FD' },
   success:   { bg: 'rgba(34,197,94,0.10)',    border: 'rgba(34,197,94,0.3)',    dot: '#4ADE80', text: '#86EFAC' },
-  completed: { bg: 'rgba(255,255,255,0.08)',  border: 'rgba(255,255,255,0.18)', dot: '#FFFFFF', text: '#FFFFFF' },
+  completed: { bg: 'var(--admin-border)',  border: 'rgba(255,255,255,0.18)', dot: '#FFFFFF', text: '#FFFFFF' },
 }
 
 // ─── Dark techno button classes ───
@@ -102,7 +102,7 @@ interface Props {
 
 export function ContratosView({ basePath, hideHeader }: Props) {
   return (
-    <Suspense fallback={<p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 11, color: '#A1A1A1', letterSpacing: '0.15em' }}>CARGANDO CONTRATOS…</p>}>
+    <Suspense fallback={<p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 11, color: 'var(--admin-fg-muted)', letterSpacing: '0.15em' }}>CARGANDO CONTRATOS…</p>}>
       <ContratosInner basePath={basePath} hideHeader={hideHeader} />
     </Suspense>
   )
@@ -279,7 +279,7 @@ function ContratosInner({ basePath, hideHeader }: Props) {
             fontSize: 10,
             fontWeight: 700,
             letterSpacing: '0.2em',
-            color: '#A1A1A1',
+            color: 'var(--admin-fg-muted)',
           }}
         >
           <ChevronLeft className="w-3.5 h-3.5" />
@@ -309,7 +309,7 @@ function ContratosInner({ basePath, hideHeader }: Props) {
           </div>
         )}
 
-        <h1 style={{ fontSize: 24, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.025em' }}>
+        <h1 style={{ fontSize: 24, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.025em' }}>
           {editingContract ? 'Editar Contrato' : 'Nuevo Contrato'}
         </h1>
 
@@ -328,7 +328,7 @@ function ContratosInner({ basePath, hideHeader }: Props) {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
         {!hideHeader && (
-          <h1 style={{ fontSize: 24, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.025em' }}>
+          <h1 style={{ fontSize: 24, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.025em' }}>
             Contratos
           </h1>
         )}
@@ -339,8 +339,8 @@ function ContratosInner({ basePath, hideHeader }: Props) {
           <div
             className="inline-flex items-center gap-1 p-1 rounded-full"
             style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '0.5px solid rgba(255,255,255,0.08)',
+              background: 'var(--admin-accent-soft)',
+              border: '0.5px solid var(--admin-border)',
             }}
           >
             <button
@@ -349,7 +349,7 @@ function ContratosInner({ basePath, hideHeader }: Props) {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-300"
               style={{
                 background: viewMode === 'list' ? '#FFFFFF' : 'transparent',
-                color: viewMode === 'list' ? '#000000' : '#A1A1A1',
+                color: viewMode === 'list' ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
                 fontSize: 12,
                 fontWeight: viewMode === 'list' ? 700 : 500,
                 letterSpacing: '-0.005em',
@@ -365,7 +365,7 @@ function ContratosInner({ basePath, hideHeader }: Props) {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-300"
               style={{
                 background: viewMode === 'kanban' ? '#FFFFFF' : 'transparent',
-                color: viewMode === 'kanban' ? '#000000' : '#A1A1A1',
+                color: viewMode === 'kanban' ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
                 fontSize: 12,
                 fontWeight: viewMode === 'kanban' ? 700 : 500,
                 letterSpacing: '-0.005em',
@@ -386,7 +386,7 @@ function ContratosInner({ basePath, hideHeader }: Props) {
 
       {contracts.length > 0 && (
         <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: '#525252' }} />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--admin-fg-subtle)' }} />
           <input
             type="text"
             value={search}
@@ -394,9 +394,9 @@ function ContratosInner({ basePath, hideHeader }: Props) {
             placeholder="Buscar cliente por nombre, servicio o pasaporte…"
             className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/25"
             style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '0.5px solid rgba(255,255,255,0.1)',
-              color: '#FAFAFA',
+              background: 'var(--admin-accent-soft)',
+              border: '0.5px solid var(--admin-border-strong)',
+              color: 'var(--admin-fg)',
               fontSize: 13,
               letterSpacing: '-0.005em',
             }}
@@ -409,7 +409,7 @@ function ContratosInner({ basePath, hideHeader }: Props) {
                 fontSize: 10,
                 fontWeight: 500,
                 letterSpacing: '0.15em',
-                color: '#525252',
+                color: 'var(--admin-fg-subtle)',
               }}
             >
               {filteredContracts.length} RESULTADO{filteredContracts.length !== 1 ? 'S' : ''} DE {contracts.length}
@@ -424,7 +424,7 @@ function ContratosInner({ basePath, hideHeader }: Props) {
           style={{
             fontFamily: 'var(--font-mono-tech)',
             fontSize: 11,
-            color: '#A1A1A1',
+            color: 'var(--admin-fg-muted)',
             letterSpacing: '0.15em',
           }}
         >
@@ -434,12 +434,12 @@ function ContratosInner({ basePath, hideHeader }: Props) {
         <div
           className="rounded-2xl py-16 text-center space-y-4"
           style={{
-            background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
+            background: 'var(--admin-panel-grad)',
             border: '0.5px dashed rgba(255,255,255,0.12)',
           }}
         >
-          <FileText className="w-12 h-12 mx-auto" style={{ color: '#525252' }} />
-          <p style={{ fontSize: 13, color: '#A1A1A1' }}>No hay contratos guardados aún.</p>
+          <FileText className="w-12 h-12 mx-auto" style={{ color: 'var(--admin-fg-subtle)' }} />
+          <p style={{ fontSize: 13, color: 'var(--admin-fg-muted)' }}>No hay contratos guardados aún.</p>
           <div className="flex justify-center">
             <button onClick={handleNewContract} className={BTN_PRIMARY}>
               <Plus className="w-3.5 h-3.5" />
@@ -453,7 +453,7 @@ function ContratosInner({ basePath, hideHeader }: Props) {
           style={{
             fontFamily: 'var(--font-mono-tech)',
             fontSize: 11,
-            color: '#525252',
+            color: 'var(--admin-fg-subtle)',
             letterSpacing: '0.15em',
           }}
         >
@@ -553,22 +553,22 @@ function ContractCard({
     <div
       className="relative rounded-2xl p-5 overflow-hidden transition-all duration-300 group"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
       <span
         aria-hidden
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse at top, rgba(255,255,255,0.04), transparent 60%)' }}
+        style={{ background: 'radial-gradient(ellipse at top, var(--admin-accent-soft), transparent 60%)' }}
       />
 
       <div className="relative space-y-3">
         {/* Header row */}
         <div>
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <p style={{ fontSize: 15, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.012em' }}>
+            <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.012em' }}>
               {c.client_full_name}
             </p>
             <span
@@ -588,10 +588,10 @@ function ContractCard({
             </span>
           </div>
 
-          <p style={{ fontSize: 12, color: '#A1A1A1' }}>
+          <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)' }}>
             {c.service_name}
             {c.addon_services?.length > 0 && (
-              <span style={{ color: '#525252' }}> · {c.addon_services.map((a: AddonServiceRow) => a.name).join(' + ')}</span>
+              <span style={{ color: 'var(--admin-fg-subtle)' }}> · {c.addon_services.map((a: AddonServiceRow) => a.name).join(' + ')}</span>
             )}
           </p>
 
@@ -601,12 +601,12 @@ function ContractCard({
                 fontFamily: 'var(--font-mono-tech)',
                 fontSize: 16,
                 fontWeight: 700,
-                color: '#FFFFFF',
+                color: 'var(--admin-fg)',
                 letterSpacing: '-0.012em',
               }}
             >
               ${Number(c.total_price).toLocaleString()}
-              <span style={{ fontSize: 10, color: '#525252', marginLeft: 4, letterSpacing: '0.1em' }}> USD</span>
+              <span style={{ fontSize: 10, color: 'var(--admin-fg-subtle)', marginLeft: 4, letterSpacing: '0.1em' }}> USD</span>
             </span>
 
             {c.has_installments && (
@@ -614,7 +614,7 @@ function ContractCard({
                 style={{
                   fontFamily: 'var(--font-mono-tech)',
                   fontSize: 11,
-                  color: '#A1A1A1',
+                  color: 'var(--admin-fg-muted)',
                   letterSpacing: '0.05em',
                 }}
               >
@@ -627,7 +627,7 @@ function ContractCard({
               style={{
                 fontFamily: 'var(--font-mono-tech)',
                 fontSize: 10,
-                color: '#525252',
+                color: 'var(--admin-fg-subtle)',
                 letterSpacing: '0.1em',
               }}
             >
@@ -640,7 +640,7 @@ function ContractCard({
                   fontFamily: 'var(--font-mono-tech)',
                   fontSize: 10,
                   fontWeight: 700,
-                  color: '#4ADE80',
+                  color: 'var(--admin-green)',
                   letterSpacing: '0.1em',
                 }}
               >
@@ -651,7 +651,7 @@ function ContractCard({
         </div>
 
         {/* Actions row */}
-        <div className="flex items-center gap-1.5 flex-wrap pt-2" style={{ borderTop: '0.5px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center gap-1.5 flex-wrap pt-2" style={{ borderTop: '0.5px solid var(--admin-accent-soft)' }}>
           {/* Status select */}
           <div className="relative">
             <select
@@ -659,25 +659,25 @@ function ContractCard({
               onChange={(e) => onStatusChange(c.id, e.target.value)}
               className="appearance-none px-3 py-1.5 pr-7 rounded-lg outline-none cursor-pointer transition-colors focus:border-white/30"
               style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '0.5px solid rgba(255,255,255,0.1)',
-                color: '#FAFAFA',
+                background: 'var(--admin-accent-soft)',
+                border: '0.5px solid var(--admin-border-strong)',
+                color: 'var(--admin-fg)',
                 fontSize: 11,
                 fontWeight: 500,
                 letterSpacing: '-0.005em',
                 colorScheme: 'dark',
               }}
             >
-              <option value="borrador" style={{ background: '#0A0A0A', color: '#FAFAFA' }}>Borrador</option>
-              <option value="pendiente_firma" style={{ background: '#0A0A0A', color: '#FAFAFA' }}>Pendiente Firma</option>
-              <option value="firmado" style={{ background: '#0A0A0A', color: '#FAFAFA' }}>Firmado</option>
-              <option value="activo" style={{ background: '#0A0A0A', color: '#FAFAFA' }}>Activo</option>
-              <option value="completado" style={{ background: '#0A0A0A', color: '#FAFAFA' }}>Completado</option>
+              <option value="borrador" style={{ background: 'var(--admin-bg)', color: 'var(--admin-fg)' }}>Borrador</option>
+              <option value="pendiente_firma" style={{ background: 'var(--admin-bg)', color: 'var(--admin-fg)' }}>Pendiente Firma</option>
+              <option value="firmado" style={{ background: 'var(--admin-bg)', color: 'var(--admin-fg)' }}>Firmado</option>
+              <option value="activo" style={{ background: 'var(--admin-bg)', color: 'var(--admin-fg)' }}>Activo</option>
+              <option value="completado" style={{ background: 'var(--admin-bg)', color: 'var(--admin-fg)' }}>Completado</option>
             </select>
             <span
               aria-hidden
               className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ color: '#525252', fontSize: 9 }}
+              style={{ color: 'var(--admin-fg-subtle)', fontSize: 9 }}
             >
               ▾
             </span>
@@ -689,7 +689,7 @@ function ContractCard({
                 onClick={() => onCopyLink(c.signing_token!)}
                 title="Copiar enlace de firma"
                 className={BTN_ICON}
-                style={{ color: '#FACC15', border: '0.5px solid rgba(250,204,21,0.25)' }}
+                style={{ color: 'var(--admin-gold)', border: '0.5px solid rgba(250,204,21,0.25)' }}
               >
                 <Link2 className="w-3.5 h-3.5" />
               </button>
@@ -697,7 +697,7 @@ function ContractCard({
                 onClick={() => onWhatsApp(c)}
                 title="Enviar por WhatsApp"
                 className={BTN_ICON}
-                style={{ color: '#4ADE80', border: '0.5px solid rgba(34,197,94,0.25)' }}
+                style={{ color: 'var(--admin-green)', border: '0.5px solid rgba(34,197,94,0.25)' }}
               >
                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.626.712.226 1.36.194 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
@@ -709,7 +709,7 @@ function ContractCard({
               disabled
               title="Ya firmado"
               className={BTN_ICON}
-              style={{ color: '#4ADE80', border: '0.5px solid rgba(34,197,94,0.25)' }}
+              style={{ color: 'var(--admin-green)', border: '0.5px solid rgba(34,197,94,0.25)' }}
             >
               <CheckCircle className="w-3.5 h-3.5" />
             </button>
@@ -718,7 +718,7 @@ function ContractCard({
               onClick={() => onSendToClient(c)}
               title="Enviar al cliente para firmar"
               className={BTN_ICON}
-              style={{ color: '#FACC15', border: '0.5px solid rgba(250,204,21,0.3)' }}
+              style={{ color: 'var(--admin-gold)', border: '0.5px solid rgba(250,204,21,0.3)' }}
             >
               <Send className="w-3.5 h-3.5" />
             </button>
@@ -728,7 +728,7 @@ function ContractCard({
             onClick={() => onDownloadPDF(c)}
             title="Descargar PDF"
             className={BTN_ICON}
-            style={{ color: '#A1A1A1', border: '0.5px solid rgba(255,255,255,0.1)' }}
+            style={{ color: 'var(--admin-fg-muted)', border: '0.5px solid var(--admin-border-strong)' }}
           >
             <Download className="w-3.5 h-3.5" />
           </button>
@@ -736,7 +736,7 @@ function ContractCard({
             onClick={() => onEdit(c)}
             title="Editar"
             className={BTN_ICON}
-            style={{ color: '#A1A1A1', border: '0.5px solid rgba(255,255,255,0.1)' }}
+            style={{ color: 'var(--admin-fg-muted)', border: '0.5px solid var(--admin-border-strong)' }}
           >
             <Pencil className="w-3.5 h-3.5" />
           </button>
@@ -745,7 +745,7 @@ function ContractCard({
               onClick={() => onEditMinors(c)}
               title="Editar menores (correcciones)"
               className={BTN_ICON}
-              style={{ color: '#60A5FA', border: '0.5px solid rgba(96,165,250,0.25)' }}
+              style={{ color: 'var(--admin-blue)', border: '0.5px solid rgba(96,165,250,0.25)' }}
             >
               <Users className="w-3.5 h-3.5" />
             </button>
@@ -754,7 +754,7 @@ function ContractCard({
             onClick={() => onDelete(c.id, c.client_full_name)}
             title="Eliminar"
             className={BTN_ICON}
-            style={{ color: '#FCA5A5', border: '0.5px solid rgba(248,113,113,0.25)' }}
+            style={{ color: 'var(--admin-red)', border: '0.5px solid rgba(248,113,113,0.25)' }}
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>

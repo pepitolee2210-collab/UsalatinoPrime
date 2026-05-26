@@ -27,7 +27,7 @@ const LABEL_STYLE: React.CSSProperties = {
   fontSize: 9,
   fontWeight: 500,
   letterSpacing: '0.18em',
-  color: '#A1A1A1',
+  color: 'var(--admin-fg-muted)',
 }
 
 export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props) {
@@ -90,7 +90,7 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
         className="w-full max-w-2xl max-h-[90vh] overflow-y-auto admin-scroll rounded-2xl"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'linear-gradient(180deg, rgba(15,15,15,0.98), rgba(8,8,8,0.98))',
+          background: 'var(--admin-panel-grad)',
           border: '0.5px solid rgba(255,255,255,0.12)',
           backdropFilter: 'blur(20px)',
           boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
@@ -99,9 +99,9 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
         <header
           className="sticky top-0 z-10 flex items-start justify-between px-6 py-4"
           style={{
-            background: 'rgba(15,15,15,0.95)',
+            background: 'var(--admin-bg-elev)',
             backdropFilter: 'blur(20px)',
-            borderBottom: '0.5px solid rgba(255,255,255,0.08)',
+            borderBottom: '0.5px solid var(--admin-border)',
           }}
         >
           <div>
@@ -111,15 +111,15 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
                 fontSize: 10,
                 fontWeight: 500,
                 letterSpacing: '0.2em',
-                color: '#525252',
+                color: 'var(--admin-fg-subtle)',
               }}
             >
               EDICIÓN · CORRECCIONES
             </p>
-            <h2 style={{ fontSize: 18, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.018em', marginTop: 2 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.018em', marginTop: 2 }}>
               Editar menores del contrato
             </h2>
-            <p style={{ fontSize: 12, color: '#A1A1A1', marginTop: 4, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', marginTop: 4, lineHeight: 1.5 }}>
               Solo correcciones de campos existentes. Para agregar un hijo, crear contrato nuevo.
             </p>
           </div>
@@ -128,9 +128,9 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
             aria-label="Cerrar"
             className="w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-white/10"
             style={{
-              background: 'rgba(255,255,255,0.04)',
-              border: '0.5px solid rgba(255,255,255,0.1)',
-              color: '#A1A1A1',
+              background: 'var(--admin-accent-soft)',
+              border: '0.5px solid var(--admin-border-strong)',
+              color: 'var(--admin-fg-muted)',
             }}
           >
             <X className="w-4 h-4" />
@@ -146,8 +146,8 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
                 border: '0.5px solid rgba(250,204,21,0.25)',
               }}
             >
-              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#FACC15' }} />
-              <p style={{ fontSize: 13, color: '#FDE68A' }}>
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--admin-gold)' }} />
+              <p style={{ fontSize: 13, color: 'var(--admin-gold)' }}>
                 Este contrato no tiene menores registrados.
               </p>
             </div>
@@ -158,8 +158,8 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
               key={idx}
               className="rounded-2xl p-5 space-y-4"
               style={{
-                background: 'rgba(255,255,255,0.025)',
-                border: '0.5px solid rgba(255,255,255,0.08)',
+                background: 'var(--admin-accent-soft)',
+                border: '0.5px solid var(--admin-border)',
               }}
             >
               <p
@@ -168,7 +168,7 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
                   fontSize: 10,
                   fontWeight: 700,
                   letterSpacing: '0.2em',
-                  color: '#FFFFFF',
+                  color: 'var(--admin-fg)',
                 }}
               >
                 MENOR #{(idx + 1).toString().padStart(2, '0')}
@@ -221,8 +221,8 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
                   disabled={savingIndex === idx}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50"
                   style={{
-                    background: '#FFFFFF',
-                    color: '#000000',
+                    background: 'var(--admin-bg-elev)',
+                    color: 'var(--admin-bg-deep)',
                     fontSize: 12,
                     fontWeight: 600,
                     letterSpacing: '-0.005em',

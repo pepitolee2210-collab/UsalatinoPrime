@@ -74,7 +74,7 @@ export default async function AdminCasesPage() {
           style={{
             background: 'rgba(250,204,21,0.06)',
             border: '0.5px solid rgba(250,204,21,0.2)',
-            color: '#FDE68A',
+            color: 'var(--admin-gold)',
           }}
         >
           <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, letterSpacing: '0.18em', fontWeight: 700 }}>⚠ TRUNCATED</span>

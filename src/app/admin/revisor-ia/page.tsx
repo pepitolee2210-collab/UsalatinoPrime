@@ -63,7 +63,7 @@ function renderMarkdown(text: string): string {
     .replace(/^## (.+)$/gm, '<h2 class="text-[14px] font-bold text-white mt-5 mb-2">$1</h2>')
     .replace(/^# (.+)$/gm, '<h1 class="text-[15px] font-bold text-white mt-5 mb-3">$1</h1>')
     .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-white">$1</strong>')
-    .replace(/`(.+?)`/g, '<code class="rounded px-1 py-0.5 text-[12px]" style="background:rgba(255,255,255,0.08);color:#FACC15;font-family:var(--font-mono-tech);border:0.5px solid rgba(255,255,255,0.1)">$1</code>')
+    .replace(/`(.+?)`/g, '<code class="rounded px-1 py-0.5 text-[12px]" style="background:var(--admin-border);color:#FACC15;font-family:var(--font-mono-tech);border:0.5px solid var(--admin-border-strong)">$1</code>')
     .replace(/^[-*] (.+)$/gm, '<li class="ml-5 list-disc mb-0.5" style="color:#D4D4D8">$1</li>')
     .replace(/^(\d+)\. (.+)$/gm, '<li class="ml-5 list-decimal mb-0.5" style="color:#D4D4D8">$2</li>')
     .split(/\n\n+/)
@@ -287,23 +287,23 @@ export default function RevisorIAPage() {
   return (
     <div
       className="flex -mt-6 -mx-6 h-[calc(100vh-var(--sidebar-top,0px))] min-h-[calc(100vh-3rem)]"
-      style={{ background: '#000000' }}
+      style={{ background: 'var(--admin-bg-deep)' }}
     >
       {/* Sessions sidebar */}
       <aside
         className={`${sidebarOpen ? 'w-72' : 'w-0'} flex flex-col transition-all overflow-hidden`}
         style={{
-          background: 'linear-gradient(180deg, rgba(15,15,15,0.95), rgba(8,8,8,0.95))',
-          borderRight: '0.5px solid rgba(255,255,255,0.08)',
+          background: 'var(--admin-panel-grad)',
+          borderRight: '0.5px solid var(--admin-border)',
         }}
       >
-        <div className="p-3" style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
+        <div className="p-3" style={{ borderBottom: '0.5px solid var(--admin-border)' }}>
           <button
             onClick={handleNewSession}
             className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95"
             style={{
-              background: '#FFFFFF',
-              color: '#000000',
+              background: 'var(--admin-bg-elev)',
+              color: 'var(--admin-bg-deep)',
               fontSize: 12,
               fontWeight: 600,
               letterSpacing: '-0.005em',
@@ -317,7 +317,7 @@ export default function RevisorIAPage() {
         <div className="flex-1 overflow-y-auto admin-scroll p-2">
           {loading ? (
             <div className="flex justify-center py-8">
-              <Loader2 className="w-4 h-4 animate-spin" style={{ color: '#A1A1A1' }} />
+              <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--admin-fg-muted)' }} />
             </div>
           ) : sessions.length === 0 ? (
             <p
@@ -325,7 +325,7 @@ export default function RevisorIAPage() {
               style={{
                 fontFamily: 'var(--font-mono-tech)',
                 fontSize: 10,
-                color: '#525252',
+                color: 'var(--admin-fg-subtle)',
                 letterSpacing: '0.15em',
               }}
             >
@@ -339,7 +339,7 @@ export default function RevisorIAPage() {
                   onClick={() => loadSession(s.id)}
                   className="group cursor-pointer rounded-lg px-2.5 py-2 transition-colors flex items-start gap-2"
                   style={{
-                    background: activeSessionId === s.id ? 'rgba(255,255,255,0.08)' : 'transparent',
+                    background: activeSessionId === s.id ? 'var(--admin-border)' : 'transparent',
                   }}
                   onMouseEnter={(e) => {
                     if (activeSessionId !== s.id) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
@@ -350,7 +350,7 @@ export default function RevisorIAPage() {
                 >
                   <MessageSquare
                     className="w-3.5 h-3.5 mt-0.5 flex-shrink-0"
-                    style={{ color: activeSessionId === s.id ? '#FACC15' : '#525252' }}
+                    style={{ color: activeSessionId === s.id ? '#FACC15' : 'var(--admin-fg-subtle)' }}
                   />
                   <div className="flex-1 min-w-0">
                     <p
@@ -358,7 +358,7 @@ export default function RevisorIAPage() {
                       style={{
                         fontSize: 12,
                         fontWeight: activeSessionId === s.id ? 600 : 500,
-                        color: activeSessionId === s.id ? '#FFFFFF' : '#A1A1A1',
+                        color: activeSessionId === s.id ? '#FFFFFF' : 'var(--admin-fg-muted)',
                         letterSpacing: '-0.005em',
                       }}
                     >
@@ -368,7 +368,7 @@ export default function RevisorIAPage() {
                       style={{
                         fontFamily: 'var(--font-mono-tech)',
                         fontSize: 9,
-                        color: '#525252',
+                        color: 'var(--admin-fg-subtle)',
                         marginTop: 2,
                         letterSpacing: '0.05em',
                       }}
@@ -379,7 +379,7 @@ export default function RevisorIAPage() {
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDeleteSession(s.id) }}
                     className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    style={{ color: '#FCA5A5' }}
+                    style={{ color: 'var(--admin-red)' }}
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>
@@ -396,16 +396,16 @@ export default function RevisorIAPage() {
         <div
           className="px-5 py-3 flex items-center justify-between"
           style={{
-            background: 'rgba(10,10,10,0.85)',
+            background: 'var(--admin-bg-deep)',
             backdropFilter: 'blur(20px)',
-            borderBottom: '0.5px solid rgba(255,255,255,0.08)',
+            borderBottom: '0.5px solid var(--admin-border)',
           }}
         >
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-white/10"
-              style={{ color: '#A1A1A1', border: '0.5px solid rgba(255,255,255,0.1)' }}
+              style={{ color: 'var(--admin-fg-muted)', border: '0.5px solid var(--admin-border-strong)' }}
             >
               <ChevronRight
                 className="w-3.5 h-3.5 transition-transform"
@@ -420,7 +420,7 @@ export default function RevisorIAPage() {
                   border: '0.5px solid rgba(250,204,21,0.3)',
                 }}
               >
-                <Scale className="w-4 h-4" style={{ color: '#FACC15' }} />
+                <Scale className="w-4 h-4" style={{ color: 'var(--admin-gold)' }} />
               </div>
               <div>
                 <p
@@ -429,7 +429,7 @@ export default function RevisorIAPage() {
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 14,
                     fontWeight: 700,
-                    color: '#FFFFFF',
+                    color: 'var(--admin-fg)',
                     letterSpacing: '0.02em',
                   }}
                 >
@@ -439,7 +439,7 @@ export default function RevisorIAPage() {
                       fontFamily: 'var(--font-mono-tech)',
                       fontSize: 9,
                       fontWeight: 700,
-                      color: '#FACC15',
+                      color: 'var(--admin-gold)',
                       background: 'rgba(250,204,21,0.10)',
                       border: '0.5px solid rgba(250,204,21,0.3)',
                       padding: '2px 5px',
@@ -454,12 +454,12 @@ export default function RevisorIAPage() {
                   style={{
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 9,
-                    color: '#525252',
+                    color: 'var(--admin-fg-subtle)',
                     letterSpacing: '0.15em',
                     marginTop: 1,
                   }}
                 >
-                  <span style={{ color: '#FACC15' }}>▸</span> SISTEMA LEGAL · USA LATINO PRIME
+                  <span style={{ color: 'var(--admin-gold)' }}>▸</span> SISTEMA LEGAL · USA LATINO PRIME
                 </p>
               </div>
             </div>
@@ -478,7 +478,7 @@ export default function RevisorIAPage() {
                   boxShadow: '0 0 24px rgba(250,204,21,0.15)',
                 }}
               >
-                <Scale className="w-8 h-8" style={{ color: '#FACC15' }} />
+                <Scale className="w-8 h-8" style={{ color: 'var(--admin-gold)' }} />
               </div>
               <h2
                 style={{
@@ -489,14 +489,14 @@ export default function RevisorIAPage() {
                   marginBottom: 4,
                 }}
               >
-                <span style={{ color: '#FACC15' }}>LEX</span>
-                <span style={{ color: '#525252' }}>.</span>
+                <span style={{ color: 'var(--admin-gold)' }}>LEX</span>
+                <span style={{ color: 'var(--admin-fg-subtle)' }}>.</span>
               </h2>
               <p
                 style={{
                   fontFamily: 'var(--font-mono-tech)',
                   fontSize: 10,
-                  color: '#525252',
+                  color: 'var(--admin-fg-subtle)',
                   letterSpacing: '0.2em',
                   marginBottom: 24,
                 }}
@@ -505,7 +505,7 @@ export default function RevisorIAPage() {
               </p>
               <p
                 className="max-w-md mb-8"
-                style={{ fontSize: 13, color: '#A1A1A1', lineHeight: 1.55 }}
+                style={{ fontSize: 13, color: 'var(--admin-fg-muted)', lineHeight: 1.55 }}
               >
                 Revisa formularios, declaraciones o evidencia. Detecta fallas antes de que lleguen al juez.
               </p>
@@ -521,17 +521,17 @@ export default function RevisorIAPage() {
                     onClick={() => setInput(ex.title)}
                     className="text-left p-3.5 rounded-2xl transition-all duration-300 hover:-translate-y-0.5"
                     style={{
-                      background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-                      border: '0.5px solid rgba(255,255,255,0.1)',
+                      background: 'var(--admin-panel-grad)',
+                      border: '0.5px solid var(--admin-border-strong)',
                     }}
                   >
                     <div className="flex items-start gap-2.5">
-                      <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#FACC15' }} />
+                      <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: 'var(--admin-gold)' }} />
                       <div>
-                        <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                           {ex.title}
                         </p>
-                        <p style={{ fontSize: 11, color: '#A1A1A1', marginTop: 3, lineHeight: 1.5 }}>
+                        <p style={{ fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 3, lineHeight: 1.5 }}>
                           {ex.hint}
                         </p>
                       </div>
@@ -563,12 +563,12 @@ export default function RevisorIAPage() {
                   style={{
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 11,
-                    color: '#A1A1A1',
+                    color: 'var(--admin-fg-muted)',
                     letterSpacing: '0.05em',
                   }}
                 >
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  <span style={{ color: '#FACC15' }}>▸</span> LEX ANALIZANDO…
+                  <span style={{ color: 'var(--admin-gold)' }}>▸</span> LEX ANALIZANDO…
                 </div>
               )}
               <div ref={messagesEndRef} />
@@ -580,9 +580,9 @@ export default function RevisorIAPage() {
         <div
           className="p-4"
           style={{
-            background: 'rgba(10,10,10,0.85)',
+            background: 'var(--admin-bg-deep)',
             backdropFilter: 'blur(20px)',
-            borderTop: '0.5px solid rgba(255,255,255,0.08)',
+            borderTop: '0.5px solid var(--admin-border)',
           }}
         >
           <div className="max-w-3xl mx-auto">
@@ -593,19 +593,19 @@ export default function RevisorIAPage() {
                     key={i}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
                     style={{
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '0.5px solid rgba(255,255,255,0.1)',
+                      background: 'var(--admin-accent-soft)',
+                      border: '0.5px solid var(--admin-border-strong)',
                       fontSize: 11,
                     }}
                   >
-                    <FileIcon className="w-3 h-3" style={{ color: '#A1A1A1' }} />
-                    <span style={{ fontWeight: 600, color: '#FFFFFF', maxWidth: 180 }} className="truncate">{a.filename}</span>
-                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: '#525252' }}>
+                    <FileIcon className="w-3 h-3" style={{ color: 'var(--admin-fg-muted)' }} />
+                    <span style={{ fontWeight: 600, color: 'var(--admin-fg)', maxWidth: 180 }} className="truncate">{a.filename}</span>
+                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: 'var(--admin-fg-subtle)' }}>
                       {formatFileSize(a.size_bytes)}
                     </span>
                     <button
                       onClick={() => setPendingAttachments(prev => prev.filter((_, idx) => idx !== i))}
-                      style={{ color: '#A1A1A1' }}
+                      style={{ color: 'var(--admin-fg-muted)' }}
                       className="hover:text-red-300 transition-colors"
                     >
                       <X className="w-3 h-3" />
@@ -618,15 +618,15 @@ export default function RevisorIAPage() {
             <div
               className="flex items-end gap-2 rounded-2xl p-2 transition-colors"
               style={{
-                background: 'rgba(255,255,255,0.04)',
-                border: '0.5px solid rgba(255,255,255,0.1)',
+                background: 'var(--admin-accent-soft)',
+                border: '0.5px solid var(--admin-border-strong)',
               }}
             >
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={streaming || pendingAttachments.length >= 5}
                 className="flex-shrink-0 w-9 h-9 rounded-lg transition-colors hover:bg-white/10 flex items-center justify-center disabled:opacity-40"
-                style={{ color: '#A1A1A1' }}
+                style={{ color: 'var(--admin-fg-muted)' }}
                 title="Adjuntar archivo"
               >
                 <Paperclip className="w-4 h-4" />
@@ -656,7 +656,7 @@ export default function RevisorIAPage() {
                 className="flex-1 bg-transparent border-none outline-none resize-none px-2 py-2 max-h-60"
                 style={{
                   fontSize: 13,
-                  color: '#FFFFFF',
+                  color: 'var(--admin-fg)',
                   letterSpacing: '-0.005em',
                 }}
               />
@@ -665,7 +665,7 @@ export default function RevisorIAPage() {
                 <button
                   onClick={handleStopStream}
                   className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-opacity hover:opacity-90"
-                  style={{ background: '#EF4444', color: '#FFFFFF' }}
+                  style={{ background: '#EF4444', color: 'var(--admin-fg)' }}
                   title="Detener"
                 >
                   <div className="w-3 h-3 bg-white rounded-sm" />
@@ -677,7 +677,7 @@ export default function RevisorIAPage() {
                   className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{
                     background: '#FACC15',
-                    color: '#000000',
+                    color: 'var(--admin-bg-deep)',
                     boxShadow: '0 0 16px rgba(250,204,21,0.3)',
                   }}
                 >
@@ -691,7 +691,7 @@ export default function RevisorIAPage() {
               style={{
                 fontFamily: 'var(--font-mono-tech)',
                 fontSize: 9,
-                color: '#525252',
+                color: 'var(--admin-fg-subtle)',
                 letterSpacing: '0.15em',
               }}
             >
@@ -717,7 +717,7 @@ function MessageBubble({ message, isStreaming = false }: { message: Message; isS
             boxShadow: '0 0 12px rgba(250,204,21,0.18)',
           }}
         >
-          <Scale className="w-4 h-4" style={{ color: '#FACC15' }} />
+          <Scale className="w-4 h-4" style={{ color: 'var(--admin-gold)' }} />
         </div>
       )}
       <div className={`max-w-[78%] ${isUser ? 'order-1' : ''}`}>
@@ -726,14 +726,14 @@ function MessageBubble({ message, isStreaming = false }: { message: Message; isS
           style={
             isUser
               ? {
-                  background: '#FFFFFF',
-                  color: '#000000',
+                  background: 'var(--admin-bg-elev)',
+                  color: 'var(--admin-bg-deep)',
                   padding: '12px 16px',
                   boxShadow: '0 4px 18px rgba(255,255,255,0.12)',
                 }
               : {
-                  background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-                  border: '0.5px solid rgba(255,255,255,0.1)',
+                  background: 'var(--admin-panel-grad)',
+                  border: '0.5px solid var(--admin-border-strong)',
                   padding: '16px 20px',
                   backdropFilter: 'blur(20px)',
                 }
@@ -746,9 +746,9 @@ function MessageBubble({ message, isStreaming = false }: { message: Message; isS
                   key={i}
                   className="flex items-center gap-1.5 px-2 py-1 rounded"
                   style={{
-                    background: isUser ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)',
+                    background: isUser ? 'rgba(0,0,0,0.06)' : 'var(--admin-accent-soft)',
                     fontSize: 10,
-                    color: isUser ? '#000000' : '#FFFFFF',
+                    color: isUser ? 'var(--admin-bg-deep)' : '#FFFFFF',
                   }}
                 >
                   <FileIcon className="w-3 h-3" />
@@ -777,7 +777,7 @@ function MessageBubble({ message, isStreaming = false }: { message: Message; isS
           style={{
             fontFamily: 'var(--font-mono-tech)',
             fontSize: 9,
-            color: '#525252',
+            color: 'var(--admin-fg-subtle)',
             letterSpacing: '0.05em',
             textAlign: isUser ? 'right' : 'left',
           }}
@@ -789,11 +789,11 @@ function MessageBubble({ message, isStreaming = false }: { message: Message; isS
         <div
           className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
           style={{
-            background: 'rgba(255,255,255,0.06)',
-            border: '0.5px solid rgba(255,255,255,0.1)',
+            background: 'var(--admin-accent-soft)',
+            border: '0.5px solid var(--admin-border-strong)',
           }}
         >
-          <User className="w-4 h-4" style={{ color: '#A1A1A1' }} />
+          <User className="w-4 h-4" style={{ color: 'var(--admin-fg-muted)' }} />
         </div>
       )}
     </div>

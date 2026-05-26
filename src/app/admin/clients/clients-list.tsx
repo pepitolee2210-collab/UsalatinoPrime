@@ -68,7 +68,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
     <div className="space-y-4">
       {/* Search */}
       <div className="relative max-w-md">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: '#525252' }} />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--admin-fg-subtle)' }} />
         <input
           type="text"
           placeholder="Buscar por nombre, email o teléfono…"
@@ -77,8 +77,8 @@ export function ClientsList({ initialClients }: ClientsListProps) {
           className="w-full pl-10 pr-9 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/25"
           style={{
             background: 'rgba(255,255,255,0.03)',
-            border: '0.5px solid rgba(255,255,255,0.1)',
-            color: '#FAFAFA',
+            border: '0.5px solid var(--admin-border-strong)',
+            color: 'var(--admin-fg)',
             fontSize: 13,
             letterSpacing: '-0.005em',
           }}
@@ -87,7 +87,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
           <button
             onClick={() => setSearchQuery('')}
             className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors hover:opacity-80"
-            style={{ color: '#A1A1A1' }}
+            style={{ color: 'var(--admin-fg-muted)' }}
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -97,15 +97,15 @@ export function ClientsList({ initialClients }: ClientsListProps) {
       <div
         className="rounded-2xl overflow-hidden"
         style={{
-          background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-          border: '0.5px solid rgba(255,255,255,0.1)',
+          background: 'var(--admin-panel-grad)',
+          border: '0.5px solid var(--admin-border-strong)',
           backdropFilter: 'blur(20px)',
         }}
       >
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
+              <tr style={{ borderBottom: '0.5px solid var(--admin-border)', background: 'rgba(255,255,255,0.02)' }}>
                 <Th>Nombre</Th>
                 <Th>Email</Th>
                 <Th>Teléfono</Th>
@@ -118,7 +118,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12">
-                    <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+                    <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
                       {searchQuery.length >= 2 ? 'SIN RESULTADOS' : 'NO HAY CLIENTES REGISTRADOS'}
                     </p>
                   </td>
@@ -128,7 +128,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
                   <tr
                     key={c.id}
                     style={{
-                      borderBottom: idx < filtered.length - 1 ? '0.5px solid rgba(255,255,255,0.04)' : 'none',
+                      borderBottom: idx < filtered.length - 1 ? '0.5px solid var(--admin-accent-soft)' : 'none',
                       transition: 'background 0.2s',
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
@@ -141,7 +141,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
                         style={{
                           fontSize: 13,
                           fontWeight: 600,
-                          color: '#FFFFFF',
+                          color: 'var(--admin-fg)',
                           letterSpacing: '-0.005em',
                         }}
                       >
@@ -149,10 +149,10 @@ export function ClientsList({ initialClients }: ClientsListProps) {
                       </Link>
                     </Td>
                     <Td>
-                      <span style={{ fontSize: 12, color: '#A1A1A1' }}>{c.email}</span>
+                      <span style={{ fontSize: 12, color: 'var(--admin-fg-muted)' }}>{c.email}</span>
                     </Td>
                     <Td>
-                      <span style={{ fontSize: 12, color: '#A1A1A1', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em' }}>
+                      <span style={{ fontSize: 12, color: 'var(--admin-fg-muted)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em' }}>
                         {c.phone || '—'}
                       </span>
                     </Td>
@@ -161,24 +161,24 @@ export function ClientsList({ initialClients }: ClientsListProps) {
                         <span
                           className="inline-flex items-center justify-center"
                           style={{
-                            background: 'rgba(255,255,255,0.06)',
+                            background: 'var(--admin-accent-soft)',
                             border: '0.5px solid rgba(255,255,255,0.12)',
                             borderRadius: 6,
                             padding: '2px 8px',
                             fontFamily: 'var(--font-mono-tech)',
                             fontSize: 11,
                             fontWeight: 700,
-                            color: '#FFFFFF',
+                            color: 'var(--admin-fg)',
                           }}
                         >
                           {c.case_count}
                         </span>
                       ) : (
-                        <span style={{ fontSize: 11, color: '#525252' }}>—</span>
+                        <span style={{ fontSize: 11, color: 'var(--admin-fg-subtle)' }}>—</span>
                       )}
                     </Td>
                     <Td>
-                      <span style={{ fontSize: 11, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+                      <span style={{ fontSize: 11, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
                         {format(new Date(c.created_at), 'd MMM yyyy', { locale: es }).toUpperCase()}
                       </span>
                     </Td>
@@ -187,7 +187,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
                         onClick={() => handleDelete(c)}
                         disabled={deletingId === c.id}
                         className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/10"
-                        style={{ color: deletingId === c.id ? '#525252' : '#FCA5A5' }}
+                        style={{ color: deletingId === c.id ? 'var(--admin-fg-subtle)' : '#FCA5A5' }}
                       >
                         {deletingId === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                       </button>
@@ -212,7 +212,7 @@ function Th({ children, className }: { children?: React.ReactNode; className?: s
         fontSize: 10,
         fontWeight: 500,
         letterSpacing: '0.18em',
-        color: '#525252',
+        color: 'var(--admin-fg-subtle)',
       }}
     >
       {typeof children === 'string' ? children.toUpperCase() : children}

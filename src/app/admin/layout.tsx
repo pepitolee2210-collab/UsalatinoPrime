@@ -15,6 +15,7 @@ import {
 import { ClientSearch } from '@/components/admin/ClientSearch'
 import { ErrorBoundary } from '@/components/error-boundary'
 import { ChatWidgetAutoMount } from '@/components/employee/chat-widget-mount'
+import { AdminThemeSwitcher } from './_components/admin-theme-switcher'
 
 const interTight = Inter_Tight({
   subsets: ['latin'],
@@ -170,9 +171,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const navContent = (
     <div
-      className="flex flex-col h-full relative overflow-hidden"
+      className="admin-sidebar flex flex-col h-full relative overflow-hidden"
       style={{
-        background: 'linear-gradient(180deg, #0A0A0A 0%, #000000 100%)',
+        background: 'linear-gradient(180deg, var(--admin-bg) 0%, var(--admin-bg-deep) 100%)',
         fontFamily: 'var(--font-tight), -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
       }}
     >
@@ -201,7 +202,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           left: '-30%',
           width: '120%',
           height: '60%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, var(--admin-accent-soft) 0%, transparent 70%)',
           filter: 'blur(60px)',
         }}
       />
@@ -212,17 +213,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <span className="relative flex items-center justify-center" style={{ width: 10, height: 10 }}>
             <span
               className="absolute inset-0 rounded-full"
-              style={{ background: '#FFFFFF', animation: 'admin-ping 2s ease-in-out infinite' }}
+              style={{ background: 'var(--admin-bg-elev)', animation: 'admin-ping 2s ease-in-out infinite' }}
             />
             <span
               className="relative rounded-full"
-              style={{ width: 10, height: 10, background: '#FFFFFF', boxShadow: '0 0 12px rgba(255,255,255,0.7)' }}
+              style={{ width: 10, height: 10, background: 'var(--admin-bg-elev)', boxShadow: '0 0 12px rgba(255,255,255,0.7)' }}
             />
           </span>
           <div className="flex flex-col">
             <p
               style={{
-                color: '#FFFFFF',
+                color: 'var(--admin-fg)',
                 fontSize: 16,
                 fontWeight: 600,
                 letterSpacing: '-0.02em',
@@ -271,9 +272,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             fontWeight: 700,
                             padding: '1px 5px',
                             borderRadius: 8,
-                            background: 'rgba(250,204,21,0.08)',
-                            color: 'rgba(253, 224, 71, 0.85)',
-                            border: '0.5px solid rgba(250,204,21,0.22)',
+                            background: 'var(--admin-accent-soft)',
+                            color: 'var(--admin-accent)',
+                            border: '0.5px solid var(--admin-accent-glow)',
                             minWidth: 16,
                             display: 'inline-flex',
                             justifyContent: 'center',
@@ -285,7 +286,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       <ChevronDown
                         className="w-3 h-3"
                         style={{
-                          color: 'rgba(253, 224, 71, 0.6)',
+                          color: 'var(--admin-accent)',
+                          opacity: 0.7,
                           transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
                           transition: 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1), color 0.4s cubic-bezier(0.32, 0.72, 0, 1)',
                         }}
@@ -318,18 +320,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       onClick={() => setMobileOpen(false)}
                       className={`group relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 ${!isCollapsed ? 'nav-item-stagger' : ''}`}
                       style={{
-                        background: isActive ? 'rgba(255,255,255,0.08)' : 'transparent',
-                        color: isActive ? '#FFFFFF' : '#A1A1A1',
+                        background: isActive ? 'var(--admin-accent-soft)' : 'transparent',
+                        color: isActive ? 'var(--admin-fg)' : 'var(--admin-fg-muted)',
+                        boxShadow: isActive ? 'var(--admin-shadow-gold, 0 4px 12px var(--admin-accent-glow))' : 'none',
                         animationDelay: !isCollapsed ? `${itemIdx * 0.045}s` : '0s',
                       }}
                     >
                       {isActive && (
                         <span
                           aria-hidden
-                          className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full"
+                          className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full"
                           style={{
-                            background: '#FFFFFF',
-                            boxShadow: '0 0 8px rgba(255,255,255,0.6)',
+                            background: 'var(--admin-accent)',
+                            boxShadow: '0 0 8px var(--admin-accent-glow)',
                           }}
                         />
                       )}
@@ -353,8 +356,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             letterSpacing: '0.15em',
                             padding: '2px 5px',
                             borderRadius: 3,
-                            background: '#FFFFFF',
-                            color: '#000000',
+                            background: 'var(--admin-accent)',
+                            color: 'var(--admin-bg)',
                           }}
                         >
                           NEW
@@ -371,9 +374,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             height: 18,
                             padding: '0 5px',
                             borderRadius: 9,
-                            background: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.12)',
-                            color: isActive ? '#000000' : '#FFFFFF',
-                            border: isActive ? 'none' : '0.5px solid rgba(255,255,255,0.15)',
+                            background: isActive ? 'var(--admin-accent)' : 'var(--admin-accent-soft)',
+                            color: isActive ? 'var(--admin-bg)' : 'var(--admin-accent)',
+                            border: isActive ? 'none' : '0.5px solid var(--admin-accent-glow)',
                           }}
                         >
                           {badgeCount}
@@ -390,34 +393,41 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Footer */}
       <div className="relative">
-        <span className="block h-px mx-4" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent)' }} />
+        <span className="block h-px mx-4" style={{ background: 'linear-gradient(90deg, transparent, var(--admin-border-strong), transparent)' }} />
         <div className="px-4 py-4 space-y-3">
           <div className="flex items-center gap-2.5 px-2">
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center"
               style={{
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.04))',
-                border: '0.5px solid rgba(255,255,255,0.18)',
+                background: 'linear-gradient(135deg, var(--admin-accent-soft), var(--admin-border))',
+                border: '0.5px solid var(--admin-border-strong)',
               }}
             >
-              <span style={{ fontSize: 11, fontWeight: 700, color: '#FFFFFF' }}>HO</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--admin-fg)' }}>HO</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                 Henry
               </p>
-              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: '#525252', letterSpacing: '0.18em' }}>
+              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: 'var(--admin-fg-subtle)', letterSpacing: '0.18em' }}>
                 ADMIN · ONLINE
               </p>
             </div>
             <button
               onClick={handleLogout}
               className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-white/5"
-              style={{ color: '#A1A1A1', border: '0.5px solid rgba(255,255,255,0.1)' }}
+              style={{ color: 'var(--admin-fg-muted)', border: '0.5px solid var(--admin-border)' }}
               title="Cerrar sesión"
             >
               <LogOut className="w-3.5 h-3.5" />
             </button>
+          </div>
+          {/* Theme switcher — Henry elige el modo visual */}
+          <div className="flex items-center justify-between px-2">
+            <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: 'var(--admin-fg-subtle)', letterSpacing: '0.18em' }}>
+              MODO
+            </p>
+            <AdminThemeSwitcher />
           </div>
         </div>
       </div>
@@ -443,7 +453,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
         .admin-scroll::-webkit-scrollbar { width: 4px; }
         .admin-scroll::-webkit-scrollbar-track { background: transparent; }
-        .admin-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+        .admin-scroll::-webkit-scrollbar-thumb { background: var(--admin-border); border-radius: 2px; }
         .admin-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
       `}</style>
     </div>
@@ -451,11 +461,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div
+      data-admin-theme="dark"
       className={`${interTight.variable} ${mono.variable} min-h-screen relative overflow-hidden`}
       style={{
-        background: '#000000',
+        background: 'var(--admin-bg-deep)',
         fontFamily: 'var(--font-tight), -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
-        color: '#FAFAFA',
+        color: 'var(--admin-fg)',
       }}
     >
       {/* Global aurora */}
@@ -467,7 +478,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           right: '-10%',
           width: '50%',
           height: '60%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 60%)',
+          background: 'radial-gradient(circle, var(--admin-accent-soft) 0%, transparent 60%)',
           filter: 'blur(80px)',
           animation: 'admin-aurora 30s ease-in-out infinite',
         }}
@@ -480,7 +491,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           left: '20%',
           width: '50%',
           height: '50%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.04) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, var(--admin-accent-soft) 0%, transparent 70%)',
           filter: 'blur(90px)',
           animation: 'admin-aurora-b 36s ease-in-out infinite',
         }}
@@ -495,7 +506,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div
         className="sticky top-0 z-40 flex items-center gap-4 px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:hidden relative"
         style={{
-          background: 'rgba(10,10,10,0.85)',
+          background: 'var(--admin-bg-deep)',
           backdropFilter: 'blur(20px)',
         }}
       >
@@ -503,17 +514,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <SheetTrigger asChild>
             <button
               className="inline-flex items-center justify-center w-9 h-9 rounded-lg transition-colors hover:bg-white/5"
-              style={{ color: '#FAFAFA', border: '0.5px solid rgba(255,255,255,0.1)' }}
+              style={{ color: 'var(--admin-fg)', border: '0.5px solid var(--admin-border-strong)' }}
             >
               <Menu className="w-4 h-4" />
             </button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-[260px] border-r-0 border-l-0" style={{ background: '#000000' }}>
+          <SheetContent side="left" className="admin-sidebar p-0 w-[260px] border-r-0 border-l-0" style={{ background: 'var(--admin-bg-deep)' }}>
             {navContent}
           </SheetContent>
         </Sheet>
-        <h1 style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', color: '#FFFFFF' }}>
-          UsaLatinoPrime <span style={{ color: '#525252' }}>· Admin</span>
+        <h1 style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', color: 'var(--admin-fg)' }}>
+          UsaLatinoPrime <span style={{ color: 'var(--admin-fg-subtle)' }}>· Admin</span>
         </h1>
 
         {/* Mobile chromatic bottom edge — versión horizontal del iridescent del sidebar */}
@@ -771,7 +782,7 @@ function ChromaticEdge() {
           bottom: 0,
           right: 0,
           width: 1,
-          background: 'rgba(255,255,255,0.08)',
+          background: 'var(--admin-border)',
         }}
       />
 

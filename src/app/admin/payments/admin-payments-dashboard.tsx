@@ -287,7 +287,7 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
                     ]}
                   />
                   {planForm.total_amount && Number(planForm.num_installments) > 1 && (
-                    <p style={{ fontSize: 11, color: '#A1A1A1', marginTop: 6, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+                    <p style={{ fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 6, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
                       CUOTA MENSUAL: ${Math.round(Number(planForm.total_amount) / Number(planForm.num_installments)).toLocaleString()}
                     </p>
                   )}
@@ -358,7 +358,7 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
       {/* Filters */}
       <div className="flex flex-wrap gap-2 items-center">
         <div className="relative w-72">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: '#525252' }} />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--admin-fg-subtle)' }} />
           <input
             type="text"
             placeholder="Buscar por cliente o caso…"
@@ -367,8 +367,8 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
             className="w-full pl-10 pr-3 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/25"
             style={{
               background: 'rgba(255,255,255,0.03)',
-              border: '0.5px solid rgba(255,255,255,0.1)',
-              color: '#FAFAFA',
+              border: '0.5px solid var(--admin-border-strong)',
+              color: 'var(--admin-fg)',
               fontSize: 13,
               letterSpacing: '-0.005em',
             }}
@@ -400,15 +400,15 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
       <div
         className="rounded-2xl overflow-hidden"
         style={{
-          background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-          border: '0.5px solid rgba(255,255,255,0.1)',
+          background: 'var(--admin-panel-grad)',
+          border: '0.5px solid var(--admin-border-strong)',
           backdropFilter: 'blur(20px)',
         }}
       >
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
+              <tr style={{ borderBottom: '0.5px solid var(--admin-border)', background: 'rgba(255,255,255,0.02)' }}>
                 <DarkTh>Caso</DarkTh>
                 <DarkTh>Cliente</DarkTh>
                 <DarkTh>Servicio</DarkTh>
@@ -429,7 +429,7 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
                   <tr
                     key={p.id}
                     style={{
-                      borderBottom: idx < filteredPayments.length - 1 ? '0.5px solid rgba(255,255,255,0.04)' : 'none',
+                      borderBottom: idx < filteredPayments.length - 1 ? '0.5px solid var(--admin-accent-soft)' : 'none',
                       background: isOverdue ? 'rgba(248,113,113,0.04)' : 'transparent',
                       transition: 'background 0.2s',
                     }}
@@ -437,30 +437,30 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
                     onMouseLeave={(e) => (e.currentTarget.style.background = isOverdue ? 'rgba(248,113,113,0.04)' : 'transparent')}
                   >
                     <DarkTd>
-                      <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 12, fontWeight: 700, color: '#FFFFFF', letterSpacing: '0.02em' }}>
+                      <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 12, fontWeight: 700, color: 'var(--admin-fg)', letterSpacing: '0.02em' }}>
                         #{p.case?.case_number}
                       </span>
                     </DarkTd>
                     <DarkTd>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                         {p.client?.first_name} {p.client?.last_name}
                       </span>
                     </DarkTd>
                     <DarkTd>
-                      <span style={{ fontSize: 12, color: '#A1A1A1' }}>{p.case?.service?.name || '—'}</span>
+                      <span style={{ fontSize: 12, color: 'var(--admin-fg-muted)' }}>{p.case?.service?.name || '—'}</span>
                     </DarkTd>
                     <DarkTd>
-                      <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 11, fontWeight: 700, color: '#A1A1A1' }}>
+                      <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 11, fontWeight: 700, color: 'var(--admin-fg-muted)' }}>
                         {p.installment_number}/{p.total_installments}
                       </span>
                     </DarkTd>
                     <DarkTd>
-                      <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 13, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+                      <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 13, fontWeight: 700, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                         ${Number(p.amount).toLocaleString()}
                       </span>
                     </DarkTd>
                     <DarkTd>
-                      <span style={{ fontSize: 11, color: '#A1A1A1', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+                      <span style={{ fontSize: 11, color: 'var(--admin-fg-muted)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
                         {(p.payment_method || '—').toUpperCase()}
                       </span>
                     </DarkTd>
@@ -468,12 +468,12 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
                       <PaymentStatusBadge status={displayStatus} label={statusLabels[displayStatus] || displayStatus} />
                     </DarkTd>
                     <DarkTd>
-                      <span style={{ fontSize: 11, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+                      <span style={{ fontSize: 11, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
                         {p.due_date ? format(new Date(p.due_date), 'd MMM yyyy', { locale: es }).toUpperCase() : '—'}
                       </span>
                     </DarkTd>
                     <DarkTd>
-                      <span style={{ fontSize: 11, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+                      <span style={{ fontSize: 11, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
                         {p.paid_at ? format(new Date(p.paid_at), 'd MMM yyyy', { locale: es }).toUpperCase() : '—'}
                       </span>
                     </DarkTd>
@@ -484,8 +484,8 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
                           disabled={markPaidLoading === p.id}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95"
                           style={{
-                            background: '#FFFFFF',
-                            color: '#000000',
+                            background: 'var(--admin-bg-elev)',
+                            color: 'var(--admin-bg-deep)',
                             fontSize: 11,
                             fontWeight: 600,
                             letterSpacing: '-0.005em',
@@ -507,7 +507,7 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
               {filteredPayments.length === 0 && (
                 <tr>
                   <td colSpan={10} className="text-center py-12">
-                    <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+                    <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
                       SIN PAGOS QUE COINCIDAN CON LOS FILTROS
                     </p>
                   </td>
@@ -540,8 +540,8 @@ function DarkStat({ icon, label, value, tone }: { icon: React.ReactNode; label: 
     <div
       className="group relative rounded-2xl p-5 overflow-hidden transition-transform duration-300 hover:-translate-y-0.5"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -562,7 +562,7 @@ function DarkStat({ icon, label, value, tone }: { icon: React.ReactNode; label: 
           {icon}
         </div>
         <div className="min-w-0 flex-1">
-          <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#525252' }}>
+          <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-subtle)' }}>
             {label.toUpperCase()}
           </p>
           <p style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.025em', color: s.valueColor, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
@@ -583,7 +583,7 @@ function DarkTh({ children }: { children?: React.ReactNode }) {
         fontSize: 10,
         fontWeight: 500,
         letterSpacing: '0.18em',
-        color: '#525252',
+        color: 'var(--admin-fg-subtle)',
       }}
     >
       {typeof children === 'string' ? children.toUpperCase() : children}
@@ -604,8 +604,8 @@ function FilterChips({ value, onChange, options }: { value: string; onChange: (v
     <div
       className="inline-flex items-center gap-1 p-1 rounded-full"
       style={{
-        background: 'rgba(255,255,255,0.04)',
-        border: '0.5px solid rgba(255,255,255,0.08)',
+        background: 'var(--admin-accent-soft)',
+        border: '0.5px solid var(--admin-border)',
       }}
     >
       {options.map((opt) => {
@@ -617,7 +617,7 @@ function FilterChips({ value, onChange, options }: { value: string; onChange: (v
             className="px-3 py-1.5 rounded-full transition-all duration-200"
             style={{
               background: isActive ? '#FFFFFF' : 'transparent',
-              color: isActive ? '#000000' : '#A1A1A1',
+              color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
               fontSize: 11,
               fontWeight: isActive ? 700 : 500,
               letterSpacing: '-0.005em',
@@ -638,7 +638,7 @@ const PAY_STATUS_COLORS: Record<string, { bg: string; border: string; dot: strin
   failed:    { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', dot: '#F87171', text: '#FCA5A5' },
   overdue:   { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', dot: '#F87171', text: '#FCA5A5' },
   processing:{ bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.3)', dot: '#60A5FA', text: '#93C5FD' },
-  refunded:  { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)', dot: '#A1A1A1', text: '#A1A1A1' },
+  refunded:  { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-fg-muted)', text: 'var(--admin-fg-muted)' },
 }
 
 function PaymentStatusBadge({ status, label }: { status: string; label: string }) {
@@ -686,7 +686,7 @@ const DARK_DIALOG_TITLE: React.CSSProperties = {
   fontSize: 20,
   fontWeight: 600,
   letterSpacing: '-0.022em',
-  color: '#FFFFFF',
+  color: 'var(--admin-fg)',
 }
 
 const DARK_BTN_GHOST =
@@ -708,14 +708,14 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
           fontSize: 10,
           fontWeight: 500,
           letterSpacing: '0.18em',
-          color: '#A1A1A1',
+          color: 'var(--admin-fg-muted)',
         }}
       >
         {label.toUpperCase()}
       </label>
       {children}
       {hint && (
-        <p style={{ fontSize: 11, color: '#525252', marginTop: 4, lineHeight: 1.4 }}>
+        <p style={{ fontSize: 11, color: 'var(--admin-fg-subtle)', marginTop: 4, lineHeight: 1.4 }}>
           {hint}
         </p>
       )}
@@ -732,9 +732,9 @@ function DarkInput({ type = 'text', value, onChange, placeholder }: { type?: str
       placeholder={placeholder}
       className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30"
       style={{
-        background: 'rgba(255,255,255,0.04)',
-        border: '0.5px solid rgba(255,255,255,0.1)',
-        color: '#FAFAFA',
+        background: 'var(--admin-accent-soft)',
+        border: '0.5px solid var(--admin-border-strong)',
+        color: 'var(--admin-fg)',
         fontSize: 13,
         letterSpacing: '-0.005em',
         colorScheme: 'dark',
@@ -752,9 +752,9 @@ function DarkTextarea({ value, onChange, placeholder }: { value: string; onChang
       rows={3}
       className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 resize-y"
       style={{
-        background: 'rgba(255,255,255,0.04)',
-        border: '0.5px solid rgba(255,255,255,0.1)',
-        color: '#FAFAFA',
+        background: 'var(--admin-accent-soft)',
+        border: '0.5px solid var(--admin-border-strong)',
+        color: 'var(--admin-fg)',
         fontSize: 13,
         letterSpacing: '-0.005em',
         minHeight: 80,
@@ -773,16 +773,16 @@ function DarkSelect({ value, onChange, options, placeholder }: { value: string; 
         onChange={(e) => onChange(e.target.value)}
         className="w-full appearance-none px-3.5 py-2.5 pr-9 rounded-xl text-sm outline-none transition-colors focus:border-white/30 cursor-pointer"
         style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '0.5px solid rgba(255,255,255,0.1)',
-          color: value ? '#FAFAFA' : '#525252',
+          background: 'var(--admin-accent-soft)',
+          border: '0.5px solid var(--admin-border-strong)',
+          color: value ? 'var(--admin-fg)' : 'var(--admin-fg-subtle)',
           fontSize: 13,
           letterSpacing: '-0.005em',
         }}
       >
-        {placeholder && <option value="" style={{ background: '#0A0A0A', color: '#525252' }}>{placeholder}</option>}
+        {placeholder && <option value="" style={{ background: 'var(--admin-bg)', color: 'var(--admin-fg-subtle)' }}>{placeholder}</option>}
         {options.map((o) => (
-          <option key={o.value} value={o.value} style={{ background: '#0A0A0A', color: '#FAFAFA' }}>
+          <option key={o.value} value={o.value} style={{ background: 'var(--admin-bg)', color: 'var(--admin-fg)' }}>
             {o.label}
           </option>
         ))}
@@ -790,7 +790,7 @@ function DarkSelect({ value, onChange, options, placeholder }: { value: string; 
       <span
         aria-hidden
         className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-        style={{ color: '#525252', fontSize: 10 }}
+        style={{ color: 'var(--admin-fg-subtle)', fontSize: 10 }}
       >
         ▾
       </span>
@@ -805,8 +805,8 @@ function DarkSubmit({ onClick, loading, children }: { onClick: () => void; loadi
       disabled={loading}
       className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
       style={{
-        background: '#FFFFFF',
-        color: '#000000',
+        background: 'var(--admin-bg-elev)',
+        color: 'var(--admin-bg-deep)',
         fontSize: 13,
         fontWeight: 600,
         letterSpacing: '-0.005em',

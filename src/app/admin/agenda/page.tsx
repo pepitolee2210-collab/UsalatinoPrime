@@ -39,7 +39,7 @@ const STATUS_STYLES: Record<string, StatusStyle> = {
   follow_up:      { bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.3)', dot: '#A78BFA', text: '#C4B5FD', label: 'Seguimiento',   icon: CalendarClock },
   converted:      { bg: 'rgba(34,197,94,0.10)',   border: 'rgba(34,197,94,0.3)',   dot: '#4ADE80', text: '#86EFAC', label: 'Convertido',    icon: UserCheck },
   no_answer:      { bg: 'rgba(251,146,60,0.10)',  border: 'rgba(251,146,60,0.3)',  dot: '#FB923C', text: '#FDBA74', label: 'Sin Respuesta', icon: PhoneOff },
-  not_interested: { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)', dot: '#A1A1A1', text: '#A1A1A1', label: 'No Interesado', icon: UserX },
+  not_interested: { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-fg-muted)', text: 'var(--admin-fg-muted)', label: 'No Interesado', icon: UserX },
   closed:         { bg: 'rgba(148,163,184,0.10)', border: 'rgba(148,163,184,0.3)', dot: '#94A3B8', text: '#CBD5E1', label: 'Cerrado',       icon: XCircle },
 }
 
@@ -112,7 +112,7 @@ const LABEL_STYLE: React.CSSProperties = {
   fontSize: 9,
   fontWeight: 500,
   letterSpacing: '0.18em',
-  color: '#A1A1A1',
+  color: 'var(--admin-fg-muted)',
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -277,7 +277,7 @@ export default function AgendaPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-5 h-5 animate-spin" style={{ color: '#A1A1A1' }} />
+        <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--admin-fg-muted)' }} />
       </div>
     )
   }
@@ -309,7 +309,7 @@ export default function AgendaPage() {
           style={{
             background: 'rgba(250,204,21,0.06)',
             border: '0.5px solid rgba(250,204,21,0.2)',
-            color: '#FDE68A',
+            color: 'var(--admin-gold)',
           }}
         >
           <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, letterSpacing: '0.18em', fontWeight: 700 }}>⚠ TRUNCATED</span>
@@ -331,11 +331,11 @@ export default function AgendaPage() {
           <div
             className="rounded-2xl py-16 text-center"
             style={{
-              background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
-              border: '0.5px solid rgba(255,255,255,0.08)',
+              background: 'var(--admin-panel-grad)',
+              border: '0.5px solid var(--admin-border)',
             }}
           >
-            <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+            <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
               SIN REGISTROS EN ESTA CATEGORÍA
             </p>
           </div>
@@ -389,12 +389,12 @@ export default function AgendaPage() {
                   className={DARK_INPUT_CLS + ' appearance-none pr-9 cursor-pointer'}
                   style={{ colorScheme: 'dark' }}
                 >
-                  <option value="" style={{ background: '#0A0A0A', color: '#A1A1A1' }}>Seleccionar servicio</option>
+                  <option value="" style={{ background: 'var(--admin-bg)', color: 'var(--admin-fg-muted)' }}>Seleccionar servicio</option>
                   {SERVICE_OPTIONS.map(s => (
-                    <option key={s.slug} value={s.slug} style={{ background: '#0A0A0A', color: '#FAFAFA' }}>{s.label}</option>
+                    <option key={s.slug} value={s.slug} style={{ background: 'var(--admin-bg)', color: 'var(--admin-fg)' }}>{s.label}</option>
                   ))}
                 </select>
-                <span aria-hidden className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#525252', fontSize: 10 }}>▾</span>
+                <span aria-hidden className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--admin-fg-subtle)', fontSize: 10 }}>▾</span>
               </div>
             </div>
             <div className="space-y-1.5">
@@ -423,8 +423,8 @@ export default function AgendaPage() {
               disabled={saving}
               className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
               style={{
-                background: '#FFFFFF',
-                color: '#000000',
+                background: 'var(--admin-bg-elev)',
+                color: 'var(--admin-bg-deep)',
                 fontSize: 13,
                 fontWeight: 600,
                 letterSpacing: '-0.005em',
@@ -445,7 +445,7 @@ export default function AgendaPage() {
           <DialogHeader>
             <DialogTitle className="text-white" style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.018em' }}>
               {editingItem?.prospect_name}
-              <span style={{ color: '#A1A1A1', fontWeight: 400, marginLeft: 8, fontFamily: 'var(--font-mono-tech)', fontSize: 12 }}>
+              <span style={{ color: 'var(--admin-fg-muted)', fontWeight: 400, marginLeft: 8, fontFamily: 'var(--font-mono-tech)', fontSize: 12 }}>
                 {editingItem?.phone}
               </span>
             </DialogTitle>
@@ -485,14 +485,14 @@ function StatClickCard({
       className="rounded-2xl p-4 transition-all duration-300 hover:-translate-y-0.5 text-center"
       style={{
         background: active
-          ? `linear-gradient(180deg, ${t.bg}, rgba(20,20,20,0.92))`
-          : 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: active ? `0.5px solid ${t.activeBorder}` : '0.5px solid rgba(255,255,255,0.1)',
+          ? `linear-gradient(180deg, ${t.bg}, var(--admin-bg-elev))`
+          : 'var(--admin-panel-grad)',
+        border: active ? `0.5px solid ${t.activeBorder}` : '0.5px solid var(--admin-border-strong)',
         boxShadow: active ? `0 0 24px ${t.bg}` : 'none',
         backdropFilter: 'blur(20px)',
       }}
     >
-      <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#525252' }}>
+      <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-subtle)' }}>
         {label.toUpperCase()}
       </p>
       <p style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.025em', color: active ? t.valueColor : '#FFFFFF', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
@@ -601,8 +601,8 @@ function AgendaCard({
     <div
       className="relative rounded-2xl p-5 overflow-hidden transition-all duration-300 group"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -617,7 +617,7 @@ function AgendaCard({
           <div className="flex-1 min-w-0">
             {/* Name + badges */}
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <h3 style={{ fontSize: 15, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.012em' }}>
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.012em' }}>
                 {item.prospect_name}
               </h3>
               <StatusBadge status={item.status} />
@@ -646,13 +646,13 @@ function AgendaCard({
               <a
                 href={`tel:${item.phone}`}
                 className="inline-flex items-center gap-1.5 transition-opacity hover:opacity-80"
-                style={{ color: '#FFFFFF', fontSize: 13, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em' }}
+                style={{ color: 'var(--admin-fg)', fontSize: 13, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em' }}
               >
                 <Phone className="w-3 h-3" />
                 {item.phone}
               </a>
               {serviceLabel && (
-                <span style={{ fontSize: 12, color: '#A1A1A1' }}>{serviceLabel}</span>
+                <span style={{ fontSize: 12, color: 'var(--admin-fg-muted)' }}>{serviceLabel}</span>
               )}
               {item.message_date && (
                 <span
@@ -660,7 +660,7 @@ function AgendaCard({
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 10,
                     fontWeight: 700,
-                    color: '#FDE68A',
+                    color: 'var(--admin-gold)',
                     letterSpacing: '0.05em',
                   }}
                 >
@@ -671,7 +671,7 @@ function AgendaCard({
                 style={{
                   fontFamily: 'var(--font-mono-tech)',
                   fontSize: 10,
-                  color: '#525252',
+                  color: 'var(--admin-fg-subtle)',
                   letterSpacing: '0.05em',
                 }}
               >
@@ -697,14 +697,14 @@ function AgendaCard({
               <div
                 className="mt-3 rounded-xl px-3.5 py-2.5"
                 style={{
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '0.5px solid rgba(255,255,255,0.06)',
+                  background: 'var(--admin-accent-soft)',
+                  border: '0.5px solid var(--admin-accent-soft)',
                 }}
               >
-                <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.2em', color: '#525252', marginBottom: 4 }}>
+                <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg-subtle)', marginBottom: 4 }}>
                   CONTEXTO DEL PROSPECTO
                 </p>
-                <p style={{ fontSize: 12.5, color: '#A1A1A1', lineHeight: 1.5 }}>{item.notes}</p>
+                <p style={{ fontSize: 12.5, color: 'var(--admin-fg-muted)', lineHeight: 1.5 }}>{item.notes}</p>
               </div>
             )}
 
@@ -734,8 +734,8 @@ function AgendaCard({
               }}
             >
               <div className="flex items-center gap-2 flex-wrap">
-                <CalendarClock className="w-3.5 h-3.5 shrink-0" style={{ color: '#FACC15' }} />
-                <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', color: '#FACC15' }}>
+                <CalendarClock className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--admin-gold)' }} />
+                <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, letterSpacing: '0.15em', color: 'var(--admin-gold)' }}>
                   PROGRAMAR
                 </span>
                 <input
@@ -744,9 +744,9 @@ function AgendaCard({
                   onChange={e => setSchedDate(e.target.value)}
                   className="flex-1 min-w-[140px] px-2.5 py-1.5 rounded-lg outline-none transition-colors focus:border-white/30"
                   style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '0.5px solid rgba(255,255,255,0.1)',
-                    color: '#FAFAFA',
+                    background: 'var(--admin-accent-soft)',
+                    border: '0.5px solid var(--admin-border-strong)',
+                    color: 'var(--admin-fg)',
                     fontSize: 11,
                     fontFamily: 'var(--font-mono-tech)',
                     colorScheme: 'dark',
@@ -758,7 +758,7 @@ function AgendaCard({
                   className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-40"
                   style={{
                     background: '#FACC15',
-                    color: '#000000',
+                    color: 'var(--admin-bg-deep)',
                   }}
                 >
                   {savingSched ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
@@ -771,7 +771,7 @@ function AgendaCard({
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 10,
                     fontWeight: 700,
-                    color: '#FDE68A',
+                    color: 'var(--admin-gold)',
                     letterSpacing: '0.05em',
                   }}
                 >
@@ -837,7 +837,7 @@ function AgendaCard({
             <button
               onClick={() => onDelete(item.id)}
               className={ICON_BTN}
-              style={{ color: '#FCA5A5' }}
+              style={{ color: 'var(--admin-red)' }}
             >
               <Trash2 className="w-3 h-3" />
             </button>
@@ -845,8 +845,8 @@ function AgendaCard({
         </div>
 
         {/* Henry's notes — history log */}
-        <div className="pt-4 space-y-2" style={{ borderTop: '0.5px solid rgba(255,255,255,0.08)' }}>
-          <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', color: '#FACC15' }}>
+        <div className="pt-4 space-y-2" style={{ borderTop: '0.5px solid var(--admin-border)' }}>
+          <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--admin-gold)' }}>
             NOTAS HENRY
           </label>
           {henryLog.length > 0 && (
@@ -860,8 +860,8 @@ function AgendaCard({
                     border: '0.5px solid rgba(250,204,21,0.2)',
                   }}
                 >
-                  <p style={{ fontSize: 12.5, color: '#FDE68A', lineHeight: 1.5 }}>{entry.text}</p>
-                  <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: '#525252', marginTop: 4, letterSpacing: '0.05em' }}>
+                  <p style={{ fontSize: 12.5, color: 'var(--admin-gold)', lineHeight: 1.5 }}>{entry.text}</p>
+                  <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: 'var(--admin-fg-subtle)', marginTop: 4, letterSpacing: '0.05em' }}>
                     {format(new Date(entry.date), "d MMM yyyy, h:mma", { locale: es }).toUpperCase()}
                   </p>
                 </div>
@@ -882,7 +882,7 @@ function AgendaCard({
               className="inline-flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50"
               style={{
                 background: '#FACC15',
-                color: '#000000',
+                color: 'var(--admin-bg-deep)',
               }}
             >
               {savingNotes ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
@@ -919,11 +919,11 @@ function EditForm({
           <div
             className="rounded-xl px-3.5 py-3"
             style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '0.5px solid rgba(255,255,255,0.06)',
+              background: 'var(--admin-accent-soft)',
+              border: '0.5px solid var(--admin-accent-soft)',
             }}
           >
-            <p style={{ fontSize: 13, color: '#A1A1A1', lineHeight: 1.55 }}>{item.notes}</p>
+            <p style={{ fontSize: 13, color: 'var(--admin-fg-muted)', lineHeight: 1.55 }}>{item.notes}</p>
           </div>
         </div>
       )}
@@ -940,8 +940,8 @@ function EditForm({
                   border: '0.5px solid rgba(250,204,21,0.2)',
                 }}
               >
-                <p style={{ fontSize: 12.5, color: '#FDE68A', lineHeight: 1.5 }}>{entry.text}</p>
-                <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: '#525252', marginTop: 4, letterSpacing: '0.05em' }}>
+                <p style={{ fontSize: 12.5, color: 'var(--admin-gold)', lineHeight: 1.5 }}>{entry.text}</p>
+                <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: 'var(--admin-fg-subtle)', marginTop: 4, letterSpacing: '0.05em' }}>
                   {format(new Date(entry.date), "d MMM yyyy, h:mma", { locale: es }).toUpperCase()}
                 </p>
               </div>
@@ -971,8 +971,8 @@ function EditForm({
         <button
           className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50"
           style={{
-            background: '#FFFFFF',
-            color: '#000000',
+            background: 'var(--admin-bg-elev)',
+            color: 'var(--admin-bg-deep)',
             fontSize: 12,
             fontWeight: 600,
             letterSpacing: '-0.005em',

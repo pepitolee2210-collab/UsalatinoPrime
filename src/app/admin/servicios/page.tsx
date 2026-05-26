@@ -83,9 +83,9 @@ export default function ServiciosPage() {
     <div
       className={`${interTight.variable} ${mono.variable} -m-6 min-h-[calc(100vh-3rem)] relative overflow-hidden`}
       style={{
-        background: '#000000',
+        background: 'var(--admin-bg-deep)',
         fontFamily: 'var(--font-tight), -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
-        color: '#FAFAFA',
+        color: 'var(--admin-fg)',
       }}
     >
       <WallpaperHero />
@@ -108,7 +108,7 @@ export default function ServiciosPage() {
           >
             <span
               style={{
-                background: 'linear-gradient(180deg, #FFFFFF 30%, #525252 100%)',
+                background: 'linear-gradient(180deg, var(--admin-fg) 0%, var(--admin-fg-muted) 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
@@ -124,7 +124,7 @@ export default function ServiciosPage() {
               fontSize: 'clamp(17px, 1.4vw, 21px)',
               fontWeight: 400,
               lineHeight: 1.5,
-              color: '#A1A1A1',
+              color: 'var(--admin-fg-muted)',
               letterSpacing: '-0.012em',
               animation: 'tech-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both',
             }}
@@ -137,8 +137,8 @@ export default function ServiciosPage() {
           <div
             className="inline-flex items-center gap-6 px-6 py-3 rounded-full"
             style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '0.5px solid rgba(255,255,255,0.1)',
+              background: 'var(--admin-accent-soft)',
+              border: '0.5px solid var(--admin-border-strong)',
               backdropFilter: 'blur(20px)',
               fontFamily: 'var(--font-mono-tech)',
               fontSize: 11,
@@ -174,7 +174,7 @@ export default function ServiciosPage() {
         </section>
 
         {/* ─── Marquee ─── */}
-        <div className="mt-24 overflow-hidden relative" style={{ borderTop: '0.5px solid rgba(255,255,255,0.08)', borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
+        <div className="mt-24 overflow-hidden relative" style={{ borderTop: '0.5px solid var(--admin-border)', borderBottom: '0.5px solid var(--admin-border)' }}>
           <div
             data-tech-marquee
             className="flex gap-12 py-6 whitespace-nowrap"
@@ -184,14 +184,14 @@ export default function ServiciosPage() {
               fontSize: 12,
               fontWeight: 500,
               letterSpacing: '0.15em',
-              color: '#525252',
+              color: 'var(--admin-fg-subtle)',
             }}
           >
             {Array.from({ length: 2 }).map((_, dupIdx) => (
               <div key={dupIdx} className="flex gap-12 shrink-0">
                 {['EXPEDIENTE · ACTIVO', 'DEMO · EN VIVO', 'IA · GENERATIVA', 'FORMULARIOS · USCIS', 'DOCUMENTOS · FIRMADOS', 'PROCESO · AUTOMATIZADO', 'CORTE · EOIR', 'STATUS · OPERATIONAL'].map((t, i) => (
                   <span key={`${dupIdx}-${i}`} className="inline-flex items-center gap-3">
-                    <span style={{ color: '#FAFAFA' }}>◆</span>
+                    <span style={{ color: 'var(--admin-fg)' }}>◆</span>
                     {t}
                   </span>
                 ))}
@@ -201,7 +201,7 @@ export default function ServiciosPage() {
         </div>
 
         <footer className="mt-12 text-center">
-          <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.1em' }}>
+          <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.1em' }}>
             ULP · SHOWCASE · v1.0 · 2026
           </p>
         </footer>
@@ -220,19 +220,19 @@ function SystemBadge() {
     <div
       className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full"
       style={{
-        background: 'rgba(255,255,255,0.05)',
-        border: '0.5px solid rgba(255,255,255,0.15)',
+        background: 'var(--admin-accent-soft)',
+        border: '0.5px solid var(--admin-border-strong)',
         animation: 'tech-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both',
       }}
     >
       <span className="relative flex items-center justify-center" style={{ width: 8, height: 8 }}>
         <span
           className="absolute inset-0 rounded-full"
-          style={{ background: '#FFFFFF', animation: 'tech-ping 2s ease-in-out infinite' }}
+          style={{ background: 'var(--admin-bg-elev)', animation: 'tech-ping 2s ease-in-out infinite' }}
         />
         <span
           className="relative rounded-full"
-          style={{ width: 8, height: 8, background: '#FFFFFF', boxShadow: '0 0 12px rgba(255,255,255,0.7)' }}
+          style={{ width: 8, height: 8, background: 'var(--admin-bg-elev)', boxShadow: '0 0 12px var(--admin-accent)' }}
         />
       </span>
       <span
@@ -241,7 +241,7 @@ function SystemBadge() {
           fontSize: 11,
           fontWeight: 500,
           letterSpacing: '0.15em',
-          color: '#FAFAFA',
+          color: 'var(--admin-fg)',
         }}
       >
         BIENVENIDO · HENRY · ORELLANA
@@ -258,8 +258,8 @@ function GlowDot() {
         width: '0.55em',
         height: '0.55em',
         borderRadius: '50%',
-        background: '#FFFFFF',
-        boxShadow: '0 0 24px rgba(255,255,255,0.8), 0 0 48px rgba(255,255,255,0.4)',
+        background: 'var(--admin-bg-elev)',
+        boxShadow: '0 0 24px var(--admin-accent-glow), 0 0 48px var(--admin-accent-glow)',
         animation: 'tech-glow-pulse 2.5s ease-in-out infinite',
       }}
     />
@@ -269,16 +269,16 @@ function GlowDot() {
 function Telemetry({ label, value, pulse }: { label: string; value: string; pulse?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2">
-      <span style={{ color: '#525252', letterSpacing: '0.12em' }}>{label}</span>
-      <span style={{ color: '#FFFFFF', fontWeight: 700, letterSpacing: '0.02em' }}>{value}</span>
+      <span style={{ color: 'var(--admin-fg-subtle)', letterSpacing: '0.12em' }}>{label}</span>
+      <span style={{ color: 'var(--admin-fg)', fontWeight: 700, letterSpacing: '0.02em' }}>{value}</span>
       {pulse && (
         <span
           className="inline-block rounded-full"
           style={{
             width: 6,
             height: 6,
-            background: '#FFFFFF',
-            boxShadow: '0 0 12px rgba(255,255,255,0.8)',
+            background: 'var(--admin-bg-elev)',
+            boxShadow: '0 0 12px var(--admin-accent-glow)',
             animation: 'tech-glow-pulse 1.4s ease-in-out infinite',
           }}
         />
@@ -288,7 +288,7 @@ function Telemetry({ label, value, pulse }: { label: string; value: string; puls
 }
 
 function Divider() {
-  return <span style={{ color: '#262626' }}>·</span>
+  return <span style={{ color: 'var(--admin-fg-faint)' }}>·</span>
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -306,7 +306,7 @@ function Aurora() {
           left: '-10%',
           width: '60%',
           height: '70%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.12) 0%, transparent 60%)',
+          background: 'radial-gradient(circle, var(--admin-accent-soft) 0%, transparent 60%)',
           filter: 'blur(80px)',
           animation: 'tech-aurora-a 24s ease-in-out infinite',
         }}
@@ -320,7 +320,7 @@ function Aurora() {
           right: '-15%',
           width: '55%',
           height: '60%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%)',
+          background: 'radial-gradient(circle, var(--admin-border) 0%, transparent 60%)',
           filter: 'blur(80px)',
           animation: 'tech-aurora-b 28s ease-in-out infinite',
         }}
@@ -334,7 +334,7 @@ function Aurora() {
           left: '30%',
           width: '50%',
           height: '50%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, var(--admin-accent-soft) 0%, transparent 70%)',
           filter: 'blur(90px)',
           animation: 'tech-aurora-c 32s ease-in-out infinite',
         }}
@@ -351,7 +351,7 @@ function DotGrid() {
       className="absolute inset-0 pointer-events-none"
       style={{
         backgroundImage:
-          'radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px)',
+          'radial-gradient(circle, var(--admin-border) 1px, transparent 1px)',
         backgroundSize: '24px 24px',
         maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 80%)',
         WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 80%)',
@@ -368,7 +368,7 @@ function ScanLines() {
       className="absolute inset-0 pointer-events-none opacity-[0.4]"
       style={{
         backgroundImage:
-          'linear-gradient(0deg, transparent 0%, transparent 50%, rgba(255,255,255,0.03) 50%, rgba(255,255,255,0.03) 51%, transparent 51%)',
+          'linear-gradient(0deg, transparent 0%, transparent 50%, var(--admin-accent-soft) 50%, var(--admin-accent-soft) 51%, transparent 51%)',
         backgroundSize: '100% 3px',
       }}
     />
@@ -402,7 +402,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
         className="absolute -inset-px rounded-[24px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"
         style={{
           background:
-            'conic-gradient(from 0deg at 50% 50%, transparent 0deg, rgba(255,255,255,0.6) 60deg, transparent 120deg, transparent 240deg, rgba(255,255,255,0.6) 300deg, transparent 360deg)',
+            'conic-gradient(from 0deg at 50% 50%, transparent 0deg, var(--admin-accent) 60deg, transparent 120deg, transparent 240deg, var(--admin-accent) 300deg, transparent 360deg)',
           animation: 'tech-conic-rotate 4s linear infinite',
         }}
       />
@@ -410,8 +410,8 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
       <article
         className="relative h-full rounded-[24px] p-7 flex flex-col overflow-hidden transition-all duration-500 ease-out group-hover:-translate-y-1"
         style={{
-          background: 'linear-gradient(180deg, rgba(18,18,18,0.92), rgba(8,8,8,0.92))',
-          border: '0.5px solid rgba(255,255,255,0.1)',
+          background: 'var(--admin-panel-grad)',
+          border: '0.5px solid var(--admin-border-strong)',
           backdropFilter: 'blur(20px)',
           minHeight: 360,
         }}
@@ -421,7 +421,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
           aria-hidden
           className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
           style={{
-            background: 'radial-gradient(circle at 50% 0%, rgba(255,255,255,0.12), transparent 60%)',
+            background: 'radial-gradient(circle at 50% 0%, var(--admin-accent-soft), transparent 60%)',
             filter: 'blur(40px)',
           }}
         />
@@ -431,21 +431,21 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
           <div
             className="relative w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-500 group-hover:scale-110"
             style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
-              border: '0.5px solid rgba(255,255,255,0.15)',
+              background: 'linear-gradient(135deg, var(--admin-border-strong), var(--admin-accent-soft))',
+              border: '0.5px solid var(--admin-border-strong)',
             }}
           >
             <span
               className="material-symbols-outlined"
               data-fill="1"
-              style={{ fontSize: 24, color: '#FFFFFF' }}
+              style={{ fontSize: 24, color: 'var(--admin-fg)' }}
             >
               {meta.icon}
             </span>
             <span
               aria-hidden
               className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"
-              style={{ boxShadow: '0 0 32px rgba(255,255,255,0.35), inset 0 0 16px rgba(255,255,255,0.08)' }}
+              style={{ boxShadow: '0 0 32px var(--admin-accent-glow), inset 0 0 16px var(--admin-border)' }}
             />
           </div>
 
@@ -455,7 +455,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
               fontSize: 10,
               fontWeight: 500,
               letterSpacing: '0.18em',
-              color: '#525252',
+              color: 'var(--admin-fg-subtle)',
               paddingTop: 6,
             }}
           >
@@ -470,7 +470,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
             fontWeight: 500,
             letterSpacing: '-0.025em',
             lineHeight: 1.1,
-            color: '#FFFFFF',
+            color: 'var(--admin-fg)',
             marginBottom: 12,
           }}
         >
@@ -481,7 +481,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
           style={{
             fontSize: 14,
             lineHeight: 1.55,
-            color: '#A1A1A1',
+            color: 'var(--admin-fg-muted)',
             letterSpacing: '-0.005em',
             flex: 1,
           }}
@@ -490,7 +490,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
         </p>
 
         {/* Stats row mono */}
-        <div className="flex items-center gap-2 mt-7 pt-5" style={{ borderTop: '0.5px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center gap-2 mt-7 pt-5" style={{ borderTop: '0.5px solid var(--admin-accent-soft)' }}>
           <StatMono value={phaseCount.toString().padStart(2, '0')} label="FASES" />
           <Sep />
           <StatMono value={meta.formularios.toString().padStart(2, '0')} label="FORMS" />
@@ -501,7 +501,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
         {/* Bottom row */}
         <div className="flex items-center justify-between mt-5">
           <div className="flex items-center gap-1.5">
-            <span className="material-symbols-outlined" data-fill="1" style={{ fontSize: 14, color: '#FFFFFF' }}>
+            <span className="material-symbols-outlined" data-fill="1" style={{ fontSize: 14, color: 'var(--admin-fg)' }}>
               auto_awesome
             </span>
             <span
@@ -509,7 +509,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
                 fontFamily: 'var(--font-mono-tech)',
                 fontSize: 11,
                 fontWeight: 500,
-                color: '#FFFFFF',
+                color: 'var(--admin-fg)',
                 letterSpacing: '0.08em',
               }}
             >
@@ -524,7 +524,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
               fontSize: 11,
               fontWeight: 700,
               letterSpacing: '0.15em',
-              color: '#FFFFFF',
+              color: 'var(--admin-fg)',
             }}
           >
             ABRIR
@@ -539,14 +539,14 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
 function StatMono({ value, label }: { value: string; label: string }) {
   return (
     <div className="flex items-baseline gap-1.5" style={{ fontFamily: 'var(--font-mono-tech)' }}>
-      <span style={{ fontSize: 15, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em' }}>{value}</span>
-      <span style={{ fontSize: 9, fontWeight: 500, color: '#525252', letterSpacing: '0.18em' }}>{label}</span>
+      <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--admin-fg)', letterSpacing: '-0.02em' }}>{value}</span>
+      <span style={{ fontSize: 9, fontWeight: 500, color: 'var(--admin-fg-subtle)', letterSpacing: '0.18em' }}>{label}</span>
     </div>
   )
 }
 
 function Sep() {
-  return <span style={{ color: '#262626', fontSize: 12 }}>·</span>
+  return <span style={{ color: 'var(--admin-fg-faint)', fontSize: 12 }}>·</span>
 }
 
 // ────────────────────────────────────────────────────────────────────

@@ -147,7 +147,7 @@ export default function ProspectSchedulingConfigPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-5 h-5 animate-spin" style={{ color: '#A1A1A1' }} />
+        <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--admin-fg-muted)' }} />
       </div>
     )
   }
@@ -164,7 +164,7 @@ export default function ProspectSchedulingConfigPage() {
           fontSize: 10,
           fontWeight: 700,
           letterSpacing: '0.2em',
-          color: '#A1A1A1',
+          color: 'var(--admin-fg-muted)',
         }}
       >
         <ArrowLeft className="w-3.5 h-3.5" />
@@ -215,7 +215,7 @@ export default function ProspectSchedulingConfigPage() {
               className="rounded-xl p-4"
               style={{
                 background: day.is_available ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.015)',
-                border: '0.5px solid rgba(255,255,255,0.08)',
+                border: '0.5px solid var(--admin-border)',
               }}
             >
               <div className="flex items-center justify-between">
@@ -228,7 +228,7 @@ export default function ProspectSchedulingConfigPage() {
                     style={{
                       fontSize: 14,
                       fontWeight: 600,
-                      color: day.is_available ? '#FFFFFF' : '#525252',
+                      color: day.is_available ? '#FFFFFF' : 'var(--admin-fg-subtle)',
                       letterSpacing: '-0.005em',
                     }}
                   >
@@ -241,7 +241,7 @@ export default function ProspectSchedulingConfigPage() {
                         fontSize: 9,
                         fontWeight: 700,
                         letterSpacing: '0.18em',
-                        color: '#525252',
+                        color: 'var(--admin-fg-subtle)',
                       }}
                     >
                       INACTIVO
@@ -264,7 +264,7 @@ export default function ProspectSchedulingConfigPage() {
                     <p
                       style={{
                         fontSize: 11,
-                        color: '#525252',
+                        color: 'var(--admin-fg-subtle)',
                         fontFamily: 'var(--font-mono-tech)',
                         letterSpacing: '0.1em',
                         fontStyle: 'italic',
@@ -283,7 +283,7 @@ export default function ProspectSchedulingConfigPage() {
                           updateDayBlocks(idx, blocks)
                         }}
                       />
-                      <span style={{ color: '#525252', fontSize: 11, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.2em' }}>
+                      <span style={{ color: 'var(--admin-fg-subtle)', fontSize: 11, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.2em' }}>
                         A
                       </span>
                       <HourSelect
@@ -337,7 +337,7 @@ export default function ProspectSchedulingConfigPage() {
         </div>
 
         {blockedDates.length === 0 ? (
-          <p style={{ fontSize: 11, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em', fontStyle: 'italic' }}>
+          <p style={{ fontSize: 11, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em', fontStyle: 'italic' }}>
             NO HAY FECHAS BLOQUEADAS
           </p>
         ) : (
@@ -358,7 +358,7 @@ export default function ProspectSchedulingConfigPage() {
                     })}
                   </p>
                   {b.reason && (
-                    <p style={{ fontSize: 11, color: '#A1A1A1', marginTop: 2 }}>
+                    <p style={{ fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 2 }}>
                       {b.reason}
                     </p>
                   )}
@@ -405,8 +405,8 @@ function Panel({
     <div
       className="relative rounded-2xl p-5 overflow-hidden"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -420,17 +420,17 @@ function Panel({
           <span
             className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
             style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
+              background: 'linear-gradient(135deg, var(--admin-border-strong), rgba(255,255,255,0.02))',
               border: '0.5px solid rgba(255,255,255,0.15)',
-              color: '#FFFFFF',
+              color: 'var(--admin-fg)',
             }}
           >
             {icon}
           </span>
           <div>
-            <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.018em', color: '#FFFFFF' }}>{title}</h2>
+            <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.018em', color: 'var(--admin-fg)' }}>{title}</h2>
             {description && (
-              <p style={{ fontSize: 12, color: '#A1A1A1', marginTop: 3, letterSpacing: '-0.005em' }}>{description}</p>
+              <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', marginTop: 3, letterSpacing: '-0.005em' }}>{description}</p>
             )}
           </div>
         </div>
@@ -449,14 +449,14 @@ function FormField({ label, hint, className, children }: { label: string; hint?:
           fontSize: 9,
           fontWeight: 500,
           letterSpacing: '0.18em',
-          color: '#A1A1A1',
+          color: 'var(--admin-fg-muted)',
         }}
       >
         {label.toUpperCase()}
       </label>
       {children}
       {hint && (
-        <p style={{ fontSize: 10, color: '#525252', marginTop: 2, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+        <p style={{ fontSize: 10, color: 'var(--admin-fg-subtle)', marginTop: 2, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
           {hint.toUpperCase()}
         </p>
       )}
@@ -465,9 +465,9 @@ function FormField({ label, hint, className, children }: { label: string; hint?:
 }
 
 const DARK_INPUT_STYLE: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.04)',
-  border: '0.5px solid rgba(255,255,255,0.1)',
-  color: '#FAFAFA',
+  background: 'var(--admin-accent-soft)',
+  border: '0.5px solid var(--admin-border-strong)',
+  color: 'var(--admin-fg)',
   fontSize: 13,
   letterSpacing: '-0.005em',
   colorScheme: 'dark',
@@ -521,9 +521,9 @@ function HourSelect({ value, onChange }: { value: number; onChange: (v: number) 
         onChange={(e) => onChange(parseInt(e.target.value))}
         className="appearance-none px-3 py-1.5 pr-7 rounded-lg outline-none cursor-pointer transition-colors focus:border-white/30"
         style={{
-          background: 'rgba(255,255,255,0.04)',
-          border: '0.5px solid rgba(255,255,255,0.1)',
-          color: '#FAFAFA',
+          background: 'var(--admin-accent-soft)',
+          border: '0.5px solid var(--admin-border-strong)',
+          color: 'var(--admin-fg)',
           fontFamily: 'var(--font-mono-tech)',
           fontSize: 11,
           fontWeight: 700,
@@ -532,7 +532,7 @@ function HourSelect({ value, onChange }: { value: number; onChange: (v: number) 
         }}
       >
         {Array.from({ length: 24 }, (_, h) => (
-          <option key={h} value={h} style={{ background: '#0A0A0A', color: '#FAFAFA' }}>
+          <option key={h} value={h} style={{ background: 'var(--admin-bg)', color: 'var(--admin-fg)' }}>
             {formatHour(h)}
           </option>
         ))}
@@ -540,7 +540,7 @@ function HourSelect({ value, onChange }: { value: number; onChange: (v: number) 
       <span
         aria-hidden
         className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
-        style={{ color: '#525252', fontSize: 9 }}
+        style={{ color: 'var(--admin-fg-subtle)', fontSize: 9 }}
       >
         ▾
       </span>
@@ -555,7 +555,7 @@ function CustomCheckbox({ checked, onChange }: { checked: boolean; onChange: (c:
       onClick={(e) => { e.preventDefault(); onChange(!checked) }}
       className="inline-flex items-center justify-center w-5 h-5 rounded-md transition-all duration-200"
       style={{
-        background: checked ? '#FFFFFF' : 'rgba(255,255,255,0.04)',
+        background: checked ? '#FFFFFF' : 'var(--admin-accent-soft)',
         border: checked ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.15)',
         boxShadow: checked ? '0 0 12px rgba(255,255,255,0.18)' : 'none',
       }}

@@ -142,7 +142,7 @@ export function TranslationTool() {
       <div
         className="relative rounded-2xl p-5 overflow-hidden"
         style={{
-          background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+          background: 'var(--admin-panel-grad)',
           border: '0.5px solid rgba(255,255,255,0.1)',
           backdropFilter: 'blur(20px)',
         }}
@@ -160,25 +160,25 @@ export function TranslationTool() {
               border: '0.5px solid rgba(96,165,250,0.3)',
             }}
           >
-            <Languages className="w-5 h-5" style={{ color: '#60A5FA' }} />
+            <Languages className="w-5 h-5" style={{ color: 'var(--admin-blue)' }} />
           </div>
           <div>
-            <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: '#525252' }}>
+            <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg-subtle)' }}>
               TRADUCTOR · DOCUMENTOS CIVILES
             </p>
-            <h2 style={{ fontSize: 17, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.018em', marginTop: 2 }}>
+            <h2 style={{ fontSize: 17, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.018em', marginTop: 2 }}>
               Traductor de actas civiles
             </h2>
-            <p style={{ fontSize: 13, color: '#A1A1A1', marginTop: 6, lineHeight: 1.55 }}>
+            <p style={{ fontSize: 13, color: 'var(--admin-fg-muted)', marginTop: 6, lineHeight: 1.55 }}>
               Sube un acta de nacimiento, matrimonio, cédula u otro documento oficial en español.
               Gemini lo traduce al inglés con el formato certificado de UsaLatino Prime, incluye la página de
-              <span style={{ color: '#FFFFFF', fontWeight: 600 }}> Translation Certification</span> firmada por
-              <span style={{ color: '#FFFFFF', fontWeight: 600 }}> Andrew Sonny Navarro</span> y descargas el PDF listo para entregar.
+              <span style={{ color: 'var(--admin-fg)', fontWeight: 600 }}> Translation Certification</span> firmada por
+              <span style={{ color: 'var(--admin-fg)', fontWeight: 600 }}> Andrew Sonny Navarro</span> y descargas el PDF listo para entregar.
             </p>
             <p
               style={{
                 fontSize: 10,
-                color: '#525252',
+                color: 'var(--admin-fg-subtle)',
                 marginTop: 8,
                 fontFamily: 'var(--font-mono-tech)',
                 letterSpacing: '0.05em',
@@ -201,7 +201,7 @@ export function TranslationTool() {
             fontSize: 10,
             fontWeight: 500,
             letterSpacing: '0.18em',
-            color: '#A1A1A1',
+            color: 'var(--admin-fg-muted)',
           }}
         >
           DOCUMENTO ORIGINAL
@@ -240,20 +240,20 @@ export function TranslationTool() {
             <div
               className="inline-flex items-center justify-center w-12 h-12 rounded-2xl"
               style={{
-                background: 'rgba(96,165,250,0.12)',
+                background: 'var(--admin-blue-soft)',
                 border: '0.5px solid rgba(96,165,250,0.25)',
               }}
             >
-              <FileUp className="w-5 h-5" style={{ color: '#60A5FA' }} />
+              <FileUp className="w-5 h-5" style={{ color: 'var(--admin-blue)' }} />
             </div>
             <div>
-              <p style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                 Click para seleccionar archivos
               </p>
               <p
                 style={{
                   fontSize: 11,
-                  color: '#525252',
+                  color: 'var(--admin-fg-subtle)',
                   marginTop: 4,
                   fontFamily: 'var(--font-mono-tech)',
                   letterSpacing: '0.05em',
@@ -270,30 +270,30 @@ export function TranslationTool() {
                 key={`${f.name}-${i}`}
                 className="rounded-xl p-3 flex items-center gap-3"
                 style={{
-                  background: 'rgba(34,197,94,0.06)',
+                  background: 'var(--admin-green-soft)',
                   border: '0.5px solid rgba(34,197,94,0.25)',
                 }}
               >
                 <div
                   className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                   style={{
-                    background: 'rgba(34,197,94,0.12)',
+                    background: 'var(--admin-green-soft)',
                     border: '0.5px solid rgba(34,197,94,0.25)',
                   }}
                 >
-                  <FileText className="w-4 h-4" style={{ color: '#4ADE80' }} />
+                  <FileText className="w-4 h-4" style={{ color: 'var(--admin-green)' }} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <p
                     className="truncate"
-                    style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}
+                    style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}
                   >
                     {f.name}
                   </p>
                   <p
                     style={{
                       fontSize: 10,
-                      color: '#86EFAC',
+                      color: 'var(--admin-green)',
                       fontFamily: 'var(--font-mono-tech)',
                       letterSpacing: '0.05em',
                       marginTop: 2,
@@ -306,7 +306,7 @@ export function TranslationTool() {
                   type="button"
                   onClick={() => removeFile(i)}
                   className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors hover:bg-red-500/10"
-                  style={{ color: '#FCA5A5' }}
+                  style={{ color: 'var(--admin-red)' }}
                   title="Quitar archivo"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -319,9 +319,9 @@ export function TranslationTool() {
                 onClick={() => inputRef.current?.click()}
                 className="w-full rounded-xl py-3 px-4 flex items-center justify-center gap-2 transition-all duration-200 hover:bg-white/5"
                 style={{
-                  background: 'rgba(255,255,255,0.02)',
+                  background: 'var(--admin-accent-soft)',
                   border: '2px dashed rgba(255,255,255,0.12)',
-                  color: '#A1A1A1',
+                  color: 'var(--admin-fg-muted)',
                   fontSize: 12,
                   fontWeight: 500,
                   letterSpacing: '-0.005em',
@@ -339,20 +339,20 @@ export function TranslationTool() {
       <div
         className="rounded-xl p-4 flex items-start gap-3"
         style={{
-          background: 'rgba(250,204,21,0.06)',
+          background: 'var(--admin-gold-soft)',
           border: '0.5px solid rgba(250,204,21,0.25)',
         }}
       >
-        <Sparkles className="w-4 h-4 mt-0.5 shrink-0" style={{ color: '#FACC15' }} />
+        <Sparkles className="w-4 h-4 mt-0.5 shrink-0" style={{ color: 'var(--admin-gold)' }} />
         <div className="space-y-1">
-          <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: '#FACC15' }}>
+          <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--admin-gold)' }}>
             CERTIFICACIÓN AUTOMÁTICA
           </p>
-          <p style={{ fontSize: 13, fontWeight: 600, color: '#FDE68A' }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-gold)' }}>
             Página firmada incluida en cada PDF
           </p>
-          <p style={{ fontSize: 12, color: '#A1A1A1', lineHeight: 1.55 }}>
-            Cada documento se genera con la página firmada por <span style={{ color: '#FFFFFF', fontWeight: 600 }}>Andrew Sonny Navarro</span>{' '}
+          <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', lineHeight: 1.55 }}>
+            Cada documento se genera con la página firmada por <span style={{ color: 'var(--admin-fg)', fontWeight: 600 }}>Andrew Sonny Navarro</span>{' '}
             y la fecha de hoy. No tienes que llenar nada — el formato es fijo según pidió Henry.
           </p>
         </div>
@@ -405,7 +405,7 @@ function TranslationPreview({ doc }: { doc: TranslatedDoc }) {
     <div
       className="rounded-2xl p-6 space-y-3"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
+        background: 'var(--admin-panel-grad)',
         border: '0.5px solid rgba(255,255,255,0.1)',
         backdropFilter: 'blur(20px)',
         fontFamily: 'Georgia, serif',
@@ -421,7 +421,7 @@ function TranslationPreview({ doc }: { doc: TranslatedDoc }) {
             fontSize: 10,
             fontWeight: 700,
             letterSpacing: '0.2em',
-            color: '#525252',
+            color: 'var(--admin-fg-subtle)',
           }}
         >
           VISTA PREVIA · TRADUCCIÓN
@@ -433,7 +433,7 @@ function TranslationPreview({ doc }: { doc: TranslatedDoc }) {
             fontSize: 9,
             fontWeight: 700,
             letterSpacing: '0.15em',
-            color: '#FDE68A',
+            color: 'var(--admin-gold)',
           }}
         >
           <AlertTriangle className="w-3 h-3" />
@@ -441,48 +441,48 @@ function TranslationPreview({ doc }: { doc: TranslatedDoc }) {
         </div>
       </div>
 
-      <p style={{ textAlign: 'center', fontSize: 14, fontWeight: 700, color: '#FFFFFF' }}>
+      <p style={{ textAlign: 'center', fontSize: 14, fontWeight: 700, color: 'var(--admin-fg)' }}>
         CERTIFIED TRANSLATION FROM SPANISH INTO ENGLISH
       </p>
 
       {doc.jurisdiction_header?.length > 0 && (
         <div className="space-y-0.5 pt-1">
           {doc.jurisdiction_header.map((line, i) => (
-            <p key={i} style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF' }}>{line}</p>
+            <p key={i} style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-fg)' }}>{line}</p>
           ))}
         </div>
       )}
 
       {doc.document_type && (
-        <p style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', paddingTop: 4 }}>{doc.document_type}</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-fg)', paddingTop: 4 }}>{doc.document_type}</p>
       )}
 
       {doc.registration_number && (
-        <p style={{ fontSize: 13, color: '#D4D4D8' }}>
-          <span style={{ fontWeight: 700, color: '#FFFFFF' }}>Registration Number:</span> {doc.registration_number}
+        <p style={{ fontSize: 13, color: 'var(--admin-fg-muted)' }}>
+          <span style={{ fontWeight: 700, color: 'var(--admin-fg)' }}>Registration Number:</span> {doc.registration_number}
         </p>
       )}
 
       {doc.issuing_authority && (
-        <p style={{ fontSize: 13, color: '#D4D4D8', lineHeight: 1.55, paddingTop: 4 }}>{doc.issuing_authority}</p>
+        <p style={{ fontSize: 13, color: 'var(--admin-fg-muted)', lineHeight: 1.55, paddingTop: 4 }}>{doc.issuing_authority}</p>
       )}
 
       {doc.certification_verb && (
-        <p style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF', paddingTop: 4 }}>{doc.certification_verb}</p>
+        <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-fg)', paddingTop: 4 }}>{doc.certification_verb}</p>
       )}
 
       {doc.certification_paragraph && (
-        <p style={{ fontSize: 13, color: '#D4D4D8', lineHeight: 1.55 }}>{doc.certification_paragraph}</p>
+        <p style={{ fontSize: 13, color: 'var(--admin-fg-muted)', lineHeight: 1.55 }}>{doc.certification_paragraph}</p>
       )}
 
       {doc.registered_person_name && (
-        <p style={{ fontSize: 16, fontWeight: 700, color: '#FFFFFF', paddingTop: 8 }}>{doc.registered_person_name}</p>
+        <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--admin-fg)', paddingTop: 8 }}>{doc.registered_person_name}</p>
       )}
 
       <div className="space-y-0.5">
         {doc.primary_fields?.map((f, i) => (
-          <p key={i} style={{ fontSize: 13, color: '#D4D4D8' }}>
-            <span style={{ fontWeight: 700, color: '#FFFFFF' }}>{f.label}:</span> {f.value}
+          <p key={i} style={{ fontSize: 13, color: 'var(--admin-fg-muted)' }}>
+            <span style={{ fontWeight: 700, color: 'var(--admin-fg)' }}>{f.label}:</span> {f.value}
           </p>
         ))}
       </div>
@@ -490,8 +490,8 @@ function TranslationPreview({ doc }: { doc: TranslatedDoc }) {
       {doc.parents?.length > 0 && (
         <div className="space-y-0.5 pt-2">
           {doc.parents.map((p, i) => (
-            <p key={i} style={{ fontSize: 13, color: '#D4D4D8' }}>
-              <span style={{ fontWeight: 700, color: '#FFFFFF' }}>{p.label}:</span> {p.line}
+            <p key={i} style={{ fontSize: 13, color: 'var(--admin-fg-muted)' }}>
+              <span style={{ fontWeight: 700, color: 'var(--admin-fg)' }}>{p.label}:</span> {p.line}
             </p>
           ))}
         </div>
@@ -500,22 +500,22 @@ function TranslationPreview({ doc }: { doc: TranslatedDoc }) {
       {doc.registration_fields?.length > 0 && (
         <div className="space-y-0.5 pt-2">
           {doc.registration_fields.map((f, i) => (
-            <p key={i} style={{ fontSize: 13, color: '#D4D4D8' }}>
-              <span style={{ fontWeight: 700, color: '#FFFFFF' }}>{f.label}:</span> {f.value}
+            <p key={i} style={{ fontSize: 13, color: 'var(--admin-fg-muted)' }}>
+              <span style={{ fontWeight: 700, color: 'var(--admin-fg)' }}>{f.label}:</span> {f.value}
             </p>
           ))}
         </div>
       )}
 
       {doc.validation_paragraph && (
-        <p style={{ fontSize: 12, color: '#A1A1A1', lineHeight: 1.55, paddingTop: 6 }}>{doc.validation_paragraph}</p>
+        <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', lineHeight: 1.55, paddingTop: 6 }}>{doc.validation_paragraph}</p>
       )}
 
       {doc.reference_codes?.length > 0 && (
         <div className="space-y-0.5 pt-2">
           {doc.reference_codes.map((c, i) => (
-            <p key={i} style={{ fontSize: 13, color: '#D4D4D8' }}>
-              <span style={{ fontWeight: 700, color: '#FFFFFF' }}>{c.label}:</span> {c.value}
+            <p key={i} style={{ fontSize: 13, color: 'var(--admin-fg-muted)' }}>
+              <span style={{ fontWeight: 700, color: 'var(--admin-fg)' }}>{c.label}:</span> {c.value}
             </p>
           ))}
         </div>
@@ -524,10 +524,10 @@ function TranslationPreview({ doc }: { doc: TranslatedDoc }) {
       {(doc.signatory_name || doc.signatory_title) && (
         <div className="pt-3">
           {doc.signatory_name && (
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#FFFFFF' }}>{doc.signatory_name}</p>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-fg)' }}>{doc.signatory_name}</p>
           )}
           {doc.signatory_title && (
-            <p style={{ fontSize: 13, color: '#D4D4D8' }}>{doc.signatory_title}</p>
+            <p style={{ fontSize: 13, color: 'var(--admin-fg-muted)' }}>{doc.signatory_title}</p>
           )}
         </div>
       )}
@@ -535,15 +535,15 @@ function TranslationPreview({ doc }: { doc: TranslatedDoc }) {
       {doc.closing_fields?.length > 0 && (
         <div className="space-y-0.5 pt-2">
           {doc.closing_fields.map((f, i) => (
-            <p key={i} style={{ fontSize: 13, color: '#D4D4D8' }}>
-              <span style={{ fontWeight: 700, color: '#FFFFFF' }}>{f.label}:</span> {f.value}
+            <p key={i} style={{ fontSize: 13, color: 'var(--admin-fg-muted)' }}>
+              <span style={{ fontWeight: 700, color: 'var(--admin-fg)' }}>{f.label}:</span> {f.value}
             </p>
           ))}
         </div>
       )}
 
       {doc.closing_note && (
-        <p style={{ fontSize: 12, color: '#A1A1A1', lineHeight: 1.55, paddingTop: 4, fontStyle: 'italic' }}>
+        <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', lineHeight: 1.55, paddingTop: 4, fontStyle: 'italic' }}>
           {doc.closing_note}
         </p>
       )}

@@ -40,7 +40,7 @@ const STATUS_STYLES: Record<StatusKind, { bg: string; border: string; dot: strin
   success:   { bg: 'rgba(34,197,94,0.10)',   border: 'rgba(34,197,94,0.3)',   dot: '#4ADE80', text: '#86EFAC' },
   warning:   { bg: 'rgba(250,204,21,0.10)',  border: 'rgba(250,204,21,0.3)',  dot: '#FACC15', text: '#FDE68A' },
   danger:    { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', dot: '#F87171', text: '#FCA5A5' },
-  neutral:   { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)', dot: '#A1A1A1', text: '#A1A1A1' },
+  neutral:   { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-fg-muted)', text: 'var(--admin-fg-muted)' },
 }
 
 const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
@@ -158,7 +158,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
       {/* Search + TZ selector */}
       <div className="flex gap-2 flex-wrap items-center">
         <div className="relative flex-1 min-w-[240px]">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: '#525252' }} />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--admin-fg-subtle)' }} />
           <input
             type="text"
             value={search}
@@ -166,15 +166,15 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
             placeholder="Buscar por nombre, caso o notas…"
             className="w-full pl-10 pr-9 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/25"
             style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '0.5px solid rgba(255,255,255,0.1)',
-              color: '#FAFAFA',
+              background: 'var(--admin-accent-soft)',
+              border: '0.5px solid var(--admin-border-strong)',
+              color: 'var(--admin-fg)',
               fontSize: 13,
               letterSpacing: '-0.005em',
             }}
           />
           {search && (
-            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70" style={{ color: '#A1A1A1' }}>
+            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70" style={{ color: 'var(--admin-fg-muted)' }}>
               <X className="w-3.5 h-3.5" />
             </button>
           )}
@@ -182,12 +182,12 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
         <div
           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl"
           style={{
-            background: 'rgba(255,255,255,0.03)',
-            border: '0.5px solid rgba(255,255,255,0.1)',
+            background: 'var(--admin-accent-soft)',
+            border: '0.5px solid var(--admin-border-strong)',
           }}
         >
-          <Globe className="w-3.5 h-3.5" style={{ color: '#525252' }} />
-          <span className="hidden md:inline" style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#525252' }}>
+          <Globe className="w-3.5 h-3.5" style={{ color: 'var(--admin-fg-subtle)' }} />
+          <span className="hidden md:inline" style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-subtle)' }}>
             VER EN
           </span>
           <div className="w-56">
@@ -201,8 +201,8 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
         <div
           className="inline-flex items-center gap-1 p-1 rounded-full"
           style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '0.5px solid rgba(255,255,255,0.08)',
+            background: 'var(--admin-accent-soft)',
+            border: '0.5px solid var(--admin-border)',
           }}
         >
           {['all', 'scheduled', 'completed', 'cancelled', 'no_show'].map(s => {
@@ -214,7 +214,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
                 className="px-3.5 py-1.5 rounded-full transition-all duration-300"
                 style={{
                   background: isActive ? '#FFFFFF' : 'transparent',
-                  color: isActive ? '#000000' : '#A1A1A1',
+                  color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
                   fontSize: 12,
                   fontWeight: isActive ? 700 : 500,
                   letterSpacing: '-0.005em',
@@ -273,25 +273,25 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
       <div
         className="rounded-2xl overflow-hidden"
         style={{
-          background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-          border: '0.5px solid rgba(255,255,255,0.1)',
+          background: 'var(--admin-panel-grad)',
+          border: '0.5px solid var(--admin-border-strong)',
           backdropFilter: 'blur(20px)',
         }}
       >
-        <div className="px-5 py-4 flex items-center gap-2.5" style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
-          <CalendarClock className="w-4 h-4" style={{ color: '#FFFFFF' }} />
-          <h2 style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.012em' }}>
+        <div className="px-5 py-4 flex items-center gap-2.5" style={{ borderBottom: '0.5px solid var(--admin-border)' }}>
+          <CalendarClock className="w-4 h-4" style={{ color: 'var(--admin-fg)' }} />
+          <h2 style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.012em' }}>
             Citas
           </h2>
           <span
             className="inline-flex items-center justify-center px-2 py-0.5 rounded-full"
             style={{
-              background: 'rgba(255,255,255,0.06)',
+              background: 'var(--admin-accent-soft)',
               border: '0.5px solid rgba(255,255,255,0.12)',
               fontFamily: 'var(--font-mono-tech)',
               fontSize: 10,
               fontWeight: 700,
-              color: '#FFFFFF',
+              color: 'var(--admin-fg)',
               letterSpacing: '0.05em',
             }}
           >
@@ -302,7 +302,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
+              <tr style={{ borderBottom: '0.5px solid var(--admin-border)', background: 'var(--admin-accent-soft)' }}>
                 <Th>Fecha / Hora</Th>
                 <Th>Cliente</Th>
                 <Th>Caso / Servicio</Th>
@@ -314,7 +314,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="text-center py-12">
-                    <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+                    <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
                       SIN CITAS PARA ESTE FILTRO
                     </p>
                   </td>
@@ -340,16 +340,16 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
         onClick={() => setShowConfig(!showConfig)}
         className="w-full inline-flex items-center justify-between px-5 py-3 rounded-2xl transition-colors hover:bg-white/[0.04]"
         style={{
-          background: 'rgba(255,255,255,0.025)',
-          border: '0.5px solid rgba(255,255,255,0.1)',
-          color: '#FFFFFF',
+          background: 'var(--admin-accent-soft)',
+          border: '0.5px solid var(--admin-border-strong)',
+          color: 'var(--admin-fg)',
         }}
       >
         <span className="inline-flex items-center gap-2.5">
           <span
             className="inline-flex items-center justify-center w-8 h-8 rounded-xl"
             style={{
-              background: 'rgba(255,255,255,0.06)',
+              background: 'var(--admin-accent-soft)',
               border: '0.5px solid rgba(255,255,255,0.12)',
             }}
           >
@@ -385,7 +385,7 @@ function Th({ children }: { children?: React.ReactNode }) {
         fontSize: 10,
         fontWeight: 500,
         letterSpacing: '0.18em',
-        color: '#525252',
+        color: 'var(--admin-fg-subtle)',
       }}
     >
       {typeof children === 'string' ? children.toUpperCase() : children}
@@ -553,7 +553,7 @@ function AppointmentRow({
     <>
       <tr
         style={{
-          borderBottom: !isLast ? '0.5px solid rgba(255,255,255,0.04)' : 'none',
+          borderBottom: !isLast ? '0.5px solid var(--admin-accent-soft)' : 'none',
           transition: 'background 0.2s',
         }}
         onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
@@ -561,13 +561,13 @@ function AppointmentRow({
       >
         <Td>
           <div>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
               {formatDate(appointment.scheduled_at, viewTz)}
             </p>
-            <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 11, color: '#A1A1A1', marginTop: 2, letterSpacing: '0.02em' }}>
+            <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 2, letterSpacing: '0.02em' }}>
               {formatTime(appointment.scheduled_at, viewTz)} {tzShortLabel(viewTz)}
               {!tzIsOffice && (
-                <span style={{ color: '#525252' }}> · {formatTime(appointment.scheduled_at, OFFICE_TIMEZONE)} MT</span>
+                <span style={{ color: 'var(--admin-fg-subtle)' }}> · {formatTime(appointment.scheduled_at, OFFICE_TIMEZONE)} MT</span>
               )}
             </p>
           </div>
@@ -575,7 +575,7 @@ function AppointmentRow({
         <Td>
           {client ? (
             <div>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
                 {client.first_name} {client.last_name}
               </p>
               <span
@@ -587,9 +587,9 @@ function AppointmentRow({
                   letterSpacing: '0.15em',
                   padding: '2px 6px',
                   borderRadius: 4,
-                  background: completedCount === 0 ? 'rgba(96,165,250,0.10)' : 'rgba(255,255,255,0.05)',
-                  color: completedCount === 0 ? '#93C5FD' : '#A1A1A1',
-                  border: completedCount === 0 ? '0.5px solid rgba(96,165,250,0.3)' : '0.5px solid rgba(255,255,255,0.1)',
+                  background: completedCount === 0 ? 'rgba(96,165,250,0.10)' : 'var(--admin-accent-soft)',
+                  color: completedCount === 0 ? '#93C5FD' : 'var(--admin-fg-muted)',
+                  border: completedCount === 0 ? '0.5px solid rgba(96,165,250,0.3)' : '0.5px solid var(--admin-border-strong)',
                 }}
               >
                 {visitLabel(completedCount).toUpperCase()}
@@ -597,10 +597,10 @@ function AppointmentRow({
             </div>
           ) : (
             <div>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#FDE68A', letterSpacing: '-0.005em' }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-gold)', letterSpacing: '-0.005em' }}>
                 {guestName || 'Sin nombre'}
               </p>
-              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', color: '#FACC15', marginTop: 2 }}>
+              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.15em', color: 'var(--admin-gold)', marginTop: 2 }}>
                 NO CLIENTE
               </p>
             </div>
@@ -609,13 +609,13 @@ function AppointmentRow({
         <Td>
           {caseInfo ? (
             <div>
-              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 12, fontWeight: 700, color: '#FFFFFF', letterSpacing: '0.02em' }}>
+              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 12, fontWeight: 700, color: 'var(--admin-fg)', letterSpacing: '0.02em' }}>
                 #{caseInfo.case_number}
               </p>
-              <p style={{ fontSize: 11, color: '#A1A1A1', marginTop: 2 }}>{service?.name || '—'}</p>
+              <p style={{ fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 2 }}>{service?.name || '—'}</p>
             </div>
           ) : (
-            <p style={{ fontSize: 11, color: '#525252', fontStyle: 'italic' }}>Visita presencial</p>
+            <p style={{ fontSize: 11, color: 'var(--admin-fg-subtle)', fontStyle: 'italic' }}>Visita presencial</p>
           )}
         </Td>
         <Td>
@@ -641,7 +641,7 @@ function AppointmentRow({
           {(appointment.status === 'cancelled' || appointment.status === 'no_show') && (
             <div className="space-y-1.5">
               {appointment.cancellation_reason && (
-                <p style={{ fontSize: 11, color: '#525252', fontStyle: 'italic' }}>{appointment.cancellation_reason}</p>
+                <p style={{ fontSize: 11, color: 'var(--admin-fg-subtle)', fontStyle: 'italic' }}>{appointment.cancellation_reason}</p>
               )}
               {appointment.penalty_waived ? (
                 <span
@@ -652,7 +652,7 @@ function AppointmentRow({
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 9,
                     fontWeight: 700,
-                    color: '#86EFAC',
+                    color: 'var(--admin-green)',
                     letterSpacing: '0.1em',
                   }}
                 >
@@ -683,7 +683,7 @@ function AppointmentRow({
               </p>
               <div className="flex items-end gap-3 flex-wrap">
                 <div className="space-y-1.5">
-                  <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#A1A1A1' }}>
+                  <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-muted)' }}>
                     NUEVA FECHA
                   </label>
                   <input
@@ -696,9 +696,9 @@ function AppointmentRow({
                     }}
                     className="w-44 h-9 px-3 rounded-lg outline-none transition-colors focus:border-white/30"
                     style={{
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '0.5px solid rgba(255,255,255,0.1)',
-                      color: '#FAFAFA',
+                      background: 'var(--admin-accent-soft)',
+                      border: '0.5px solid var(--admin-border-strong)',
+                      color: 'var(--admin-fg)',
                       fontSize: 12,
                       colorScheme: 'dark',
                     }}
@@ -706,13 +706,13 @@ function AppointmentRow({
                 </div>
                 {rescheduleDate && (
                   loadingRescheduleSlots ? (
-                    <div className="inline-flex items-center gap-2 pb-1.5" style={{ fontSize: 12, color: '#A1A1A1' }}>
+                    <div className="inline-flex items-center gap-2 pb-1.5" style={{ fontSize: 12, color: 'var(--admin-fg-muted)' }}>
                       <Loader2 className="w-3.5 h-3.5 animate-spin" /> Cargando…
                     </div>
                   ) : rescheduleBlocked ? (
-                    <p style={{ fontSize: 12, color: '#FCA5A5' }}>Fecha bloqueada</p>
+                    <p style={{ fontSize: 12, color: 'var(--admin-red)' }}>Fecha bloqueada</p>
                   ) : rescheduleSlots.length === 0 ? (
-                    <p style={{ fontSize: 12, color: '#525252' }}>Sin horarios disponibles</p>
+                    <p style={{ fontSize: 12, color: 'var(--admin-fg-subtle)' }}>Sin horarios disponibles</p>
                   ) : (
                     <div className="flex gap-1.5 flex-wrap">
                       {rescheduleSlots.map(slot => {
@@ -723,9 +723,9 @@ function AppointmentRow({
                             onClick={() => setRescheduleSlot(slot)}
                             className="flex flex-col items-center px-3 py-1.5 rounded-xl transition-all duration-200"
                             style={{
-                              background: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.04)',
-                              border: isActive ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.1)',
-                              color: isActive ? '#000000' : '#FAFAFA',
+                              background: isActive ? '#FFFFFF' : 'var(--admin-accent-soft)',
+                              border: isActive ? '0.5px solid #FFFFFF' : '0.5px solid var(--admin-border-strong)',
+                              color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg)',
                               boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.18)' : 'none',
                             }}
                           >
@@ -734,7 +734,7 @@ function AppointmentRow({
                               {formatTime(slot, viewTz)}
                             </span>
                             {!tzIsOffice && (
-                              <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, marginTop: 1, color: isActive ? 'rgba(0,0,0,0.6)' : '#525252' }}>
+                              <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, marginTop: 1, color: isActive ? 'rgba(0,0,0,0.6)' : 'var(--admin-fg-subtle)' }}>
                                 {formatTime(slot, OFFICE_TIMEZONE)} MT
                               </span>
                             )}
@@ -887,16 +887,16 @@ function ScheduleConfigPanel({
             className="rounded-xl p-4"
             style={{
               background: day.is_available ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.015)',
-              border: '0.5px solid rgba(255,255,255,0.08)',
+              border: '0.5px solid var(--admin-border)',
             }}
           >
             <div className="flex items-center gap-3">
               <DarkSwitch checked={day.is_available} onChange={v => toggleDay(day.day_of_week, v)} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: day.is_available ? '#FFFFFF' : '#525252', letterSpacing: '-0.005em' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: day.is_available ? '#FFFFFF' : 'var(--admin-fg-subtle)', letterSpacing: '-0.005em' }}>
                 {DAY_NAMES[day.day_of_week]}
               </span>
               {day.is_available && (
-                <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: '#525252', letterSpacing: '0.1em', marginLeft: 4 }}>
+                <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: 'var(--admin-fg-subtle)', letterSpacing: '0.1em', marginLeft: 4 }}>
                   {day.time_blocks.map(b => `${formatHour(b.start_hour)}–${formatHour(b.end_hour)}`).join(' · ')}
                 </span>
               )}
@@ -905,24 +905,24 @@ function ScheduleConfigPanel({
               <div className="mt-3 ml-12 space-y-2">
                 {day.time_blocks.map((block, idx) => (
                   <div key={idx} className="flex items-center gap-2">
-                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.15em', color: '#A1A1A1', width: 70 }}>
+                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.15em', color: 'var(--admin-fg-muted)', width: 70 }}>
                       BLOQUE {idx + 1}
                     </span>
                     <HourInput
                       value={block.start_hour}
                       onChange={v => updateBlock(day.day_of_week, idx, 'start_hour', v)}
                     />
-                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: '#525252', letterSpacing: '0.2em' }}>A</span>
+                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: 'var(--admin-fg-subtle)', letterSpacing: '0.2em' }}>A</span>
                     <HourInput
                       value={block.end_hour}
                       onChange={v => updateBlock(day.day_of_week, idx, 'end_hour', v)}
                     />
-                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: '#525252', letterSpacing: '0.05em' }}>HRS</span>
+                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: 'var(--admin-fg-subtle)', letterSpacing: '0.05em' }}>HRS</span>
                     {day.time_blocks.length > 1 && (
                       <button
                         onClick={() => removeBlock(day.day_of_week, idx)}
                         className="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-red-500/10"
-                        style={{ color: '#FCA5A5' }}
+                        style={{ color: 'var(--admin-red)' }}
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>
@@ -937,9 +937,9 @@ function ScheduleConfigPanel({
           </div>
         ))}
 
-        <div className="space-y-3 pt-4" style={{ borderTop: '0.5px solid rgba(255,255,255,0.08)' }}>
+        <div className="space-y-3 pt-4" style={{ borderTop: '0.5px solid var(--admin-border)' }}>
           <div className="space-y-1.5">
-            <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#A1A1A1' }}>
+            <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-muted)' }}>
               ZOOM LINK
             </label>
             <input
@@ -950,7 +950,7 @@ function ScheduleConfigPanel({
             />
           </div>
           <div className="space-y-1.5">
-            <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#A1A1A1' }}>
+            <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-muted)' }}>
               DURACIÓN DE SLOT (MIN)
             </label>
             <input
@@ -1028,7 +1028,7 @@ function BlockedDatesPanel({ blockedDates: initial }: { blockedDates: BlockedDat
       <div className="space-y-4">
         <div className="flex gap-2 flex-wrap items-end">
           <div className="space-y-1.5">
-            <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#A1A1A1' }}>
+            <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-muted)' }}>
               FECHA
             </label>
             <input
@@ -1040,7 +1040,7 @@ function BlockedDatesPanel({ blockedDates: initial }: { blockedDates: BlockedDat
             />
           </div>
           <div className="space-y-1.5 flex-1 min-w-[180px]">
-            <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#A1A1A1' }}>
+            <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-muted)' }}>
               RAZÓN (OPCIONAL)
             </label>
             <input
@@ -1057,7 +1057,7 @@ function BlockedDatesPanel({ blockedDates: initial }: { blockedDates: BlockedDat
         </div>
 
         {dates.length === 0 ? (
-          <p style={{ fontSize: 11, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em', fontStyle: 'italic' }}>
+          <p style={{ fontSize: 11, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em', fontStyle: 'italic' }}>
             NO HAY DÍAS BLOQUEADOS
           </p>
         ) : (
@@ -1072,19 +1072,19 @@ function BlockedDatesPanel({ blockedDates: initial }: { blockedDates: BlockedDat
                 }}
               >
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#FCA5A5' }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-red)' }}>
                     {new Date(d.blocked_date + 'T12:00:00').toLocaleDateString('es-US', {
                       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
                     })}
                   </p>
                   {d.reason && (
-                    <p style={{ fontSize: 11, color: '#A1A1A1', marginTop: 2 }}>{d.reason}</p>
+                    <p style={{ fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 2 }}>{d.reason}</p>
                   )}
                 </div>
                 <button
                   onClick={() => handleDelete(d.id)}
                   className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/15"
-                  style={{ color: '#FCA5A5' }}
+                  style={{ color: 'var(--admin-red)' }}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -1108,8 +1108,8 @@ function Panel({
     <div
       className="relative rounded-2xl p-5 overflow-hidden"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -1123,17 +1123,17 @@ function Panel({
           <span
             className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
             style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
+              background: 'linear-gradient(135deg, var(--admin-border-strong), rgba(255,255,255,0.02))',
               border: '0.5px solid rgba(255,255,255,0.15)',
-              color: '#FFFFFF',
+              color: 'var(--admin-fg)',
             }}
           >
             {icon}
           </span>
           <div>
-            <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.018em', color: '#FFFFFF' }}>{title}</h2>
+            <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.018em', color: 'var(--admin-fg)' }}>{title}</h2>
             {description && (
-              <p style={{ fontSize: 12, color: '#A1A1A1', marginTop: 3, letterSpacing: '-0.005em' }}>{description}</p>
+              <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', marginTop: 3, letterSpacing: '-0.005em' }}>{description}</p>
             )}
           </div>
         </div>
@@ -1155,7 +1155,7 @@ function DarkSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boo
         width: 36,
         height: 20,
         borderRadius: 10,
-        background: checked ? '#FFFFFF' : 'rgba(255,255,255,0.08)',
+        background: checked ? '#FFFFFF' : 'var(--admin-border)',
         border: checked ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.15)',
         boxShadow: checked ? '0 0 12px rgba(255,255,255,0.18)' : 'none',
       }}
@@ -1165,7 +1165,7 @@ function DarkSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boo
         style={{
           width: 14,
           height: 14,
-          background: checked ? '#000000' : '#A1A1A1',
+          background: checked ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
           transform: `translateX(${checked ? 18 : 3}px)`,
         }}
       />
@@ -1183,9 +1183,9 @@ function HourInput({ value, onChange }: { value: number; onChange: (v: number) =
       onChange={e => onChange(Number(e.target.value))}
       className="w-16 text-center px-2 py-1.5 rounded-lg outline-none transition-colors focus:border-white/30"
       style={{
-        background: 'rgba(255,255,255,0.04)',
-        border: '0.5px solid rgba(255,255,255,0.1)',
-        color: '#FAFAFA',
+        background: 'var(--admin-accent-soft)',
+        border: '0.5px solid var(--admin-border-strong)',
+        color: 'var(--admin-fg)',
         fontFamily: 'var(--font-mono-tech)',
         fontSize: 12,
         fontWeight: 700,

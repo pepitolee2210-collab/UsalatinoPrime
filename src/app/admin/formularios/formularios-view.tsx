@@ -111,8 +111,8 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
             href="/admin/cambio-corte/nuevo"
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95"
             style={{
-              background: '#FFFFFF',
-              color: '#000000',
+              background: 'var(--admin-bg-elev)',
+              color: 'var(--admin-bg-deep)',
               fontSize: 12,
               fontWeight: 600,
               letterSpacing: '-0.005em',
@@ -129,8 +129,8 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
       <div
         className="rounded-2xl p-5 relative overflow-hidden"
         style={{
-          background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-          border: '0.5px solid rgba(255,255,255,0.1)',
+          background: 'var(--admin-panel-grad)',
+          border: '0.5px solid var(--admin-border-strong)',
           backdropFilter: 'blur(20px)',
         }}
       >
@@ -138,11 +138,11 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
           <span
             className="inline-flex items-center justify-center w-8 h-8 rounded-xl"
             style={{
-              background: 'rgba(255,255,255,0.06)',
+              background: 'var(--admin-accent-soft)',
               border: '0.5px solid rgba(255,255,255,0.12)',
             }}
           >
-            <Link2 className="w-3.5 h-3.5" style={{ color: '#FFFFFF' }} />
+            <Link2 className="w-3.5 h-3.5" style={{ color: 'var(--admin-fg)' }} />
           </span>
           <div>
             <p
@@ -151,7 +151,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
                 fontSize: 10,
                 fontWeight: 500,
                 letterSpacing: '0.2em',
-                color: '#A1A1A1',
+                color: 'var(--admin-fg-muted)',
               }}
             >
               LINKS PÚBLICOS · COMPARTIR POR WHATSAPP
@@ -166,11 +166,11 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
               className="group flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl transition-all duration-300 hover:bg-white/5"
               style={{
                 background: 'rgba(255,255,255,0.025)',
-                border: '0.5px solid rgba(255,255,255,0.08)',
+                border: '0.5px solid var(--admin-border)',
               }}
             >
               <div className="min-w-0">
-                <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }} className="truncate">
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }} className="truncate">
                   {fl.label}
                 </p>
                 <p
@@ -178,7 +178,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
                   style={{
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 10,
-                    color: '#525252',
+                    color: 'var(--admin-fg-subtle)',
                     letterSpacing: '0.02em',
                     marginTop: 2,
                   }}
@@ -192,7 +192,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors hover:bg-white/10"
-                  style={{ color: '#A1A1A1' }}
+                  style={{ color: 'var(--admin-fg-muted)' }}
                   title="Abrir formulario"
                 >
                   <ExternalLink className="w-3 h-3" />
@@ -201,7 +201,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
                   onClick={() => handleCopyLink(fl.path)}
                   className="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors"
                   style={{
-                    color: copiedLink === fl.path ? '#4ADE80' : '#A1A1A1',
+                    color: copiedLink === fl.path ? '#4ADE80' : 'var(--admin-fg-muted)',
                     background: copiedLink === fl.path ? 'rgba(34,197,94,0.10)' : 'transparent',
                   }}
                   title="Copiar link"
@@ -235,14 +235,14 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-300 whitespace-nowrap"
               style={{
                 background: isActive
-                  ? 'linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04))'
+                  ? 'linear-gradient(180deg, var(--admin-border-strong), var(--admin-accent-soft))'
                   : 'rgba(255,255,255,0.025)',
-                border: isActive ? '0.5px solid rgba(255,255,255,0.3)' : '0.5px solid rgba(255,255,255,0.08)',
-                color: isActive ? '#FFFFFF' : '#A1A1A1',
+                border: isActive ? '0.5px solid rgba(255,255,255,0.3)' : '0.5px solid var(--admin-border)',
+                color: isActive ? '#FFFFFF' : 'var(--admin-fg-muted)',
                 fontSize: 13,
                 fontWeight: isActive ? 600 : 500,
                 letterSpacing: '-0.005em',
-                boxShadow: isActive ? '0 4px 16px rgba(255,255,255,0.12), 0 0 0 0.5px rgba(255,255,255,0.05) inset' : 'none',
+                boxShadow: isActive ? '0 4px 16px rgba(255,255,255,0.12), 0 0 0 0.5px var(--admin-accent-soft) inset' : 'none',
               }}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -252,7 +252,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
                   className="inline-flex items-center justify-center"
                   style={{
                     background: isActive ? '#FFFFFF' : 'rgba(250,204,21,0.15)',
-                    color: isActive ? '#000000' : '#FDE68A',
+                    color: isActive ? 'var(--admin-bg-deep)' : '#FDE68A',
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 10,
                     fontWeight: 700,
@@ -276,8 +276,8 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
         <div
           className="inline-flex items-center gap-1 p-1 rounded-full"
           style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '0.5px solid rgba(255,255,255,0.08)',
+            background: 'var(--admin-accent-soft)',
+            border: '0.5px solid var(--admin-border)',
           }}
         >
           {filters.map((f) => {
@@ -289,7 +289,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
                 className="px-3.5 py-1.5 rounded-full transition-all duration-300"
                 style={{
                   background: isActive ? '#FFFFFF' : 'transparent',
-                  color: isActive ? '#000000' : '#A1A1A1',
+                  color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
                   fontSize: 11.5,
                   fontWeight: isActive ? 700 : 500,
                   letterSpacing: '-0.005em',
@@ -307,7 +307,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
             fontSize: 10,
             fontWeight: 500,
             letterSpacing: '0.18em',
-            color: '#525252',
+            color: 'var(--admin-fg-subtle)',
           }}
         >
           {submissions.length} RESULTADO{submissions.length !== 1 ? 'S' : ''}
@@ -339,11 +339,11 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
         <div
           className="rounded-2xl py-16 text-center"
           style={{
-            background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
-            border: '0.5px solid rgba(255,255,255,0.08)',
+            background: 'var(--admin-panel-grad)',
+            border: '0.5px solid var(--admin-border)',
           }}
         >
-          <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+          <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
             SIN FORMULARIOS {statusFilter !== 'all' ? `· ${filterLabels[statusFilter].toUpperCase()}` : ''}
           </p>
         </div>
@@ -354,7 +354,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
 
 // === AI Document Row — dark techno ===
 const AI_STATUS_STYLES: Record<string, { bg: string; border: string; dot: string; text: string; label: string }> = {
-  draft:            { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)', dot: '#A1A1A1', text: '#A1A1A1', label: 'Borrador' },
+  draft:            { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-fg-muted)', text: 'var(--admin-fg-muted)', label: 'Borrador' },
   submitted:        { bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.3)', dot: '#60A5FA', text: '#93C5FD', label: 'Enviado' },
   reviewed:         { bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.3)', dot: '#A78BFA', text: '#C4B5FD', label: 'Revisado' },
   needs_correction: { bg: 'rgba(251,146,60,0.10)', border: 'rgba(251,146,60,0.3)', dot: '#FB923C', text: '#FDBA74', label: 'Correcciones' },
@@ -380,8 +380,8 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
     <div
       className="relative rounded-2xl p-5 overflow-hidden transition-all duration-300"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -399,7 +399,7 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <Sparkles className="w-3.5 h-3.5" style={{ color: '#F2A900' }} />
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
               {agentLabel}
             </span>
             <span
@@ -423,7 +423,7 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
                   fontFamily: 'var(--font-mono-tech)',
                   fontSize: 10,
                   fontWeight: 700,
-                  color: '#525252',
+                  color: 'var(--admin-fg-subtle)',
                   letterSpacing: '0.05em',
                 }}
               >
@@ -431,21 +431,21 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
               </span>
             )}
           </div>
-          <p style={{ fontSize: 12.5, color: '#A1A1A1' }}>
+          <p style={{ fontSize: 12.5, color: 'var(--admin-fg-muted)' }}>
             {clientInfo ? `${(clientInfo as Record<string, unknown>).first_name} ${(clientInfo as Record<string, unknown>).last_name}` : 'Cliente'}
-            <span style={{ color: '#525252', fontFamily: 'var(--font-mono-tech)', fontSize: 10, marginLeft: 8, letterSpacing: '0.05em' }}>
+            <span style={{ color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', fontSize: 10, marginLeft: 8, letterSpacing: '0.05em' }}>
               {' · '}
               {new Date(submission.updated_at as string).toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).toUpperCase()}
             </span>
           </p>
           {(input?.minor_full_name as string | undefined) && (
-            <p style={{ fontSize: 11, color: '#525252', marginTop: 4 }}>
-              Menor: <span style={{ color: '#A1A1A1' }}>{input!.minor_full_name as string}</span>
+            <p style={{ fontSize: 11, color: 'var(--admin-fg-subtle)', marginTop: 4 }}>
+              Menor: <span style={{ color: 'var(--admin-fg-muted)' }}>{input!.minor_full_name as string}</span>
             </p>
           )}
           {(input?.applicant_full_name as string | undefined) && agent === 'credible_fear' && (
-            <p style={{ fontSize: 11, color: '#525252', marginTop: 4 }}>
-              Solicitante: <span style={{ color: '#A1A1A1' }}>{input!.applicant_full_name as string}</span>
+            <p style={{ fontSize: 11, color: 'var(--admin-fg-subtle)', marginTop: 4 }}>
+              Solicitante: <span style={{ color: 'var(--admin-fg-muted)' }}>{input!.applicant_full_name as string}</span>
             </p>
           )}
         </div>
@@ -453,9 +453,9 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
           onClick={() => setExpanded(!expanded)}
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-white/10 active:scale-95"
           style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '0.5px solid rgba(255,255,255,0.1)',
-            color: '#FFFFFF',
+            background: 'var(--admin-accent-soft)',
+            border: '0.5px solid var(--admin-border-strong)',
+            color: 'var(--admin-fg)',
             fontSize: 11,
             fontWeight: 600,
             letterSpacing: '-0.005em',
@@ -471,14 +471,14 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
           className="mt-4 rounded-xl overflow-hidden"
           style={{
             background: 'rgba(255,255,255,0.02)',
-            border: '0.5px solid rgba(255,255,255,0.08)',
+            border: '0.5px solid var(--admin-border)',
           }}
         >
           <div
             className="px-3.5 py-2 flex justify-between items-center"
             style={{
               background: 'rgba(255,255,255,0.025)',
-              borderBottom: '0.5px solid rgba(255,255,255,0.06)',
+              borderBottom: '0.5px solid var(--admin-accent-soft)',
             }}
           >
             <span
@@ -487,7 +487,7 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
                 fontSize: 10,
                 fontWeight: 500,
                 letterSpacing: '0.15em',
-                color: '#A1A1A1',
+                color: 'var(--admin-fg-muted)',
               }}
             >
               GENERADO CON {((formData.model as string) || 'IA').toUpperCase()}
@@ -500,7 +500,7 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
                 fontSize: 10,
                 fontWeight: 700,
                 letterSpacing: '0.1em',
-                color: '#A1A1A1',
+                color: 'var(--admin-fg-muted)',
               }}
             >
               <Copy className="w-2.5 h-2.5" /> COPIAR
@@ -511,7 +511,7 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
               className="whitespace-pre-wrap"
               style={{
                 fontSize: 12.5,
-                color: '#A1A1A1',
+                color: 'var(--admin-fg-muted)',
                 fontFamily: 'Georgia, serif',
                 lineHeight: 1.65,
               }}
