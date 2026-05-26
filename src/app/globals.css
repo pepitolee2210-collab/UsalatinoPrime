@@ -1183,13 +1183,25 @@
   border-right: 1px solid #C9D8F2;
 }
 
-/* Transición suave al cambiar de tema */
-@media (prefers-reduced-motion: no-preference) {
-  [data-admin-theme],
-  [data-admin-theme] * {
+/* ── Transición de cambio de tema ────────────────────────────────────
+   El selector `[data-admin-theme] *` aplica transition a TODOS los
+   elementos del admin en TODOS sus cambios de estado (hover/focus/
+   click), no solo al cambiar de tema. En mobile genera jank fuerte
+   porque cada interacción anima 1000+ nodos.
+
+   Solución: aplicar el transition SOLO durante el switch de tema vía
+   flag temporal `data-theme-switching` (350ms) que pone el hook al
+   click del switcher, y en mobile se desactiva por completo — el
+   cambio es snap instantáneo, lo cual es UX más rápida que esperar
+   una transición lenta. */
+@media (prefers-reduced-motion: no-preference) and (min-width: 769px) {
+  [data-theme-switching],
+  [data-theme-switching] *,
+  [data-theme-switching] *::before,
+  [data-theme-switching] *::after {
     transition:
-      background-color 0.35s cubic-bezier(0.32, 0.72, 0, 1),
-      border-color 0.35s cubic-bezier(0.32, 0.72, 0, 1),
-      color 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+      background-color 0.28s cubic-bezier(0.32, 0.72, 0, 1),
+      border-color 0.28s cubic-bezier(0.32, 0.72, 0, 1),
+      color 0.28s cubic-bezier(0.32, 0.72, 0, 1) !important;
   }
 }

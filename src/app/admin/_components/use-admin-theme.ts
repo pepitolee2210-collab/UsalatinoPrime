@@ -42,6 +42,15 @@ export function useAdminTheme() {
 
   function setTheme(next: AdminTheme) {
     setThemeState(next)
+    // Activamos un flag durante 350ms para que el CSS aplique transition
+    // SOLO durante el cambio de tema (no en cada hover/focus). En mobile
+    // el flag no surte efecto — el switch es instantáneo (mejor perf).
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme-switching', '')
+      window.setTimeout(() => {
+        document.documentElement.removeAttribute('data-theme-switching')
+      }, 350)
+    }
     applyTheme(next)
     try {
       localStorage.setItem(STORAGE_KEY, next)
