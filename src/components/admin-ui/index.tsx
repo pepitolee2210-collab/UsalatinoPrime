@@ -140,21 +140,32 @@ interface PrimaryButtonProps {
   href?: string
   onClick?: () => void
   icon?: React.ReactNode
-  variant?: 'solid' | 'ghost'
+  /** solid = primary navy/blue gradient · gold = premium dorado · ghost = blanco */
+  variant?: 'solid' | 'ghost' | 'gold'
 }
 
 export function PrimaryButton({ children, href, onClick, icon, variant = 'solid' }: PrimaryButtonProps) {
-  const styles: React.CSSProperties = variant === 'solid'
-    ? {
-        background: 'var(--admin-bg-elev)',
-        color: 'var(--admin-bg-deep)',
-        boxShadow: '0 4px 24px rgba(255,255,255,0.18), 0 0 0 0.5px rgba(255,255,255,0.4) inset',
-      }
-    : {
-        background: 'var(--admin-accent-soft)',
-        color: 'var(--admin-fg)',
-        border: '0.5px solid rgba(255,255,255,0.15)',
-      }
+  const styles: React.CSSProperties =
+    variant === 'gold'
+      ? {
+          background: 'linear-gradient(135deg, #F2C14E, var(--admin-gold))',
+          color: 'var(--admin-accent)',
+          border: '0.5px solid var(--admin-gold-border, rgba(255,255,255,0.2))',
+          boxShadow: 'var(--admin-shadow-gold, 0 12px 28px rgba(216,155,29,0.28))',
+          fontWeight: 700,
+        }
+      : variant === 'ghost'
+        ? {
+            background: 'var(--admin-bg-elev)',
+            color: 'var(--admin-blue)',
+            border: '0.5px solid var(--admin-border-strong)',
+          }
+        : {
+            background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-blue))',
+            color: '#FFFFFF',
+            border: '0.5px solid rgba(255,255,255,0.2)',
+            boxShadow: '0 12px 28px rgba(30,78,154,0.25), 0 0 0 0.5px rgba(255,255,255,0.4) inset',
+          }
 
   const cls = "inline-flex items-center gap-2 px-4 py-2.5 rounded-full transition-all duration-300 hover:opacity-90 active:scale-95"
   const inner = (

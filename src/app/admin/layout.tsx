@@ -321,14 +321,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       className={`group relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 ${!isCollapsed ? 'nav-item-stagger' : ''}`}
                       style={{
                         background: isActive ? 'var(--admin-accent-soft)' : 'transparent',
-                        color: isActive ? 'var(--admin-accent)' : 'var(--admin-fg-muted)',
+                        color: isActive ? 'var(--admin-fg)' : 'var(--admin-fg-muted)',
+                        boxShadow: isActive ? 'var(--admin-shadow-gold, 0 4px 12px var(--admin-accent-glow))' : 'none',
                         animationDelay: !isCollapsed ? `${itemIdx * 0.045}s` : '0s',
                       }}
                     >
                       {isActive && (
                         <span
                           aria-hidden
-                          className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full"
+                          className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r-full"
                           style={{
                             background: 'var(--admin-accent)',
                             boxShadow: '0 0 8px var(--admin-accent-glow)',
