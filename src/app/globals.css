@@ -1014,7 +1014,8 @@
   font-feature-settings: 'tnum' on, 'zero' on;
 }
 
-/* CSS variables del CEO dashboard — scope local con .ceo-scope */
+/* CSS variables del CEO dashboard — scope local con .ceo-scope.
+   Default = paleta dark (ejecutiva, alta densidad de datos).        */
 .ceo-scope {
   --ceo-bg: #0A0A0B;
   --ceo-surface: #0F0F11;
@@ -1030,6 +1031,51 @@
   --ceo-good-soft: rgba(74, 222, 128, 0.08);
   --ceo-bad: #F87171;
   --ceo-bad-soft: rgba(248, 113, 113, 0.08);
+}
+
+/* ── Override Vista CEO en modo claro ────────────────────────────────
+   Mapea los tokens --ceo-* a la paleta institucional clara
+   (azul navy + dorado profundo + blanco premium).                    */
+[data-admin-theme='light'] .ceo-scope {
+  --ceo-bg:           #F6F8FC;
+  --ceo-surface:      #FFFFFF;
+  --ceo-surface-2:    #F9FAFD;
+  --ceo-line:         #D8E1EE;
+  --ceo-line-strong:  #C9D8F2;
+  --ceo-text:         #0B1F3A;             /* navy autoridad */
+  --ceo-text-2:       #3D5A80;
+  --ceo-text-3:       #5F728E;
+  --ceo-gold:         #A4730A;             /* oro profundo */
+  --ceo-gold-soft:    #FAEBC8;
+  --ceo-good:         #15803D;
+  --ceo-good-soft:    #DCFCE7;
+  --ceo-bad:          #B91C1C;
+  --ceo-bad-soft:     #FEE2E2;
+}
+
+/* En modo claro, las clases Tailwind `text-white/XX` y `bg-white/[X]`
+   pintarían blanco sobre blanco (invisible). Reemplazamos por color
+   semántico del scope. Usar opacity reduce el peso visual sin perder
+   contraste contra el bg claro.                                      */
+[data-admin-theme='light'] .ceo-scope .text-white,
+[data-admin-theme='light'] .ceo-scope [class*="text-white/"] {
+  color: var(--ceo-text) !important;
+}
+[data-admin-theme='light'] .ceo-scope .text-white\/55,
+[data-admin-theme='light'] .ceo-scope .text-white\/65,
+[data-admin-theme='light'] .ceo-scope .text-white\/60 {
+  color: var(--ceo-text-3) !important;
+}
+[data-admin-theme='light'] .ceo-scope .text-white\/75,
+[data-admin-theme='light'] .ceo-scope .text-white\/78,
+[data-admin-theme='light'] .ceo-scope .text-white\/80 {
+  color: var(--ceo-text-2) !important;
+}
+[data-admin-theme='light'] .ceo-scope [class*="bg-white/"] {
+  background-color: var(--ceo-surface-2) !important;
+}
+[data-admin-theme='light'] .ceo-scope [class*="border-white/"] {
+  border-color: var(--ceo-line) !important;
 }
 
 /* ════════════════════════════════════════════════════════════════════

@@ -169,7 +169,7 @@ export function CeoDashboardV2({ data, firstName }: Props) {
                   ? 'sin contratos nuevos'
                   : `${currentPeriod.contracts_new} ${currentPeriod.contracts_new === 1 ? 'nuevo cliente' : 'nuevos clientes'}`
               }
-              accent="rgba(255,255,255,0.7)"
+              accent="var(--admin-fg)"
               onClick={() => setOpenDrawer('new_contracts')}
             />
           </div>
@@ -287,7 +287,7 @@ export function CeoDashboardV2({ data, firstName }: Props) {
           </div>
           <div
             className="rounded-2xl border border-white/[0.08] p-7 lg:p-9"
-            style={{ background: 'rgba(255,255,255,0.012)' }}
+            style={{ background: 'var(--admin-bg-elev-2)' }}
           >
             <TrendChart points={trendPoints} view={trendView} />
           </div>
@@ -304,7 +304,7 @@ export function CeoDashboardV2({ data, firstName }: Props) {
           />
           <div
             className="rounded-2xl border border-white/[0.08] p-7 lg:p-9"
-            style={{ background: 'rgba(255,255,255,0.012)' }}
+            style={{ background: 'var(--admin-bg-elev-2)' }}
           >
             <FunnelChart stages={data.funnel} />
           </div>
@@ -410,7 +410,7 @@ export function CeoDashboardV2({ data, firstName }: Props) {
           title="Contratos nuevos"
           bigNumber={String(lists?.new_contracts_this_month?.length ?? 0)}
           subtitle="Volumen de entrada del mes."
-          accent="rgba(255,255,255,0.55)"
+          accent="var(--admin-fg)"
         >
           {(lists?.new_contracts_this_month ?? []).length === 0 ? (
             <EmptyState text="Ningún contrato nuevo este mes." />
@@ -511,7 +511,7 @@ function HeroKpi({
       type="button"
       onClick={onClick}
       className="group relative text-left rounded-2xl border border-white/[0.08] p-7 lg:p-9 transition-all hover:border-white/20 overflow-hidden"
-      style={{ background: 'rgba(255,255,255,0.012)' }}
+      style={{ background: 'var(--admin-bg-elev-2)' }}
     >
       {/* Línea dorada arriba en hover */}
       <span
@@ -586,8 +586,8 @@ function AttentionCard({
       disabled={disabled}
       className="group relative text-left rounded-2xl border p-7 lg:p-9 transition-all overflow-hidden disabled:cursor-default disabled:opacity-50 enabled:hover:bg-white/[0.025]"
       style={{
-        background: 'rgba(255,255,255,0.012)',
-        borderColor: disabled ? 'var(--admin-border)' : 'rgba(255,255,255,0.10)',
+        background: 'var(--admin-bg-elev-2)',
+        borderColor: disabled ? 'var(--admin-border)' : 'var(--admin-border-strong)',
       }}
     >
       {/* Línea de acento arriba (cuando no disabled) */}
@@ -619,7 +619,7 @@ function AttentionCard({
 
       <div
         className="inline-flex items-center gap-2 font-mono-ceo text-[11px] uppercase tracking-[0.2em] font-medium"
-        style={{ color: disabled ? 'rgba(255,255,255,0.35)' : accent }}
+        style={{ color: disabled ? 'var(--admin-fg-subtle)' : accent }}
       >
         {actionText}
         {!disabled && (
@@ -642,7 +642,7 @@ function ContractPipeline({
   if (!items.length) {
     return (
       <div className="rounded-2xl border border-white/[0.08] p-9 text-center text-base text-white/65"
-        style={{ background: 'rgba(255,255,255,0.012)' }}>
+        style={{ background: 'var(--admin-bg-elev-2)' }}>
         Sin contratos en el pipeline todavía.
       </div>
     )
@@ -652,20 +652,20 @@ function ContractPipeline({
 
   const colorFor = (status: string): string => {
     switch (status) {
-      case 'borrador': return 'rgba(255, 255, 255, 0.35)'
-      case 'pendiente_firma': return '#E8B84A'
-      case 'firmado': return '#4ADE80'
-      case 'activo': return '#7DD3FC'
-      case 'completado': return '#FFFFFF'
-      case 'cancelado': return '#F87171'
-      default: return 'rgba(255, 255, 255, 0.45)'
+      case 'borrador': return 'var(--admin-fg-subtle)'
+      case 'pendiente_firma': return 'var(--admin-gold)'
+      case 'firmado': return 'var(--admin-green)'
+      case 'activo': return 'var(--admin-blue)'
+      case 'completado': return 'var(--admin-fg)'
+      case 'cancelado': return 'var(--admin-red)'
+      default: return 'var(--admin-fg-muted)'
     }
   }
 
   return (
     <div
       className="rounded-2xl border border-white/[0.08] p-7 lg:p-9"
-      style={{ background: 'rgba(255,255,255,0.012)' }}
+      style={{ background: 'var(--admin-bg-elev-2)' }}
     >
       {/* Totales arriba */}
       <div className="flex items-baseline justify-between mb-6 flex-wrap gap-3">
@@ -751,7 +751,7 @@ function ServicesTable({
   if (!items.length) {
     return (
       <div className="rounded-2xl border border-white/[0.08] p-9 text-center text-base text-white/65"
-        style={{ background: 'rgba(255,255,255,0.012)' }}>
+        style={{ background: 'var(--admin-bg-elev-2)' }}>
         Sin actividad por servicio todavía.
       </div>
     )
@@ -760,7 +760,7 @@ function ServicesTable({
   return (
     <div
       className="rounded-2xl border border-white/[0.08] overflow-hidden"
-      style={{ background: 'rgba(255,255,255,0.012)' }}
+      style={{ background: 'var(--admin-bg-elev-2)' }}
     >
       {/* HEADER — visible solo en desktop. En mobile lo ocultamos porque
           cada card tiene sus propios labels. */}
@@ -786,7 +786,7 @@ function ServicesTable({
               style={{
                 width: `${widthPct}%`,
                 background:
-                  'linear-gradient(90deg, rgba(232,184,74,0.06) 0%, rgba(232,184,74,0.01) 100%)',
+                  'linear-gradient(90deg, var(--admin-gold-soft) 0%, transparent 100%)',
               }}
             />
 
