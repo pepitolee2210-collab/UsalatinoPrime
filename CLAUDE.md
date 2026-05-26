@@ -39,9 +39,9 @@ Si tocas algo que crea/identifica clientes, usa `normalizePhone()` de `src/lib/p
 
 Patrón típico en endpoints admin: `createClient()` para obtener `user`, leer `profiles.role` / `employee_type`, y SOLO entonces pasar a `createServiceClient()` para queries y mutaciones.
 
-### Documentos por hijo (`is_per_minor`)
+### Documentos por miembro (`is_per_member` / alias legacy `is_per_minor`)
 
-Algunos `document_types` (acta de nacimiento, ID, pasaporte del menor, etc.) tienen `is_per_minor=true`. El endpoint `/api/cita/[token]/required-documents` los expande a N items, uno por minor del contrato vinculado al case + un bucket `"Sin asignar"` para uploads legacy con `documents.minor_index IS NULL`. Los uploads desde `UploadButton` propagan `minor_index` y `minor_label` (snapshot del nombre) a `documents`. Si modificas la UI de docs, mantén el `key` compuesto `${type_id}:${minor_index ?? 'general'}` — sin eso, React colapsa los items que comparten `type_id`.
+Algunos `document_types` (acta de nacimiento, ID, pasaporte del menor, etc.) tienen `is_per_member=true`. El endpoint `/api/cita/[token]/required-documents` los expande a N items, uno por miembro elegible del contrato (`getFamilyMembers()` decide quiénes según servicio: SIJS = solo minors; Asilo = applicant + spouse + minors). Además añade un bucket `"<nombre> — Sin asignar"` **únicamente cuando existen uploads de ese tipo con `documents.member_role IS NULL`** (uploads legacy pre-migración M1). Antes el bucket se añadía incondicionalmente para SIJS y producía ~1.000 cards vacías en prod — la lógica vive ahora en el helper puro `expandItemsForType()` en el mismo route handler. Los uploads desde `UploadButton` propagan `member_role` y `member_index` (y los shims legacy `minor_index` / `minor_label` por una release). Si modificas la UI de docs, mantén el `key` compuesto `${type_id}:${member_role ?? 'general'}:${member_index ?? 'na'}` — sin eso, React colapsa items que comparten `type_id`.
 
 Catálogo de docs vive en dos lugares: `document_types` (BD, source of truth para fases SIJS) y `DOCUMENT_CATEGORIES` hardcoded en `src/lib/appointments/constants.ts` (legacy, usado por `document-upload-section.tsx` y formularios sin fase). Cuando agregues un tipo nuevo, decidir cuál.
 

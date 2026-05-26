@@ -182,6 +182,61 @@ function categoryProgressCount(docs: DocItem[]): { req: number; done: number } {
   return { req, done }
 }
 
+/**
+ * Expande un `DocumentType` a la lista de `DocItem` que la UI debe renderizar.
+ *
+ * Reglas:
+ *   - Si NO es per-member o no hay miembros elegibles → 1 item global.
+ *   - Si ES per-member → 1 item por cada miembro elegible (filtrado por
+ *     `applies_to_roles` si está definido).
+ *   - Además, si existen uploads reales sin `member_role` para ese tipo
+ *     (uploads legacy pre-migración M1), añade un bucket `"<nombre> — Sin asignar"`
+ *     para mantenerlos accesibles al cliente. Sin uploads legacy, NO se añade
+ *     — antes se añadía incondicionalmente para SIJS y producía ~1.000 cards
+ *     vacías en prod.
+ *
+ * Pura por diseño: todas las dependencias se inyectan vía parámetros para
+ * facilitar testeo y desacoplar del closure del endpoint.
+ */
+function expandItemsForType(
+  dt: DocumentType,
+  familyMembers: FamilyMember[],
+  buildItem: (dt: DocumentType, fm: FamilyMember | null) => DocItem | null,
+  hasUploadsForKey: (typeId: number, role: MemberRole | null, idx: number | null) => boolean,
+): DocItem[] {
+  const allowedRoles = (dt as DocumentType & { applies_to_roles?: string[] | null }).applies_to_roles ?? null
+  const eligibleMembers = allowedRoles
+    ? familyMembers.filter((fm) => allowedRoles.includes(fm.role))
+    : familyMembers
+
+  // Hasta que la migración 20260517 propague todo el código consumidor, leemos
+  // `is_per_member` con fallback a `is_per_minor` (alias generated en BD).
+  const isPerMember = Boolean(
+    (dt as DocumentType & { is_per_member?: boolean }).is_per_member ?? dt.is_per_minor,
+  )
+
+  if (!isPerMember || eligibleMembers.length === 0) {
+    const item = buildItem(dt, null)
+    return item ? [item] : []
+  }
+
+  const items: DocItem[] = []
+  for (const fm of eligibleMembers) {
+    const item = buildItem(dt, fm)
+    if (item) items.push(item)
+  }
+
+  if (hasUploadsForKey(dt.id, null, null)) {
+    const legacyItem = buildItem(dt, null)
+    if (legacyItem) {
+      legacyItem.name_es = `${dt.name_es} — Sin asignar`
+      items.push(legacyItem)
+    }
+  }
+
+  return items
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> },
@@ -508,45 +563,11 @@ export async function GET(
     }
   }
 
-  /**
-   * Tipo dinámico de la columna que viene del catálogo. Hasta que la migración
-   * 20260517 propague todo el código consumidor, leemos `is_per_member` con
-   * fallback a `is_per_minor` (alias generated en BD).
-   */
-  function isPerMember(dt: DocumentType & { is_per_member?: boolean }): boolean {
-    return Boolean(dt.is_per_member ?? dt.is_per_minor)
-  }
+  const hasUploadsForKey = (typeId: number, role: MemberRole | null, idx: number | null) =>
+    (uploadsByKey.get(uploadsKey(typeId, role, idx)) ?? []).length > 0
 
   for (const { dt, phaseCategory } of typesWithCategory) {
-    // Para tipos per-member, expandir 1 item por cada miembro de la familia
-    // (applicant + spouse + minors según el servicio). Si el doc tiene
-    // applies_to_roles, restringir solo a esos roles (ej. asylum_birth_cert_child
-    // solo aplica a hijos, no a applicant ni spouse).
-    const items: DocItem[] = []
-    const dtWithRoles = dt as DocumentType & { applies_to_roles?: string[] | null }
-    const allowedRoles = dtWithRoles.applies_to_roles ?? null
-    const eligibleMembers = allowedRoles
-      ? familyMembers.filter((fm) => allowedRoles.includes(fm.role))
-      : familyMembers
-
-    if (isPerMember(dt) && eligibleMembers.length > 0) {
-      eligibleMembers.forEach((fm) => {
-        const item = buildDocItem(dt, fm)
-        if (item) items.push(item)
-      })
-      // Bucket "Sin asignar" para uploads legacy sin member_role.
-      // Solo lo añadimos para SIJS — Asilo arranca limpio sin uploads sin role.
-      if (serviceSlug === 'visa-juvenil') {
-        const legacyItem = buildDocItem(dt, null)
-        if (legacyItem) {
-          legacyItem.name_es = `${dt.name_es} — Sin asignar`
-          items.push(legacyItem)
-        }
-      }
-    } else {
-      const item = buildDocItem(dt, null)
-      if (item) items.push(item)
-    }
+    const items = expandItemsForType(dt, familyMembers, buildDocItem, hasUploadsForKey)
 
     if (items.length === 0) continue
 
