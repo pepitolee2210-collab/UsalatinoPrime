@@ -7,15 +7,25 @@ interface PhaseEmptyStateProps {
 
 export function PhaseEmptyState({ icon = 'folder_open', title, description, cta }: PhaseEmptyStateProps) {
   return (
-    <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/40 p-8 text-center space-y-2">
+    <div
+      className="rounded-2xl p-8 text-center space-y-2"
+      style={{
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px dashed var(--admin-border-strong)',
+      }}
+    >
       <span
-        className="material-symbols-outlined block mx-auto text-gray-300"
-        style={{ fontSize: 40 }}
+        className="material-symbols-outlined block mx-auto"
+        style={{ fontSize: 40, color: 'var(--admin-fg-subtle)' }}
       >
         {icon}
       </span>
-      <p className="text-sm font-semibold text-gray-700">{title}</p>
-      {description && <p className="text-xs text-gray-500 max-w-md mx-auto">{description}</p>}
+      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)' }}>{title}</p>
+      {description && (
+        <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', maxWidth: '44ch', margin: '0 auto' }}>
+          {description}
+        </p>
+      )}
       {cta && <div className="pt-2">{cta}</div>}
     </div>
   )

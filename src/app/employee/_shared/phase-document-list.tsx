@@ -11,13 +11,13 @@ interface PhaseDocumentListProps {
   emptyMessage?: string
 }
 
-const STATUS_LABEL: Record<string, { label: string; className: string }> = {
-  pending: { label: 'Pendiente', className: 'bg-gray-100 text-gray-600' },
-  uploaded: { label: 'En revisión', className: 'bg-amber-100 text-amber-700' },
-  in_review: { label: 'En revisión', className: 'bg-amber-100 text-amber-700' },
-  approved: { label: 'Aprobado', className: 'bg-emerald-100 text-emerald-700' },
-  rejected: { label: 'Rechazado', className: 'bg-rose-100 text-rose-700' },
-  needs_translation: { label: 'Falta traducción', className: 'bg-orange-100 text-orange-700' },
+const STATUS_LABEL: Record<string, { label: string; bg: string; text: string; border: string }> = {
+  pending:            { label: 'Pendiente',         bg: 'var(--admin-bg-elev-2)',     text: 'var(--admin-fg-muted)', border: 'var(--admin-border-strong)' },
+  uploaded:           { label: 'En revisión',       bg: 'var(--admin-gold-soft)',     text: 'var(--admin-gold)',     border: 'var(--admin-gold-border, var(--admin-gold))' },
+  in_review:          { label: 'En revisión',       bg: 'var(--admin-gold-soft)',     text: 'var(--admin-gold)',     border: 'var(--admin-gold-border, var(--admin-gold))' },
+  approved:           { label: 'Aprobado',          bg: 'var(--admin-green-soft)',    text: 'var(--admin-green)',    border: 'var(--admin-green)' },
+  rejected:           { label: 'Rechazado',         bg: 'var(--admin-red-soft)',      text: 'var(--admin-red)',      border: 'var(--admin-red)' },
+  needs_translation:  { label: 'Falta traducción',  bg: 'var(--admin-gold-soft)',     text: 'var(--admin-gold)',     border: 'var(--admin-gold-border, var(--admin-gold))' },
 }
 
 function formatBytes(bytes: number | null): string {
@@ -30,7 +30,12 @@ function formatBytes(bytes: number | null): string {
 export function PhaseDocumentList({ uploads, onPreview, emptyMessage }: PhaseDocumentListProps) {
   if (uploads.length === 0) {
     return (
-      <p className="text-xs text-gray-400 text-center py-4">{emptyMessage ?? 'Sin archivos en esta fase.'}</p>
+      <p
+        className="text-center py-4"
+        style={{ fontSize: 12, color: 'var(--admin-fg-subtle)' }}
+      >
+        {emptyMessage ?? 'Sin archivos en esta fase.'}
+      </p>
     )
   }
 
@@ -47,8 +52,27 @@ export function PhaseDocumentList({ uploads, onPreview, emptyMessage }: PhaseDoc
     <div className="space-y-4">
       {Array.from(byType.entries()).map(([groupName, files]) => (
         <div key={groupName} className="space-y-2">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
-            {groupName} <span className="text-gray-400 font-medium normal-case tracking-normal">· {files.length} archivo{files.length === 1 ? '' : 's'}</span>
+          <p
+            style={{
+              fontFamily: 'var(--font-mono-tech)',
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.16em',
+              color: 'var(--admin-fg-subtle)',
+              textTransform: 'uppercase',
+            }}
+          >
+            {groupName}{' '}
+            <span
+              style={{
+                color: 'var(--admin-fg-subtle)',
+                fontWeight: 500,
+                textTransform: 'none',
+                letterSpacing: 'normal',
+              }}
+            >
+              · {files.length} archivo{files.length === 1 ? '' : 's'}
+            </span>
           </p>
           <ul className="space-y-1.5">
             {files.map(doc => {
@@ -58,27 +82,66 @@ export function PhaseDocumentList({ uploads, onPreview, emptyMessage }: PhaseDoc
               return (
                 <li
                   key={doc.id}
-                  className={`flex items-center gap-3 p-2.5 rounded-lg border border-gray-100 bg-white transition-colors hover:bg-gray-50`}
-                  style={{ borderLeftWidth: 3 }}
+                  className="flex items-center gap-3 p-2.5 rounded-lg transition-colors"
+                  style={{
+                    background: 'var(--admin-bg-elev)',
+                    border: '0.5px solid var(--admin-border)',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--admin-bg-elev-2)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--admin-bg-elev)' }}
                 >
                   <span
                     className="material-symbols-outlined flex-shrink-0"
-                    style={{ fontSize: 22, color: 'rgb(107, 114, 128)' }}
+                    style={{ fontSize: 22, color: 'var(--admin-fg-muted)' }}
                   >
                     {icon}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{doc.slot_label || doc.name}</p>
-                    <div className="flex items-center gap-2 text-[11px] text-gray-500 mt-0.5">
-                      <span>{formatBytes(doc.file_size)}</span>
+                    <p
+                      className="truncate"
+                      style={{ fontSize: 13, fontWeight: 500, color: 'var(--admin-fg)' }}
+                    >
+                      {doc.slot_label || doc.name}
+                    </p>
+                    <div
+                      className="flex items-center gap-2 mt-0.5"
+                      style={{ fontSize: 11, color: 'var(--admin-fg-muted)' }}
+                    >
+                      <span
+                        style={{
+                          fontFamily: 'var(--font-mono-tech)',
+                          letterSpacing: '0.05em',
+                        }}
+                      >
+                        {formatBytes(doc.file_size)}
+                      </span>
                       <span>·</span>
-                      <span className={`px-1.5 py-0.5 rounded ${status.className}`}>{status.label}</span>
+                      <span
+                        className="px-1.5 py-0.5 rounded"
+                        style={{
+                          background: status.bg,
+                          color: status.text,
+                          border: `0.5px solid ${status.border}`,
+                          fontFamily: 'var(--font-mono-tech)',
+                          fontSize: 10,
+                          fontWeight: 600,
+                          letterSpacing: '0.05em',
+                        }}
+                      >
+                        {status.label}
+                      </span>
                     </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => onPreview(doc)}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100"
+                    className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                    style={{
+                      color: 'var(--admin-fg-muted)',
+                      background: 'transparent',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--admin-bg-deep)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                     title="Vista previa"
                     aria-label="Vista previa"
                   >
@@ -88,7 +151,10 @@ export function PhaseDocumentList({ uploads, onPreview, emptyMessage }: PhaseDoc
                     href={`/api/employee/download-case-doc?id=${doc.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100"
+                    className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                    style={{ color: 'var(--admin-fg-muted)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--admin-bg-deep)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                     title="Descargar"
                     aria-label="Descargar"
                   >

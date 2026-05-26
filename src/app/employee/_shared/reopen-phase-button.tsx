@@ -53,16 +53,31 @@ export function ReopenPhaseButton({ caseId, caseNumber, toPhase }: ReopenPhaseBu
 
   return (
     <>
-      <Button
+      <button
         type="button"
-        variant="ghost"
-        size="sm"
         onClick={(e) => { e.stopPropagation(); setOpen(true) }}
-        className="text-[11px] text-gray-500 hover:text-gray-700 h-7 px-2"
+        className="inline-flex items-center gap-1 px-2 py-1 rounded-full transition-colors"
+        style={{
+          background: 'var(--admin-bg-elev)',
+          color: 'var(--admin-fg-muted)',
+          border: '0.5px solid var(--admin-border-strong)',
+          fontFamily: 'var(--font-mono-tech)',
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: '0.08em',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = 'var(--admin-gold-border, var(--admin-gold))'
+          e.currentTarget.style.color = 'var(--admin-gold)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = 'var(--admin-border-strong)'
+          e.currentTarget.style.color = 'var(--admin-fg-muted)'
+        }}
       >
-        <Undo2 className="w-3 h-3 mr-1" />
-        Reabrir
-      </Button>
+        <Undo2 className="w-3 h-3" />
+        REABRIR
+      </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
@@ -70,11 +85,21 @@ export function ReopenPhaseButton({ caseId, caseNumber, toPhase }: ReopenPhaseBu
             <DialogTitle>Reabrir {tokens.label} — {caseNumber}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <p className="text-xs text-gray-600">
-              Vas a regresar el caso a <strong>{tokens.label}</strong>. Esto cambia la fase actual y vuelve a permitir uploads y formularios de esa fase. La acción queda registrada en el histórico con tu razón.
+            <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', lineHeight: 1.5 }}>
+              Vas a regresar el caso a <strong style={{ color: 'var(--admin-fg)' }}>{tokens.label}</strong>. Esto cambia la fase actual y vuelve a permitir uploads y formularios de esa fase. La acción queda registrada en el histórico con tu razón.
             </p>
             <div>
-              <label className="text-xs font-bold uppercase text-gray-600 mb-1 block">
+              <label
+                className="block mb-1"
+                style={{
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.14em',
+                  color: 'var(--admin-fg-subtle)',
+                  textTransform: 'uppercase',
+                }}
+              >
                 Razón (obligatorio)
               </label>
               <Textarea
@@ -84,7 +109,16 @@ export function ReopenPhaseButton({ caseId, caseNumber, toPhase }: ReopenPhaseBu
                 maxLength={500}
                 placeholder="Ej: Falta subir un documento adicional pedido por la corte estatal."
               />
-              <p className="text-[10px] text-gray-400 mt-1 text-right">{reason.length}/500</p>
+              <p
+                className="text-right mt-1"
+                style={{
+                  fontSize: 10,
+                  color: 'var(--admin-fg-subtle)',
+                  fontFamily: 'var(--font-mono-tech)',
+                }}
+              >
+                {reason.length}/500
+              </p>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>

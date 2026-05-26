@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { redirect } from 'next/navigation'
 import { EmployeeCasosView } from './employee-casos-view'
+import { PageHeader, AdminKeyframes } from '@/components/admin-ui'
 
 /**
  * Listado abierto de casos para paralegals. Permite a Diana acceder al panel
@@ -68,14 +69,26 @@ export default async function EmployeeCasosPage() {
     client: Array.isArray(c.client) ? c.client[0] : c.client,
   }))
 
+  const sijsCount = cases.filter((c) => c.service?.slug === 'visa-juvenil').length
+  const activeCount = cases.filter((c) => {
+    const s = c.intake_status
+    return s !== 'completed' && s !== 'archived'
+  }).length
+
   return (
-    <div className="space-y-5">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Casos</h1>
-        <p className="text-sm text-gray-500">
-          Vista directa para paralegals — abre cualquier caso para revisar Radicación · PDFs y demás secciones, sin esperar asignación de Henry.
-        </p>
-      </div>
+    <div className="space-y-6">
+      <AdminKeyframes />
+      <PageHeader
+        eyebrow="Paralegal · Casos"
+        title="Casos"
+        accentDot
+        description="Vista directa para paralegals — abre cualquier caso para revisar Radicación · PDFs y demás secciones, sin esperar asignación de Henry."
+        telemetry={[
+          { label: 'Total', value: cases.length.toLocaleString() },
+          { label: 'Activos', value: activeCount.toLocaleString() },
+          { label: 'SIJS', value: sijsCount.toLocaleString() },
+        ]}
+      />
       <EmployeeCasosView cases={cases} />
     </div>
   )

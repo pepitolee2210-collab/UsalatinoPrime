@@ -29,9 +29,17 @@ export function PhaseAccordion({
   return (
     <section
       id={`phase-section-${group.phase}`}
-      className={`rounded-2xl border ${tokens.border} ${tokens.bg} overflow-hidden`}
+      className="rounded-2xl overflow-hidden"
+      style={{
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border-strong)',
+        boxShadow: 'var(--admin-shadow)',
+      }}
     >
-      <header className="flex items-center gap-3 px-4 py-3">
+      <header
+        className="flex items-center gap-3 px-4 py-3"
+        style={{ background: 'var(--admin-bg-elev)' }}
+      >
         <button
           type="button"
           onClick={() => setOpen(o => !o)}
@@ -51,24 +59,47 @@ export function PhaseAccordion({
           </span>
           <div className="flex-1 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <p className={`text-sm font-bold ${tokens.text}`}>{tokens.label}</p>
-              <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${status.className}`}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-fg)' }}>{tokens.label}</p>
+              <span
+                className={`px-2 py-0.5 rounded-full ${status.className}`}
+                style={{
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                }}
+              >
                 {status.label}
               </span>
               {countLabel && (
-                <span className="text-[11px] text-gray-600 bg-white/70 px-2 py-0.5 rounded-full">
+                <span
+                  className="px-2 py-0.5 rounded-full"
+                  style={{
+                    background: 'var(--admin-bg-deep)',
+                    color: 'var(--admin-fg-muted)',
+                    border: '0.5px solid var(--admin-border-strong)',
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 10,
+                    letterSpacing: '0.04em',
+                  }}
+                >
                   {countLabel}
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-gray-600 mt-0.5 truncate">
+            <p
+              className="truncate"
+              style={{ fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 2 }}
+            >
               {group.status === 'completed' && group.completed_at
                 ? `Completada el ${formatCompletedAt(group.completed_at)}${group.completed_by_name ? ` por ${group.completed_by_name}` : ''}`
                 : tokens.description}
             </p>
           </div>
           <ChevronDown
-            className={`w-5 h-5 text-gray-500 transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`}
+            className={`w-5 h-5 transition-transform flex-shrink-0 ${open ? 'rotate-180' : ''}`}
+            style={{ color: 'var(--admin-fg-muted)' }}
             aria-hidden
           />
         </button>
@@ -77,7 +108,13 @@ export function PhaseAccordion({
         )}
       </header>
       {open && (
-        <div className="bg-white border-t border-gray-100 px-4 py-4">
+        <div
+          className="px-4 py-4"
+          style={{
+            background: 'var(--admin-bg-elev-2)',
+            borderTop: '0.5px solid var(--admin-border)',
+          }}
+        >
           {children}
         </div>
       )}

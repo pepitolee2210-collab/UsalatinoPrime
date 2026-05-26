@@ -64,7 +64,12 @@ export function PhaseFormsList({ forms, caseId, onPdfGenerated, onEdit, emptyMes
 
   if (forms.length === 0) {
     return (
-      <p className="text-xs text-gray-400 text-center py-4">{emptyMessage ?? 'No hay formularios oficiales en esta fase.'}</p>
+      <p
+        className="text-center py-4"
+        style={{ fontSize: 12, color: 'var(--admin-fg-subtle)' }}
+      >
+        {emptyMessage ?? 'No hay formularios oficiales en esta fase.'}
+      </p>
     )
   }
 
@@ -86,11 +91,11 @@ export function PhaseFormsList({ forms, caseId, onPdfGenerated, onEdit, emptyMes
       {forms.map(f => {
         const submitted = f.client_submitted_at != null
         const stateLabel = submitted ? 'Enviado' : f.client_last_edit_at ? 'En progreso' : 'Sin iniciar'
-        const stateClass = submitted
-          ? 'bg-emerald-100 text-emerald-700'
+        const stateStyle = submitted
+          ? { bg: 'var(--admin-green-soft)', text: 'var(--admin-green)', border: 'var(--admin-green)' }
           : f.client_last_edit_at
-          ? 'bg-amber-100 text-amber-700'
-          : 'bg-gray-100 text-gray-500'
+          ? { bg: 'var(--admin-gold-soft)', text: 'var(--admin-gold)', border: 'var(--admin-gold-border, var(--admin-gold))' }
+          : { bg: 'var(--admin-bg-elev-2)', text: 'var(--admin-fg-muted)', border: 'var(--admin-border-strong)' }
         const StateIcon = submitted ? CheckCircle2 : Clock
         const isAutomated = !!f.slug
         const isGenerating = generatingSlug === f.slug
@@ -98,15 +103,44 @@ export function PhaseFormsList({ forms, caseId, onPdfGenerated, onEdit, emptyMes
         return (
           <li
             key={f.id}
-            className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 bg-white"
+            className="flex items-center gap-3 p-3 rounded-lg"
+            style={{
+              background: 'var(--admin-bg-elev)',
+              border: '0.5px solid var(--admin-border)',
+            }}
           >
-            <span className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-              <FileText className="w-4 h-4 text-blue-700" />
+            <span
+              className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{
+                background: 'var(--admin-blue-soft)',
+                border: '0.5px solid var(--admin-border-strong)',
+              }}
+            >
+              <FileText className="w-4 h-4" style={{ color: 'var(--admin-blue)' }} />
             </span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">{f.form_name}</p>
-              <div className="flex items-center gap-2 text-[11px] text-gray-500 mt-0.5">
-                <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded ${stateClass}`}>
+              <p
+                className="truncate"
+                style={{ fontSize: 13, fontWeight: 500, color: 'var(--admin-fg)' }}
+              >
+                {f.form_name}
+              </p>
+              <div
+                className="flex items-center gap-2 mt-0.5"
+                style={{ fontSize: 11, color: 'var(--admin-fg-muted)' }}
+              >
+                <span
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded"
+                  style={{
+                    background: stateStyle.bg,
+                    color: stateStyle.text,
+                    border: `0.5px solid ${stateStyle.border}`,
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: '0.05em',
+                  }}
+                >
                   <StateIcon className="w-3 h-3" />
                   {stateLabel}
                 </span>
@@ -121,7 +155,7 @@ export function PhaseFormsList({ forms, caseId, onPdfGenerated, onEdit, emptyMes
                 {f.filled_pdf_generated_at && (
                   <>
                     <span>·</span>
-                    <span className="text-emerald-700">PDF: {formatDate(f.filled_pdf_generated_at)}</span>
+                    <span style={{ color: 'var(--admin-green)' }}>PDF: {formatDate(f.filled_pdf_generated_at)}</span>
                   </>
                 )}
               </div>
@@ -130,7 +164,15 @@ export function PhaseFormsList({ forms, caseId, onPdfGenerated, onEdit, emptyMes
               <button
                 type="button"
                 onClick={() => onEdit(f.slug as string)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all hover:opacity-90 active:scale-95"
+                style={{
+                  background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-blue))',
+                  color: '#FFFFFF',
+                  border: '0.5px solid rgba(255,255,255,0.2)',
+                  boxShadow: '0 8px 18px rgba(30,78,154,0.18)',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
                 title={`Edita los campos de ${f.form_name} desde aquí — la firma puede llenar/corregir sin entrar al portal del cliente.`}
               >
                 <Pencil className="w-3.5 h-3.5" />
@@ -142,7 +184,15 @@ export function PhaseFormsList({ forms, caseId, onPdfGenerated, onEdit, emptyMes
                 type="button"
                 disabled={isGenerating}
                 onClick={() => handleGenerate(f.slug as string, f.form_name)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all hover:opacity-90 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{
+                  background: 'linear-gradient(135deg, #F2C14E, var(--admin-gold))',
+                  color: 'var(--admin-accent)',
+                  border: '0.5px solid var(--admin-gold-border, rgba(255,255,255,0.2))',
+                  boxShadow: 'var(--admin-shadow-gold, 0 8px 18px rgba(216,155,29,0.22))',
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
                 title={`Genera el PDF oficial de ${f.form_name} con los datos del cliente y lo descarga.`}
               >
                 {isGenerating ? (

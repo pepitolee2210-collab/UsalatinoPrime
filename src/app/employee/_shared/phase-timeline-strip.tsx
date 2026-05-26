@@ -26,8 +26,27 @@ export function PhaseTimelineStrip({ overview, serviceSlug = 'visa-juvenil', onP
   const currentIdx = timelinePhases.indexOf(current)
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-4">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-3">Recorrido del caso</p>
+    <div
+      className="rounded-2xl p-4"
+      style={{
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border-strong)',
+        boxShadow: 'var(--admin-shadow)',
+      }}
+    >
+      <p
+        style={{
+          fontFamily: 'var(--font-mono-tech)',
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: '0.18em',
+          color: 'var(--admin-fg-subtle)',
+          textTransform: 'uppercase',
+          marginBottom: 12,
+        }}
+      >
+        Recorrido del caso
+      </p>
       <ol className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-1">
         {timelinePhases.map((phase, idx) => {
           const tokens = PHASE_TOKENS[phase]
@@ -37,13 +56,22 @@ export function PhaseTimelineStrip({ overview, serviceSlug = 'visa-juvenil', onP
           const isFuture = idx > currentIdx
 
           const dotColor = isCompleted
-            ? 'bg-emerald-500 ring-emerald-200'
+            ? 'var(--admin-green)'
             : isActive
-            ? `${tokens.dot} ring-amber-200 animate-pulse`
-            : 'bg-gray-300 ring-gray-100'
+            ? 'var(--admin-gold)'
+            : 'var(--admin-fg-faint)'
+          const ringColor = isCompleted
+            ? 'var(--admin-green-soft)'
+            : isActive
+            ? 'var(--admin-gold-soft)'
+            : 'var(--admin-bg-elev-2)'
 
-          const labelColor = isCompleted || isActive ? 'text-gray-900' : 'text-gray-400'
-          const subColor = isCompleted ? 'text-emerald-700' : isActive ? 'text-amber-700' : 'text-gray-400'
+          const labelColor = isCompleted || isActive ? 'var(--admin-fg)' : 'var(--admin-fg-subtle)'
+          const subColor = isCompleted
+            ? 'var(--admin-green)'
+            : isActive
+            ? 'var(--admin-gold)'
+            : 'var(--admin-fg-subtle)'
 
           return (
             <li key={phase} className="flex items-center flex-1 min-w-[110px]">
@@ -51,12 +79,40 @@ export function PhaseTimelineStrip({ overview, serviceSlug = 'visa-juvenil', onP
                 type="button"
                 onClick={() => onPhaseClick?.(phase)}
                 disabled={isFuture}
-                className={`flex flex-col items-center gap-1 group ${isFuture ? 'cursor-not-allowed' : 'cursor-pointer hover:opacity-80'}`}
+                className="flex flex-col items-center gap-1 group transition-opacity"
+                style={{
+                  cursor: isFuture ? 'not-allowed' : 'pointer',
+                  opacity: isFuture ? 0.7 : 1,
+                }}
                 title={tokens.label}
               >
-                <span className={`w-3 h-3 rounded-full ring-4 ${dotColor}`} />
-                <span className={`text-[11px] font-bold ${labelColor}`}>{tokens.shortLabel}</span>
-                <span className={`text-[10px] ${subColor}`}>
+                <span
+                  className="rounded-full"
+                  style={{
+                    width: 12,
+                    height: 12,
+                    background: dotColor,
+                    boxShadow: `0 0 0 4px ${ringColor}`,
+                    animation: isActive ? 'ulp-glow 2.5s ease-in-out infinite' : undefined,
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: labelColor,
+                  }}
+                >
+                  {tokens.shortLabel}
+                </span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 10,
+                    color: subColor,
+                    letterSpacing: '0.04em',
+                  }}
+                >
                   {isCompleted && phaseGroup?.completed_at
                     ? formatCompletedAt(phaseGroup.completed_at)
                     : isActive
@@ -68,7 +124,12 @@ export function PhaseTimelineStrip({ overview, serviceSlug = 'visa-juvenil', onP
               </button>
               {idx < timelinePhases.length - 1 && (
                 <span
-                  className={`flex-1 h-0.5 mx-1 sm:mx-2 ${isCompleted ? 'bg-emerald-300' : 'bg-gray-200'}`}
+                  className="flex-1 mx-1 sm:mx-2"
+                  style={{
+                    height: 2,
+                    background: isCompleted ? 'var(--admin-green)' : 'var(--admin-border-strong)',
+                    opacity: isCompleted ? 0.6 : 1,
+                  }}
                   aria-hidden
                 />
               )}

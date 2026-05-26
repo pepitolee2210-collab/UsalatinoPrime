@@ -55,17 +55,35 @@ export function GeneratorsTab({
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-purple-200 bg-purple-50 px-4 py-3 flex items-center gap-3">
+      <div
+        className="rounded-2xl px-4 py-3 flex items-center gap-3"
+        style={{
+          background: 'var(--admin-gold-soft)',
+          border: '0.5px solid var(--admin-gold-border, var(--admin-gold))',
+          boxShadow: 'var(--admin-shadow-gold, 0 8px 18px rgba(216,155,29,0.18))',
+        }}
+      >
         <span
-          className="material-symbols-outlined text-purple-700"
+          className="material-symbols-outlined"
           data-fill="1"
-          style={{ fontSize: 22 }}
+          style={{ fontSize: 22, color: 'var(--admin-gold)' }}
         >
           auto_awesome
         </span>
         <div>
-          <p className="text-xs font-bold text-purple-800 uppercase">Generadores de Fase 1 — Custodia</p>
-          <p className="text-[11px] text-purple-700">
+          <p
+            style={{
+              fontFamily: 'var(--font-mono-tech)',
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.16em',
+              color: 'var(--admin-gold)',
+              textTransform: 'uppercase',
+            }}
+          >
+            Generadores de Fase 1 — Custodia
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--admin-gold)', marginTop: 2 }}>
             Crea declaraciones, consentimientos y peticiones a partir de la información del cliente.
           </p>
         </div>
@@ -91,7 +109,10 @@ export function GeneratorsTab({
       />
 
       {currentPhase && currentPhase !== 'custodia' && (
-        <p className="text-[11px] text-gray-500 italic">
+        <p
+          className="italic"
+          style={{ fontSize: 11, color: 'var(--admin-fg-muted)' }}
+        >
           Estos generadores son de Fase 1 (Custodia). El caso ya avanzó a {currentPhase.toUpperCase()}, pero puedes seguir generando documentación si necesitas.
         </p>
       )}

@@ -3,7 +3,6 @@
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
@@ -13,6 +12,7 @@ import {
   Briefcase, MessageSquare,
 } from 'lucide-react'
 import Link from 'next/link'
+import { AdminKeyframes } from '@/components/admin-ui'
 
 interface Assignment {
   id: string
@@ -42,11 +42,13 @@ interface Submission {
   created_at: string
 }
 
-const SUB_STATUS: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  draft:            { label: 'Borrador',     color: 'bg-gray-100 text-gray-600',   icon: Clock },
-  submitted:        { label: 'Enviado',      color: 'bg-purple-100 text-purple-700', icon: Send },
-  needs_correction: { label: 'Correcciones', color: 'bg-red-100 text-red-700',     icon: AlertTriangle },
-  approved:         { label: 'Aprobado',     color: 'bg-green-100 text-green-700', icon: CheckCircle },
+type SubStatusKey = 'draft' | 'submitted' | 'needs_correction' | 'approved'
+
+const SUB_STATUS: Record<SubStatusKey, { label: string; icon: typeof Clock; bg: string; text: string; border: string }> = {
+  draft:            { label: 'Borrador',     icon: Clock,         bg: 'var(--admin-bg-elev-2)',     text: 'var(--admin-fg-muted)', border: 'var(--admin-border-strong)' },
+  submitted:        { label: 'Enviado',      icon: Send,          bg: 'var(--admin-accent-soft)',   text: 'var(--admin-accent)',   border: 'var(--admin-border-strong)' },
+  needs_correction: { label: 'Correcciones', icon: AlertTriangle, bg: 'var(--admin-red-soft)',      text: 'var(--admin-red)',      border: 'var(--admin-red)' },
+  approved:         { label: 'Aprobado',     icon: CheckCircle,   bg: 'var(--admin-green-soft)',    text: 'var(--admin-green)',    border: 'var(--admin-green)' },
 }
 
 export function EmployeeTaskView({ assignment: initialAssignment, documents, submissions }: {
@@ -114,102 +116,257 @@ export function EmployeeTaskView({ assignment: initialAssignment, documents, sub
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
+      <AdminKeyframes />
       {/* Header */}
       <div className="flex items-start gap-3">
-        <Link href="/employee/dashboard">
-          <Button variant="ghost" size="icon" className="mt-0.5">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
+        <Link
+          href="/employee/dashboard"
+          className="inline-flex items-center justify-center w-9 h-9 rounded-full mt-1 transition-colors flex-shrink-0"
+          style={{
+            background: 'var(--admin-bg-elev)',
+            border: '0.5px solid var(--admin-border-strong)',
+            color: 'var(--admin-fg-muted)',
+          }}
+          aria-label="Volver"
+        >
+          <ArrowLeft className="w-4 h-4" />
         </Link>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-900">
+        <div className="flex-1 min-w-0">
+          <p
+            style={{
+              fontFamily: 'var(--font-mono-tech)',
+              fontSize: 10,
+              fontWeight: 600,
+              letterSpacing: '0.2em',
+              color: 'var(--admin-accent)',
+              marginBottom: 4,
+            }}
+          >
+            TAREA ASIGNADA
+          </p>
+          <h1
+            style={{
+              fontSize: 24,
+              fontWeight: 700,
+              letterSpacing: '-0.025em',
+              color: 'var(--admin-fg)',
+            }}
+          >
             {assignment.client_name || 'Trabajo Asignado'}
           </h1>
-          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            {assignment.service_type && (
-              <Badge variant="secondary" className="text-[10px]">{assignment.service_type}</Badge>
-            )}
-          </div>
+          {assignment.service_type && (
+            <div className="mt-2">
+              <span
+                className="inline-flex items-center px-2 py-0.5 rounded-full"
+                style={{
+                  background: 'var(--admin-accent-soft)',
+                  color: 'var(--admin-accent)',
+                  border: '0.5px solid var(--admin-border-strong)',
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  letterSpacing: '0.05em',
+                }}
+              >
+                {assignment.service_type}
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Status selector for Diana */}
-      <div className="p-3 rounded-xl bg-gray-50 border border-gray-200">
-        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Estado de la tarea</p>
+      {/* Status selector */}
+      <div
+        className="p-4 rounded-2xl"
+        style={{
+          background: 'var(--admin-panel-grad)',
+          border: '0.5px solid var(--admin-border-strong)',
+          boxShadow: 'var(--admin-shadow)',
+        }}
+      >
+        <p
+          style={{
+            fontFamily: 'var(--font-mono-tech)',
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: '0.18em',
+            color: 'var(--admin-fg-subtle)',
+            textTransform: 'uppercase',
+            marginBottom: 10,
+          }}
+        >
+          Estado de la tarea
+        </p>
         <div className="flex flex-wrap gap-2">
           {[
-            { value: 'in_progress', label: 'En progreso', color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
-            { value: 'submitted', label: 'Enviado a revisión', color: 'bg-purple-100 text-purple-700 border-purple-300' },
-          ].map(s => (
-            <button key={s.value} onClick={() => updateMyStatus(s.value)}
-              disabled={statusLoading || assignment.status === s.value}
-              className={`px-3 py-2 rounded-xl text-xs font-bold border-2 transition-all ${
-                assignment.status === s.value
-                  ? s.color + ' ring-2 ring-offset-1 ring-gray-300'
-                  : 'border-gray-200 text-gray-400 hover:border-gray-300'
-              }`}>
-              {s.label}
-            </button>
-          ))}
+            { value: 'in_progress', label: 'En progreso', bg: 'var(--admin-gold-soft)',     text: 'var(--admin-gold)',    border: 'var(--admin-gold-border, var(--admin-gold))' },
+            { value: 'submitted',   label: 'Enviado a revisión', bg: 'var(--admin-accent-soft)', text: 'var(--admin-accent)', border: 'var(--admin-border-strong)' },
+          ].map(s => {
+            const active = assignment.status === s.value
+            return (
+              <button
+                key={s.value}
+                onClick={() => updateMyStatus(s.value)}
+                disabled={statusLoading || active}
+                className="px-3 py-2 rounded-full transition-all disabled:cursor-default"
+                style={{
+                  background: active ? s.bg : 'var(--admin-bg-elev)',
+                  color: active ? s.text : 'var(--admin-fg-muted)',
+                  border: `0.5px solid ${active ? s.border : 'var(--admin-border-strong)'}`,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  boxShadow: active ? '0 4px 12px rgba(0,0,0,0.15)' : 'none',
+                  opacity: statusLoading && !active ? 0.6 : 1,
+                }}
+              >
+                {s.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 
       {/* Instructions from Henry */}
       {assignment.task_description && (
-        <div className="p-4 rounded-2xl border-2 border-[var(--admin-gold)] bg-[var(--admin-gold-soft)]">
+        <div
+          className="p-5 rounded-2xl"
+          style={{
+            background: 'var(--admin-gold-soft)',
+            border: '0.5px solid var(--admin-gold-border, var(--admin-gold))',
+            boxShadow: 'var(--admin-shadow-gold, 0 12px 28px rgba(216,155,29,0.18))',
+          }}
+        >
           <div className="flex items-center gap-2 mb-2">
-            <MessageSquare className="w-4 h-4 text-[var(--admin-gold)]" />
-            <span className="text-xs font-bold text-[var(--admin-gold)] uppercase tracking-wider">Instrucciones del Abogado</span>
+            <MessageSquare className="w-4 h-4" style={{ color: 'var(--admin-gold)' }} />
+            <span
+              style={{
+                fontFamily: 'var(--font-mono-tech)',
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.16em',
+                color: 'var(--admin-gold)',
+                textTransform: 'uppercase',
+              }}
+            >
+              Instrucciones del Abogado
+            </span>
           </div>
-          <p className="text-sm text-gray-800 whitespace-pre-wrap">{assignment.task_description}</p>
-          <p className="text-[11px] text-gray-400 mt-2">
+          <p style={{ fontSize: 14, color: 'var(--admin-fg)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+            {assignment.task_description}
+          </p>
+          <p
+            style={{
+              fontSize: 11,
+              color: 'var(--admin-fg-muted)',
+              marginTop: 10,
+              fontFamily: 'var(--font-mono-tech)',
+              letterSpacing: '0.05em',
+            }}
+          >
             Asignado {new Date(assignment.assigned_at).toLocaleDateString('es-US', { day: 'numeric', month: 'short', year: 'numeric' })}
           </p>
         </div>
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl">
-        <button
-          onClick={() => setTab('docs')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-            tab === 'docs' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-          }`}
-        >
-          <FileText className="w-4 h-4" />
-          Documentos ({documents.length})
-        </button>
-        <button
-          onClick={() => setTab('workspace')}
-          className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
-            tab === 'workspace' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-          }`}
-        >
-          <Briefcase className="w-4 h-4" />
-          Mi Trabajo ({subs.length})
-        </button>
+      <div
+        className="flex gap-1 p-1 rounded-xl"
+        style={{
+          background: 'var(--admin-bg-deep)',
+          border: '0.5px solid var(--admin-border)',
+        }}
+      >
+        {[
+          { id: 'docs' as const, label: 'Documentos', count: documents.length, icon: FileText },
+          { id: 'workspace' as const, label: 'Mi Trabajo', count: subs.length, icon: Briefcase },
+        ].map((t) => {
+          const active = tab === t.id
+          const Icon = t.icon
+          return (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg transition-all"
+              style={{
+                background: active ? 'var(--admin-bg-elev)' : 'transparent',
+                color: active ? 'var(--admin-fg)' : 'var(--admin-fg-muted)',
+                border: active ? '0.5px solid var(--admin-border-strong)' : '0.5px solid transparent',
+                boxShadow: active ? 'var(--admin-shadow)' : 'none',
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+            >
+              <Icon className="w-4 h-4" />
+              {t.label} ({t.count})
+            </button>
+          )
+        })}
       </div>
 
       {/* Documents tab */}
       {tab === 'docs' && (
         <div className="space-y-2">
           {documents.length === 0 ? (
-            <p className="text-center text-gray-400 py-8 text-sm">No hay documentos adjuntos.</p>
+            <div
+              className="rounded-2xl p-10 text-center"
+              style={{
+                background: 'var(--admin-panel-grad)',
+                border: '0.5px dashed var(--admin-border-strong)',
+              }}
+            >
+              <p style={{ color: 'var(--admin-fg-muted)', fontSize: 14 }}>No hay documentos adjuntos.</p>
+            </div>
           ) : (
             documents.map(doc => (
-              <div key={doc.id} className="flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-200">
-                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-5 h-5 text-blue-500" />
+              <div
+                key={doc.id}
+                className="flex items-center gap-3 p-4 rounded-xl"
+                style={{
+                  background: 'var(--admin-panel-grad)',
+                  border: '0.5px solid var(--admin-border-strong)',
+                  boxShadow: 'var(--admin-shadow)',
+                }}
+              >
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                  style={{
+                    background: 'var(--admin-blue-soft)',
+                    border: '0.5px solid var(--admin-border-strong)',
+                  }}
+                >
+                  <FileText className="w-5 h-5" style={{ color: 'var(--admin-blue)' }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
-                  <p className="text-[11px] text-gray-400">
+                  <p
+                    className="truncate"
+                    style={{ fontSize: 13, fontWeight: 500, color: 'var(--admin-fg)' }}
+                  >
+                    {doc.name}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: 11,
+                      color: 'var(--admin-fg-subtle)',
+                      fontFamily: 'var(--font-mono-tech)',
+                      letterSpacing: '0.05em',
+                    }}
+                  >
                     {(doc.file_size / 1024 / 1024).toFixed(1)} MB
                   </p>
                 </div>
-                <a href={`/api/employee/download-doc?id=${doc.id}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-gray-100">
-                  <Download className="w-4 h-4 text-gray-500" />
+                <a
+                  href={`/api/employee/download-doc?id=${doc.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center w-9 h-9 rounded-full transition-colors"
+                  style={{
+                    background: 'var(--admin-bg-elev-2)',
+                    color: 'var(--admin-fg-muted)',
+                    border: '0.5px solid var(--admin-border-strong)',
+                  }}
+                  aria-label="Descargar"
+                >
+                  <Download className="w-4 h-4" />
                 </a>
               </div>
             ))
@@ -220,8 +377,14 @@ export function EmployeeTaskView({ assignment: initialAssignment, documents, sub
       {/* Workspace tab */}
       {tab === 'workspace' && (
         <div className="space-y-4">
-          <div className="p-5 rounded-2xl border-2 border-dashed border-gray-300 bg-white space-y-3">
-            <h3 className="text-sm font-bold text-gray-900">Nuevo envío</h3>
+          <div
+            className="p-5 rounded-2xl space-y-3"
+            style={{
+              background: 'var(--admin-panel-grad)',
+              border: '0.5px dashed var(--admin-border-strong)',
+            }}
+          >
+            <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--admin-fg)' }}>Nuevo envío</h3>
             <Input
               value={title}
               onChange={e => setTitle(e.target.value)}
@@ -236,14 +399,31 @@ export function EmployeeTaskView({ assignment: initialAssignment, documents, sub
               className="resize-none"
             />
             <div className="flex items-center gap-3">
-              <input ref={fileRef} type="file" accept=".pdf,.doc,.docx" className="hidden"
-                onChange={e => { const f = e.target.files?.[0]; if (f) setFile(f) }} />
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".pdf,.doc,.docx"
+                className="hidden"
+                onChange={e => { const f = e.target.files?.[0]; if (f) setFile(f) }}
+              />
               {file ? (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-700 flex-1">
+                <div
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg flex-1"
+                  style={{
+                    background: 'var(--admin-blue-soft)',
+                    border: '0.5px solid var(--admin-blue)',
+                    color: 'var(--admin-blue)',
+                    fontSize: 13,
+                  }}
+                >
                   <FileText className="w-4 h-4 shrink-0" />
                   <span className="truncate">{file.name}</span>
-                  <button onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = '' }}>
-                    <Trash2 className="w-3.5 h-3.5 text-red-400 hover:text-red-600" />
+                  <button
+                    type="button"
+                    onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = '' }}
+                    aria-label="Quitar archivo"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" style={{ color: 'var(--admin-red)' }} />
                   </button>
                 </div>
               ) : (
@@ -252,34 +432,105 @@ export function EmployeeTaskView({ assignment: initialAssignment, documents, sub
                 </Button>
               )}
             </div>
-            <Button onClick={handleSubmit} disabled={sending || (!content.trim() && !file)} className="bg-[var(--admin-accent)]">
-              {sending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-              Enviar al Abogado
-            </Button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={sending || (!content.trim() && !file)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full transition-all hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{
+                background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-blue))',
+                color: '#FFFFFF',
+                border: '0.5px solid rgba(255,255,255,0.2)',
+                boxShadow: '0 12px 28px rgba(30,78,154,0.25)',
+              }}
+            >
+              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              <span style={{ fontSize: 13, fontWeight: 600 }}>Enviar al Abogado</span>
+            </button>
           </div>
 
           {subs.map(sub => {
-            const sc = SUB_STATUS[sub.status] || SUB_STATUS.draft
+            const sc = SUB_STATUS[(sub.status as SubStatusKey)] || SUB_STATUS.draft
             const Icon = sc.icon
             return (
-              <div key={sub.id} className="p-4 rounded-2xl bg-white border border-gray-200">
+              <div
+                key={sub.id}
+                className="p-4 rounded-2xl"
+                style={{
+                  background: 'var(--admin-panel-grad)',
+                  border: '0.5px solid var(--admin-border-strong)',
+                  boxShadow: 'var(--admin-shadow)',
+                }}
+              >
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <p className="font-semibold text-gray-900 text-sm">{sub.title || 'Sin título'}</p>
-                  <Badge className={sc.color}><Icon className="w-3 h-3 mr-1" />{sc.label}</Badge>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)' }}>
+                    {sub.title || 'Sin título'}
+                  </p>
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                    style={{
+                      background: sc.bg,
+                      color: sc.text,
+                      border: `0.5px solid ${sc.border}`,
+                      fontFamily: 'var(--font-mono-tech)',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      letterSpacing: '0.1em',
+                    }}
+                  >
+                    <Icon className="w-3 h-3" />
+                    {sc.label.toUpperCase()}
+                  </span>
                 </div>
-                {sub.content && <p className="text-sm text-gray-600 whitespace-pre-wrap line-clamp-4 mb-2">{sub.content}</p>}
+                {sub.content && (
+                  <p
+                    className="line-clamp-4 whitespace-pre-wrap"
+                    style={{ fontSize: 13, color: 'var(--admin-fg-muted)', lineHeight: 1.5, marginBottom: 8 }}
+                  >
+                    {sub.content}
+                  </p>
+                )}
                 {sub.file_name && (
-                  <div className="flex items-center gap-2 text-xs text-blue-600 mb-2">
-                    <FileText className="w-3.5 h-3.5" />{sub.file_name}
+                  <div
+                    className="flex items-center gap-2 mb-2"
+                    style={{ fontSize: 12, color: 'var(--admin-blue)' }}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    {sub.file_name}
                   </div>
                 )}
                 {sub.admin_notes && (
-                  <div className="mt-2 p-3 rounded-xl bg-amber-50 border border-amber-200">
-                    <p className="text-xs font-bold text-amber-700 mb-1">Notas del Abogado:</p>
-                    <p className="text-sm text-amber-800">{sub.admin_notes}</p>
+                  <div
+                    className="mt-2 p-3 rounded-xl"
+                    style={{
+                      background: 'var(--admin-gold-soft)',
+                      border: '0.5px solid var(--admin-gold-border, var(--admin-gold))',
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontFamily: 'var(--font-mono-tech)',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: '0.14em',
+                        color: 'var(--admin-gold)',
+                        marginBottom: 4,
+                      }}
+                    >
+                      NOTAS DEL ABOGADO
+                    </p>
+                    <p style={{ fontSize: 13, color: 'var(--admin-gold)' }}>{sub.admin_notes}</p>
                   </div>
                 )}
-                <p className="text-[11px] text-gray-400 mt-2">
+                <p
+                  style={{
+                    fontSize: 11,
+                    color: 'var(--admin-fg-subtle)',
+                    marginTop: 10,
+                    fontFamily: 'var(--font-mono-tech)',
+                    letterSpacing: '0.05em',
+                  }}
+                >
                   {new Date(sub.created_at).toLocaleDateString('es-US', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>

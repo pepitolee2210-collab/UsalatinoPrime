@@ -230,26 +230,55 @@ export function CaseTabsByPhase({
         />
       )}
 
-      <div className="flex gap-1 overflow-x-auto pb-1 border-b border-gray-100">
-        {tabs.map(t => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold whitespace-nowrap rounded-t-lg transition-colors ${
-              tab === t.id ? 'bg-white text-gray-900 border border-b-0 border-gray-200' : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {t.label}
-            {t.count !== undefined && (
-              <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">{t.count}</span>
-            )}
-          </button>
-        ))}
+      <div
+        className="flex gap-1 overflow-x-auto pb-1"
+        style={{ borderBottom: '0.5px solid var(--admin-border)' }}
+      >
+        {tabs.map(t => {
+          const active = tab === t.id
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className="flex items-center gap-1.5 px-3 py-2 whitespace-nowrap rounded-t-lg transition-all"
+              style={{
+                background: active ? 'var(--admin-bg-elev)' : 'transparent',
+                color: active ? 'var(--admin-fg)' : 'var(--admin-fg-muted)',
+                border: active ? '0.5px solid var(--admin-border-strong)' : '0.5px solid transparent',
+                borderBottom: active ? '0.5px solid var(--admin-bg-elev)' : '0.5px solid transparent',
+                marginBottom: active ? -1 : 0,
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              {t.label}
+              {t.count !== undefined && (
+                <span
+                  className="inline-flex items-center px-1.5 py-0.5 rounded-full"
+                  style={{
+                    background: active ? 'var(--admin-accent-soft)' : 'var(--admin-bg-deep)',
+                    color: active ? 'var(--admin-accent)' : 'var(--admin-fg-subtle)',
+                    border: '0.5px solid var(--admin-border)',
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.05em',
+                  }}
+                >
+                  {t.count}
+                </span>
+              )}
+            </button>
+          )
+        })}
       </div>
 
       {loading && (
-        <div className="flex items-center justify-center py-10 text-gray-400 text-sm">
+        <div
+          className="flex items-center justify-center py-10"
+          style={{ color: 'var(--admin-fg-muted)', fontSize: 13 }}
+        >
           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
           Cargando caso...
         </div>
@@ -318,11 +347,28 @@ export function CaseTabsByPhase({
       {/* === DOCUMENTOS OFICIALES (PDFs/DOCX auto-generados por el sistema) === */}
       {tab === 'oficiales' && !loading && overview && (
         <div className="space-y-3">
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 flex items-start gap-3">
-            <FileText className="w-4 h-4 text-rose-700 mt-0.5 flex-shrink-0" />
+          <div
+            className="rounded-2xl px-4 py-3 flex items-start gap-3"
+            style={{
+              background: 'var(--admin-red-soft)',
+              border: '0.5px solid var(--admin-red)',
+            }}
+          >
+            <FileText className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: 'var(--admin-red)' }} />
             <div>
-              <p className="text-xs font-bold text-rose-800 uppercase">Formularios oficiales rellenados</p>
-              <p className="text-[11px] text-rose-700">
+              <p
+                style={{
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.14em',
+                  color: 'var(--admin-red)',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Formularios oficiales rellenados
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--admin-red)', marginTop: 2 }}>
                 PDFs y DOCX generados automáticamente con la información del cliente (EOIR-26, EOIR-26A, SAPCR-100, I-485, etc.).
                 Para regenerar el último, abre el formulario en la pestaña <strong>Formularios</strong> y presiona <em>Generar PDF</em>.
               </p>
@@ -355,11 +401,28 @@ export function CaseTabsByPhase({
       {/* === DOCUMENTOS ARCHIVADOS (interno de la firma, invisible al cliente) === */}
       {tab === 'archivados' && !loading && overview && (
         <div className="space-y-3">
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
-            <Archive className="w-4 h-4 text-amber-700 mt-0.5 flex-shrink-0" />
+          <div
+            className="rounded-2xl px-4 py-3 flex items-start gap-3"
+            style={{
+              background: 'var(--admin-gold-soft)',
+              border: '0.5px solid var(--admin-gold-border, var(--admin-gold))',
+            }}
+          >
+            <Archive className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: 'var(--admin-gold)' }} />
             <div>
-              <p className="text-xs font-bold text-amber-800 uppercase">Solo para uso interno</p>
-              <p className="text-[11px] text-amber-700">
+              <p
+                style={{
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.14em',
+                  color: 'var(--admin-gold)',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Solo para uso interno
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--admin-gold)', marginTop: 2 }}>
                 Documentos del expediente que la firma archiva. Visibles para Henry y paralegales — el cliente no los ve.
               </p>
             </div>
@@ -512,11 +575,26 @@ interface UploadBoxProps {
 function UploadBox({ uploading, onUpload, label }: UploadBoxProps) {
   return (
     <label
-      className={`flex items-center justify-center gap-2 w-full py-3 border-2 border-dashed rounded-xl cursor-pointer text-sm font-medium transition-colors ${
-        uploading
-          ? 'opacity-50 cursor-not-allowed border-gray-200 text-gray-400'
-          : 'border-gray-300 text-gray-500 hover:border-[var(--admin-gold)] hover:text-[var(--admin-gold)]'
-      }`}
+      className="flex items-center justify-center gap-2 w-full py-3 rounded-xl cursor-pointer transition-colors"
+      style={{
+        background: 'var(--admin-bg-elev)',
+        border: '1px dashed var(--admin-border-strong)',
+        color: uploading ? 'var(--admin-fg-subtle)' : 'var(--admin-fg-muted)',
+        fontSize: 13,
+        fontWeight: 500,
+        opacity: uploading ? 0.6 : 1,
+        cursor: uploading ? 'not-allowed' : 'pointer',
+      }}
+      onMouseEnter={(e) => {
+        if (uploading) return
+        e.currentTarget.style.borderColor = 'var(--admin-gold-border, var(--admin-gold))'
+        e.currentTarget.style.color = 'var(--admin-gold)'
+      }}
+      onMouseLeave={(e) => {
+        if (uploading) return
+        e.currentTarget.style.borderColor = 'var(--admin-border-strong)'
+        e.currentTarget.style.color = 'var(--admin-fg-muted)'
+      }}
     >
       <Upload className="w-4 h-4" />
       {uploading ? 'Subiendo...' : label}
@@ -595,7 +673,10 @@ function renderPhaseAccordions({
           {uploads.length > 0 ? (
             <PhaseDocumentList phase={group.phase} uploads={uploads} onPreview={onPreview} />
           ) : (
-            <p className="text-xs text-gray-400 text-center py-4">
+            <p
+              className="text-center py-4"
+              style={{ fontSize: 12, color: 'var(--admin-fg-subtle)' }}
+            >
               {isActive ? 'Aún no hay archivos en esta fase.' : 'Sin archivos en esta fase.'}
             </p>
           )}
@@ -620,15 +701,31 @@ function PreviewModal({ doc, onClose }: { doc: UploadFile; onClose: () => void }
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.7)' }}
+      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl flex flex-col"
+        className="rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col"
+        style={{
+          background: 'var(--admin-panel-grad)',
+          border: '0.5px solid var(--admin-border-strong)',
+          boxShadow: 'var(--admin-shadow-lg)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between p-4 border-b">
-          <p className="font-bold text-gray-900 truncate flex-1">{doc.name}</p>
+        <div
+          className="flex items-center justify-between p-4"
+          style={{
+            background: 'var(--admin-bg-elev)',
+            borderBottom: '0.5px solid var(--admin-border-strong)',
+          }}
+        >
+          <p
+            className="truncate flex-1"
+            style={{ fontSize: 14, fontWeight: 700, color: 'var(--admin-fg)' }}
+          >
+            {doc.name}
+          </p>
           <div className="flex items-center gap-2 ml-3">
             <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
               <Button size="sm" variant="outline">
@@ -637,13 +734,19 @@ function PreviewModal({ doc, onClose }: { doc: UploadFile; onClose: () => void }
             </a>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 hover:bg-gray-200"
+              className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+              style={{
+                background: 'var(--admin-bg-elev-2)',
+                color: 'var(--admin-fg-muted)',
+                border: '0.5px solid var(--admin-border-strong)',
+              }}
+              aria-label="Cerrar"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-auto bg-gray-100">
+        <div className="flex-1 overflow-auto" style={{ background: 'var(--admin-bg-deep)' }}>
           {isPDF ? (
             <iframe src={previewUrl} className="w-full h-[75vh]" title={doc.name} />
           ) : isImage ? (
@@ -659,13 +762,16 @@ function PreviewModal({ doc, onClose }: { doc: UploadFile; onClose: () => void }
           ) : (
             <div className="flex items-center justify-center h-[50vh]">
               <div className="text-center">
-                <FileText className="w-16 h-16 text-gray-300 mx-auto mb-3" />
-                <p className="text-sm text-gray-500">Vista previa no disponible para este formato</p>
+                <FileText className="w-16 h-16 mx-auto mb-3" style={{ color: 'var(--admin-fg-subtle)' }} />
+                <p style={{ fontSize: 13, color: 'var(--admin-fg-muted)' }}>
+                  Vista previa no disponible para este formato
+                </p>
                 <a
                   href={downloadUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-[var(--admin-gold)] hover:underline mt-2 inline-block"
+                  className="hover:underline mt-2 inline-block"
+                  style={{ fontSize: 13, color: 'var(--admin-gold)', fontWeight: 600 }}
                 >
                   Descargar para abrir
                 </a>
@@ -686,7 +792,19 @@ function HistoryTab({ submissions }: { submissions: FormSub[] }) {
   )
 
   if (filtered.length === 0) {
-    return <p className="text-center text-gray-400 py-8 text-sm">El cliente no ha llenado la historia.</p>
+    return (
+      <div
+        className="rounded-2xl p-10 text-center"
+        style={{
+          background: 'var(--admin-panel-grad)',
+          border: '0.5px dashed var(--admin-border-strong)',
+        }}
+      >
+        <p style={{ color: 'var(--admin-fg-muted)', fontSize: 14 }}>
+          El cliente no ha llenado la historia.
+        </p>
+      </div>
+    )
   }
 
   const labels: Record<string, string> = {
@@ -712,30 +830,76 @@ function HistoryTab({ submissions }: { submissions: FormSub[] }) {
 function FormSection({ title, status, data }: { title: string; status: string; data: Record<string, unknown> }) {
   const [expanded, setExpanded] = useState(false)
   const entries = Object.entries(data ?? {})
-  const statusBadge =
-    status === 'submitted' ? 'bg-emerald-100 text-emerald-700' :
-    status === 'approved' ? 'bg-blue-100 text-blue-700' :
-    'bg-gray-100 text-gray-600'
+  const statusStyle =
+    status === 'submitted'
+      ? { bg: 'var(--admin-green-soft)', text: 'var(--admin-green)', border: 'var(--admin-green)' }
+      : status === 'approved'
+      ? { bg: 'var(--admin-blue-soft)', text: 'var(--admin-blue)', border: 'var(--admin-blue)' }
+      : { bg: 'var(--admin-bg-elev-2)', text: 'var(--admin-fg-muted)', border: 'var(--admin-border-strong)' }
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+    <div
+      className="rounded-xl overflow-hidden"
+      style={{
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border-strong)',
+        boxShadow: 'var(--admin-shadow)',
+      }}
+    >
       <button
         type="button"
         onClick={() => setExpanded(e => !e)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
+        className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors"
+        onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--admin-bg-elev-2)' }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
       >
-        <FileText className="w-4 h-4 text-gray-500" />
-        <span className="flex-1 text-sm font-semibold text-gray-900">{title}</span>
-        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${statusBadge}`}>
-          {status}
+        <FileText className="w-4 h-4" style={{ color: 'var(--admin-fg-muted)' }} />
+        <span className="flex-1" style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)' }}>
+          {title}
+        </span>
+        <span
+          className="inline-flex items-center px-2 py-0.5 rounded-full"
+          style={{
+            background: statusStyle.bg,
+            color: statusStyle.text,
+            border: `0.5px solid ${statusStyle.border}`,
+            fontFamily: 'var(--font-mono-tech)',
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.1em',
+          }}
+        >
+          {status.toUpperCase()}
         </span>
       </button>
       {expanded && (
-        <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+        <div
+          className="px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-2"
+          style={{
+            background: 'var(--admin-bg-elev-2)',
+            borderTop: '0.5px solid var(--admin-border)',
+          }}
+        >
           {entries.map(([k, v]) => (
             <div key={k}>
-              <p className="text-[10px] font-bold uppercase text-gray-400">{k}</p>
-              <p className="text-gray-800 break-words">{formatValue(v)}</p>
+              <p
+                style={{
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  color: 'var(--admin-fg-subtle)',
+                  textTransform: 'uppercase',
+                }}
+              >
+                {k}
+              </p>
+              <p
+                className="break-words"
+                style={{ fontSize: 12, color: 'var(--admin-fg)' }}
+              >
+                {formatValue(v)}
+              </p>
             </div>
           ))}
         </div>

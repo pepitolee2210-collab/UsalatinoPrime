@@ -346,7 +346,10 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
 
   if (loadingInitial) {
     return (
-      <div className="flex items-center justify-center py-16 text-gray-400 text-sm">
+      <div
+        className="flex items-center justify-center py-16"
+        style={{ color: 'var(--admin-fg-muted)', fontSize: 13 }}
+      >
         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
         Cargando bitácora del caso...
       </div>
@@ -356,74 +359,101 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
   return (
     <div className="space-y-4">
       {/* HEADER sticky */}
-      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm -mx-1 px-1 py-2 border-b border-gray-100">
+      <div
+        className="sticky top-0 z-10 -mx-1 px-1 py-2"
+        style={{
+          background: 'color-mix(in srgb, var(--admin-bg) 90%, transparent)',
+          backdropFilter: 'blur(8px)',
+          borderBottom: '0.5px solid var(--admin-border)',
+        }}
+      >
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
+              style={{ color: 'var(--admin-fg-subtle)' }}
+            />
             <input
               type="text"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               placeholder="Buscar evento o autor..."
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--admin-gold-soft)]"
+              className="w-full pl-9 pr-3 py-2 rounded-lg focus:outline-none transition-colors"
+              style={{
+                background: 'var(--admin-bg-elev)',
+                border: '0.5px solid var(--admin-border-strong)',
+                color: 'var(--admin-fg)',
+                fontSize: 12,
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--admin-accent)' }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--admin-border-strong)' }}
             />
           </div>
           <button
             type="button"
             onClick={() => setShowFilters((v) => !v)}
-            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
-              activeFilterCount > 0
-                ? 'border-[var(--admin-gold)] bg-[var(--admin-gold-soft)] text-[var(--admin-gold)]'
-                : 'border-gray-200 hover:bg-gray-50 text-gray-700'
-            }`}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors"
+            style={{
+              background: activeFilterCount > 0 ? 'var(--admin-gold-soft)' : 'var(--admin-bg-elev)',
+              color: activeFilterCount > 0 ? 'var(--admin-gold)' : 'var(--admin-fg-muted)',
+              border: `0.5px solid ${activeFilterCount > 0 ? 'var(--admin-gold-border, var(--admin-gold))' : 'var(--admin-border-strong)'}`,
+              fontSize: 12,
+              fontWeight: 600,
+            }}
           >
             <Filter className="w-3.5 h-3.5" /> Filtros
             {activeFilterCount > 0 && (
-              <span className="text-[10px] bg-[var(--admin-gold)] text-white px-1.5 py-0.5 rounded-full">
+              <span
+                className="inline-flex items-center px-1.5 py-0.5 rounded-full"
+                style={{
+                  background: 'var(--admin-gold)',
+                  color: '#FFFFFF',
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                }}
+              >
                 {activeFilterCount}
               </span>
             )}
           </button>
-          <span className="text-[10px] text-gray-400 whitespace-nowrap">
-            {visibleItems.length} evento{visibleItems.length !== 1 ? 's' : ''}
+          <span
+            className="whitespace-nowrap"
+            style={{
+              fontSize: 10,
+              color: 'var(--admin-fg-subtle)',
+              fontFamily: 'var(--font-mono-tech)',
+              letterSpacing: '0.08em',
+            }}
+          >
+            {visibleItems.length} EVENTO{visibleItems.length !== 1 ? 'S' : ''}
           </span>
         </div>
 
         {activeFilterCount > 0 && (
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
             {selectedCategories.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => toggleCategory(c)}
-                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--admin-gold-soft)] text-[var(--admin-gold)] hover:opacity-80"
-              >
-                {CATEGORY_LABELS[c]} <X className="w-2.5 h-2.5" />
-              </button>
+              <FilterChip key={c} label={CATEGORY_LABELS[c]} onClick={() => toggleCategory(c)} />
             ))}
             {selectedActor !== 'all' && (
-              <button
-                type="button"
+              <FilterChip
                 onClick={() => setSelectedActor('all')}
-                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--admin-gold-soft)] text-[var(--admin-gold)] hover:opacity-80"
-              >
-                {actorOptions.find((a) => a.id === selectedActor)?.label || 'Autor'}{' '}
-                <X className="w-2.5 h-2.5" />
-              </button>
+                label={actorOptions.find((a) => a.id === selectedActor)?.label || 'Autor'}
+              />
             )}
             {datePreset !== 'all' && (
-              <button
-                type="button"
+              <FilterChip
                 onClick={() => setDatePreset('all')}
-                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--admin-gold-soft)] text-[var(--admin-gold)] hover:opacity-80"
-              >
-                {DATE_PRESETS.find((p) => p.id === datePreset)?.label} <X className="w-2.5 h-2.5" />
-              </button>
+                label={DATE_PRESETS.find((p) => p.id === datePreset)?.label || ''}
+              />
             )}
             <button
               type="button"
               onClick={clearFilters}
-              className="text-[10px] text-gray-500 hover:text-red-500 underline underline-offset-2 ml-1"
+              className="ml-1 underline underline-offset-2 transition-colors"
+              style={{ fontSize: 10, color: 'var(--admin-fg-subtle)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--admin-red)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--admin-fg-subtle)' }}
             >
               Limpiar
             </button>
@@ -431,9 +461,25 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
         )}
 
         {showFilters && (
-          <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-3">
+          <div
+            className="mt-3 rounded-xl p-3 space-y-3"
+            style={{
+              background: 'var(--admin-bg-deep)',
+              border: '0.5px solid var(--admin-border)',
+            }}
+          >
             <div>
-              <p className="text-[10px] font-bold uppercase text-gray-500 mb-1.5 tracking-wider">
+              <p
+                style={{
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.14em',
+                  color: 'var(--admin-fg-subtle)',
+                  textTransform: 'uppercase',
+                  marginBottom: 6,
+                }}
+              >
                 Categoría
               </p>
               <div className="flex flex-wrap gap-1.5">
@@ -444,11 +490,14 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
                       key={c}
                       type="button"
                       onClick={() => toggleCategory(c)}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
-                        active
-                          ? 'border-[var(--admin-gold)] bg-[var(--admin-gold-soft)] text-[var(--admin-gold)]'
-                          : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-                      }`}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-colors"
+                      style={{
+                        background: active ? 'var(--admin-gold-soft)' : 'var(--admin-bg-elev)',
+                        color: active ? 'var(--admin-gold)' : 'var(--admin-fg-muted)',
+                        border: `0.5px solid ${active ? 'var(--admin-gold-border, var(--admin-gold))' : 'var(--admin-border-strong)'}`,
+                        fontSize: 11,
+                        fontWeight: 600,
+                      }}
                     >
                       <span className={`inline-block w-1.5 h-1.5 rounded-full ${CATEGORY_STRIP[c]}`} />
                       {CATEGORY_LABELS[c]}
@@ -459,11 +508,29 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <p className="text-[10px] font-bold uppercase text-gray-500 mb-1.5 tracking-wider">Rango</p>
+                <p
+                  style={{
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.14em',
+                    color: 'var(--admin-fg-subtle)',
+                    textTransform: 'uppercase',
+                    marginBottom: 6,
+                  }}
+                >
+                  Rango
+                </p>
                 <select
                   value={datePreset}
                   onChange={(e) => setDatePreset(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-gray-200 bg-white"
+                  className="w-full px-3 py-1.5 rounded-lg"
+                  style={{
+                    background: 'var(--admin-bg-elev)',
+                    border: '0.5px solid var(--admin-border-strong)',
+                    color: 'var(--admin-fg)',
+                    fontSize: 12,
+                  }}
                 >
                   {DATE_PRESETS.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -473,11 +540,29 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
                 </select>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase text-gray-500 mb-1.5 tracking-wider">Autor</p>
+                <p
+                  style={{
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.14em',
+                    color: 'var(--admin-fg-subtle)',
+                    textTransform: 'uppercase',
+                    marginBottom: 6,
+                  }}
+                >
+                  Autor
+                </p>
                 <select
                   value={selectedActor}
                   onChange={(e) => setSelectedActor(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-gray-200 bg-white"
+                  className="w-full px-3 py-1.5 rounded-lg"
+                  style={{
+                    background: 'var(--admin-bg-elev)',
+                    border: '0.5px solid var(--admin-border-strong)',
+                    color: 'var(--admin-fg)',
+                    fontSize: 12,
+                  }}
                 >
                   <option value="all">Todos</option>
                   {actorOptions.map((a) => (
@@ -493,7 +578,15 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2 text-xs text-red-700">
+        <div
+          className="rounded-xl px-4 py-3 flex items-start gap-2"
+          style={{
+            background: 'var(--admin-red-soft)',
+            border: '0.5px solid var(--admin-red)',
+            color: 'var(--admin-red)',
+            fontSize: 12,
+          }}
+        >
           <AlertCircle className="w-4 h-4 mt-0.5" /> {error}
         </div>
       )}
@@ -503,10 +596,22 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
         items.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center">
-            <p className="text-sm font-semibold text-gray-700">Sin coincidencias</p>
-            <p className="text-xs text-gray-500 mt-1">Prueba quitar algún filtro o búsqueda.</p>
-            <button onClick={clearFilters} className="mt-3 text-xs text-[var(--admin-accent)] hover:underline">
+          <div
+            className="rounded-2xl p-8 text-center"
+            style={{
+              background: 'var(--admin-panel-grad)',
+              border: '0.5px dashed var(--admin-border-strong)',
+            }}
+          >
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)' }}>Sin coincidencias</p>
+            <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', marginTop: 4 }}>
+              Prueba quitar algún filtro o búsqueda.
+            </p>
+            <button
+              onClick={clearFilters}
+              className="mt-3 hover:underline"
+              style={{ fontSize: 12, color: 'var(--admin-accent)', fontWeight: 600 }}
+            >
               Limpiar filtros
             </button>
           </div>
@@ -515,14 +620,29 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
         <div className="space-y-6">
           {grouped.map((group) => (
             <section key={group.key} className="space-y-2">
-              <div className="flex items-center gap-2 sticky top-[88px] z-[5] bg-white/95 backdrop-blur py-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+              <div
+                className="flex items-center gap-2 sticky top-[88px] z-[5] py-1"
+                style={{
+                  background: 'color-mix(in srgb, var(--admin-bg) 92%, transparent)',
+                  backdropFilter: 'blur(8px)',
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.18em',
+                    color: 'var(--admin-fg-subtle)',
+                    textTransform: 'uppercase',
+                  }}
+                >
                   {group.label}
                 </span>
-                <span className="text-[10px] text-gray-400">
+                <span style={{ fontSize: 10, color: 'var(--admin-fg-subtle)' }}>
                   · {group.items.length} {group.items.length === 1 ? 'evento' : 'eventos'}
                 </span>
-                <div className="flex-1 h-px bg-gray-100" />
+                <div className="flex-1" style={{ height: 1, background: 'var(--admin-border)' }} />
               </div>
               <ul className="space-y-2">
                 {group.items.map((it) => (
@@ -540,7 +660,11 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
       )}
 
       {hasMore && (
-        <div ref={sentinelRef} className="flex items-center justify-center py-4 text-gray-400 text-xs">
+        <div
+          ref={sentinelRef}
+          className="flex items-center justify-center py-4"
+          style={{ color: 'var(--admin-fg-subtle)', fontSize: 12 }}
+        >
           {loadingMore ? (
             <>
               <Loader2 className="w-3 h-3 mr-2 animate-spin" /> Cargando más eventos…
@@ -555,6 +679,27 @@ export function BitacoraTab({ caseId }: BitacoraTabProps) {
 }
 
 // ────────────── Subcomponentes ──────────────
+
+function FilterChip({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full transition-opacity hover:opacity-80"
+      style={{
+        background: 'var(--admin-gold-soft)',
+        color: 'var(--admin-gold)',
+        border: '0.5px solid var(--admin-gold-border, var(--admin-gold))',
+        fontFamily: 'var(--font-mono-tech)',
+        fontSize: 10,
+        fontWeight: 600,
+        letterSpacing: '0.05em',
+      }}
+    >
+      {label} <X className="w-2.5 h-2.5" />
+    </button>
+  )
+}
 
 function EventCard({
   item,
@@ -574,44 +719,88 @@ function EventCard({
   const hasMetadata = item.metadata && Object.keys(item.metadata).length > 0
 
   return (
-    <li className="group flex gap-3 rounded-xl border border-gray-200 bg-white overflow-hidden transition-shadow hover:shadow-sm">
+    <li
+      className="group flex gap-3 rounded-2xl overflow-hidden transition-all"
+      style={{
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px solid var(--admin-border-strong)',
+        boxShadow: 'var(--admin-shadow)',
+      }}
+    >
       <div className={`flex-shrink-0 w-1 ${CATEGORY_STRIP[cat]}`} />
       <div className="flex-1 min-w-0 py-3 pr-3">
         <div className="flex items-start gap-3">
-          <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 ring-1 ring-gray-200">
+          <div
+            className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center"
+            style={{
+              background: 'var(--admin-bg-elev-2)',
+              border: '0.5px solid var(--admin-border-strong)',
+            }}
+          >
             <EventIcon subcategory={item.event_subcategory} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-sm font-semibold text-gray-900">{title}</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)' }}>
+                  {title}
+                </p>
                 <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${CATEGORY_PILL[cat]}`}>
                   {CATEGORY_LABELS[cat]}
                 </span>
                 {item.visible_to_client && (
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200">
-                    Visible al cliente
+                  <span
+                    className="inline-flex items-center px-1.5 py-0.5 rounded-full"
+                    style={{
+                      background: 'var(--admin-green-soft)',
+                      color: 'var(--admin-green)',
+                      border: '0.5px solid var(--admin-green)',
+                      fontFamily: 'var(--font-mono-tech)',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    VISIBLE AL CLIENTE
                   </span>
                 )}
               </div>
               <span
-                className="text-[10px] text-gray-400 whitespace-nowrap"
+                className="whitespace-nowrap"
+                style={{
+                  fontSize: 10,
+                  color: 'var(--admin-fg-subtle)',
+                  fontFamily: 'var(--font-mono-tech)',
+                  letterSpacing: '0.05em',
+                }}
                 title={format(created, "d 'de' MMMM yyyy 'a las' HH:mm", { locale: es })}
               >
                 {format(created, 'HH:mm')} · hace {formatDistanceToNow(created, { locale: es })}
               </span>
             </div>
-            <p className="text-xs text-gray-700 mt-1 leading-relaxed">{item.description}</p>
+            <p
+              className="mt-1"
+              style={{ fontSize: 12, color: 'var(--admin-fg-muted)', lineHeight: 1.6 }}
+            >
+              {item.description}
+            </p>
             <div className="flex items-center gap-2 mt-2">
               <Avatar name={item.actor_label} role={item.actor_role} size="sm" />
-              <span className="text-[11px] font-medium text-gray-700">
+              <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--admin-fg-muted)' }}>
                 {item.actor_label || 'Sistema'}
               </span>
               {hasMetadata && (
                 <button
                   type="button"
                   onClick={onToggle}
-                  className="ml-auto inline-flex items-center gap-1 text-[10px] font-medium text-gray-500 hover:text-gray-800"
+                  className="ml-auto inline-flex items-center gap-1 transition-colors"
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: 'var(--admin-fg-muted)',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--admin-fg)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--admin-fg-muted)' }}
                 >
                   {expanded ? 'Ocultar detalles' : 'Ver detalles'}
                   {expanded ? (
@@ -636,21 +825,44 @@ function EventIcon({ subcategory }: { subcategory: string | null }) {
   const Lookup = iconForSubcategory
   const Component = Lookup(subcategory)
   // eslint-disable-next-line react-hooks/static-components
-  return <Component className="w-4 h-4 text-gray-700" />
+  return <Component className="w-4 h-4" style={{ color: 'var(--admin-fg-muted)' }} />
 }
 
 function MetadataTable({ metadata }: { metadata: Record<string, unknown> }) {
   const entries = Object.entries(metadata)
   return (
-    <div className="mt-2 rounded-lg bg-gray-50 ring-1 ring-gray-200 overflow-hidden">
-      <table className="w-full text-[10px]">
+    <div
+      className="mt-2 rounded-lg overflow-hidden"
+      style={{
+        background: 'var(--admin-bg-deep)',
+        border: '0.5px solid var(--admin-border)',
+      }}
+    >
+      <table className="w-full" style={{ fontSize: 10 }}>
         <tbody>
           {entries.map(([k, v]) => (
-            <tr key={k} className="border-b border-gray-100 last:border-0">
-              <td className="px-3 py-1.5 font-semibold text-gray-600 uppercase tracking-wide whitespace-nowrap align-top w-1/3">
+            <tr key={k} style={{ borderBottom: '0.5px solid var(--admin-border)' }}>
+              <td
+                className="px-3 py-1.5 whitespace-nowrap align-top w-1/3"
+                style={{
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  color: 'var(--admin-fg-subtle)',
+                  textTransform: 'uppercase',
+                }}
+              >
                 {k.replace(/_/g, ' ')}
               </td>
-              <td className="px-3 py-1.5 text-gray-800 break-all font-mono">
+              <td
+                className="px-3 py-1.5 break-all"
+                style={{
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  color: 'var(--admin-fg)',
+                }}
+              >
                 {formatValue(v)}
               </td>
             </tr>
@@ -670,12 +882,30 @@ function formatValue(v: unknown): string {
 
 function EmptyState() {
   return (
-    <div className="rounded-2xl border border-dashed border-gray-200 bg-gradient-to-b from-white to-gray-50 p-10 text-center">
-      <div className="w-16 h-16 mx-auto rounded-full bg-blue-50 flex items-center justify-center mb-4">
-        <Clock className="w-7 h-7 text-blue-500" />
+    <div
+      className="rounded-2xl p-10 text-center"
+      style={{
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px dashed var(--admin-border-strong)',
+        boxShadow: 'var(--admin-shadow)',
+      }}
+    >
+      <div
+        className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-4"
+        style={{
+          background: 'var(--admin-blue-soft)',
+          border: '0.5px solid var(--admin-blue)',
+        }}
+      >
+        <Clock className="w-7 h-7" style={{ color: 'var(--admin-blue)' }} />
       </div>
-      <h3 className="text-base font-bold text-gray-900">Sin eventos registrados</h3>
-      <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
+      <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--admin-fg)' }}>
+        Sin eventos registrados
+      </h3>
+      <p
+        className="mt-1 mx-auto"
+        style={{ fontSize: 13, color: 'var(--admin-fg-muted)', maxWidth: '44ch', lineHeight: 1.5 }}
+      >
         Cuando ocurran acciones en este caso (firma de contrato, citas,
         documentos, cambios de fase, notas), aparecerán aquí ordenadas cronológicamente.
       </p>

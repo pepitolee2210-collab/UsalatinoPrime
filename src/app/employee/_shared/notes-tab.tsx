@@ -26,7 +26,6 @@ import {
   PinOff,
 } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
-import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import type {
   CaseNoteCategory,
@@ -385,7 +384,10 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
 
   if (loadingInitial) {
     return (
-      <div className="flex items-center justify-center py-16 text-gray-400 text-sm">
+      <div
+        className="flex items-center justify-center py-16"
+        style={{ color: 'var(--admin-fg-muted)', fontSize: 13 }}
+      >
         <Loader2 className="w-5 h-5 mr-2 animate-spin" />
         Cargando notas del caso...
       </div>
@@ -395,37 +397,75 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
   return (
     <div className="space-y-4">
       {/* HEADER */}
-      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm -mx-1 px-1 py-2 border-b border-gray-100">
+      <div
+        className="sticky top-0 z-10 -mx-1 px-1 py-2"
+        style={{
+          background: 'color-mix(in srgb, var(--admin-bg) 90%, transparent)',
+          backdropFilter: 'blur(8px)',
+          borderBottom: '0.5px solid var(--admin-border)',
+        }}
+      >
         <div className="flex items-center gap-2 flex-wrap">
-          <Button
+          <button
             type="button"
             onClick={() => openNewNote()}
-            className="bg-[var(--admin-accent)] hover:opacity-90 text-white shadow-sm"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full transition-all hover:opacity-90 active:scale-95"
+            style={{
+              background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-blue))',
+              color: '#FFFFFF',
+              border: '0.5px solid rgba(255,255,255,0.2)',
+              boxShadow: '0 8px 18px rgba(30,78,154,0.2)',
+              fontSize: 13,
+              fontWeight: 600,
+            }}
           >
-            <Plus className="w-4 h-4 mr-1.5" /> Nueva nota
-          </Button>
+            <Plus className="w-4 h-4" /> Nueva nota
+          </button>
           <div className="relative flex-1 min-w-[180px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+            <Search
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5"
+              style={{ color: 'var(--admin-fg-subtle)' }}
+            />
             <input
               type="text"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               placeholder="Buscar texto o autor..."
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[var(--admin-gold-soft)]"
+              className="w-full pl-9 pr-3 py-2 rounded-lg focus:outline-none transition-colors"
+              style={{
+                background: 'var(--admin-bg-elev)',
+                border: '0.5px solid var(--admin-border-strong)',
+                color: 'var(--admin-fg)',
+                fontSize: 12,
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--admin-accent)' }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--admin-border-strong)' }}
             />
           </div>
           <button
             type="button"
             onClick={() => setShowFilters((v) => !v)}
-            className={`inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition-colors ${
-              activeFilterCount > 0
-                ? 'border-[var(--admin-gold)] bg-[var(--admin-gold-soft)] text-[var(--admin-gold)]'
-                : 'border-gray-200 hover:bg-gray-50 text-gray-700'
-            }`}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors"
+            style={{
+              background: activeFilterCount > 0 ? 'var(--admin-gold-soft)' : 'var(--admin-bg-elev)',
+              color: activeFilterCount > 0 ? 'var(--admin-gold)' : 'var(--admin-fg-muted)',
+              border: `0.5px solid ${activeFilterCount > 0 ? 'var(--admin-gold-border, var(--admin-gold))' : 'var(--admin-border-strong)'}`,
+              fontSize: 12,
+              fontWeight: 600,
+            }}
           >
             <Filter className="w-3.5 h-3.5" /> Filtros
             {activeFilterCount > 0 && (
-              <span className="text-[10px] bg-[var(--admin-gold)] text-white px-1.5 py-0.5 rounded-full">
+              <span
+                className="inline-flex items-center px-1.5 py-0.5 rounded-full"
+                style={{
+                  background: 'var(--admin-gold)',
+                  color: '#FFFFFF',
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                }}
+              >
                 {activeFilterCount}
               </span>
             )}
@@ -435,38 +475,27 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
         {activeFilterCount > 0 && (
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
             {selectedCategories.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => toggleCategory(c)}
-                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--admin-gold-soft)] text-[var(--admin-gold)] hover:opacity-80"
-              >
-                {CATEGORY_LABELS[c]} <X className="w-2.5 h-2.5" />
-              </button>
+              <FilterChip key={c} onClick={() => toggleCategory(c)} label={CATEGORY_LABELS[c]} />
             ))}
             {selectedAuthor !== 'all' && (
-              <button
-                type="button"
+              <FilterChip
                 onClick={() => setSelectedAuthor('all')}
-                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--admin-gold-soft)] text-[var(--admin-gold)] hover:opacity-80"
-              >
-                {authorOptions.find((a) => a.id === selectedAuthor)?.label || 'Autor'}{' '}
-                <X className="w-2.5 h-2.5" />
-              </button>
+                label={authorOptions.find((a) => a.id === selectedAuthor)?.label || 'Autor'}
+              />
             )}
             {datePreset !== 'all' && (
-              <button
-                type="button"
+              <FilterChip
                 onClick={() => setDatePreset('all')}
-                className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--admin-gold-soft)] text-[var(--admin-gold)] hover:opacity-80"
-              >
-                {DATE_PRESETS.find((p) => p.id === datePreset)?.label} <X className="w-2.5 h-2.5" />
-              </button>
+                label={DATE_PRESETS.find((p) => p.id === datePreset)?.label || ''}
+              />
             )}
             <button
               type="button"
               onClick={clearFilters}
-              className="text-[10px] text-gray-500 hover:text-red-500 underline underline-offset-2 ml-1"
+              className="ml-1 underline underline-offset-2 transition-colors"
+              style={{ fontSize: 10, color: 'var(--admin-fg-subtle)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--admin-red)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--admin-fg-subtle)' }}
             >
               Limpiar
             </button>
@@ -474,9 +503,27 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
         )}
 
         {showFilters && (
-          <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 space-y-3">
+          <div
+            className="mt-3 rounded-xl p-3 space-y-3"
+            style={{
+              background: 'var(--admin-bg-deep)',
+              border: '0.5px solid var(--admin-border)',
+            }}
+          >
             <div>
-              <p className="text-[10px] font-bold uppercase text-gray-500 mb-1.5 tracking-wider">Categoría</p>
+              <p
+                style={{
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.14em',
+                  color: 'var(--admin-fg-subtle)',
+                  textTransform: 'uppercase',
+                  marginBottom: 6,
+                }}
+              >
+                Categoría
+              </p>
               <div className="flex flex-wrap gap-1.5">
                 {ALL_CATEGORIES.map((c) => {
                   const active = selectedCategories.includes(c)
@@ -485,11 +532,14 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
                       key={c}
                       type="button"
                       onClick={() => toggleCategory(c)}
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
-                        active
-                          ? 'border-[var(--admin-gold)] bg-[var(--admin-gold-soft)] text-[var(--admin-gold)]'
-                          : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-                      }`}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full transition-colors"
+                      style={{
+                        background: active ? 'var(--admin-gold-soft)' : 'var(--admin-bg-elev)',
+                        color: active ? 'var(--admin-gold)' : 'var(--admin-fg-muted)',
+                        border: `0.5px solid ${active ? 'var(--admin-gold-border, var(--admin-gold))' : 'var(--admin-border-strong)'}`,
+                        fontSize: 11,
+                        fontWeight: 600,
+                      }}
                     >
                       <span className={`inline-block w-1.5 h-1.5 rounded-full ${CATEGORY_STRIP[c]}`} />
                       {CATEGORY_LABELS[c]}
@@ -500,11 +550,29 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <p className="text-[10px] font-bold uppercase text-gray-500 mb-1.5 tracking-wider">Rango</p>
+                <p
+                  style={{
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.14em',
+                    color: 'var(--admin-fg-subtle)',
+                    textTransform: 'uppercase',
+                    marginBottom: 6,
+                  }}
+                >
+                  Rango
+                </p>
                 <select
                   value={datePreset}
                   onChange={(e) => setDatePreset(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-gray-200 bg-white"
+                  className="w-full px-3 py-1.5 rounded-lg"
+                  style={{
+                    background: 'var(--admin-bg-elev)',
+                    border: '0.5px solid var(--admin-border-strong)',
+                    color: 'var(--admin-fg)',
+                    fontSize: 12,
+                  }}
                 >
                   {DATE_PRESETS.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -514,11 +582,29 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
                 </select>
               </div>
               <div>
-                <p className="text-[10px] font-bold uppercase text-gray-500 mb-1.5 tracking-wider">Autor</p>
+                <p
+                  style={{
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.14em',
+                    color: 'var(--admin-fg-subtle)',
+                    textTransform: 'uppercase',
+                    marginBottom: 6,
+                  }}
+                >
+                  Autor
+                </p>
                 <select
                   value={selectedAuthor}
                   onChange={(e) => setSelectedAuthor(e.target.value)}
-                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-gray-200 bg-white"
+                  className="w-full px-3 py-1.5 rounded-lg"
+                  style={{
+                    background: 'var(--admin-bg-elev)',
+                    border: '0.5px solid var(--admin-border-strong)',
+                    color: 'var(--admin-fg)',
+                    fontSize: 12,
+                  }}
                 >
                   <option value="all">Todos</option>
                   {authorOptions.map((a) => (
@@ -534,7 +620,15 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-2 text-xs text-red-700">
+        <div
+          className="rounded-xl px-4 py-3 flex items-start gap-2"
+          style={{
+            background: 'var(--admin-red-soft)',
+            border: '0.5px solid var(--admin-red)',
+            color: 'var(--admin-red)',
+            fontSize: 12,
+          }}
+        >
           <AlertCircle className="w-4 h-4 mt-0.5" /> {error}
         </div>
       )}
@@ -543,11 +637,23 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
       {pinned.length > 0 && (
         <section className="space-y-2">
           <div className="flex items-center gap-2">
-            <Pin className="w-3.5 h-3.5 text-amber-600 fill-current" />
-            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700">
+            <Pin className="w-3.5 h-3.5 fill-current" style={{ color: 'var(--admin-gold)' }} />
+            <span
+              style={{
+                fontFamily: 'var(--font-mono-tech)',
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.18em',
+                color: 'var(--admin-gold)',
+                textTransform: 'uppercase',
+              }}
+            >
               Fijadas · {pinned.length}
             </span>
-            <div className="flex-1 h-px bg-amber-100" />
+            <div
+              className="flex-1"
+              style={{ height: 1, background: 'linear-gradient(90deg, var(--admin-gold-soft), transparent)' }}
+            />
           </div>
           <ul className="space-y-2">
             {pinned.map((it) => (
@@ -571,10 +677,22 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
         items.length === 0 ? (
           <EmptyState onCreate={() => openNewNote()} />
         ) : (
-          <div className="rounded-xl border border-dashed border-gray-200 p-8 text-center">
-            <p className="text-sm font-semibold text-gray-700">Sin coincidencias</p>
-            <p className="text-xs text-gray-500 mt-1">Prueba quitar algún filtro o búsqueda.</p>
-            <button onClick={clearFilters} className="mt-3 text-xs text-[var(--admin-accent)] hover:underline">
+          <div
+            className="rounded-2xl p-8 text-center"
+            style={{
+              background: 'var(--admin-panel-grad)',
+              border: '0.5px dashed var(--admin-border-strong)',
+            }}
+          >
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)' }}>Sin coincidencias</p>
+            <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', marginTop: 4 }}>
+              Prueba quitar algún filtro o búsqueda.
+            </p>
+            <button
+              onClick={clearFilters}
+              className="mt-3 hover:underline"
+              style={{ fontSize: 12, color: 'var(--admin-accent)', fontWeight: 600 }}
+            >
               Limpiar filtros
             </button>
           </div>
@@ -583,14 +701,29 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
         <div className="space-y-6">
           {grouped.map((group) => (
             <section key={group.key} className="space-y-2">
-              <div className="flex items-center gap-2 sticky top-[88px] z-[5] bg-white/95 backdrop-blur py-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+              <div
+                className="flex items-center gap-2 sticky top-[88px] z-[5] py-1"
+                style={{
+                  background: 'color-mix(in srgb, var(--admin-bg) 92%, transparent)',
+                  backdropFilter: 'blur(8px)',
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.18em',
+                    color: 'var(--admin-fg-subtle)',
+                    textTransform: 'uppercase',
+                  }}
+                >
                   {group.label}
                 </span>
-                <span className="text-[10px] text-gray-400">
+                <span style={{ fontSize: 10, color: 'var(--admin-fg-subtle)' }}>
                   · {group.items.length} {group.items.length === 1 ? 'nota' : 'notas'}
                 </span>
-                <div className="flex-1 h-px bg-gray-100" />
+                <div className="flex-1" style={{ height: 1, background: 'var(--admin-border)' }} />
               </div>
               <ul className="space-y-2">
                 {group.items.map((it) => (
@@ -612,7 +745,11 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
       ) : null}
 
       {hasMore && (
-        <div ref={sentinelRef} className="flex items-center justify-center py-4 text-gray-400 text-xs">
+        <div
+          ref={sentinelRef}
+          className="flex items-center justify-center py-4"
+          style={{ color: 'var(--admin-fg-subtle)', fontSize: 12 }}
+        >
           {loadingMore ? (
             <>
               <Loader2 className="w-3 h-3 mr-2 animate-spin" /> Cargando más notas…
@@ -642,6 +779,27 @@ export function NotesTab({ caseId, currentUserId, isAdmin }: NotesTabProps) {
 
 // ────────────── Subcomponentes ──────────────
 
+function FilterChip({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full transition-opacity hover:opacity-80"
+      style={{
+        background: 'var(--admin-gold-soft)',
+        color: 'var(--admin-gold)',
+        border: '0.5px solid var(--admin-gold-border, var(--admin-gold))',
+        fontFamily: 'var(--font-mono-tech)',
+        fontSize: 10,
+        fontWeight: 600,
+        letterSpacing: '0.05em',
+      }}
+    >
+      {label} <X className="w-2.5 h-2.5" />
+    </button>
+  )
+}
+
 function NoteCard({
   note,
   appointments,
@@ -669,9 +827,16 @@ function NoteCard({
   const canPin = note.category !== 'legacy'
 
   return (
-    <li className={`group relative flex gap-3 rounded-xl border bg-white overflow-hidden transition-shadow hover:shadow-sm ${
-      note.is_pinned ? 'border-amber-300 ring-1 ring-amber-200' : 'border-gray-200'
-    }`}>
+    <li
+      className="group relative flex gap-3 rounded-2xl overflow-hidden transition-all"
+      style={{
+        background: 'var(--admin-panel-grad)',
+        border: `0.5px solid ${note.is_pinned ? 'var(--admin-gold-border, var(--admin-gold))' : 'var(--admin-border-strong)'}`,
+        boxShadow: note.is_pinned
+          ? 'var(--admin-shadow-gold, 0 6px 16px rgba(216,155,29,0.18))'
+          : 'var(--admin-shadow)',
+      }}
+    >
       <div className={`flex-shrink-0 w-1 ${CATEGORY_STRIP[note.category]}`} />
       <div className="flex-1 min-w-0 py-3 pr-3">
         <div className="flex items-start gap-3">
@@ -679,24 +844,54 @@ function NoteCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-sm font-semibold text-gray-900">{note.author_label}</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)' }}>
+                  {note.author_label}
+                </p>
                 <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${CATEGORY_PILL[note.category]}`}>
                   {CATEGORY_LABELS[note.category]}
                 </span>
                 {note.is_pinned && (
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 ring-1 ring-amber-300 inline-flex items-center gap-1">
-                    <Pin className="w-2.5 h-2.5 fill-current" /> Fijada
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full"
+                    style={{
+                      background: 'var(--admin-gold-soft)',
+                      color: 'var(--admin-gold)',
+                      border: '0.5px solid var(--admin-gold-border, var(--admin-gold))',
+                      fontFamily: 'var(--font-mono-tech)',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    <Pin className="w-2.5 h-2.5 fill-current" /> FIJADA
                   </span>
                 )}
                 {linkedAppt && (
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 ring-1 ring-blue-200 inline-flex items-center gap-1">
+                  <span
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full"
+                    style={{
+                      background: 'var(--admin-blue-soft)',
+                      color: 'var(--admin-blue)',
+                      border: '0.5px solid var(--admin-blue)',
+                      fontFamily: 'var(--font-mono-tech)',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      letterSpacing: '0.05em',
+                    }}
+                  >
                     <Calendar className="w-2.5 h-2.5" />
-                    Sesión #{linkedAppt.session_number ?? '?'}
+                    SESIÓN #{linkedAppt.session_number ?? '?'}
                   </span>
                 )}
               </div>
               <span
-                className="text-[10px] text-gray-400 whitespace-nowrap"
+                className="whitespace-nowrap"
+                style={{
+                  fontSize: 10,
+                  color: 'var(--admin-fg-subtle)',
+                  fontFamily: 'var(--font-mono-tech)',
+                  letterSpacing: '0.05em',
+                }}
                 title={format(created, "d 'de' MMMM yyyy 'a las' HH:mm", { locale: es })}
               >
                 {format(created, 'd MMM · HH:mm', { locale: es })}
@@ -705,9 +900,21 @@ function NoteCard({
                 )}
               </span>
             </div>
-            <p className="text-sm text-gray-800 mt-1.5 whitespace-pre-wrap leading-relaxed">{note.body}</p>
+            <p
+              className="whitespace-pre-wrap mt-1.5"
+              style={{ fontSize: 13, color: 'var(--admin-fg)', lineHeight: 1.6 }}
+            >
+              {note.body}
+            </p>
             <div className="flex items-center gap-2 mt-2">
-              <span className="text-[10px] text-gray-400">
+              <span
+                style={{
+                  fontSize: 10,
+                  color: 'var(--admin-fg-subtle)',
+                  fontFamily: 'var(--font-mono-tech)',
+                  letterSpacing: '0.05em',
+                }}
+              >
                 hace {formatDistanceToNow(created, { locale: es })}
               </span>
               <div className="ml-auto flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -715,11 +922,18 @@ function NoteCard({
                   <button
                     type="button"
                     onClick={onTogglePin}
-                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] ${
-                      note.is_pinned
-                        ? 'text-amber-700 hover:bg-amber-50'
-                        : 'text-gray-600 hover:bg-gray-100'
-                    }`}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md transition-colors"
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color: note.is_pinned ? 'var(--admin-gold)' : 'var(--admin-fg-muted)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = note.is_pinned ? 'var(--admin-gold-soft)' : 'var(--admin-bg-elev-2)'
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent'
+                    }}
                     aria-label={note.is_pinned ? 'Desfijar nota' : 'Fijar nota'}
                   >
                     {note.is_pinned ? <PinOff className="w-3 h-3" /> : <Pin className="w-3 h-3" />}
@@ -731,7 +945,14 @@ function NoteCard({
                     <button
                       type="button"
                       onClick={onEdit}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-gray-600 hover:bg-gray-100"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md transition-colors"
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 600,
+                        color: 'var(--admin-fg-muted)',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--admin-bg-elev-2)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                       aria-label="Editar nota"
                     >
                       <Edit3 className="w-3 h-3" /> Editar
@@ -739,7 +960,14 @@ function NoteCard({
                     <button
                       type="button"
                       onClick={onDelete}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-red-500 hover:bg-red-50"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md transition-colors"
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 600,
+                        color: 'var(--admin-red)',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--admin-red-soft)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                       aria-label="Eliminar nota"
                     >
                       <Trash2 className="w-3 h-3" /> Eliminar
@@ -757,21 +985,52 @@ function NoteCard({
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="rounded-2xl border border-dashed border-gray-200 bg-gradient-to-b from-white to-gray-50 p-10 text-center">
-      <div className="w-16 h-16 mx-auto rounded-full bg-[var(--admin-gold-soft)] flex items-center justify-center mb-4">
-        <StickyNote className="w-7 h-7 text-[var(--admin-gold)]" />
+    <div
+      className="rounded-2xl p-10 text-center"
+      style={{
+        background: 'var(--admin-panel-grad)',
+        border: '0.5px dashed var(--admin-border-strong)',
+        boxShadow: 'var(--admin-shadow)',
+      }}
+    >
+      <div
+        className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-4"
+        style={{
+          background: 'var(--admin-gold-soft)',
+          border: '0.5px solid var(--admin-gold-border, var(--admin-gold))',
+        }}
+      >
+        <StickyNote className="w-7 h-7" style={{ color: 'var(--admin-gold)' }} />
       </div>
-      <h3 className="text-base font-bold text-gray-900">Sin notas todavía</h3>
-      <p className="text-sm text-gray-500 mt-1 max-w-md mx-auto">
+      <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--admin-fg)' }}>Sin notas todavía</h3>
+      <p
+        className="mt-1 mx-auto"
+        style={{ fontSize: 13, color: 'var(--admin-fg-muted)', maxWidth: '44ch', lineHeight: 1.5 }}
+      >
         Las notas son visibles para Diana, Vanessa, Andrium y Henry. Crea una general
         del caso o asóciala a una cita específica.
       </p>
       <div className="flex items-center justify-center gap-2 mt-5">
-        <Button type="button" onClick={onCreate} className="bg-[var(--admin-accent)] hover:opacity-90 text-white">
-          <Plus className="w-4 h-4 mr-1.5" /> Crear primera nota
-        </Button>
+        <button
+          type="button"
+          onClick={onCreate}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full transition-all hover:opacity-90 active:scale-95"
+          style={{
+            background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-blue))',
+            color: '#FFFFFF',
+            border: '0.5px solid rgba(255,255,255,0.2)',
+            boxShadow: '0 8px 18px rgba(30,78,154,0.2)',
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+        >
+          <Plus className="w-4 h-4" /> Crear primera nota
+        </button>
       </div>
-      <p className="text-[10px] text-gray-400 mt-3 inline-flex items-center gap-1">
+      <p
+        className="inline-flex items-center gap-1 mt-3"
+        style={{ fontSize: 10, color: 'var(--admin-fg-subtle)' }}
+      >
         <Sparkles className="w-3 h-3" />
         Toda nota queda registrada también en la Bitácora del caso
       </p>
@@ -802,35 +1061,62 @@ function EditorModal({
 }) {
   const len = draftBody.length
   const counterColor =
-    len > 7500 ? 'text-red-600 font-semibold' :
-    len > 5000 ? 'text-amber-600' :
-    'text-gray-400'
+    len > 7500 ? 'var(--admin-red)' :
+    len > 5000 ? 'var(--admin-gold)' :
+    'var(--admin-fg-subtle)'
+  const counterWeight = len > 7500 ? 600 : 400
 
   // Cuando está editando, no se permite cambiar el appointment_id (eso cambia la categoría)
   const isEditMode = !!editingNote
   const willBeSession = !!draftAppointmentId
 
+  const labelStyle: React.CSSProperties = {
+    fontFamily: 'var(--font-mono-tech)',
+    fontSize: 10,
+    fontWeight: 700,
+    letterSpacing: '0.14em',
+    color: 'var(--admin-fg-subtle)',
+    textTransform: 'uppercase',
+  }
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden"
+        className="rounded-2xl max-w-xl w-full overflow-hidden"
+        style={{
+          background: 'var(--admin-panel-grad)',
+          border: '0.5px solid var(--admin-border-strong)',
+          boxShadow: 'var(--admin-shadow-lg)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <div
+          className="flex items-center justify-between px-5 py-4"
+          style={{
+            background: 'var(--admin-bg-elev)',
+            borderBottom: '0.5px solid var(--admin-border)',
+          }}
+        >
           <div>
-            <p className="font-bold text-gray-900 text-base">
+            <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--admin-fg)' }}>
               {editingNote ? 'Editar nota' : 'Nueva nota'}
             </p>
-            <p className="text-[11px] text-gray-500 mt-0.5">
+            <p style={{ fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 2 }}>
               Visible para todo el staff. No se sobrescribe nada.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+            style={{
+              background: 'var(--admin-bg-elev-2)',
+              color: 'var(--admin-fg-muted)',
+              border: '0.5px solid var(--admin-border-strong)',
+            }}
             aria-label="Cerrar"
           >
             <X className="w-4 h-4" />
@@ -839,13 +1125,19 @@ function EditorModal({
         <div className="p-5 space-y-4">
           {!isEditMode && (
             <div>
-              <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1.5 tracking-wider">
+              <label className="block mb-1.5" style={labelStyle}>
                 Asociar a una cita (opcional)
               </label>
               <select
                 value={draftAppointmentId}
                 onChange={(e) => setDraftAppointmentId(e.target.value)}
-                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-200 bg-white"
+                className="w-full px-3 py-2 rounded-lg"
+                style={{
+                  background: 'var(--admin-bg-elev)',
+                  border: '0.5px solid var(--admin-border-strong)',
+                  color: 'var(--admin-fg)',
+                  fontSize: 13,
+                }}
               >
                 <option value="">— Nota general del caso —</option>
                 {appointments.map((a) => (
@@ -854,9 +1146,13 @@ function EditorModal({
                   </option>
                 ))}
               </select>
-              <p className={`text-[11px] mt-1.5 inline-flex items-center gap-1 ${
-                willBeSession ? 'text-emerald-700' : 'text-slate-600'
-              }`}>
+              <p
+                className="mt-1.5 inline-flex items-center gap-1"
+                style={{
+                  fontSize: 11,
+                  color: willBeSession ? 'var(--admin-green)' : 'var(--admin-fg-muted)',
+                }}
+              >
                 {willBeSession ? (
                   <>
                     <Calendar className="w-3 h-3" />
@@ -873,10 +1169,16 @@ function EditorModal({
           )}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] font-bold uppercase text-gray-500 tracking-wider">
-                Nota
-              </label>
-              <span className={`text-[10px] tabular-nums ${counterColor}`}>
+              <label style={labelStyle}>Nota</label>
+              <span
+                className="tabular-nums"
+                style={{
+                  fontSize: 10,
+                  color: counterColor,
+                  fontWeight: counterWeight,
+                  fontFamily: 'var(--font-mono-tech)',
+                }}
+              >
                 {len.toLocaleString('es-MX')} / 8,000
               </span>
             </div>
@@ -890,24 +1192,46 @@ function EditorModal({
             />
           </div>
         </div>
-        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-gray-100 bg-gray-50">
+        <div
+          className="flex items-center justify-end gap-2 px-5 py-3"
+          style={{
+            background: 'var(--admin-bg-elev)',
+            borderTop: '0.5px solid var(--admin-border)',
+          }}
+        >
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 rounded-lg"
+            className="px-4 py-2 rounded-full transition-colors"
+            style={{
+              background: 'transparent',
+              color: 'var(--admin-fg-muted)',
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--admin-bg-elev-2)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
           >
             Cancelar
           </button>
-          <Button
+          <button
             type="button"
             onClick={onSave}
             disabled={saving || !draftBody.trim()}
-            className="bg-[var(--admin-accent)] hover:opacity-90 text-white"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full transition-all hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-blue))',
+              color: '#FFFFFF',
+              border: '0.5px solid rgba(255,255,255,0.2)',
+              boxShadow: '0 8px 18px rgba(30,78,154,0.2)',
+              fontSize: 13,
+              fontWeight: 600,
+            }}
           >
-            {saving ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {editingNote ? 'Guardar cambios' : 'Crear nota'}
-          </Button>
+          </button>
         </div>
       </div>
     </div>

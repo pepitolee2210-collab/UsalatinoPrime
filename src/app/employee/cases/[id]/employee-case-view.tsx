@@ -3,12 +3,11 @@
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { PhaseStatusPanel } from '@/app/admin/cases/[id]/phase-status-panel'
 import { CaseTabsByPhase } from '@/app/employee/_shared/case-tabs-by-phase'
 import { useCaseOverview } from '@/app/employee/_shared/use-case-overview'
 import { I360FormSection } from '@/components/legal/i360-form-section'
+import { AdminKeyframes } from '@/components/admin-ui'
 import type { CasePhase } from '@/types/database'
 
 interface CaseData {
@@ -118,32 +117,86 @@ export function EmployeeCaseView({
         content: (
           <div className="space-y-3">
             {submissions.length === 0 ? (
-              <p className="text-center text-gray-400 py-8 text-sm">No hay trabajos enviados.</p>
+              <div
+                className="rounded-2xl p-12 text-center"
+                style={{
+                  background: 'var(--admin-panel-grad)',
+                  border: '0.5px dashed var(--admin-border-strong)',
+                }}
+              >
+                <p style={{ color: 'var(--admin-fg-muted)', fontSize: 14 }}>No hay trabajos enviados.</p>
+              </div>
             ) : submissions.map(sub => (
-              <div key={sub.id} className="p-4 bg-white border border-gray-200 rounded-xl">
+              <div
+                key={sub.id}
+                className="p-4 rounded-xl"
+                style={{
+                  background: 'var(--admin-panel-grad)',
+                  border: '0.5px solid var(--admin-border-strong)',
+                  boxShadow: 'var(--admin-shadow)',
+                }}
+              >
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-semibold text-gray-900">{sub.title || 'Sin título'}</p>
-                  <Badge className={
-                    sub.status === 'approved' ? 'bg-green-100 text-green-700' :
-                    sub.status === 'submitted' ? 'bg-purple-100 text-purple-700' :
-                    'bg-gray-100 text-gray-600'
-                  }>
-                    {sub.status === 'submitted' ? 'Enviado' : sub.status === 'approved' ? 'Aprobado' : sub.status}
-                  </Badge>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-fg)' }}>
+                    {sub.title || 'Sin título'}
+                  </p>
+                  <SubmissionStatusPill status={sub.status} />
                 </div>
-                {sub.content && <p className="text-xs text-gray-600 line-clamp-3">{sub.content}</p>}
+                {sub.content && (
+                  <p
+                    className="line-clamp-3"
+                    style={{ fontSize: 12, color: 'var(--admin-fg-muted)', lineHeight: 1.5 }}
+                  >
+                    {sub.content}
+                  </p>
+                )}
                 {sub.admin_notes && (
-                  <div className="mt-2 p-2 bg-yellow-50 rounded-lg">
-                    <p className="text-[10px] font-bold text-yellow-700">Notas del abogado:</p>
-                    <p className="text-xs text-yellow-800">{sub.admin_notes}</p>
+                  <div
+                    className="mt-2 p-2 rounded-lg"
+                    style={{
+                      background: 'var(--admin-gold-soft)',
+                      border: '0.5px solid var(--admin-gold-border, var(--admin-gold))',
+                    }}
+                  >
+                    <p
+                      style={{
+                        fontFamily: 'var(--font-mono-tech)',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: '0.12em',
+                        color: 'var(--admin-gold)',
+                      }}
+                    >
+                      NOTAS DEL ABOGADO
+                    </p>
+                    <p style={{ fontSize: 12, color: 'var(--admin-gold)', marginTop: 2 }}>{sub.admin_notes}</p>
                   </div>
                 )}
               </div>
             ))}
             {assignment?.task_description && (
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                <p className="text-xs font-bold text-blue-700 mb-2">Instrucciones de la tarea</p>
-                <p className="text-sm text-gray-800 whitespace-pre-wrap">{assignment.task_description}</p>
+              <div
+                className="p-4 rounded-xl"
+                style={{
+                  background: 'var(--admin-blue-soft)',
+                  border: '0.5px solid var(--admin-blue)',
+                }}
+              >
+                <p
+                  style={{
+                    fontFamily: 'var(--font-mono-tech)',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: '0.14em',
+                    color: 'var(--admin-blue)',
+                    marginBottom: 8,
+                  }}
+                >
+                  INSTRUCCIONES DE LA TAREA
+                </p>
+                <p style={{ fontSize: 13, color: 'var(--admin-fg)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                  {assignment.task_description}
+                </p>
               </div>
             )}
           </div>
@@ -152,23 +205,86 @@ export function EmployeeCaseView({
     : []
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
+      <AdminKeyframes />
       {/* Header */}
       <div className="flex items-start gap-3">
-        <Link href="/employee/dashboard">
-          <Button variant="ghost" size="icon">
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
+        <Link
+          href="/employee/dashboard"
+          className="inline-flex items-center justify-center w-9 h-9 rounded-full transition-colors flex-shrink-0"
+          style={{
+            background: 'var(--admin-bg-elev)',
+            border: '0.5px solid var(--admin-border-strong)',
+            color: 'var(--admin-fg-muted)',
+          }}
+          aria-label="Volver"
+        >
+          <ArrowLeft className="w-4 h-4" />
         </Link>
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">{clientName}</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge variant="secondary" className="text-[10px]">#{caseData.case_number}</Badge>
-            <Badge variant="secondary" className="text-[10px]">{caseData.service?.name}</Badge>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <span
+              className="relative flex items-center justify-center"
+              style={{ width: 6, height: 6 }}
+              aria-hidden
+            >
+              <span
+                className="absolute inset-0 rounded-full"
+                style={{ background: 'var(--admin-accent)', animation: 'ulp-ping 2s ease-in-out infinite' }}
+              />
+              <span
+                className="relative rounded-full"
+                style={{
+                  width: 6,
+                  height: 6,
+                  background: 'var(--admin-accent)',
+                  boxShadow: '0 0 8px var(--admin-accent-glow)',
+                }}
+              />
+            </span>
+            <p
+              style={{
+                fontFamily: 'var(--font-mono-tech)',
+                fontSize: 10,
+                fontWeight: 600,
+                letterSpacing: '0.2em',
+                color: 'var(--admin-accent)',
+              }}
+            >
+              CASO · {caseData.case_number}
+            </p>
           </div>
-          <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
-            <span>{caseData.client?.phone}</span>
-            <span>{caseData.client?.email}</span>
+          <h1
+            style={{
+              fontSize: 28,
+              fontWeight: 700,
+              letterSpacing: '-0.025em',
+              lineHeight: 1.1,
+              color: 'var(--admin-fg)',
+            }}
+          >
+            {clientName}
+          </h1>
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded-full"
+              style={{
+                background: 'var(--admin-accent-soft)',
+                color: 'var(--admin-accent)',
+                border: '0.5px solid var(--admin-border-strong)',
+                fontFamily: 'var(--font-mono-tech)',
+                fontSize: 10,
+                letterSpacing: '0.05em',
+              }}
+            >
+              {caseData.service?.name}
+            </span>
+            {caseData.client?.phone && (
+              <span style={{ fontSize: 12, color: 'var(--admin-fg-muted)' }}>{caseData.client.phone}</span>
+            )}
+            {caseData.client?.email && !caseData.client.email.includes('@usalatinoprime.internal') && (
+              <span style={{ fontSize: 12, color: 'var(--admin-fg-muted)' }}>{caseData.client.email}</span>
+            )}
           </div>
         </div>
       </div>
@@ -209,5 +325,34 @@ export function EmployeeCaseView({
         }}
       />
     </div>
+  )
+}
+
+function SubmissionStatusPill({ status }: { status: string }) {
+  const map: Record<string, { label: string; bg: string; text: string; border: string }> = {
+    approved:  { label: 'Aprobado', bg: 'var(--admin-green-soft)', text: 'var(--admin-green)', border: 'var(--admin-green)' },
+    submitted: { label: 'Enviado',  bg: 'var(--admin-accent-soft)', text: 'var(--admin-accent)', border: 'var(--admin-border-strong)' },
+  }
+  const cfg = map[status] || {
+    label: status,
+    bg: 'var(--admin-bg-elev-2)',
+    text: 'var(--admin-fg-muted)',
+    border: 'var(--admin-border-strong)',
+  }
+  return (
+    <span
+      className="inline-flex items-center px-2 py-0.5 rounded-full"
+      style={{
+        background: cfg.bg,
+        color: cfg.text,
+        border: `0.5px solid ${cfg.border}`,
+        fontFamily: 'var(--font-mono-tech)',
+        fontSize: 10,
+        fontWeight: 600,
+        letterSpacing: '0.1em',
+      }}
+    >
+      {cfg.label.toUpperCase()}
+    </span>
   )
 }
