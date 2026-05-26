@@ -1099,30 +1099,61 @@
 }
 
 [data-admin-theme='light'] {
-  --admin-bg:           #FAFBFC;
-  --admin-bg-deep:      #F1F3F5;
-  --admin-bg-elev:      #FFFFFF;
-  --admin-bg-elev-2:    #F8F9FB;
-  --admin-fg:           #0F172A;
-  --admin-fg-muted:     #475569;
-  --admin-fg-subtle:    #94A3B8;
-  --admin-fg-faint:     #E2E8F0;
-  --admin-accent:       #1E4EA8;
-  --admin-accent-soft:  rgba(30,78,168,0.08);
-  --admin-accent-glow:  rgba(30,78,168,0.18);
-  --admin-border:       #E5E7EB;
-  --admin-border-strong:#CBD5E1;
-  --admin-blue:         #1E4EA8;
-  --admin-blue-soft:    rgba(30,78,168,0.08);
-  --admin-red:          #B3253F;
-  --admin-red-soft:     rgba(179,37,63,0.08);
-  --admin-gold:         #C28611;
-  --admin-gold-soft:    rgba(194,134,17,0.10);
+  /* Modo CLARO INSTITUCIONAL — paleta despacho legal premium.
+     Inspiración: Stripe Dashboard / Linear / Vercel Admin. La identidad
+     visual de UsaLatino Prime (azul Utah + dorado real + rojo escarlata)
+     se preserva con acentos saturados sobre fondo blanco premium.    */
+  --admin-bg:           #F7F9FC;            /* fondo: blanco-azulado sutil */
+  --admin-bg-deep:      #ECF0F6;            /* tablas alternas / chips    */
+  --admin-bg-elev:      #FFFFFF;            /* paneles                    */
+  --admin-bg-elev-2:    #F2F5FA;            /* hover                      */
+  --admin-fg:           #0B2545;            /* texto: navy (no negro frío)*/
+  --admin-fg-muted:     #3D5A80;
+  --admin-fg-subtle:    #8AA0BC;
+  --admin-fg-faint:     #DCE3EE;
+  --admin-accent:       #0B2545;            /* navy autoridad             */
+  --admin-accent-soft:  rgba(11,37,69,0.06);
+  --admin-accent-glow:  rgba(11,37,69,0.16);
+  --admin-border:       #D7DEE9;            /* borde gris azulado         */
+  --admin-border-strong:#A9B7CC;
+  --admin-blue:         #1E40AF;            /* azul Utah brillante        */
+  --admin-blue-soft:    rgba(30,64,175,0.10);
+  --admin-red:          #B91C1C;            /* rojo escarlata institucional*/
+  --admin-red-soft:     rgba(185,28,28,0.08);
+  --admin-gold:         #B8860B;            /* oro real DarkGoldenrod     */
+  --admin-gold-soft:    rgba(184,134,11,0.14);
   --admin-green:        #047857;
-  --admin-green-soft:   rgba(4,120,87,0.08);
-  --admin-panel-grad:   linear-gradient(180deg, #FFFFFF, #F8F9FB);
-  --admin-shadow:       0 4px 12px rgba(15,23,42,0.06);
-  --admin-shadow-lg:    0 12px 40px rgba(15,23,42,0.10);
+  --admin-green-soft:   rgba(4,120,87,0.10);
+  --admin-panel-grad:   linear-gradient(180deg, #FFFFFF 0%, #F4F7FB 100%);
+  --admin-shadow:       0 1px 3px rgba(11,37,69,0.06), 0 4px 14px rgba(11,37,69,0.08);
+  --admin-shadow-lg:    0 8px 32px rgba(11,37,69,0.12);
+}
+
+/* ── Sidebar institucional en modo claro ─────────────────────────────
+   El patrón Stripe/Linear: aunque el contenido sea blanco, el sidebar
+   mantiene un tono oscuro institucional. Le da ancla visual al menú,
+   refuerza identidad de marca y separa nav del workspace.
+   Override SOLO de los tokens — los componentes hijos no necesitan
+   cambiar nada porque CSS vars cascadean por herencia.
+
+   Tailwind v4 / @tailwindcss/postcss a veces "tree-shakea" CSS plano
+   no referenciado por clases. Forzamos preservación con :where(.admin-sidebar)
+   (cero especificidad extra) + repetimos selector explícito.          */
+[data-admin-theme='light'] .admin-sidebar,
+[data-admin-theme='light'] :where(.admin-sidebar) {
+  --admin-bg:           #0B2545;            /* navy institucional UsaLatino */
+  --admin-bg-deep:      #051A38;
+  --admin-bg-elev:      #D4A017;            /* dorado = pulse del logo      */
+  --admin-bg-elev-2:    #122E5E;
+  --admin-fg:           #F5F7FB;
+  --admin-fg-muted:     rgba(245,247,251,0.68);
+  --admin-fg-subtle:    rgba(245,247,251,0.42);
+  --admin-fg-faint:     rgba(245,247,251,0.10);
+  --admin-accent:       #D4A017;            /* dorado = acentos / pulse     */
+  --admin-accent-soft:  rgba(212,160,23,0.16);
+  --admin-accent-glow:  rgba(212,160,23,0.32);
+  --admin-border:       rgba(255,255,255,0.08);
+  --admin-border-strong:rgba(255,255,255,0.18);
 }
 
 /* Transición suave al cambiar de tema */

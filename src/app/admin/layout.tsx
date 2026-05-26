@@ -171,7 +171,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const navContent = (
     <div
-      className="flex flex-col h-full relative overflow-hidden"
+      className="admin-sidebar flex flex-col h-full relative overflow-hidden"
       style={{
         background: 'linear-gradient(180deg, var(--admin-bg) 0%, var(--admin-bg-deep) 100%)',
         fontFamily: 'var(--font-tight), -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
@@ -517,7 +517,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <Menu className="w-4 h-4" />
             </button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-[260px] border-r-0 border-l-0" style={{ background: 'var(--admin-bg-deep)' }}>
+          <SheetContent side="left" className="admin-sidebar p-0 w-[260px] border-r-0 border-l-0" style={{ background: 'var(--admin-bg-deep)' }}>
             {navContent}
           </SheetContent>
         </Sheet>

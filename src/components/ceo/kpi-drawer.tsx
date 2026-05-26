@@ -53,13 +53,13 @@ export function KpiDrawer({
       />
 
       <div
-        className="absolute right-0 top-0 h-full w-full max-w-[460px] overflow-y-auto border-l border-white/[0.06] bg-[#0A0A0B]"
-        style={{ animation: 'kpi-slide 220ms cubic-bezier(0.32, 0.72, 0, 1)' }}
+        className="absolute right-0 top-0 h-full w-full max-w-[460px] overflow-y-auto"
+        style={{ background: 'var(--admin-bg)', borderLeft: '0.5px solid var(--admin-border)', animation: 'kpi-slide 220ms cubic-bezier(0.32, 0.72, 0, 1)' }}
       >
         {/* Linea dorada superior */}
         <div className="h-px w-full" style={{ background: accent, opacity: 0.6 }} />
 
-        <div className="sticky top-0 z-10 border-b border-white/[0.06] bg-[#0A0A0B]/95 backdrop-blur-md">
+        <div className="sticky top-0 z-10 backdrop-blur-md" style={{ background: 'var(--admin-bg)', borderBottom: '0.5px solid var(--admin-border)' }}>
           <div className="flex items-start justify-between gap-4 px-7 py-6">
             <div className="min-w-0 flex-1">
               {eyebrow && (

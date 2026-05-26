@@ -72,8 +72,8 @@ export function CasePipeline({ caseId, hasAppointment, hasDocuments, hasHistory,
   const currentStageIdx = STAGES.findIndex(s => !isComplete(s.key))
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/10"
-      style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 40%, #0f172a 100%)' }}>
+    <div className="relative overflow-hidden rounded-2xl"
+      style={{ background: 'var(--admin-panel-grad)', border: '0.5px solid var(--admin-border)' }}>
 
       {/* Ambient glow */}
       <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-20 blur-3xl"
