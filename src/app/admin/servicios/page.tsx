@@ -83,9 +83,9 @@ export default function ServiciosPage() {
     <div
       className={`${interTight.variable} ${mono.variable} -m-6 min-h-[calc(100vh-3rem)] relative overflow-hidden`}
       style={{
-        background: '#000000',
+        background: 'var(--admin-bg-deep)',
         fontFamily: 'var(--font-tight), -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
-        color: '#FAFAFA',
+        color: 'var(--admin-fg)',
       }}
     >
       <WallpaperHero />
@@ -124,7 +124,7 @@ export default function ServiciosPage() {
               fontSize: 'clamp(17px, 1.4vw, 21px)',
               fontWeight: 400,
               lineHeight: 1.5,
-              color: '#A1A1A1',
+              color: 'var(--admin-fg-muted)',
               letterSpacing: '-0.012em',
               animation: 'tech-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both',
             }}
@@ -184,14 +184,14 @@ export default function ServiciosPage() {
               fontSize: 12,
               fontWeight: 500,
               letterSpacing: '0.15em',
-              color: '#525252',
+              color: 'var(--admin-fg-subtle)',
             }}
           >
             {Array.from({ length: 2 }).map((_, dupIdx) => (
               <div key={dupIdx} className="flex gap-12 shrink-0">
                 {['EXPEDIENTE · ACTIVO', 'DEMO · EN VIVO', 'IA · GENERATIVA', 'FORMULARIOS · USCIS', 'DOCUMENTOS · FIRMADOS', 'PROCESO · AUTOMATIZADO', 'CORTE · EOIR', 'STATUS · OPERATIONAL'].map((t, i) => (
                   <span key={`${dupIdx}-${i}`} className="inline-flex items-center gap-3">
-                    <span style={{ color: '#FAFAFA' }}>◆</span>
+                    <span style={{ color: 'var(--admin-fg)' }}>◆</span>
                     {t}
                   </span>
                 ))}
@@ -201,7 +201,7 @@ export default function ServiciosPage() {
         </div>
 
         <footer className="mt-12 text-center">
-          <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.1em' }}>
+          <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.1em' }}>
             ULP · SHOWCASE · v1.0 · 2026
           </p>
         </footer>
@@ -220,7 +220,7 @@ function SystemBadge() {
     <div
       className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full"
       style={{
-        background: 'rgba(255,255,255,0.05)',
+        background: 'var(--admin-accent-soft)',
         border: '0.5px solid rgba(255,255,255,0.15)',
         animation: 'tech-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both',
       }}
@@ -241,7 +241,7 @@ function SystemBadge() {
           fontSize: 11,
           fontWeight: 500,
           letterSpacing: '0.15em',
-          color: '#FAFAFA',
+          color: 'var(--admin-fg)',
         }}
       >
         BIENVENIDO · HENRY · ORELLANA
@@ -269,7 +269,7 @@ function GlowDot() {
 function Telemetry({ label, value, pulse }: { label: string; value: string; pulse?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2">
-      <span style={{ color: '#525252', letterSpacing: '0.12em' }}>{label}</span>
+      <span style={{ color: 'var(--admin-fg-subtle)', letterSpacing: '0.12em' }}>{label}</span>
       <span style={{ color: '#FFFFFF', fontWeight: 700, letterSpacing: '0.02em' }}>{value}</span>
       {pulse && (
         <span
@@ -288,7 +288,7 @@ function Telemetry({ label, value, pulse }: { label: string; value: string; puls
 }
 
 function Divider() {
-  return <span style={{ color: '#262626' }}>·</span>
+  return <span style={{ color: 'var(--admin-fg-faint)' }}>·</span>
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -455,7 +455,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
               fontSize: 10,
               fontWeight: 500,
               letterSpacing: '0.18em',
-              color: '#525252',
+              color: 'var(--admin-fg-subtle)',
               paddingTop: 6,
             }}
           >
@@ -481,7 +481,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
           style={{
             fontSize: 14,
             lineHeight: 1.55,
-            color: '#A1A1A1',
+            color: 'var(--admin-fg-muted)',
             letterSpacing: '-0.005em',
             flex: 1,
           }}
@@ -540,13 +540,13 @@ function StatMono({ value, label }: { value: string; label: string }) {
   return (
     <div className="flex items-baseline gap-1.5" style={{ fontFamily: 'var(--font-mono-tech)' }}>
       <span style={{ fontSize: 15, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.02em' }}>{value}</span>
-      <span style={{ fontSize: 9, fontWeight: 500, color: '#525252', letterSpacing: '0.18em' }}>{label}</span>
+      <span style={{ fontSize: 9, fontWeight: 500, color: 'var(--admin-fg-subtle)', letterSpacing: '0.18em' }}>{label}</span>
     </div>
   )
 }
 
 function Sep() {
-  return <span style={{ color: '#262626', fontSize: 12 }}>·</span>
+  return <span style={{ color: 'var(--admin-fg-faint)', fontSize: 12 }}>·</span>
 }
 
 // ────────────────────────────────────────────────────────────────────

@@ -21,7 +21,7 @@ export function CeoDashboard({ data }: Props) {
     : kpi.revenue_this_month > 0 ? 100 : 0
 
   return (
-    <div className="space-y-6 max-w-7xl relative" style={{ color: '#FAFAFA' }}>
+    <div className="space-y-6 max-w-7xl relative" style={{ color: 'var(--admin-fg)' }}>
       {/* ─── Header strip ─── */}
       <div
         className="rounded-2xl px-6 py-5 flex items-center justify-between gap-4 flex-wrap relative overflow-hidden"
@@ -48,7 +48,7 @@ export function CeoDashboard({ data }: Props) {
             />
           </span>
           <div>
-            <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: '#525252' }}>
+            <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg-subtle)' }}>
               VISTA CEO · DASHBOARD
             </p>
             <p style={{ fontSize: 17, fontWeight: 600, letterSpacing: '-0.02em', marginTop: 2 }}>
@@ -56,7 +56,7 @@ export function CeoDashboard({ data }: Props) {
             </p>
           </div>
         </div>
-        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.15em', color: '#525252' }}>
+        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.15em', color: 'var(--admin-fg-subtle)' }}>
           {new Date(data.generated_at).toLocaleString('es-US', { dateStyle: 'short', timeStyle: 'short' }).toUpperCase()}
         </p>
       </div>
@@ -106,7 +106,7 @@ export function CeoDashboard({ data }: Props) {
           <SectionHeader
             icon={<Briefcase className="w-4 h-4" strokeWidth={1.7} />}
             title="Servicios"
-            action={<Link href="/admin/cases" style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: '#A1A1A1', letterSpacing: '0.15em' }}>VER CASOS →</Link>}
+            action={<Link href="/admin/cases" style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: 'var(--admin-fg-muted)', letterSpacing: '0.15em' }}>VER CASOS →</Link>}
           />
           <ServicesBreakdown services={services} />
         </DashCard>
@@ -160,7 +160,7 @@ export function CeoDashboard({ data }: Props) {
           icon={<Sparkles className="w-4 h-4" strokeWidth={1.7} />}
           title="Auto-pilot"
           subtitle="Automatización progresiva del trabajo manual"
-          action={<span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', padding: '4px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.08)', color: '#FFFFFF', border: '0.5px solid rgba(255,255,255,0.15)' }}>SOON</span>}
+          action={<span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', padding: '4px 8px', borderRadius: 4, background: 'var(--admin-border)', color: '#FFFFFF', border: '0.5px solid rgba(255,255,255,0.15)' }}>SOON</span>}
         />
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <AutoPilotCard
@@ -254,7 +254,7 @@ function SectionHeader({
         <div>
           <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.018em', color: '#FFFFFF' }}>{title}</h2>
           {subtitle && (
-            <p style={{ fontSize: 11, color: '#A1A1A1', marginTop: 2, letterSpacing: '-0.005em' }}>{subtitle}</p>
+            <p style={{ fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 2, letterSpacing: '-0.005em' }}>{subtitle}</p>
           )}
         </div>
       </div>
@@ -298,7 +298,7 @@ function KpiCard({
         >
           {icon}
         </div>
-        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#525252' }}>
+        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-subtle)' }}>
           {label.toUpperCase()}
         </p>
         <p style={{ fontSize: 26, fontWeight: 600, letterSpacing: '-0.025em', color: '#FFFFFF', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
@@ -309,7 +309,7 @@ function KpiCard({
             className="flex items-center gap-1 mt-1.5"
             style={{
               fontSize: 10,
-              color: typeof deltaPositive === 'boolean' ? '#FFFFFF' : '#A1A1A1',
+              color: typeof deltaPositive === 'boolean' ? '#FFFFFF' : 'var(--admin-fg-muted)',
               fontFamily: 'var(--font-mono-tech)',
               letterSpacing: '0.05em',
               fontWeight: typeof deltaPositive === 'boolean' ? 700 : 400,
@@ -341,7 +341,7 @@ function FunnelChart({ stages }: { stages: CeoDashboardData['funnel'] }) {
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-2">
                 <span style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>{stage.label}</span>
-                <span style={{ fontSize: 10, color: '#525252' }}>{stage.description}</span>
+                <span style={{ fontSize: 10, color: 'var(--admin-fg-subtle)' }}>{stage.description}</span>
               </div>
               <div className="flex items-center gap-2">
                 {conversion !== null && (
@@ -351,7 +351,7 @@ function FunnelChart({ stages }: { stages: CeoDashboardData['funnel'] }) {
                       fontSize: 10,
                       fontWeight: 500,
                       letterSpacing: '0.05em',
-                      color: conversion >= 50 ? '#FFFFFF' : conversion >= 20 ? '#A1A1A1' : '#525252',
+                      color: conversion >= 50 ? '#FFFFFF' : conversion >= 20 ? 'var(--admin-fg-muted)' : 'var(--admin-fg-subtle)',
                     }}
                   >
                     {conversion.toFixed(0)}%
@@ -362,7 +362,7 @@ function FunnelChart({ stages }: { stages: CeoDashboardData['funnel'] }) {
                 </span>
               </div>
             </div>
-            <div className="h-7 rounded-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
+            <div className="h-7 rounded-lg overflow-hidden" style={{ background: 'var(--admin-accent-soft)' }}>
               <div
                 className="h-full transition-all duration-700 flex items-center px-2"
                 style={{
@@ -373,7 +373,7 @@ function FunnelChart({ stages }: { stages: CeoDashboardData['funnel'] }) {
                 }}
               >
                 {pct > 12 && (
-                  <span style={{ fontSize: 10, fontWeight: 700, color: '#000000', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--admin-bg-deep)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
                     {stage.count}
                   </span>
                 )}
@@ -392,7 +392,7 @@ function ServicesBreakdown({ services }: { services: CeoDashboardData['services'
   const maxRevenue = Math.max(...visible.map(s => s.revenue_signed), 1)
 
   if (visible.length === 0) {
-    return <p className="text-center py-6" style={{ fontSize: 13, color: '#525252' }}>Sin servicios con actividad</p>
+    return <p className="text-center py-6" style={{ fontSize: 13, color: 'var(--admin-fg-subtle)' }}>Sin servicios con actividad</p>
   }
 
   return (
@@ -406,11 +406,11 @@ function ServicesBreakdown({ services }: { services: CeoDashboardData['services'
               <span style={{ fontSize: 13, fontWeight: 500, color: '#FFFFFF', letterSpacing: '-0.005em' }} className="truncate flex-1 mr-3">
                 {s.name}
               </span>
-              <span style={{ fontSize: 11, color: '#A1A1A1' }}>
+              <span style={{ fontSize: 11, color: 'var(--admin-fg-muted)' }}>
                 {s.contracts} contratos · <span style={{ fontWeight: 700, color: '#FFFFFF', fontVariantNumeric: 'tabular-nums' }}>${s.revenue_signed.toLocaleString()}</span>
               </span>
             </div>
-            <div className="h-2 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.04)' }}>
+            <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--admin-accent-soft)' }}>
               <div
                 className="h-full rounded-full"
                 style={{
@@ -421,7 +421,7 @@ function ServicesBreakdown({ services }: { services: CeoDashboardData['services'
               />
             </div>
             {sharePct > 0 && (
-              <p style={{ fontSize: 10, color: '#525252', marginTop: 3, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+              <p style={{ fontSize: 10, color: 'var(--admin-fg-subtle)', marginTop: 3, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
                 {sharePct.toFixed(1)}% DE INGRESOS FIRMADOS
               </p>
             )}
@@ -480,10 +480,10 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
                   <p style={{ fontSize: 10, color: '#FFFFFF', marginTop: 2 }}>
                     Cobrado: <span style={{ fontWeight: 700 }}>${p.revenue_collected.toLocaleString()}</span>
                   </p>
-                  <p style={{ fontSize: 10, color: '#A1A1A1' }}>
+                  <p style={{ fontSize: 10, color: 'var(--admin-fg-muted)' }}>
                     Esperado: ${p.revenue_expected.toLocaleString()}
                   </p>
-                  <p style={{ fontSize: 9, color: '#525252', marginTop: 4, fontFamily: 'var(--font-mono-tech)' }}>
+                  <p style={{ fontSize: 9, color: 'var(--admin-fg-subtle)', marginTop: 4, fontFamily: 'var(--font-mono-tech)' }}>
                     {p.contracts_signed}/{p.contracts_created} FIRMADOS/CREADOS
                   </p>
                 </div>
@@ -494,12 +494,12 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
       </div>
       <div className="grid grid-cols-6 gap-2">
         {points.map(p => (
-          <div key={p.month} className="text-center" style={{ fontSize: 9, color: '#525252', textTransform: 'capitalize', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.1em' }}>
+          <div key={p.month} className="text-center" style={{ fontSize: 9, color: 'var(--admin-fg-subtle)', textTransform: 'capitalize', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.1em' }}>
             {p.label}
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-4 pt-3" style={{ fontSize: 10, color: '#A1A1A1', borderTop: '0.5px solid rgba(255,255,255,0.06)' }}>
+      <div className="flex items-center gap-4 pt-3" style={{ fontSize: 10, color: 'var(--admin-fg-muted)', borderTop: '0.5px solid rgba(255,255,255,0.06)' }}>
         <span className="inline-flex items-center gap-1.5">
           <span style={{ width: 10, height: 10, borderRadius: 2, background: '#FFFFFF' }} />
           Cobrado
@@ -527,22 +527,22 @@ function OpStatCard({
       href={link}
       className="group block rounded-xl p-4 transition-all duration-500"
       style={{
-        background: 'rgba(255,255,255,0.04)',
+        background: 'var(--admin-accent-soft)',
         border: '0.5px solid rgba(255,255,255,0.08)',
       }}
     >
       <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center gap-2" style={{ color: '#A1A1A1' }}>
+        <div className="flex items-center gap-2" style={{ color: 'var(--admin-fg-muted)' }}>
           {icon}
           <span style={{ fontSize: 11, fontWeight: 500, color: '#FFFFFF', letterSpacing: '-0.005em' }}>{label}</span>
         </div>
-        <ArrowRight className="w-3 h-3 transition-transform duration-500 group-hover:translate-x-0.5" style={{ color: '#525252' }} />
+        <ArrowRight className="w-3 h-3 transition-transform duration-500 group-hover:translate-x-0.5" style={{ color: 'var(--admin-fg-subtle)' }} />
       </div>
       <p style={{ fontSize: 22, fontWeight: 700, color: '#FFFFFF', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.02em' }}>
         {value}
       </p>
       {hint && (
-        <p style={{ fontSize: 10, color: '#525252', marginTop: 2, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+        <p style={{ fontSize: 10, color: 'var(--admin-fg-subtle)', marginTop: 2, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
           {hint}
         </p>
       )}
@@ -560,15 +560,15 @@ function PendingSignatureList({ items }: { items: CeoDashboardData['ops']['pendi
       }}
     >
       <div className="flex items-center justify-between mb-3">
-        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: '#A1A1A1' }}>
+        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg-muted)' }}>
           ESPERANDO FIRMA · TOP {items.length}
         </p>
-        <Link href="/admin/contratos" style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: '#525252', letterSpacing: '0.15em' }}>
+        <Link href="/admin/contratos" style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: 'var(--admin-fg-subtle)', letterSpacing: '0.15em' }}>
           VER →
         </Link>
       </div>
       {items.length === 0 ? (
-        <p className="text-center py-3" style={{ fontSize: 11, color: '#525252' }}>
+        <p className="text-center py-3" style={{ fontSize: 11, color: 'var(--admin-fg-subtle)' }}>
           Sin contratos pendientes
         </p>
       ) : (
@@ -578,7 +578,7 @@ function PendingSignatureList({ items }: { items: CeoDashboardData['ops']['pendi
               <span className="truncate flex-1" style={{ fontSize: 12, fontWeight: 500, color: '#FFFFFF' }}>
                 {c.client_name}
               </span>
-              <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, color: '#A1A1A1', whiteSpace: 'nowrap' }}>
+              <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, color: 'var(--admin-fg-muted)', whiteSpace: 'nowrap' }}>
                 {c.days_waiting}D · ${c.total_price.toLocaleString()}
               </span>
             </div>
@@ -602,12 +602,12 @@ function OverdueClientsList({ items }: { items: CeoDashboardData['ops']['overdue
         <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: '#FFFFFF' }}>
           ◆ CLIENTES CON DEUDA
         </p>
-        <Link href="/admin/payments" style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: '#525252', letterSpacing: '0.15em' }}>
+        <Link href="/admin/payments" style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: 'var(--admin-fg-subtle)', letterSpacing: '0.15em' }}>
           VER →
         </Link>
       </div>
       {items.length === 0 ? (
-        <p className="text-center py-3" style={{ fontSize: 11, color: '#525252' }}>
+        <p className="text-center py-3" style={{ fontSize: 11, color: 'var(--admin-fg-subtle)' }}>
           Sin deuda pendiente
         </p>
       ) : (
@@ -616,7 +616,7 @@ function OverdueClientsList({ items }: { items: CeoDashboardData['ops']['overdue
             <div key={c.client_id} className="flex items-center justify-between gap-2">
               <span className="truncate flex-1" style={{ fontSize: 12, fontWeight: 500, color: '#FFFFFF' }}>
                 {c.name}
-                <span style={{ fontSize: 10, color: '#525252', marginLeft: 6 }}>({c.installments_overdue})</span>
+                <span style={{ fontSize: 10, color: 'var(--admin-fg-subtle)', marginLeft: 6 }}>({c.installments_overdue})</span>
               </span>
               <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap' }}>
                 ${c.total_overdue.toLocaleString()}
@@ -647,7 +647,7 @@ function AutoPilotCard({
       }}
     >
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2" style={{ color: '#A1A1A1' }}>
+        <div className="flex items-center gap-2" style={{ color: 'var(--admin-fg-muted)' }}>
           {icon}
           <span style={{ fontSize: 11, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>{label}</span>
         </div>
@@ -659,8 +659,8 @@ function AutoPilotCard({
             letterSpacing: '0.2em',
             padding: '2px 6px',
             borderRadius: 3,
-            background: status === 'live' ? '#FFFFFF' : 'rgba(255,255,255,0.08)',
-            color: status === 'live' ? '#000000' : '#A1A1A1',
+            background: status === 'live' ? '#FFFFFF' : 'var(--admin-border)',
+            color: status === 'live' ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
             border: status === 'live' ? 'none' : '0.5px solid rgba(255,255,255,0.12)',
           }}
         >
@@ -670,7 +670,7 @@ function AutoPilotCard({
       <p style={{ fontSize: 24, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.025em', fontVariantNumeric: 'tabular-nums' }}>
         {value}
       </p>
-      <p style={{ fontSize: 10, color: '#525252', marginTop: 4, lineHeight: 1.5 }}>{description}</p>
+      <p style={{ fontSize: 10, color: 'var(--admin-fg-subtle)', marginTop: 4, lineHeight: 1.5 }}>{description}</p>
     </div>
   )
 }

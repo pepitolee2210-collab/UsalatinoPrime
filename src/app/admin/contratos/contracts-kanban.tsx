@@ -36,11 +36,11 @@ interface Column {
 }
 
 const COLUMNS: Column[] = [
-  { id: 'borrador',        label: 'Borrador',        dot: '#A1A1A1', bg: 'rgba(255,255,255,0.04)',  border: 'rgba(255,255,255,0.1)',  text: '#A1A1A1' },
+  { id: 'borrador',        label: 'Borrador',        dot: 'var(--admin-fg-muted)', bg: 'var(--admin-accent-soft)',  border: 'var(--admin-border-strong)',  text: 'var(--admin-fg-muted)' },
   { id: 'pendiente_firma', label: 'Pendiente Firma', dot: '#FACC15', bg: 'rgba(250,204,21,0.06)',   border: 'rgba(250,204,21,0.25)',  text: '#FDE68A' },
   { id: 'firmado',         label: 'Firmado',         dot: '#60A5FA', bg: 'rgba(96,165,250,0.06)',   border: 'rgba(96,165,250,0.25)',  text: '#93C5FD' },
   { id: 'activo',          label: 'Activo',          dot: '#4ADE80', bg: 'rgba(34,197,94,0.06)',    border: 'rgba(34,197,94,0.25)',   text: '#86EFAC' },
-  { id: 'completado',      label: 'Completado',      dot: '#FFFFFF', bg: 'rgba(255,255,255,0.05)',  border: 'rgba(255,255,255,0.18)', text: '#FFFFFF' },
+  { id: 'completado',      label: 'Completado',      dot: '#FFFFFF', bg: 'var(--admin-accent-soft)',  border: 'rgba(255,255,255,0.18)', text: '#FFFFFF' },
 ]
 
 const ICON_BTN =
@@ -102,7 +102,7 @@ export function ContractsKanban({
                   style={{
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 10,
-                    color: '#525252',
+                    color: 'var(--admin-fg-subtle)',
                     letterSpacing: '0.15em',
                     fontStyle: 'italic',
                   }}
@@ -139,7 +139,7 @@ export function ContractsKanban({
                           </p>
                           <p
                             className="truncate"
-                            style={{ fontSize: 11, color: '#A1A1A1', marginTop: 1 }}
+                            style={{ fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 1 }}
                             title={c.service_name}
                           >
                             {c.service_name}
@@ -162,7 +162,7 @@ export function ContractsKanban({
                               style={{
                                 fontFamily: 'var(--font-mono-tech)',
                                 fontSize: 9,
-                                color: '#525252',
+                                color: 'var(--admin-fg-subtle)',
                                 letterSpacing: '0.1em',
                               }}
                             >
@@ -238,7 +238,7 @@ export function ContractsKanban({
                             onClick={() => onDownloadPDF(c.id)}
                             title="PDF"
                             className={ICON_BTN}
-                            style={{ color: '#A1A1A1' }}
+                            style={{ color: 'var(--admin-fg-muted)' }}
                           >
                             <Download className="w-3 h-3" />
                           </button>
@@ -247,7 +247,7 @@ export function ContractsKanban({
                             onClick={() => onEdit(c.id)}
                             title="Editar"
                             className={ICON_BTN}
-                            style={{ color: '#A1A1A1' }}
+                            style={{ color: 'var(--admin-fg-muted)' }}
                           >
                             <Pencil className="w-3 h-3" />
                           </button>
@@ -272,12 +272,12 @@ export function ContractsKanban({
       </div>
       {contracts.length === 0 && (
         <div className="text-center py-12">
-          <FileText className="w-10 h-10 mx-auto mb-3" style={{ color: '#525252' }} />
+          <FileText className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--admin-fg-subtle)' }} />
           <p
             style={{
               fontFamily: 'var(--font-mono-tech)',
               fontSize: 11,
-              color: '#525252',
+              color: 'var(--admin-fg-subtle)',
               letterSpacing: '0.15em',
             }}
           >

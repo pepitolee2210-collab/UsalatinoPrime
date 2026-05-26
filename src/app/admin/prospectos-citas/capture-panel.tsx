@@ -104,7 +104,7 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
           background: 'linear-gradient(180deg, #0B0B0E 0%, #050505 100%)',
           borderLeft: '0.5px solid rgba(255,255,255,0.1)',
           boxShadow: '-40px 0 80px rgba(0,0,0,0.5)',
-          color: '#FAFAFA',
+          color: 'var(--admin-fg)',
         }}
       >
         {/* Header */}
@@ -128,7 +128,7 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
                 <PhoneCall className="w-4 h-4" style={{ color: '#60A5FA' }} />
               </span>
               <div>
-                <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.2em', color: '#525252' }}>
+                <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg-subtle)' }}>
                   EVALUACIÓN · EN VIVO
                 </p>
                 <h2 style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.02em', color: '#FFFFFF', lineHeight: 1.2 }}>
@@ -136,20 +136,20 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
                 </h2>
               </div>
               {saving && (
-                <span className="inline-flex items-center gap-1 ml-2" style={{ fontSize: 10, color: '#A1A1A1', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.1em' }}>
+                <span className="inline-flex items-center gap-1 ml-2" style={{ fontSize: 10, color: 'var(--admin-fg-muted)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.1em' }}>
                   <Loader2 className="w-3 h-3 animate-spin" />
                   GUARDANDO…
                 </span>
               )}
             </div>
-            <p style={{ fontSize: 12, color: '#A1A1A1', marginLeft: 44, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em' }}>
+            <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', marginLeft: 44, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em' }}>
               {prospecto.guest_phone || 'sin teléfono'}
             </p>
           </div>
           <button
             onClick={onClose}
             className="w-9 h-9 rounded-full transition-colors hover:bg-white/10 flex items-center justify-center"
-            style={{ color: '#A1A1A1', border: '0.5px solid rgba(255,255,255,0.1)' }}
+            style={{ color: 'var(--admin-fg-muted)', border: '0.5px solid rgba(255,255,255,0.1)' }}
           >
             <X className="w-4 h-4" />
           </button>
@@ -242,9 +242,9 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
               placeholder="Escribe cualquier detalle del caso que sea relevante…"
               className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 resize-y"
               style={{
-                background: 'rgba(255,255,255,0.04)',
+                background: 'var(--admin-accent-soft)',
                 border: '0.5px solid rgba(255,255,255,0.1)',
-                color: '#FAFAFA',
+                color: 'var(--admin-fg)',
                 fontSize: 13,
                 letterSpacing: '-0.005em',
                 minHeight: 100,
@@ -382,7 +382,7 @@ function Field({ label, value, onChange, placeholder }: { label: string; value: 
           fontSize: 9,
           fontWeight: 500,
           letterSpacing: '0.18em',
-          color: '#A1A1A1',
+          color: 'var(--admin-fg-muted)',
         }}
       >
         {label.toUpperCase()}
@@ -394,9 +394,9 @@ function Field({ label, value, onChange, placeholder }: { label: string; value: 
         placeholder={placeholder}
         className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30"
         style={{
-          background: 'rgba(255,255,255,0.04)',
+          background: 'var(--admin-accent-soft)',
           border: '0.5px solid rgba(255,255,255,0.1)',
-          color: '#FAFAFA',
+          color: 'var(--admin-fg)',
           fontSize: 13,
           letterSpacing: '-0.005em',
         }}
@@ -421,7 +421,7 @@ function RadioGroup({
           fontSize: 9,
           fontWeight: 500,
           letterSpacing: '0.18em',
-          color: '#A1A1A1',
+          color: 'var(--admin-fg-muted)',
         }}
       >
         {label.toUpperCase()}
@@ -436,8 +436,8 @@ function RadioGroup({
               onClick={() => onChange(opt.value)}
               className="px-3 py-1.5 rounded-full transition-all duration-200"
               style={{
-                background: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.04)',
-                color: isActive ? '#000000' : '#A1A1A1',
+                background: isActive ? '#FFFFFF' : 'var(--admin-accent-soft)',
+                color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
                 border: isActive ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.1)',
                 fontSize: 12,
                 fontWeight: isActive ? 700 : 500,

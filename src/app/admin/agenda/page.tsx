@@ -39,7 +39,7 @@ const STATUS_STYLES: Record<string, StatusStyle> = {
   follow_up:      { bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.3)', dot: '#A78BFA', text: '#C4B5FD', label: 'Seguimiento',   icon: CalendarClock },
   converted:      { bg: 'rgba(34,197,94,0.10)',   border: 'rgba(34,197,94,0.3)',   dot: '#4ADE80', text: '#86EFAC', label: 'Convertido',    icon: UserCheck },
   no_answer:      { bg: 'rgba(251,146,60,0.10)',  border: 'rgba(251,146,60,0.3)',  dot: '#FB923C', text: '#FDBA74', label: 'Sin Respuesta', icon: PhoneOff },
-  not_interested: { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)', dot: '#A1A1A1', text: '#A1A1A1', label: 'No Interesado', icon: UserX },
+  not_interested: { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-fg-muted)', text: 'var(--admin-fg-muted)', label: 'No Interesado', icon: UserX },
   closed:         { bg: 'rgba(148,163,184,0.10)', border: 'rgba(148,163,184,0.3)', dot: '#94A3B8', text: '#CBD5E1', label: 'Cerrado',       icon: XCircle },
 }
 
@@ -112,7 +112,7 @@ const LABEL_STYLE: React.CSSProperties = {
   fontSize: 9,
   fontWeight: 500,
   letterSpacing: '0.18em',
-  color: '#A1A1A1',
+  color: 'var(--admin-fg-muted)',
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -277,7 +277,7 @@ export default function AgendaPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-5 h-5 animate-spin" style={{ color: '#A1A1A1' }} />
+        <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--admin-fg-muted)' }} />
       </div>
     )
   }
@@ -335,7 +335,7 @@ export default function AgendaPage() {
               border: '0.5px solid rgba(255,255,255,0.08)',
             }}
           >
-            <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+            <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
               SIN REGISTROS EN ESTA CATEGORÍA
             </p>
           </div>
@@ -389,12 +389,12 @@ export default function AgendaPage() {
                   className={DARK_INPUT_CLS + ' appearance-none pr-9 cursor-pointer'}
                   style={{ colorScheme: 'dark' }}
                 >
-                  <option value="" style={{ background: '#0A0A0A', color: '#A1A1A1' }}>Seleccionar servicio</option>
+                  <option value="" style={{ background: 'var(--admin-bg)', color: 'var(--admin-fg-muted)' }}>Seleccionar servicio</option>
                   {SERVICE_OPTIONS.map(s => (
-                    <option key={s.slug} value={s.slug} style={{ background: '#0A0A0A', color: '#FAFAFA' }}>{s.label}</option>
+                    <option key={s.slug} value={s.slug} style={{ background: 'var(--admin-bg)', color: 'var(--admin-fg)' }}>{s.label}</option>
                   ))}
                 </select>
-                <span aria-hidden className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#525252', fontSize: 10 }}>▾</span>
+                <span aria-hidden className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--admin-fg-subtle)', fontSize: 10 }}>▾</span>
               </div>
             </div>
             <div className="space-y-1.5">
@@ -424,7 +424,7 @@ export default function AgendaPage() {
               className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
               style={{
                 background: '#FFFFFF',
-                color: '#000000',
+                color: 'var(--admin-bg-deep)',
                 fontSize: 13,
                 fontWeight: 600,
                 letterSpacing: '-0.005em',
@@ -445,7 +445,7 @@ export default function AgendaPage() {
           <DialogHeader>
             <DialogTitle className="text-white" style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.018em' }}>
               {editingItem?.prospect_name}
-              <span style={{ color: '#A1A1A1', fontWeight: 400, marginLeft: 8, fontFamily: 'var(--font-mono-tech)', fontSize: 12 }}>
+              <span style={{ color: 'var(--admin-fg-muted)', fontWeight: 400, marginLeft: 8, fontFamily: 'var(--font-mono-tech)', fontSize: 12 }}>
                 {editingItem?.phone}
               </span>
             </DialogTitle>
@@ -492,7 +492,7 @@ function StatClickCard({
         backdropFilter: 'blur(20px)',
       }}
     >
-      <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#525252' }}>
+      <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-subtle)' }}>
         {label.toUpperCase()}
       </p>
       <p style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.025em', color: active ? t.valueColor : '#FFFFFF', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
@@ -652,7 +652,7 @@ function AgendaCard({
                 {item.phone}
               </a>
               {serviceLabel && (
-                <span style={{ fontSize: 12, color: '#A1A1A1' }}>{serviceLabel}</span>
+                <span style={{ fontSize: 12, color: 'var(--admin-fg-muted)' }}>{serviceLabel}</span>
               )}
               {item.message_date && (
                 <span
@@ -671,7 +671,7 @@ function AgendaCard({
                 style={{
                   fontFamily: 'var(--font-mono-tech)',
                   fontSize: 10,
-                  color: '#525252',
+                  color: 'var(--admin-fg-subtle)',
                   letterSpacing: '0.05em',
                 }}
               >
@@ -701,10 +701,10 @@ function AgendaCard({
                   border: '0.5px solid rgba(255,255,255,0.06)',
                 }}
               >
-                <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.2em', color: '#525252', marginBottom: 4 }}>
+                <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg-subtle)', marginBottom: 4 }}>
                   CONTEXTO DEL PROSPECTO
                 </p>
-                <p style={{ fontSize: 12.5, color: '#A1A1A1', lineHeight: 1.5 }}>{item.notes}</p>
+                <p style={{ fontSize: 12.5, color: 'var(--admin-fg-muted)', lineHeight: 1.5 }}>{item.notes}</p>
               </div>
             )}
 
@@ -744,9 +744,9 @@ function AgendaCard({
                   onChange={e => setSchedDate(e.target.value)}
                   className="flex-1 min-w-[140px] px-2.5 py-1.5 rounded-lg outline-none transition-colors focus:border-white/30"
                   style={{
-                    background: 'rgba(255,255,255,0.04)',
+                    background: 'var(--admin-accent-soft)',
                     border: '0.5px solid rgba(255,255,255,0.1)',
-                    color: '#FAFAFA',
+                    color: 'var(--admin-fg)',
                     fontSize: 11,
                     fontFamily: 'var(--font-mono-tech)',
                     colorScheme: 'dark',
@@ -758,7 +758,7 @@ function AgendaCard({
                   className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-40"
                   style={{
                     background: '#FACC15',
-                    color: '#000000',
+                    color: 'var(--admin-bg-deep)',
                   }}
                 >
                   {savingSched ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
@@ -861,7 +861,7 @@ function AgendaCard({
                   }}
                 >
                   <p style={{ fontSize: 12.5, color: '#FDE68A', lineHeight: 1.5 }}>{entry.text}</p>
-                  <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: '#525252', marginTop: 4, letterSpacing: '0.05em' }}>
+                  <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: 'var(--admin-fg-subtle)', marginTop: 4, letterSpacing: '0.05em' }}>
                     {format(new Date(entry.date), "d MMM yyyy, h:mma", { locale: es }).toUpperCase()}
                   </p>
                 </div>
@@ -882,7 +882,7 @@ function AgendaCard({
               className="inline-flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50"
               style={{
                 background: '#FACC15',
-                color: '#000000',
+                color: 'var(--admin-bg-deep)',
               }}
             >
               {savingNotes ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
@@ -923,7 +923,7 @@ function EditForm({
               border: '0.5px solid rgba(255,255,255,0.06)',
             }}
           >
-            <p style={{ fontSize: 13, color: '#A1A1A1', lineHeight: 1.55 }}>{item.notes}</p>
+            <p style={{ fontSize: 13, color: 'var(--admin-fg-muted)', lineHeight: 1.55 }}>{item.notes}</p>
           </div>
         </div>
       )}
@@ -941,7 +941,7 @@ function EditForm({
                 }}
               >
                 <p style={{ fontSize: 12.5, color: '#FDE68A', lineHeight: 1.5 }}>{entry.text}</p>
-                <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: '#525252', marginTop: 4, letterSpacing: '0.05em' }}>
+                <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: 'var(--admin-fg-subtle)', marginTop: 4, letterSpacing: '0.05em' }}>
                   {format(new Date(entry.date), "d MMM yyyy, h:mma", { locale: es }).toUpperCase()}
                 </p>
               </div>
@@ -972,7 +972,7 @@ function EditForm({
           className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50"
           style={{
             background: '#FFFFFF',
-            color: '#000000',
+            color: 'var(--admin-bg-deep)',
             fontSize: 12,
             fontWeight: 600,
             letterSpacing: '-0.005em',

@@ -47,7 +47,7 @@ const LABEL_STYLE: React.CSSProperties = {
   fontSize: 9,
   fontWeight: 500,
   letterSpacing: '0.18em',
-  color: '#A1A1A1',
+  color: 'var(--admin-fg-muted)',
 }
 
 const BTN_PRIMARY =
@@ -217,7 +217,7 @@ export default function AdminComunidadPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-5 h-5 animate-spin" style={{ color: '#A1A1A1' }} />
+        <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--admin-fg-muted)' }} />
       </div>
     )
   }
@@ -265,9 +265,9 @@ export default function AdminComunidadPage() {
               <div
                 className="w-11 h-11 rounded-xl flex items-center justify-center"
                 style={{
-                  background: stats.zellePending > 0 ? 'rgba(250,204,21,0.15)' : 'rgba(255,255,255,0.06)',
+                  background: stats.zellePending > 0 ? 'rgba(250,204,21,0.15)' : 'var(--admin-accent-soft)',
                   border: stats.zellePending > 0 ? '0.5px solid rgba(250,204,21,0.3)' : '0.5px solid rgba(255,255,255,0.1)',
-                  color: stats.zellePending > 0 ? '#FACC15' : '#A1A1A1',
+                  color: stats.zellePending > 0 ? '#FACC15' : 'var(--admin-fg-muted)',
                 }}
               >
                 <DollarSign className="w-5 h-5" />
@@ -276,7 +276,7 @@ export default function AdminComunidadPage() {
                 <p style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
                   Pagos Zelle
                 </p>
-                <p style={{ fontSize: 12, color: '#A1A1A1', marginTop: 2 }}>
+                <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', marginTop: 2 }}>
                   {stats.zellePending > 0
                     ? `${stats.zellePending} comprobante${stats.zellePending > 1 ? 's' : ''} pendiente${stats.zellePending > 1 ? 's' : ''} de revisión`
                     : 'No hay pagos pendientes'}
@@ -288,7 +288,7 @@ export default function AdminComunidadPage() {
                 className="inline-flex items-center gap-1 px-3 py-1 rounded-full"
                 style={{
                   background: '#FACC15',
-                  color: '#000000',
+                  color: 'var(--admin-bg-deep)',
                   fontFamily: 'var(--font-mono-tech)',
                   fontSize: 11,
                   fontWeight: 700,
@@ -299,7 +299,7 @@ export default function AdminComunidadPage() {
                 {stats.zellePending} →
               </span>
             ) : (
-              <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, color: '#525252', letterSpacing: '0.15em' }}>
+              <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, color: 'var(--admin-fg-subtle)', letterSpacing: '0.15em' }}>
                 VER TODOS →
               </span>
             )}
@@ -349,7 +349,7 @@ export default function AdminComunidadPage() {
                   width: 40,
                   height: 22,
                   borderRadius: 11,
-                  background: day.is_available ? '#FACC15' : 'rgba(255,255,255,0.08)',
+                  background: day.is_available ? '#FACC15' : 'var(--admin-border)',
                   border: day.is_available ? '0.5px solid #FACC15' : '0.5px solid rgba(255,255,255,0.15)',
                   boxShadow: day.is_available ? '0 0 12px rgba(250,204,21,0.3)' : 'none',
                 }}
@@ -359,7 +359,7 @@ export default function AdminComunidadPage() {
                   style={{
                     width: 16,
                     height: 16,
-                    background: day.is_available ? '#000000' : '#A1A1A1',
+                    background: day.is_available ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
                     transform: `translateX(${day.is_available ? '20px' : '2px'})`,
                   }}
                 />
@@ -370,7 +370,7 @@ export default function AdminComunidadPage() {
                   width: 96,
                   fontSize: 13,
                   fontWeight: 600,
-                  color: day.is_available ? '#FFFFFF' : '#525252',
+                  color: day.is_available ? '#FFFFFF' : 'var(--admin-fg-subtle)',
                   letterSpacing: '-0.005em',
                 }}
               >
@@ -385,7 +385,7 @@ export default function AdminComunidadPage() {
                     onChange={(v) => updateDay(day.day_of_week, { start_hour: v })}
                     filter={(h) => h < day.end_hour}
                   />
-                  <span style={{ color: '#525252', fontSize: 12, fontFamily: 'var(--font-mono-tech)' }}>–</span>
+                  <span style={{ color: 'var(--admin-fg-subtle)', fontSize: 12, fontFamily: 'var(--font-mono-tech)' }}>–</span>
                   <HourSelect
                     value={day.end_hour}
                     onChange={(v) => updateDay(day.day_of_week, { end_hour: v })}
@@ -397,7 +397,7 @@ export default function AdminComunidadPage() {
                   style={{
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 10,
-                    color: '#525252',
+                    color: 'var(--admin-fg-subtle)',
                     letterSpacing: '0.1em',
                     flex: 1,
                   }}
@@ -420,7 +420,7 @@ export default function AdminComunidadPage() {
       {/* Create Post */}
       <Panel icon={<Plus className="w-4 h-4" />} title="Nueva Publicación" iconTone="yellow">
         <form onSubmit={handleCreatePost} className="space-y-3">
-          <div className="flex gap-1 p-1 rounded-full" style={{ background: 'rgba(255,255,255,0.04)', border: '0.5px solid rgba(255,255,255,0.08)', display: 'inline-flex' }}>
+          <div className="flex gap-1 p-1 rounded-full" style={{ background: 'var(--admin-accent-soft)', border: '0.5px solid rgba(255,255,255,0.08)', display: 'inline-flex' }}>
             {(['text', 'video', 'announcement'] as const).map(type => {
               const isActive = newPost.type === type
               return (
@@ -431,7 +431,7 @@ export default function AdminComunidadPage() {
                   className="px-3 py-1.5 rounded-full transition-all duration-300"
                   style={{
                     background: isActive ? '#FFFFFF' : 'transparent',
-                    color: isActive ? '#000000' : '#A1A1A1',
+                    color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
                     fontSize: 11.5,
                     fontWeight: isActive ? 700 : 500,
                     letterSpacing: '-0.005em',
@@ -461,7 +461,7 @@ export default function AdminComunidadPage() {
           />
           {newPost.type === 'video' && (
             <div className="flex items-center gap-2">
-              <Link2 className="w-3.5 h-3.5 shrink-0" style={{ color: '#A1A1A1' }} />
+              <Link2 className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--admin-fg-muted)' }} />
               <input
                 value={newPost.video_url}
                 onChange={(e) => setNewPost({ ...newPost, video_url: e.target.value })}
@@ -486,7 +486,7 @@ export default function AdminComunidadPage() {
             fontSize: 11,
             fontWeight: 700,
             letterSpacing: '0.2em',
-            color: '#A1A1A1',
+            color: 'var(--admin-fg-muted)',
           }}
         >
           PUBLICACIONES ({posts.length})
@@ -508,12 +508,12 @@ export default function AdminComunidadPage() {
                     <span
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
                       style={{
-                        background: 'rgba(255,255,255,0.06)',
+                        background: 'var(--admin-accent-soft)',
                         border: '0.5px solid rgba(255,255,255,0.12)',
                         fontFamily: 'var(--font-mono-tech)',
                         fontSize: 9,
                         fontWeight: 700,
-                        color: '#A1A1A1',
+                        color: 'var(--admin-fg-muted)',
                         letterSpacing: '0.1em',
                       }}
                     >
@@ -544,7 +544,7 @@ export default function AdminComunidadPage() {
                     </p>
                   )}
                   {post.content && (
-                    <p style={{ fontSize: 13, color: '#A1A1A1', marginTop: 4, lineHeight: 1.5 }} className="line-clamp-2">
+                    <p style={{ fontSize: 13, color: 'var(--admin-fg-muted)', marginTop: 4, lineHeight: 1.5 }} className="line-clamp-2">
                       {post.content}
                     </p>
                   )}
@@ -566,7 +566,7 @@ export default function AdminComunidadPage() {
                     style={{
                       fontFamily: 'var(--font-mono-tech)',
                       fontSize: 10,
-                      color: '#525252',
+                      color: 'var(--admin-fg-subtle)',
                       letterSpacing: '0.05em',
                     }}
                   >
@@ -578,7 +578,7 @@ export default function AdminComunidadPage() {
                     onClick={() => togglePin(post.id, post.pinned)}
                     title={post.pinned ? 'Desfijar' : 'Fijar'}
                     className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-white/10"
-                    style={{ color: post.pinned ? '#FACC15' : '#A1A1A1' }}
+                    style={{ color: post.pinned ? '#FACC15' : 'var(--admin-fg-muted)' }}
                   >
                     {post.pinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
                   </button>
@@ -601,7 +601,7 @@ export default function AdminComunidadPage() {
                 border: '0.5px solid rgba(255,255,255,0.08)',
               }}
             >
-              <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+              <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
                 NO HAY PUBLICACIONES AÚN
               </p>
             </div>
@@ -627,7 +627,7 @@ function Panel({
 }) {
   const tone = iconTone === 'yellow'
     ? { bg: 'rgba(250,204,21,0.12)', border: 'rgba(250,204,21,0.3)', color: '#FACC15' }
-    : { bg: 'rgba(255,255,255,0.06)', border: 'rgba(255,255,255,0.12)', color: '#FFFFFF' }
+    : { bg: 'var(--admin-accent-soft)', border: 'rgba(255,255,255,0.12)', color: '#FFFFFF' }
 
   return (
     <div
@@ -658,7 +658,7 @@ function Panel({
           <div>
             <h2 style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.018em', color: '#FFFFFF' }}>{title}</h2>
             {description && (
-              <p style={{ fontSize: 12, color: '#A1A1A1', marginTop: 3, lineHeight: 1.55 }}>{description}</p>
+              <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', marginTop: 3, lineHeight: 1.55 }}>{description}</p>
             )}
           </div>
         </div>
@@ -686,7 +686,7 @@ function StatCard({ icon, label, value, tone }: { icon?: React.ReactNode; label:
       }}
     >
       {icon && (
-        <div className="mb-2 inline-flex items-center justify-center w-8 h-8 rounded-lg" style={{ background: 'rgba(255,255,255,0.06)', border: '0.5px solid rgba(255,255,255,0.12)', color: '#FFFFFF' }}>
+        <div className="mb-2 inline-flex items-center justify-center w-8 h-8 rounded-lg" style={{ background: 'var(--admin-accent-soft)', border: '0.5px solid rgba(255,255,255,0.12)', color: '#FFFFFF' }}>
           {icon}
         </div>
       )}
@@ -700,7 +700,7 @@ function StatCard({ icon, label, value, tone }: { icon?: React.ReactNode; label:
           fontSize: 9,
           fontWeight: 500,
           letterSpacing: '0.18em',
-          color: '#525252',
+          color: 'var(--admin-fg-subtle)',
         }}
       >
         {label.toUpperCase()}
@@ -717,9 +717,9 @@ function HourSelect({ value, onChange, filter }: { value: number; onChange: (v: 
         onChange={(e) => onChange(Number(e.target.value))}
         className="appearance-none px-2.5 py-1 pr-6 rounded-lg outline-none cursor-pointer transition-colors focus:border-white/30"
         style={{
-          background: 'rgba(255,255,255,0.04)',
+          background: 'var(--admin-accent-soft)',
           border: '0.5px solid rgba(255,255,255,0.1)',
-          color: '#FAFAFA',
+          color: 'var(--admin-fg)',
           fontFamily: 'var(--font-mono-tech)',
           fontSize: 11,
           fontWeight: 700,
@@ -728,12 +728,12 @@ function HourSelect({ value, onChange, filter }: { value: number; onChange: (v: 
         }}
       >
         {HOURS.filter(filter).map(h => (
-          <option key={h} value={h} style={{ background: '#0A0A0A', color: '#FAFAFA' }}>
+          <option key={h} value={h} style={{ background: 'var(--admin-bg)', color: 'var(--admin-fg)' }}>
             {fmtHour(h)}
           </option>
         ))}
       </select>
-      <span aria-hidden className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#525252', fontSize: 9 }}>▾</span>
+      <span aria-hidden className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--admin-fg-subtle)', fontSize: 9 }}>▾</span>
     </div>
   )
 }

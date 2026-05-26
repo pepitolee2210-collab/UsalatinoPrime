@@ -68,7 +68,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
     <div className="space-y-4">
       {/* Search */}
       <div className="relative max-w-md">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: '#525252' }} />
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--admin-fg-subtle)' }} />
         <input
           type="text"
           placeholder="Buscar por nombre, email o teléfono…"
@@ -78,7 +78,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
           style={{
             background: 'rgba(255,255,255,0.03)',
             border: '0.5px solid rgba(255,255,255,0.1)',
-            color: '#FAFAFA',
+            color: 'var(--admin-fg)',
             fontSize: 13,
             letterSpacing: '-0.005em',
           }}
@@ -87,7 +87,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
           <button
             onClick={() => setSearchQuery('')}
             className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors hover:opacity-80"
-            style={{ color: '#A1A1A1' }}
+            style={{ color: 'var(--admin-fg-muted)' }}
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -118,7 +118,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
               {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12">
-                    <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+                    <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
                       {searchQuery.length >= 2 ? 'SIN RESULTADOS' : 'NO HAY CLIENTES REGISTRADOS'}
                     </p>
                   </td>
@@ -149,10 +149,10 @@ export function ClientsList({ initialClients }: ClientsListProps) {
                       </Link>
                     </Td>
                     <Td>
-                      <span style={{ fontSize: 12, color: '#A1A1A1' }}>{c.email}</span>
+                      <span style={{ fontSize: 12, color: 'var(--admin-fg-muted)' }}>{c.email}</span>
                     </Td>
                     <Td>
-                      <span style={{ fontSize: 12, color: '#A1A1A1', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em' }}>
+                      <span style={{ fontSize: 12, color: 'var(--admin-fg-muted)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em' }}>
                         {c.phone || '—'}
                       </span>
                     </Td>
@@ -161,7 +161,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
                         <span
                           className="inline-flex items-center justify-center"
                           style={{
-                            background: 'rgba(255,255,255,0.06)',
+                            background: 'var(--admin-accent-soft)',
                             border: '0.5px solid rgba(255,255,255,0.12)',
                             borderRadius: 6,
                             padding: '2px 8px',
@@ -174,11 +174,11 @@ export function ClientsList({ initialClients }: ClientsListProps) {
                           {c.case_count}
                         </span>
                       ) : (
-                        <span style={{ fontSize: 11, color: '#525252' }}>—</span>
+                        <span style={{ fontSize: 11, color: 'var(--admin-fg-subtle)' }}>—</span>
                       )}
                     </Td>
                     <Td>
-                      <span style={{ fontSize: 11, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+                      <span style={{ fontSize: 11, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
                         {format(new Date(c.created_at), 'd MMM yyyy', { locale: es }).toUpperCase()}
                       </span>
                     </Td>
@@ -187,7 +187,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
                         onClick={() => handleDelete(c)}
                         disabled={deletingId === c.id}
                         className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/10"
-                        style={{ color: deletingId === c.id ? '#525252' : '#FCA5A5' }}
+                        style={{ color: deletingId === c.id ? 'var(--admin-fg-subtle)' : '#FCA5A5' }}
                       >
                         {deletingId === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                       </button>
@@ -212,7 +212,7 @@ function Th({ children, className }: { children?: React.ReactNode; className?: s
         fontSize: 10,
         fontWeight: 500,
         letterSpacing: '0.18em',
-        color: '#525252',
+        color: 'var(--admin-fg-subtle)',
       }}
     >
       {typeof children === 'string' ? children.toUpperCase() : children}

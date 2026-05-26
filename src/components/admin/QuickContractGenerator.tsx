@@ -11,7 +11,7 @@ const DARK_INPUT_CLS =
 
 const DARK_INPUT_STYLE: React.CSSProperties = { colorScheme: 'dark' }
 
-const DARK_OPTION_STYLE: React.CSSProperties = { background: '#0A0A0A', color: '#FAFAFA' }
+const DARK_OPTION_STYLE: React.CSSProperties = { background: 'var(--admin-bg)', color: 'var(--admin-fg)' }
 
 const DARK_SELECT_CLS =
   'w-full px-3.5 py-2.5 pr-10 rounded-xl text-sm outline-none transition-colors focus:border-white/30 appearance-none cursor-pointer ' +
@@ -26,7 +26,7 @@ function DarkLabel({ children, className = '' }: { children: React.ReactNode; cl
         fontSize: 9,
         fontWeight: 500,
         letterSpacing: '0.18em',
-        color: '#A1A1A1',
+        color: 'var(--admin-fg-muted)',
         display: typeof className === 'string' && className.includes('flex') ? undefined : 'block',
       }}
     >
@@ -813,13 +813,13 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
           <FileText className="w-4 h-4" style={{ color: '#FFFFFF' }} />
         </div>
         <div>
-          <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: '#525252' }}>
+          <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg-subtle)' }}>
             GENERADOR · NUEVO
           </p>
           <h3 style={{ fontSize: 16, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.018em', marginTop: 2 }}>
             Generar Contrato Rápido
           </h3>
-          <p style={{ fontSize: 12, color: '#A1A1A1', marginTop: 3 }}>
+          <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', marginTop: 3 }}>
             Genera un contrato PDF sin necesidad de crear una cuenta de cliente.
           </p>
         </div>
@@ -1581,7 +1581,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                 className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
                 style={{
                   background: '#FFFFFF',
-                  color: '#000000',
+                  color: 'var(--admin-bg-deep)',
                   fontSize: 13,
                   fontWeight: 600,
                   letterSpacing: '-0.005em',
@@ -1599,9 +1599,9 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                 onClick={handleReset}
                 className="inline-flex items-center justify-center gap-1.5 px-5 py-3 rounded-full transition-all duration-200 hover:bg-white/[0.04]/10 active:scale-95"
                 style={{
-                  background: 'rgba(255,255,255,0.04)',
+                  background: 'var(--admin-accent-soft)',
                   border: '0.5px solid rgba(255,255,255,0.15)',
-                  color: '#FAFAFA',
+                  color: 'var(--admin-fg)',
                   fontSize: 13,
                   fontWeight: 600,
                   letterSpacing: '-0.005em',

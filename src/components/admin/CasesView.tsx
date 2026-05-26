@@ -101,7 +101,7 @@ export function CasesView({ cases }: CasesViewProps) {
       {/* Search + View toggle */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: '#525252' }} />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--admin-fg-subtle)' }} />
           <input
             type="text"
             value={search}
@@ -111,7 +111,7 @@ export function CasesView({ cases }: CasesViewProps) {
             style={{
               background: 'rgba(255,255,255,0.03)',
               border: '0.5px solid rgba(255,255,255,0.1)',
-              color: '#FAFAFA',
+              color: 'var(--admin-fg)',
               fontSize: 13,
               letterSpacing: '-0.005em',
             }}
@@ -120,7 +120,7 @@ export function CasesView({ cases }: CasesViewProps) {
             <button
               onClick={() => setSearch('')}
               className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors hover:opacity-80"
-              style={{ color: '#A1A1A1' }}
+              style={{ color: 'var(--admin-fg-muted)' }}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -129,7 +129,7 @@ export function CasesView({ cases }: CasesViewProps) {
         <div
           className="inline-flex items-center gap-1 p-1 rounded-xl shrink-0"
           style={{
-            background: 'rgba(255,255,255,0.04)',
+            background: 'var(--admin-accent-soft)',
             border: '0.5px solid rgba(255,255,255,0.08)',
           }}
         >
@@ -152,9 +152,9 @@ export function CasesView({ cases }: CasesViewProps) {
               onClick={() => setActiveService(isActive ? null : name)}
               className="group inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300"
               style={{
-                background: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.04)',
+                background: isActive ? '#FFFFFF' : 'var(--admin-accent-soft)',
                 border: isActive ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.1)',
-                color: isActive ? '#000000' : '#A1A1A1',
+                color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
                 fontSize: 12,
                 letterSpacing: '-0.005em',
                 boxShadow: isActive ? '0 0 16px rgba(255,255,255,0.18)' : 'none',
@@ -164,8 +164,8 @@ export function CasesView({ cases }: CasesViewProps) {
               <span
                 className="inline-flex items-center justify-center px-1.5 rounded-full"
                 style={{
-                  background: isActive ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.08)',
-                  color: isActive ? '#000000' : '#525252',
+                  background: isActive ? 'rgba(0,0,0,0.15)' : 'var(--admin-border)',
+                  color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-subtle)',
                   fontFamily: 'var(--font-mono-tech)',
                   fontSize: 10,
                   fontWeight: 700,
@@ -194,7 +194,7 @@ export function CasesView({ cases }: CasesViewProps) {
               style={{
                 background: isActive ? '#FFFFFF' : hasCase ? 'rgba(255,255,255,0.03)' : 'transparent',
                 border: isActive ? '0.5px solid #FFFFFF' : hasCase ? '0.5px solid rgba(255,255,255,0.08)' : '0.5px solid transparent',
-                color: isActive ? '#000000' : hasCase ? '#FAFAFA' : '#262626',
+                color: isActive ? 'var(--admin-bg-deep)' : hasCase ? 'var(--admin-fg)' : 'var(--admin-fg-faint)',
                 fontSize: 11,
                 fontWeight: 600,
                 cursor: hasCase || isActive ? 'pointer' : 'not-allowed',
@@ -212,7 +212,7 @@ export function CasesView({ cases }: CasesViewProps) {
       {/* Active filters summary */}
       {hasFilters && (
         <div className="flex items-center gap-2 flex-wrap">
-          <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, letterSpacing: '0.18em', color: '#525252' }}>
+          <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, letterSpacing: '0.18em', color: 'var(--admin-fg-subtle)' }}>
             {filteredCases.length} DE {cases.length} CASOS
           </span>
           {activeLetter && <FilterChip label={activeLetter} onRemove={() => setActiveLetter(null)} />}
@@ -247,7 +247,7 @@ function ToggleBtn({ active, onClick, icon, children }: { active: boolean; onCli
       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-300"
       style={{
         background: active ? '#FFFFFF' : 'transparent',
-        color: active ? '#000000' : '#A1A1A1',
+        color: active ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
         fontSize: 12,
         fontWeight: 600,
         letterSpacing: '-0.005em',
@@ -265,7 +265,7 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
     <span
       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
       style={{
-        background: 'rgba(255,255,255,0.06)',
+        background: 'var(--admin-accent-soft)',
         border: '0.5px solid rgba(255,255,255,0.12)',
         fontFamily: 'var(--font-mono-tech)',
         fontSize: 10,

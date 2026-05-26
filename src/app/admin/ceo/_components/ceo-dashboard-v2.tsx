@@ -587,7 +587,7 @@ function AttentionCard({
       className="group relative text-left rounded-2xl border p-7 lg:p-9 transition-all overflow-hidden disabled:cursor-default disabled:opacity-50 enabled:hover:bg-white/[0.025]"
       style={{
         background: 'rgba(255,255,255,0.012)',
-        borderColor: disabled ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.10)',
+        borderColor: disabled ? 'var(--admin-border)' : 'rgba(255,255,255,0.10)',
       }}
     >
       {/* Línea de acento arriba (cuando no disabled) */}
@@ -704,7 +704,7 @@ function ContractPipeline({
 
       {/* Cards numéricas — una por estado */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-px"
-        style={{ background: 'rgba(255,255,255,0.06)' }}>
+        style={{ background: 'var(--admin-accent-soft)' }}>
         {items.map((s) => {
           const color = colorFor(s.status)
           const pct = (s.count / totalCount) * 100

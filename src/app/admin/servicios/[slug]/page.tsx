@@ -61,9 +61,9 @@ export default async function ServicioDetallePage({ params }: PageProps) {
     <div
       className={`${interTight.variable} ${mono.variable} ${cormorant.variable} ${manrope.variable} -m-6 min-h-[calc(100vh-3rem)] relative overflow-hidden`}
       style={{
-        background: '#000000',
+        background: 'var(--admin-bg-deep)',
         fontFamily: 'var(--font-tight), -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
-        color: '#FAFAFA',
+        color: 'var(--admin-fg)',
       }}
     >
       {/* Monochrome aurora */}
@@ -114,7 +114,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
             fontSize: 11,
             fontWeight: 500,
             letterSpacing: '0.18em',
-            color: '#A1A1A1',
+            color: 'var(--admin-fg-muted)',
           }}
         >
           <span style={{ color: '#FFFFFF' }}>←</span>
@@ -126,7 +126,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
           <div
             className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full"
             style={{
-              background: 'rgba(255,255,255,0.05)',
+              background: 'var(--admin-accent-soft)',
               border: '0.5px solid rgba(255,255,255,0.15)',
               animation: 'tech-rise 0.8s cubic-bezier(0.16, 1, 0.3, 1) both',
             }}
@@ -147,7 +147,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                 fontSize: 11,
                 fontWeight: 500,
                 letterSpacing: '0.18em',
-                color: '#FAFAFA',
+                color: 'var(--admin-fg)',
               }}
             >
               EXPEDIENTE · {info.codename}
@@ -192,7 +192,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
               fontSize: 'clamp(16px, 1.3vw, 19px)',
               fontWeight: 400,
               lineHeight: 1.5,
-              color: '#A1A1A1',
+              color: 'var(--admin-fg-muted)',
               letterSpacing: '-0.012em',
               animation: 'tech-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both',
             }}
@@ -221,7 +221,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                   fontSize: 11,
                   fontWeight: 500,
                   letterSpacing: '0.2em',
-                  color: '#525252',
+                  color: 'var(--admin-fg-subtle)',
                 }}
               >
                 EN CONSTRUCCIÓN
@@ -311,7 +311,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                       fontSize: 11,
                       fontWeight: 500,
                       letterSpacing: '0.2em',
-                      color: '#525252',
+                      color: 'var(--admin-fg-subtle)',
                     }}
                   >
                     {(idx + 1).toString().padStart(2, '0')}/{realPhases.length.toString().padStart(2, '0')}
@@ -325,7 +325,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                       fontSize: 10,
                       fontWeight: 500,
                       letterSpacing: '0.2em',
-                      color: '#A1A1A1',
+                      color: 'var(--admin-fg-muted)',
                       marginBottom: 6,
                     }}
                   >
@@ -347,7 +347,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                     style={{
                       fontSize: 15,
                       lineHeight: 1.55,
-                      color: '#A1A1A1',
+                      color: 'var(--admin-fg-muted)',
                       letterSpacing: '-0.005em',
                       maxWidth: '60ch',
                     }}

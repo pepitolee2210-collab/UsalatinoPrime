@@ -8,15 +8,15 @@ export default function AdminLoading() {
       <div className="space-y-3">
         <div
           className="h-3 w-32 rounded"
-          style={{ background: 'rgba(255,255,255,0.06)' }}
+          style={{ background: 'var(--admin-accent-soft)' }}
         />
         <div
           className="h-9 w-72 rounded"
-          style={{ background: 'rgba(255,255,255,0.08)' }}
+          style={{ background: 'var(--admin-border)' }}
         />
         <div
           className="h-3 w-96 rounded"
-          style={{ background: 'rgba(255,255,255,0.05)' }}
+          style={{ background: 'var(--admin-accent-soft)' }}
         />
       </div>
 
@@ -27,7 +27,7 @@ export default function AdminLoading() {
             key={i}
             className="h-32 rounded-xl"
             style={{
-              background: 'rgba(255,255,255,0.04)',
+              background: 'var(--admin-accent-soft)',
               border: '1px solid rgba(255,255,255,0.06)',
             }}
           />

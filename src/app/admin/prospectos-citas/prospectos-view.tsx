@@ -141,7 +141,7 @@ export function ProspectosView({ mode, hideHeader }: Props) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <Loader2 className="w-5 h-5 animate-spin" style={{ color: '#A1A1A1' }} />
+        <Loader2 className="w-5 h-5 animate-spin" style={{ color: 'var(--admin-fg-muted)' }} />
       </div>
     )
   }
@@ -161,7 +161,7 @@ export function ProspectosView({ mode, hideHeader }: Props) {
                 <Bot className="w-6 h-6" style={{ color: '#FFFFFF' }} />
                 {title}
               </h1>
-              <p style={{ fontSize: 13, color: '#A1A1A1' }}>{subtitle}</p>
+              <p style={{ fontSize: 13, color: 'var(--admin-fg-muted)' }}>{subtitle}</p>
             </div>
             <div className="flex items-center gap-2">
               {mode === 'admin' && (
@@ -198,7 +198,7 @@ export function ProspectosView({ mode, hideHeader }: Props) {
         <div
           className="inline-flex items-center gap-1 p-1 rounded-full flex-wrap"
           style={{
-            background: 'rgba(255,255,255,0.04)',
+            background: 'var(--admin-accent-soft)',
             border: '0.5px solid rgba(255,255,255,0.08)',
           }}
         >
@@ -218,7 +218,7 @@ export function ProspectosView({ mode, hideHeader }: Props) {
                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition-all duration-300"
                 style={{
                   background: isActive ? '#FFFFFF' : 'transparent',
-                  color: isActive ? '#000000' : '#A1A1A1',
+                  color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
                   fontSize: 12,
                   fontWeight: isActive ? 700 : 500,
                   letterSpacing: '-0.005em',
@@ -230,8 +230,8 @@ export function ProspectosView({ mode, hideHeader }: Props) {
                   <span
                     className="inline-flex items-center justify-center"
                     style={{
-                      background: isActive ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.1)',
-                      color: isActive ? '#000000' : '#FFFFFF',
+                      background: isActive ? 'rgba(0,0,0,0.12)' : 'var(--admin-border-strong)',
+                      color: isActive ? 'var(--admin-bg-deep)' : '#FFFFFF',
                       fontFamily: 'var(--font-mono-tech)',
                       fontSize: 10,
                       fontWeight: 700,
@@ -262,13 +262,13 @@ export function ProspectosView({ mode, hideHeader }: Props) {
               <div
                 className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3"
                 style={{
-                  background: 'rgba(255,255,255,0.04)',
+                  background: 'var(--admin-accent-soft)',
                   border: '0.5px solid rgba(255,255,255,0.1)',
                 }}
               >
-                <Bot className="w-7 h-7" style={{ color: '#525252' }} />
+                <Bot className="w-7 h-7" style={{ color: 'var(--admin-fg-subtle)' }} />
               </div>
-              <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+              <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
                 SIN PROSPECTOS EN ESTA CATEGORÍA
               </p>
             </div>
@@ -349,12 +349,12 @@ export function ProspectosView({ mode, hideHeader }: Props) {
                       )}
                       <span
                         className="inline-flex items-center gap-1.5"
-                        style={{ color: '#A1A1A1', fontSize: 12, fontWeight: 500 }}
+                        style={{ color: 'var(--admin-fg-muted)', fontSize: 12, fontWeight: 500 }}
                       >
                         <CalendarCheck className="w-3.5 h-3.5" />
                         {format(scheduled, "EEEE d 'de' MMM · HH:mm", { locale: es })}
                       </span>
-                      <span style={{ color: '#525252', fontSize: 11, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+                      <span style={{ color: 'var(--admin-fg-subtle)', fontSize: 11, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
                         REG. {formatDistanceToNow(new Date(p.created_at), { locale: es, addSuffix: true }).toUpperCase()}
                       </span>
                     </div>
@@ -367,10 +367,10 @@ export function ProspectosView({ mode, hideHeader }: Props) {
                           border: '0.5px solid rgba(255,255,255,0.06)',
                         }}
                       >
-                        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.2em', color: '#525252', marginBottom: 4 }}>
+                        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg-subtle)', marginBottom: 4 }}>
                           NOTAS DE LA IA
                         </p>
-                        <p style={{ fontSize: 12.5, color: '#A1A1A1', lineHeight: 1.5 }}>{p.notes}</p>
+                        <p style={{ fontSize: 12.5, color: 'var(--admin-fg-muted)', lineHeight: 1.5 }}>{p.notes}</p>
                       </div>
                     )}
 
@@ -472,7 +472,7 @@ const TONE_MAP: Record<StatTone, { icon: string; ring: string; bg: string }> = {
   warning: { icon: '#FACC15', ring: 'rgba(250,204,21,0.3)', bg: 'rgba(250,204,21,0.10)' },
   danger:  { icon: '#F87171', ring: 'rgba(248,113,113,0.3)', bg: 'rgba(248,113,113,0.10)' },
   info:    { icon: '#60A5FA', ring: 'rgba(96,165,250,0.3)', bg: 'rgba(96,165,250,0.10)' },
-  white:   { icon: '#FFFFFF', ring: 'rgba(255,255,255,0.18)', bg: 'rgba(255,255,255,0.06)' },
+  white:   { icon: '#FFFFFF', ring: 'rgba(255,255,255,0.18)', bg: 'var(--admin-accent-soft)' },
 }
 
 function StatCard({
@@ -516,7 +516,7 @@ function StatCard({
             />
           )}
         </span>
-        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#525252' }}>
+        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-subtle)' }}>
           {label.toUpperCase()}
         </p>
       </div>
@@ -524,7 +524,7 @@ function StatCard({
         {value}
       </p>
       {hint && (
-        <p style={{ fontSize: 10, color: '#525252', marginTop: 2, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+        <p style={{ fontSize: 10, color: 'var(--admin-fg-subtle)', marginTop: 2, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
           {hint.toUpperCase()}
         </p>
       )}
@@ -535,12 +535,12 @@ function StatCard({
 type ProsBadgeKind = 'ai' | 'success' | 'warning' | 'danger' | 'info' | 'neutral'
 
 const PROS_BADGE_STYLES: Record<ProsBadgeKind, { bg: string; border: string; text: string; dot: string }> = {
-  ai:      { bg: 'rgba(255,255,255,0.06)',  border: 'rgba(255,255,255,0.18)', text: '#FFFFFF', dot: '#FFFFFF' },
+  ai:      { bg: 'var(--admin-accent-soft)',  border: 'rgba(255,255,255,0.18)', text: '#FFFFFF', dot: '#FFFFFF' },
   success: { bg: 'rgba(34,197,94,0.10)',    border: 'rgba(34,197,94,0.3)',    text: '#86EFAC', dot: '#4ADE80' },
   warning: { bg: 'rgba(250,204,21,0.10)',   border: 'rgba(250,204,21,0.3)',   text: '#FDE68A', dot: '#FACC15' },
   danger:  { bg: 'rgba(248,113,113,0.10)',  border: 'rgba(248,113,113,0.3)',  text: '#FCA5A5', dot: '#F87171' },
   info:    { bg: 'rgba(96,165,250,0.10)',   border: 'rgba(96,165,250,0.3)',   text: '#93C5FD', dot: '#60A5FA' },
-  neutral: { bg: 'rgba(255,255,255,0.04)',  border: 'rgba(255,255,255,0.1)',  text: '#A1A1A1', dot: '#A1A1A1' },
+  neutral: { bg: 'var(--admin-accent-soft)',  border: 'var(--admin-border-strong)',  text: 'var(--admin-fg-muted)', dot: 'var(--admin-fg-muted)' },
 }
 
 function ProsBadge({ kind, label, icon, pulse }: { kind: ProsBadgeKind; label: string; icon?: React.ReactNode; pulse?: boolean }) {

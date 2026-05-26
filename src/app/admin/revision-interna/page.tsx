@@ -176,8 +176,8 @@ export default function RevisionInternaAdminPage() {
         onClick={() => setTab('all')}
         className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition-all duration-200"
         style={{
-          background: tab === 'all' ? '#FFFFFF' : 'rgba(255,255,255,0.04)',
-          color: tab === 'all' ? '#000000' : '#A1A1A1',
+          background: tab === 'all' ? '#FFFFFF' : 'var(--admin-accent-soft)',
+          color: tab === 'all' ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
           border: tab === 'all' ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.1)',
           fontSize: 11.5,
           fontWeight: tab === 'all' ? 700 : 500,
@@ -197,7 +197,7 @@ export default function RevisionInternaAdminPage() {
             border: '0.5px solid rgba(255,255,255,0.08)',
           }}
         >
-          <Loader2 className="w-5 h-5 animate-spin mx-auto" style={{ color: '#A1A1A1' }} />
+          <Loader2 className="w-5 h-5 animate-spin mx-auto" style={{ color: 'var(--admin-fg-muted)' }} />
         </div>
       ) : groupedByClient.length === 0 ? (
         <div
@@ -207,8 +207,8 @@ export default function RevisionInternaAdminPage() {
             border: '0.5px solid rgba(255,255,255,0.08)',
           }}
         >
-          <Sparkles className="w-10 h-10 mx-auto mb-2" style={{ color: '#525252' }} />
-          <p style={{ fontSize: 13, color: '#525252', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
+          <Sparkles className="w-10 h-10 mx-auto mb-2" style={{ color: 'var(--admin-fg-subtle)' }} />
+          <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
             {tab === 'pending_review' && 'SIN DOCUMENTOS PARA REVISAR'}
             {tab === 'approved' && 'SIN DOCUMENTOS APROBADOS PENDIENTES'}
             {tab === 'rejected' && 'SIN DOCUMENTOS RECHAZADOS'}
@@ -236,7 +236,7 @@ export default function RevisionInternaAdminPage() {
                 <span
                   className="inline-flex items-center px-2 py-0.5 rounded-full"
                   style={{
-                    background: 'rgba(255,255,255,0.06)',
+                    background: 'var(--admin-accent-soft)',
                     border: '0.5px solid rgba(255,255,255,0.12)',
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 10,
@@ -254,7 +254,7 @@ export default function RevisionInternaAdminPage() {
                     fontSize: 10,
                     fontWeight: 500,
                     letterSpacing: '0.15em',
-                    color: '#525252',
+                    color: 'var(--admin-fg-subtle)',
                   }}
                 >
                   {g.docs.length} DOC{g.docs.length !== 1 ? 'S' : ''}
@@ -307,7 +307,7 @@ export default function RevisionInternaAdminPage() {
                 Rechazar documento
               </h3>
             </div>
-            <p style={{ fontSize: 12.5, color: '#A1A1A1', lineHeight: 1.55 }}>
+            <p style={{ fontSize: 12.5, color: 'var(--admin-fg-muted)', lineHeight: 1.55 }}>
               Diana verá el motivo y podrá subir una versión corregida.
             </p>
             <textarea
@@ -318,9 +318,9 @@ export default function RevisionInternaAdminPage() {
               autoFocus
               className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 resize-y"
               style={{
-                background: 'rgba(255,255,255,0.04)',
+                background: 'var(--admin-accent-soft)',
                 border: '0.5px solid rgba(255,255,255,0.1)',
-                color: '#FAFAFA',
+                color: 'var(--admin-fg)',
                 fontSize: 13,
                 letterSpacing: '-0.005em',
                 minHeight: 100,
@@ -391,7 +391,7 @@ function StatCard({
         >
           {icon}
         </span>
-        <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#525252' }}>
+        <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-subtle)' }}>
           {label.toUpperCase()}
         </span>
       </div>
@@ -399,7 +399,7 @@ function StatCard({
         {value}
       </p>
       {hint && (
-        <p style={{ fontSize: 10, color: '#525252', marginTop: 2, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+        <p style={{ fontSize: 10, color: 'var(--admin-fg-subtle)', marginTop: 2, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
           {hint.toUpperCase()}
         </p>
       )}
@@ -462,13 +462,13 @@ function DocRow({
             {doc.version > 1 && (
               <span
                 style={{
-                  background: 'rgba(255,255,255,0.06)',
+                  background: 'var(--admin-accent-soft)',
                   border: '0.5px solid rgba(255,255,255,0.12)',
                   fontFamily: 'var(--font-mono-tech)',
                   fontSize: 9,
                   fontWeight: 700,
                   letterSpacing: '0.1em',
-                  color: '#A1A1A1',
+                  color: 'var(--admin-fg-muted)',
                   padding: '2px 6px',
                   borderRadius: 4,
                 }}
@@ -477,9 +477,9 @@ function DocRow({
               </span>
             )}
           </div>
-          <p style={{ fontSize: 11, color: '#A1A1A1' }}>
+          <p style={{ fontSize: 11, color: 'var(--admin-fg-muted)' }}>
             {INTERNAL_CATEGORY_LABELS[doc.category] || doc.category} · {uploaderName}
-            <span style={{ color: '#525252', fontFamily: 'var(--font-mono-tech)', fontSize: 10, marginLeft: 6, letterSpacing: '0.05em' }}>
+            <span style={{ color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', fontSize: 10, marginLeft: 6, letterSpacing: '0.05em' }}>
               · {formatDistanceToNow(new Date(doc.created_at), { locale: es, addSuffix: true }).toUpperCase()}
             </span>
           </p>
@@ -559,7 +559,7 @@ function PreviewModal({ doc, url, onClose }: { doc: DocumentRow; url: string | n
         style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}
       >
         <div className="flex items-center gap-2.5 flex-1 min-w-0 mr-4">
-          <FileText className="w-4 h-4 shrink-0" style={{ color: '#A1A1A1' }} />
+          <FileText className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-fg-muted)' }} />
           <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }} className="truncate">
             {doc.file_name}
           </p>
@@ -567,7 +567,7 @@ function PreviewModal({ doc, url, onClose }: { doc: DocumentRow; url: string | n
         <button
           onClick={onClose}
           className="w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-white/10"
-          style={{ background: 'rgba(255,255,255,0.06)', color: '#FFFFFF', border: '0.5px solid rgba(255,255,255,0.1)' }}
+          style={{ background: 'var(--admin-accent-soft)', color: '#FFFFFF', border: '0.5px solid rgba(255,255,255,0.1)' }}
         >
           ×
         </button>
@@ -576,7 +576,7 @@ function PreviewModal({ doc, url, onClose }: { doc: DocumentRow; url: string | n
         {url ? (
           <iframe src={url} className="w-full h-full rounded-xl bg-white" title={doc.file_name} />
         ) : (
-          <div className="text-center" style={{ color: '#A1A1A1' }}>
+          <div className="text-center" style={{ color: 'var(--admin-fg-muted)' }}>
             <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
             <p style={{ fontSize: 12, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
               CARGANDO PREVIEW…

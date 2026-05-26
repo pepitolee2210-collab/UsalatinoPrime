@@ -319,8 +319,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       onClick={() => setMobileOpen(false)}
                       className={`group relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 ${!isCollapsed ? 'nav-item-stagger' : ''}`}
                       style={{
-                        background: isActive ? 'rgba(255,255,255,0.08)' : 'transparent',
-                        color: isActive ? '#FFFFFF' : '#A1A1A1',
+                        background: isActive ? 'var(--admin-border)' : 'transparent',
+                        color: isActive ? '#FFFFFF' : 'var(--admin-fg-muted)',
                         animationDelay: !isCollapsed ? `${itemIdx * 0.045}s` : '0s',
                       }}
                     >
@@ -355,7 +355,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             padding: '2px 5px',
                             borderRadius: 3,
                             background: '#FFFFFF',
-                            color: '#000000',
+                            color: 'var(--admin-bg-deep)',
                           }}
                         >
                           NEW
@@ -373,7 +373,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             padding: '0 5px',
                             borderRadius: 9,
                             background: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.12)',
-                            color: isActive ? '#000000' : '#FFFFFF',
+                            color: isActive ? 'var(--admin-bg-deep)' : '#FFFFFF',
                             border: isActive ? 'none' : '0.5px solid rgba(255,255,255,0.15)',
                           }}
                         >
@@ -512,17 +512,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <SheetTrigger asChild>
             <button
               className="inline-flex items-center justify-center w-9 h-9 rounded-lg transition-colors hover:bg-white/5"
-              style={{ color: '#FAFAFA', border: '0.5px solid rgba(255,255,255,0.1)' }}
+              style={{ color: 'var(--admin-fg)', border: '0.5px solid rgba(255,255,255,0.1)' }}
             >
               <Menu className="w-4 h-4" />
             </button>
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-[260px] border-r-0 border-l-0" style={{ background: '#000000' }}>
+          <SheetContent side="left" className="p-0 w-[260px] border-r-0 border-l-0" style={{ background: 'var(--admin-bg-deep)' }}>
             {navContent}
           </SheetContent>
         </Sheet>
         <h1 style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.02em', color: '#FFFFFF' }}>
-          UsaLatinoPrime <span style={{ color: '#525252' }}>· Admin</span>
+          UsaLatinoPrime <span style={{ color: 'var(--admin-fg-subtle)' }}>· Admin</span>
         </h1>
 
         {/* Mobile chromatic bottom edge — versión horizontal del iridescent del sidebar */}
@@ -780,7 +780,7 @@ function ChromaticEdge() {
           bottom: 0,
           right: 0,
           width: 1,
-          background: 'rgba(255,255,255,0.08)',
+          background: 'var(--admin-border)',
         }}
       />
 

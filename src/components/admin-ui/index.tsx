@@ -60,7 +60,7 @@ export function PageHeader({ eyebrow, title, accentDot, description, action, tel
                   fontSize: 10,
                   fontWeight: 500,
                   letterSpacing: '0.2em',
-                  color: '#A1A1A1',
+                  color: 'var(--admin-fg-muted)',
                 }}
               >
                 {eyebrow.toUpperCase()}
@@ -100,7 +100,7 @@ export function PageHeader({ eyebrow, title, accentDot, description, action, tel
             )}
           </h1>
           {description && (
-            <p style={{ fontSize: 16, color: '#A1A1A1', maxWidth: '52ch', lineHeight: 1.5, letterSpacing: '-0.01em' }}>
+            <p style={{ fontSize: 16, color: 'var(--admin-fg-muted)', maxWidth: '52ch', lineHeight: 1.5, letterSpacing: '-0.01em' }}>
               {description}
             </p>
           )}
@@ -115,13 +115,13 @@ export function PageHeader({ eyebrow, title, accentDot, description, action, tel
               key={t.label}
               className="inline-flex items-baseline gap-2 px-3 py-1.5 rounded-full"
               style={{
-                background: 'rgba(255,255,255,0.04)',
+                background: 'var(--admin-accent-soft)',
                 border: '0.5px solid rgba(255,255,255,0.08)',
                 fontFamily: 'var(--font-mono-tech)',
                 fontSize: 11,
               }}
             >
-              <span style={{ color: '#525252', letterSpacing: '0.15em' }}>{t.label.toUpperCase()}</span>
+              <span style={{ color: 'var(--admin-fg-subtle)', letterSpacing: '0.15em' }}>{t.label.toUpperCase()}</span>
               <span style={{ color: '#FFFFFF', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{t.value}</span>
             </div>
           ))}
@@ -146,11 +146,11 @@ export function PrimaryButton({ children, href, onClick, icon, variant = 'solid'
   const styles: React.CSSProperties = variant === 'solid'
     ? {
         background: '#FFFFFF',
-        color: '#000000',
+        color: 'var(--admin-bg-deep)',
         boxShadow: '0 4px 24px rgba(255,255,255,0.18), 0 0 0 0.5px rgba(255,255,255,0.4) inset',
       }
     : {
-        background: 'rgba(255,255,255,0.06)',
+        background: 'var(--admin-accent-soft)',
         color: '#FFFFFF',
         border: '0.5px solid rgba(255,255,255,0.15)',
       }
@@ -246,7 +246,7 @@ export function StatTile({ label, value, hint, icon, warning }: StatTileProps) {
           <div
             className="inline-flex w-8 h-8 rounded-lg items-center justify-center mb-3"
             style={{
-              background: warning ? 'rgba(248,113,113,0.12)' : 'rgba(255,255,255,0.06)',
+              background: warning ? 'rgba(248,113,113,0.12)' : 'var(--admin-accent-soft)',
               border: warning ? '0.5px solid rgba(248,113,113,0.3)' : '0.5px solid rgba(255,255,255,0.12)',
               color: warning ? '#FCA5A5' : '#FFFFFF',
             }}
@@ -254,14 +254,14 @@ export function StatTile({ label, value, hint, icon, warning }: StatTileProps) {
             {icon}
           </div>
         )}
-        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: '#525252' }}>
+        <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-subtle)' }}>
           {label.toUpperCase()}
         </p>
         <p style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.025em', color: warning ? '#FCA5A5' : '#FFFFFF', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
           {value}
         </p>
         {hint && (
-          <p style={{ fontSize: 11, color: '#A1A1A1', marginTop: 3, letterSpacing: '-0.005em' }}>
+          <p style={{ fontSize: 11, color: 'var(--admin-fg-muted)', marginTop: 3, letterSpacing: '-0.005em' }}>
             {hint}
           </p>
         )}
@@ -278,10 +278,10 @@ type StatusKind = 'active' | 'pending' | 'completed' | 'paused' | 'warning' | 'n
 const STATUS_COLORS: Record<StatusKind, { bg: string; border: string; dot: string; text: string }> = {
   active:    { bg: 'rgba(34,197,94,0.10)',  border: 'rgba(34,197,94,0.3)',  dot: '#4ADE80', text: '#86EFAC' },
   pending:   { bg: 'rgba(250,204,21,0.10)', border: 'rgba(250,204,21,0.3)', dot: '#FACC15', text: '#FDE68A' },
-  completed: { bg: 'rgba(255,255,255,0.08)', border: 'rgba(255,255,255,0.18)', dot: '#FFFFFF', text: '#FFFFFF' },
+  completed: { bg: 'var(--admin-border)', border: 'rgba(255,255,255,0.18)', dot: '#FFFFFF', text: '#FFFFFF' },
   paused:    { bg: 'rgba(148,163,184,0.10)', border: 'rgba(148,163,184,0.3)', dot: '#94A3B8', text: '#CBD5E1' },
   warning:   { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', dot: '#F87171', text: '#FCA5A5' },
-  neutral:   { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)', dot: '#A1A1A1', text: '#A1A1A1' },
+  neutral:   { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-fg-muted)', text: 'var(--admin-fg-muted)' },
 }
 
 export function StatusPill({ kind, label, pulse }: { kind: StatusKind; label: string; pulse?: boolean }) {
@@ -336,14 +336,14 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
           border: '0.5px solid rgba(255,255,255,0.12)',
         }}
       >
-        <span className="material-symbols-outlined" style={{ fontSize: 32, color: '#A1A1A1' }}>
+        <span className="material-symbols-outlined" style={{ fontSize: 32, color: 'var(--admin-fg-muted)' }}>
           {icon}
         </span>
       </div>
       <div className="space-y-1.5">
         <p style={{ fontSize: 20, fontWeight: 600, letterSpacing: '-0.018em', color: '#FFFFFF' }}>{title}</p>
         {description && (
-          <p style={{ fontSize: 14, color: '#A1A1A1', maxWidth: '44ch', lineHeight: 1.5 }}>{description}</p>
+          <p style={{ fontSize: 14, color: 'var(--admin-fg-muted)', maxWidth: '44ch', lineHeight: 1.5 }}>{description}</p>
         )}
       </div>
       {action}
@@ -365,7 +365,7 @@ export function SectionDivider({ label }: { label?: string }) {
             fontSize: 9,
             fontWeight: 500,
             letterSpacing: '0.25em',
-            color: '#525252',
+            color: 'var(--admin-fg-subtle)',
           }}
         >
           {label.toUpperCase()}

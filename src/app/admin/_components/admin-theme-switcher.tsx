@@ -16,7 +16,7 @@ const THEMES: Array<{
   icon: string
   color: string
 }> = [
-  { id: 'dark', label: 'Oscuro', icon: 'dark_mode', color: '#FAFAFA' },
+  { id: 'dark', label: 'Oscuro', icon: 'dark_mode', color: 'var(--admin-fg)' },
   { id: 'institutional', label: 'Institucional', icon: 'account_balance', color: '#F2B234' },
   { id: 'light', label: 'Claro', icon: 'light_mode', color: '#1E4EA8' },
 ]
@@ -62,7 +62,7 @@ export function AdminThemeSwitcher() {
                 color: isActive
                   ? t.id === 'light'
                     ? '#FFFFFF'
-                    : '#0A0A0A'
+                    : 'var(--admin-bg)'
                   : 'var(--admin-fg-muted, #A1A1A1)',
                 fontVariationSettings: "'FILL' " + (isActive ? '1' : '0') + ", 'wght' 500",
               }}

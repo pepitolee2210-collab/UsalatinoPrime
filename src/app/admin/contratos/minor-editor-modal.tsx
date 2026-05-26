@@ -27,7 +27,7 @@ const LABEL_STYLE: React.CSSProperties = {
   fontSize: 9,
   fontWeight: 500,
   letterSpacing: '0.18em',
-  color: '#A1A1A1',
+  color: 'var(--admin-fg-muted)',
 }
 
 export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props) {
@@ -111,7 +111,7 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
                 fontSize: 10,
                 fontWeight: 500,
                 letterSpacing: '0.2em',
-                color: '#525252',
+                color: 'var(--admin-fg-subtle)',
               }}
             >
               EDICIÓN · CORRECCIONES
@@ -119,7 +119,7 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
             <h2 style={{ fontSize: 18, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.018em', marginTop: 2 }}>
               Editar menores del contrato
             </h2>
-            <p style={{ fontSize: 12, color: '#A1A1A1', marginTop: 4, lineHeight: 1.5 }}>
+            <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', marginTop: 4, lineHeight: 1.5 }}>
               Solo correcciones de campos existentes. Para agregar un hijo, crear contrato nuevo.
             </p>
           </div>
@@ -128,9 +128,9 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
             aria-label="Cerrar"
             className="w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-white/10"
             style={{
-              background: 'rgba(255,255,255,0.04)',
+              background: 'var(--admin-accent-soft)',
               border: '0.5px solid rgba(255,255,255,0.1)',
-              color: '#A1A1A1',
+              color: 'var(--admin-fg-muted)',
             }}
           >
             <X className="w-4 h-4" />
@@ -222,7 +222,7 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50"
                   style={{
                     background: '#FFFFFF',
-                    color: '#000000',
+                    color: 'var(--admin-bg-deep)',
                     fontSize: 12,
                     fontWeight: 600,
                     letterSpacing: '-0.005em',
