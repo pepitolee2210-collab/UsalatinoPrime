@@ -255,7 +255,7 @@ export default function AdminComunidadPage() {
               : 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
             border: stats.zellePending > 0
               ? '0.5px solid rgba(250,204,21,0.3)'
-              : '0.5px solid rgba(255,255,255,0.1)',
+              : '0.5px solid var(--admin-border-strong)',
             backdropFilter: 'blur(20px)',
             boxShadow: stats.zellePending > 0 ? '0 0 24px rgba(250,204,21,0.15)' : 'none',
           }}
@@ -266,7 +266,7 @@ export default function AdminComunidadPage() {
                 className="w-11 h-11 rounded-xl flex items-center justify-center"
                 style={{
                   background: stats.zellePending > 0 ? 'rgba(250,204,21,0.15)' : 'var(--admin-accent-soft)',
-                  border: stats.zellePending > 0 ? '0.5px solid rgba(250,204,21,0.3)' : '0.5px solid rgba(255,255,255,0.1)',
+                  border: stats.zellePending > 0 ? '0.5px solid rgba(250,204,21,0.3)' : '0.5px solid var(--admin-border-strong)',
                   color: stats.zellePending > 0 ? '#FACC15' : 'var(--admin-fg-muted)',
                 }}
               >
@@ -338,7 +338,7 @@ export default function AdminComunidadPage() {
               className="flex items-center gap-3 px-4 py-3 rounded-xl"
               style={{
                 background: day.is_available ? 'rgba(250,204,21,0.06)' : 'rgba(255,255,255,0.025)',
-                border: day.is_available ? '0.5px solid rgba(250,204,21,0.25)' : '0.5px solid rgba(255,255,255,0.08)',
+                border: day.is_available ? '0.5px solid rgba(250,204,21,0.25)' : '0.5px solid var(--admin-border)',
               }}
             >
               <button
@@ -420,7 +420,7 @@ export default function AdminComunidadPage() {
       {/* Create Post */}
       <Panel icon={<Plus className="w-4 h-4" />} title="Nueva Publicación" iconTone="yellow">
         <form onSubmit={handleCreatePost} className="space-y-3">
-          <div className="flex gap-1 p-1 rounded-full" style={{ background: 'var(--admin-accent-soft)', border: '0.5px solid rgba(255,255,255,0.08)', display: 'inline-flex' }}>
+          <div className="flex gap-1 p-1 rounded-full" style={{ background: 'var(--admin-accent-soft)', border: '0.5px solid var(--admin-border)', display: 'inline-flex' }}>
             {(['text', 'video', 'announcement'] as const).map(type => {
               const isActive = newPost.type === type
               return (
@@ -498,7 +498,7 @@ export default function AdminComunidadPage() {
               className="rounded-2xl p-4"
               style={{
                 background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-                border: post.pinned ? '0.5px solid rgba(250,204,21,0.3)' : '0.5px solid rgba(255,255,255,0.1)',
+                border: post.pinned ? '0.5px solid rgba(250,204,21,0.3)' : '0.5px solid var(--admin-border-strong)',
                 backdropFilter: 'blur(20px)',
               }}
             >
@@ -598,7 +598,7 @@ export default function AdminComunidadPage() {
               className="rounded-2xl py-16 text-center"
               style={{
                 background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
-                border: '0.5px solid rgba(255,255,255,0.08)',
+                border: '0.5px solid var(--admin-border)',
               }}
             >
               <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
@@ -634,7 +634,7 @@ function Panel({
       className="relative rounded-2xl p-5 overflow-hidden"
       style={{
         background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -681,7 +681,7 @@ function StatCard({ icon, label, value, tone }: { icon?: React.ReactNode; label:
       className="rounded-2xl p-4 text-center transition-transform duration-300 hover:-translate-y-0.5"
       style={{
         background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -718,7 +718,7 @@ function HourSelect({ value, onChange, filter }: { value: number; onChange: (v: 
         className="appearance-none px-2.5 py-1 pr-6 rounded-lg outline-none cursor-pointer transition-colors focus:border-white/30"
         style={{
           background: 'var(--admin-accent-soft)',
-          border: '0.5px solid rgba(255,255,255,0.1)',
+          border: '0.5px solid var(--admin-border-strong)',
           color: 'var(--admin-fg)',
           fontFamily: 'var(--font-mono-tech)',
           fontSize: 11,

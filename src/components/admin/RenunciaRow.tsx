@@ -368,7 +368,7 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
       className="relative rounded-2xl overflow-hidden"
       style={{
         background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: status === 'nuevo' ? '0.5px solid rgba(250,204,21,0.3)' : '0.5px solid rgba(255,255,255,0.1)',
+        border: status === 'nuevo' ? '0.5px solid rgba(250,204,21,0.3)' : '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >

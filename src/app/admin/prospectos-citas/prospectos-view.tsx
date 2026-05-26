@@ -199,7 +199,7 @@ export function ProspectosView({ mode, hideHeader }: Props) {
           className="inline-flex items-center gap-1 p-1 rounded-full flex-wrap"
           style={{
             background: 'var(--admin-accent-soft)',
-            border: '0.5px solid rgba(255,255,255,0.08)',
+            border: '0.5px solid var(--admin-border)',
           }}
         >
           {([
@@ -256,14 +256,14 @@ export function ProspectosView({ mode, hideHeader }: Props) {
               className="rounded-2xl py-16 text-center"
               style={{
                 background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
-                border: '0.5px solid rgba(255,255,255,0.08)',
+                border: '0.5px solid var(--admin-border)',
               }}
             >
               <div
                 className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3"
                 style={{
                   background: 'var(--admin-accent-soft)',
-                  border: '0.5px solid rgba(255,255,255,0.1)',
+                  border: '0.5px solid var(--admin-border-strong)',
                 }}
               >
                 <Bot className="w-7 h-7" style={{ color: 'var(--admin-fg-subtle)' }} />
@@ -285,7 +285,7 @@ export function ProspectosView({ mode, hideHeader }: Props) {
                 className="relative rounded-2xl p-5 transition-all duration-500 group"
                 style={{
                   background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-                  border: isEnCurso ? '0.5px solid rgba(96,165,250,0.4)' : '0.5px solid rgba(255,255,255,0.1)',
+                  border: isEnCurso ? '0.5px solid rgba(96,165,250,0.4)' : '0.5px solid var(--admin-border-strong)',
                   backdropFilter: 'blur(20px)',
                   boxShadow: isEnCurso ? '0 0 24px rgba(96,165,250,0.18)' : 'none',
                 }}
@@ -294,7 +294,7 @@ export function ProspectosView({ mode, hideHeader }: Props) {
                 <span
                   aria-hidden
                   className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl"
-                  style={{ background: 'radial-gradient(ellipse at top, rgba(255,255,255,0.04), transparent 60%)' }}
+                  style={{ background: 'radial-gradient(ellipse at top, var(--admin-accent-soft), transparent 60%)' }}
                 />
 
                 <div className="relative flex items-start justify-between gap-4 flex-wrap">
@@ -364,7 +364,7 @@ export function ProspectosView({ mode, hideHeader }: Props) {
                         className="mt-3 rounded-xl px-3.5 py-2.5"
                         style={{
                           background: 'rgba(255,255,255,0.03)',
-                          border: '0.5px solid rgba(255,255,255,0.06)',
+                          border: '0.5px solid var(--admin-accent-soft)',
                         }}
                       >
                         <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg-subtle)', marginBottom: 4 }}>
@@ -491,7 +491,7 @@ function StatCard({
       className="relative rounded-2xl p-4 overflow-hidden transition-transform duration-300 hover:-translate-y-0.5"
       style={{
         background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >

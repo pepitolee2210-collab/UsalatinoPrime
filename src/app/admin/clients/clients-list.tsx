@@ -77,7 +77,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
           className="w-full pl-10 pr-9 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/25"
           style={{
             background: 'rgba(255,255,255,0.03)',
-            border: '0.5px solid rgba(255,255,255,0.1)',
+            border: '0.5px solid var(--admin-border-strong)',
             color: 'var(--admin-fg)',
             fontSize: 13,
             letterSpacing: '-0.005em',
@@ -98,14 +98,14 @@ export function ClientsList({ initialClients }: ClientsListProps) {
         className="rounded-2xl overflow-hidden"
         style={{
           background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-          border: '0.5px solid rgba(255,255,255,0.1)',
+          border: '0.5px solid var(--admin-border-strong)',
           backdropFilter: 'blur(20px)',
         }}
       >
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
+              <tr style={{ borderBottom: '0.5px solid var(--admin-border)', background: 'rgba(255,255,255,0.02)' }}>
                 <Th>Nombre</Th>
                 <Th>Email</Th>
                 <Th>Teléfono</Th>
@@ -128,7 +128,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
                   <tr
                     key={c.id}
                     style={{
-                      borderBottom: idx < filtered.length - 1 ? '0.5px solid rgba(255,255,255,0.04)' : 'none',
+                      borderBottom: idx < filtered.length - 1 ? '0.5px solid var(--admin-accent-soft)' : 'none',
                       transition: 'background 0.2s',
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}

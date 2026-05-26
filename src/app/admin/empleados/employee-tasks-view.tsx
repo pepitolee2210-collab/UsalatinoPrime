@@ -164,7 +164,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
           className="rounded-2xl p-5"
           style={{
             background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-            border: '0.5px solid rgba(255,255,255,0.1)',
+            border: '0.5px solid var(--admin-border-strong)',
             backdropFilter: 'blur(20px)',
           }}
         >
@@ -190,13 +190,13 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                   className="flex items-center gap-3 px-4 py-3 rounded-xl"
                   style={{
                     background: 'rgba(255,255,255,0.025)',
-                    border: '0.5px solid rgba(255,255,255,0.08)',
+                    border: '0.5px solid var(--admin-border)',
                   }}
                 >
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.04))',
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.15), var(--admin-accent-soft))',
                       border: '0.5px solid rgba(255,255,255,0.18)',
                       color: '#FFFFFF',
                       fontSize: 12,
@@ -243,7 +243,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
           className="inline-flex items-center gap-1 p-1 rounded-full"
           style={{
             background: 'var(--admin-accent-soft)',
-            border: '0.5px solid rgba(255,255,255,0.08)',
+            border: '0.5px solid var(--admin-border)',
           }}
         >
           {[
@@ -282,7 +282,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
             className="rounded-2xl py-16 text-center"
             style={{
               background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
-              border: '0.5px solid rgba(255,255,255,0.08)',
+              border: '0.5px solid var(--admin-border)',
             }}
           >
             <Briefcase className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--admin-fg-subtle)' }} />
@@ -308,7 +308,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
               className="rounded-2xl p-5"
               style={{
                 background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-                border: '0.5px solid rgba(255,255,255,0.1)',
+                border: '0.5px solid var(--admin-border-strong)',
                 backdropFilter: 'blur(20px)',
               }}
             >
@@ -413,7 +413,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                       className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 resize-y"
                       style={{
                         background: 'var(--admin-accent-soft)',
-                        border: '0.5px solid rgba(255,255,255,0.1)',
+                        border: '0.5px solid var(--admin-border-strong)',
                         color: 'var(--admin-fg)',
                         fontSize: 13,
                         minHeight: 90,
@@ -447,7 +447,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                 className="p-3.5 rounded-xl mb-3"
                 style={{
                   background: 'rgba(255,255,255,0.025)',
-                  border: '0.5px solid rgba(255,255,255,0.06)',
+                  border: '0.5px solid var(--admin-accent-soft)',
                 }}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -498,7 +498,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                         className="flex items-center gap-2 px-3 py-2 rounded-lg"
                         style={{
                           background: 'rgba(255,255,255,0.03)',
-                          border: '0.5px solid rgba(255,255,255,0.06)',
+                          border: '0.5px solid var(--admin-accent-soft)',
                         }}
                       >
                         <FileText className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#60A5FA' }} />
@@ -553,7 +553,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
               )}
 
               {/* Status controls */}
-              <div className="flex items-center gap-2 flex-wrap pt-3" style={{ borderTop: '0.5px solid rgba(255,255,255,0.06)' }}>
+              <div className="flex items-center gap-2 flex-wrap pt-3" style={{ borderTop: '0.5px solid var(--admin-accent-soft)' }}>
                 <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, color: 'var(--admin-fg-subtle)', letterSpacing: '0.18em' }}>
                   ESTADO ·
                 </span>
@@ -568,7 +568,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                       className="px-2.5 py-1 rounded-full transition-all duration-200"
                       style={{
                         background: isActive ? sc.bg : 'rgba(255,255,255,0.025)',
-                        border: isActive ? `0.5px solid ${sc.border}` : '0.5px solid rgba(255,255,255,0.06)',
+                        border: isActive ? `0.5px solid ${sc.border}` : '0.5px solid var(--admin-accent-soft)',
                         color: isActive ? sc.text : 'var(--admin-fg-subtle)',
                         fontFamily: 'var(--font-mono-tech)',
                         fontSize: 9,
@@ -637,7 +637,7 @@ function StatCard({ label, value, tone }: { label: string; value: number; tone: 
       className="rounded-2xl p-4 text-center transition-transform duration-300 hover:-translate-y-0.5"
       style={{
         background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >

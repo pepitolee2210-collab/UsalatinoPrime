@@ -178,7 +178,7 @@ export default function RevisionInternaAdminPage() {
         style={{
           background: tab === 'all' ? '#FFFFFF' : 'var(--admin-accent-soft)',
           color: tab === 'all' ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
-          border: tab === 'all' ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.1)',
+          border: tab === 'all' ? '0.5px solid #FFFFFF' : '0.5px solid var(--admin-border-strong)',
           fontSize: 11.5,
           fontWeight: tab === 'all' ? 700 : 500,
           letterSpacing: '-0.005em',
@@ -194,7 +194,7 @@ export default function RevisionInternaAdminPage() {
           className="rounded-2xl p-12 text-center"
           style={{
             background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
-            border: '0.5px solid rgba(255,255,255,0.08)',
+            border: '0.5px solid var(--admin-border)',
           }}
         >
           <Loader2 className="w-5 h-5 animate-spin mx-auto" style={{ color: 'var(--admin-fg-muted)' }} />
@@ -204,7 +204,7 @@ export default function RevisionInternaAdminPage() {
           className="rounded-2xl py-16 text-center"
           style={{
             background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
-            border: '0.5px solid rgba(255,255,255,0.08)',
+            border: '0.5px solid var(--admin-border)',
           }}
         >
           <Sparkles className="w-10 h-10 mx-auto mb-2" style={{ color: 'var(--admin-fg-subtle)' }} />
@@ -224,11 +224,11 @@ export default function RevisionInternaAdminPage() {
               className="relative rounded-2xl p-5 overflow-hidden"
               style={{
                 background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-                border: '0.5px solid rgba(255,255,255,0.1)',
+                border: '0.5px solid var(--admin-border-strong)',
                 backdropFilter: 'blur(20px)',
               }}
             >
-              <div className="flex items-center gap-2 mb-4 pb-3" style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
+              <div className="flex items-center gap-2 mb-4 pb-3" style={{ borderBottom: '0.5px solid var(--admin-border)' }}>
                 <User className="w-4 h-4" style={{ color: '#FFFFFF' }} />
                 <p style={{ fontSize: 14, fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.005em' }}>
                   {g.client ? `${g.client.first_name} ${g.client.last_name}` : 'Cliente sin nombre'}
@@ -319,7 +319,7 @@ export default function RevisionInternaAdminPage() {
               className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 resize-y"
               style={{
                 background: 'var(--admin-accent-soft)',
-                border: '0.5px solid rgba(255,255,255,0.1)',
+                border: '0.5px solid var(--admin-border-strong)',
                 color: 'var(--admin-fg)',
                 fontSize: 13,
                 letterSpacing: '-0.005em',
@@ -375,7 +375,7 @@ function StatCard({
         background: active
           ? `linear-gradient(180deg, ${t.bg}, rgba(20,20,20,0.92))`
           : 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: active ? `0.5px solid ${t.activeBorder}` : `0.5px solid rgba(255,255,255,0.1)`,
+        border: active ? `0.5px solid ${t.activeBorder}` : `0.5px solid var(--admin-border-strong)`,
         boxShadow: active ? `0 0 24px ${t.bg}` : 'none',
         backdropFilter: 'blur(20px)',
       }}
@@ -435,7 +435,7 @@ function DocRow({
       className="rounded-xl p-3.5 transition-colors"
       style={{
         background: 'rgba(255,255,255,0.025)',
-        border: '0.5px solid rgba(255,255,255,0.06)',
+        border: '0.5px solid var(--admin-accent-soft)',
       }}
     >
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -556,7 +556,7 @@ function PreviewModal({ doc, url, onClose }: { doc: DocumentRow; url: string | n
       <div
         className="flex items-center justify-between px-5 py-3 flex-shrink-0"
         onClick={e => e.stopPropagation()}
-        style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}
+        style={{ borderBottom: '0.5px solid var(--admin-border)' }}
       >
         <div className="flex items-center gap-2.5 flex-1 min-w-0 mr-4">
           <FileText className="w-4 h-4 shrink-0" style={{ color: 'var(--admin-fg-muted)' }} />
@@ -567,7 +567,7 @@ function PreviewModal({ doc, url, onClose }: { doc: DocumentRow; url: string | n
         <button
           onClick={onClose}
           className="w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-white/10"
-          style={{ background: 'var(--admin-accent-soft)', color: '#FFFFFF', border: '0.5px solid rgba(255,255,255,0.1)' }}
+          style={{ background: 'var(--admin-accent-soft)', color: '#FFFFFF', border: '0.5px solid var(--admin-border-strong)' }}
         >
           ×
         </button>

@@ -101,7 +101,7 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
           style={{
             background: 'rgba(15,15,15,0.95)',
             backdropFilter: 'blur(20px)',
-            borderBottom: '0.5px solid rgba(255,255,255,0.08)',
+            borderBottom: '0.5px solid var(--admin-border)',
           }}
         >
           <div>
@@ -129,7 +129,7 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
             className="w-9 h-9 rounded-full flex items-center justify-center transition-colors hover:bg-white/10"
             style={{
               background: 'var(--admin-accent-soft)',
-              border: '0.5px solid rgba(255,255,255,0.1)',
+              border: '0.5px solid var(--admin-border-strong)',
               color: 'var(--admin-fg-muted)',
             }}
           >
@@ -159,7 +159,7 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
               className="rounded-2xl p-5 space-y-4"
               style={{
                 background: 'rgba(255,255,255,0.025)',
-                border: '0.5px solid rgba(255,255,255,0.08)',
+                border: '0.5px solid var(--admin-border)',
               }}
             >
               <p

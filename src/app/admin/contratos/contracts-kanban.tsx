@@ -118,7 +118,7 @@ export function ContractsKanban({
                       onClick={() => onEdit(c.id)}
                       style={{
                         background: 'rgba(255,255,255,0.03)',
-                        border: '0.5px solid rgba(255,255,255,0.08)',
+                        border: '0.5px solid var(--admin-border)',
                       }}
                     >
                       {/* Left accent */}
@@ -191,7 +191,7 @@ export function ContractsKanban({
                         {/* Quick actions */}
                         <div
                           className="flex items-center gap-0.5 pt-2"
-                          style={{ borderTop: '0.5px solid rgba(255,255,255,0.06)' }}
+                          style={{ borderTop: '0.5px solid var(--admin-accent-soft)' }}
                           onClick={(e) => e.stopPropagation()}
                         >
                           {c.signing_token ? (

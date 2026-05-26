@@ -138,7 +138,7 @@ export default function ServiciosPage() {
             className="inline-flex items-center gap-6 px-6 py-3 rounded-full"
             style={{
               background: 'rgba(255,255,255,0.03)',
-              border: '0.5px solid rgba(255,255,255,0.1)',
+              border: '0.5px solid var(--admin-border-strong)',
               backdropFilter: 'blur(20px)',
               fontFamily: 'var(--font-mono-tech)',
               fontSize: 11,
@@ -174,7 +174,7 @@ export default function ServiciosPage() {
         </section>
 
         {/* ─── Marquee ─── */}
-        <div className="mt-24 overflow-hidden relative" style={{ borderTop: '0.5px solid rgba(255,255,255,0.08)', borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
+        <div className="mt-24 overflow-hidden relative" style={{ borderTop: '0.5px solid var(--admin-border)', borderBottom: '0.5px solid var(--admin-border)' }}>
           <div
             data-tech-marquee
             className="flex gap-12 py-6 whitespace-nowrap"
@@ -320,7 +320,7 @@ function Aurora() {
           right: '-15%',
           width: '55%',
           height: '60%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 60%)',
+          background: 'radial-gradient(circle, var(--admin-border) 0%, transparent 60%)',
           filter: 'blur(80px)',
           animation: 'tech-aurora-b 28s ease-in-out infinite',
         }}
@@ -334,7 +334,7 @@ function Aurora() {
           left: '30%',
           width: '50%',
           height: '50%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, var(--admin-accent-soft) 0%, transparent 70%)',
           filter: 'blur(90px)',
           animation: 'tech-aurora-c 32s ease-in-out infinite',
         }}
@@ -351,7 +351,7 @@ function DotGrid() {
       className="absolute inset-0 pointer-events-none"
       style={{
         backgroundImage:
-          'radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px)',
+          'radial-gradient(circle, var(--admin-border) 1px, transparent 1px)',
         backgroundSize: '24px 24px',
         maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 80%)',
         WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 80%)',
@@ -411,7 +411,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
         className="relative h-full rounded-[24px] p-7 flex flex-col overflow-hidden transition-all duration-500 ease-out group-hover:-translate-y-1"
         style={{
           background: 'linear-gradient(180deg, rgba(18,18,18,0.92), rgba(8,8,8,0.92))',
-          border: '0.5px solid rgba(255,255,255,0.1)',
+          border: '0.5px solid var(--admin-border-strong)',
           backdropFilter: 'blur(20px)',
           minHeight: 360,
         }}
@@ -431,7 +431,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
           <div
             className="relative w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-500 group-hover:scale-110"
             style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
+              background: 'linear-gradient(135deg, var(--admin-border-strong), rgba(255,255,255,0.02))',
               border: '0.5px solid rgba(255,255,255,0.15)',
             }}
           >
@@ -445,7 +445,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
             <span
               aria-hidden
               className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700"
-              style={{ boxShadow: '0 0 32px rgba(255,255,255,0.35), inset 0 0 16px rgba(255,255,255,0.08)' }}
+              style={{ boxShadow: '0 0 32px rgba(255,255,255,0.35), inset 0 0 16px var(--admin-border)' }}
             />
           </div>
 
@@ -490,7 +490,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
         </p>
 
         {/* Stats row mono */}
-        <div className="flex items-center gap-2 mt-7 pt-5" style={{ borderTop: '0.5px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center gap-2 mt-7 pt-5" style={{ borderTop: '0.5px solid var(--admin-accent-soft)' }}>
           <StatMono value={phaseCount.toString().padStart(2, '0')} label="FASES" />
           <Sep />
           <StatMono value={meta.formularios.toString().padStart(2, '0')} label="FORMS" />

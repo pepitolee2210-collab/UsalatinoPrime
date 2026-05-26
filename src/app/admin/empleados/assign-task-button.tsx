@@ -203,7 +203,7 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
                 className="max-h-48 overflow-y-auto admin-scroll rounded-xl p-2 space-y-1"
                 style={{
                   background: 'rgba(255,255,255,0.025)',
-                  border: '0.5px solid rgba(255,255,255,0.08)',
+                  border: '0.5px solid var(--admin-border)',
                 }}
               >
                 {filteredCases.length === 0 && (

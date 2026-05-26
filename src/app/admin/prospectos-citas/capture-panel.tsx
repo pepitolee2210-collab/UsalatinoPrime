@@ -102,7 +102,7 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
         className="w-full max-w-2xl h-full overflow-y-auto admin-scroll"
         style={{
           background: 'linear-gradient(180deg, #0B0B0E 0%, #050505 100%)',
-          borderLeft: '0.5px solid rgba(255,255,255,0.1)',
+          borderLeft: '0.5px solid var(--admin-border-strong)',
           boxShadow: '-40px 0 80px rgba(0,0,0,0.5)',
           color: 'var(--admin-fg)',
         }}
@@ -113,7 +113,7 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
           style={{
             background: 'rgba(10,10,10,0.85)',
             backdropFilter: 'blur(20px)',
-            borderBottom: '0.5px solid rgba(255,255,255,0.08)',
+            borderBottom: '0.5px solid var(--admin-border)',
           }}
         >
           <div>
@@ -149,7 +149,7 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
           <button
             onClick={onClose}
             className="w-9 h-9 rounded-full transition-colors hover:bg-white/10 flex items-center justify-center"
-            style={{ color: 'var(--admin-fg-muted)', border: '0.5px solid rgba(255,255,255,0.1)' }}
+            style={{ color: 'var(--admin-fg-muted)', border: '0.5px solid var(--admin-border-strong)' }}
           >
             <X className="w-4 h-4" />
           </button>
@@ -243,7 +243,7 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
               className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 resize-y"
               style={{
                 background: 'var(--admin-accent-soft)',
-                border: '0.5px solid rgba(255,255,255,0.1)',
+                border: '0.5px solid var(--admin-border-strong)',
                 color: 'var(--admin-fg)',
                 fontSize: 13,
                 letterSpacing: '-0.005em',
@@ -284,7 +284,7 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
           style={{
             background: 'rgba(10,10,10,0.92)',
             backdropFilter: 'blur(20px)',
-            borderTop: '0.5px solid rgba(255,255,255,0.08)',
+            borderTop: '0.5px solid var(--admin-border)',
           }}
         >
           <button
@@ -359,7 +359,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
           fontWeight: 700,
           letterSpacing: '0.2em',
           color: '#FFFFFF',
-          borderBottom: '0.5px solid rgba(255,255,255,0.1)',
+          borderBottom: '0.5px solid var(--admin-border-strong)',
         }}
       >
         {title.toUpperCase()}
@@ -395,7 +395,7 @@ function Field({ label, value, onChange, placeholder }: { label: string; value: 
         className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30"
         style={{
           background: 'var(--admin-accent-soft)',
-          border: '0.5px solid rgba(255,255,255,0.1)',
+          border: '0.5px solid var(--admin-border-strong)',
           color: 'var(--admin-fg)',
           fontSize: 13,
           letterSpacing: '-0.005em',
@@ -438,7 +438,7 @@ function RadioGroup({
               style={{
                 background: isActive ? '#FFFFFF' : 'var(--admin-accent-soft)',
                 color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
-                border: isActive ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.1)',
+                border: isActive ? '0.5px solid #FFFFFF' : '0.5px solid var(--admin-border-strong)',
                 fontSize: 12,
                 fontWeight: isActive ? 700 : 500,
                 letterSpacing: '-0.005em',

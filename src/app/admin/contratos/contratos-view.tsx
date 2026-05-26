@@ -340,7 +340,7 @@ function ContratosInner({ basePath, hideHeader }: Props) {
             className="inline-flex items-center gap-1 p-1 rounded-full"
             style={{
               background: 'var(--admin-accent-soft)',
-              border: '0.5px solid rgba(255,255,255,0.08)',
+              border: '0.5px solid var(--admin-border)',
             }}
           >
             <button
@@ -395,7 +395,7 @@ function ContratosInner({ basePath, hideHeader }: Props) {
             className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/25"
             style={{
               background: 'rgba(255,255,255,0.03)',
-              border: '0.5px solid rgba(255,255,255,0.1)',
+              border: '0.5px solid var(--admin-border-strong)',
               color: 'var(--admin-fg)',
               fontSize: 13,
               letterSpacing: '-0.005em',
@@ -554,14 +554,14 @@ function ContractCard({
       className="relative rounded-2xl p-5 overflow-hidden transition-all duration-300 group"
       style={{
         background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
       <span
         aria-hidden
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse at top, rgba(255,255,255,0.04), transparent 60%)' }}
+        style={{ background: 'radial-gradient(ellipse at top, var(--admin-accent-soft), transparent 60%)' }}
       />
 
       <div className="relative space-y-3">
@@ -651,7 +651,7 @@ function ContractCard({
         </div>
 
         {/* Actions row */}
-        <div className="flex items-center gap-1.5 flex-wrap pt-2" style={{ borderTop: '0.5px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center gap-1.5 flex-wrap pt-2" style={{ borderTop: '0.5px solid var(--admin-accent-soft)' }}>
           {/* Status select */}
           <div className="relative">
             <select
@@ -660,7 +660,7 @@ function ContractCard({
               className="appearance-none px-3 py-1.5 pr-7 rounded-lg outline-none cursor-pointer transition-colors focus:border-white/30"
               style={{
                 background: 'var(--admin-accent-soft)',
-                border: '0.5px solid rgba(255,255,255,0.1)',
+                border: '0.5px solid var(--admin-border-strong)',
                 color: 'var(--admin-fg)',
                 fontSize: 11,
                 fontWeight: 500,
@@ -728,7 +728,7 @@ function ContractCard({
             onClick={() => onDownloadPDF(c)}
             title="Descargar PDF"
             className={BTN_ICON}
-            style={{ color: 'var(--admin-fg-muted)', border: '0.5px solid rgba(255,255,255,0.1)' }}
+            style={{ color: 'var(--admin-fg-muted)', border: '0.5px solid var(--admin-border-strong)' }}
           >
             <Download className="w-3.5 h-3.5" />
           </button>
@@ -736,7 +736,7 @@ function ContractCard({
             onClick={() => onEdit(c)}
             title="Editar"
             className={BTN_ICON}
-            style={{ color: 'var(--admin-fg-muted)', border: '0.5px solid rgba(255,255,255,0.1)' }}
+            style={{ color: 'var(--admin-fg-muted)', border: '0.5px solid var(--admin-border-strong)' }}
           >
             <Pencil className="w-3.5 h-3.5" />
           </button>

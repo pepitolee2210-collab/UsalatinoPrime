@@ -42,7 +42,7 @@ export function CasesTable({ cases }: CasesTableProps) {
       className="rounded-2xl overflow-hidden"
       style={{
         background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -51,7 +51,7 @@ export function CasesTable({ cases }: CasesTableProps) {
           <thead>
             <tr
               style={{
-                borderBottom: '0.5px solid rgba(255,255,255,0.08)',
+                borderBottom: '0.5px solid var(--admin-border)',
                 background: 'rgba(255,255,255,0.02)',
               }}
             >
@@ -78,7 +78,7 @@ export function CasesTable({ cases }: CasesTableProps) {
                   key={c.id as string}
                   className="transition-colors"
                   style={{
-                    borderBottom: idx < cases.length - 1 ? '0.5px solid rgba(255,255,255,0.04)' : 'none',
+                    borderBottom: idx < cases.length - 1 ? '0.5px solid var(--admin-accent-soft)' : 'none',
                   }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
@@ -233,7 +233,7 @@ function ProgressIndicator({ docCount, subTotal, subDone }: { docCount: number; 
           className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded"
           style={{
             background: 'var(--admin-accent-soft)',
-            border: '0.5px solid rgba(255,255,255,0.1)',
+            border: '0.5px solid var(--admin-border-strong)',
             fontFamily: 'var(--font-mono-tech)',
             fontSize: 10,
             color: 'var(--admin-fg-muted)',

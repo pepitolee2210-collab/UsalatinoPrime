@@ -162,7 +162,7 @@ export default function VoiceCallsPage() {
               className="inline-flex items-center gap-1 p-1 rounded-full"
               style={{
                 background: 'var(--admin-accent-soft)',
-                border: '0.5px solid rgba(255,255,255,0.08)',
+                border: '0.5px solid var(--admin-border)',
               }}
             >
               {[7, 14, 30, 90].map(d => {
@@ -241,7 +241,7 @@ export default function VoiceCallsPage() {
             className="rounded-2xl py-16 text-center"
             style={{
               background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
-              border: '0.5px solid rgba(255,255,255,0.08)',
+              border: '0.5px solid var(--admin-border)',
             }}
           >
             <Bot className="w-10 h-10 mx-auto mb-3" style={{ color: 'var(--admin-fg-subtle)' }} />
@@ -260,14 +260,14 @@ export default function VoiceCallsPage() {
               className="w-full text-left relative rounded-2xl p-4 overflow-hidden transition-all duration-300 group"
               style={{
                 background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-                border: '0.5px solid rgba(255,255,255,0.1)',
+                border: '0.5px solid var(--admin-border-strong)',
                 backdropFilter: 'blur(20px)',
               }}
             >
               <span
                 aria-hidden
                 className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-                style={{ background: 'radial-gradient(ellipse at top, rgba(255,255,255,0.04), transparent 60%)' }}
+                style={{ background: 'radial-gradient(ellipse at top, var(--admin-accent-soft), transparent 60%)' }}
               />
 
               <div className="relative flex items-start justify-between gap-4 flex-wrap">
@@ -425,7 +425,7 @@ function StatCard({
       className="relative rounded-2xl p-4 overflow-hidden transition-transform duration-300 hover:-translate-y-0.5"
       style={{
         background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -605,7 +605,7 @@ function CallDetail({ call }: { call: VoiceCall }) {
                 className="flex items-center gap-2 px-3 py-2 rounded-lg"
                 style={{
                   background: 'rgba(255,255,255,0.025)',
-                  border: '0.5px solid rgba(255,255,255,0.06)',
+                  border: '0.5px solid var(--admin-accent-soft)',
                 }}
               >
                 {t.ok ? (
@@ -621,7 +621,7 @@ function CallDetail({ call }: { call: VoiceCall }) {
                     fontWeight: 600,
                     color: '#FFFFFF',
                     background: 'var(--admin-accent-soft)',
-                    border: '0.5px solid rgba(255,255,255,0.1)',
+                    border: '0.5px solid var(--admin-border-strong)',
                   }}
                 >
                   {t.name}

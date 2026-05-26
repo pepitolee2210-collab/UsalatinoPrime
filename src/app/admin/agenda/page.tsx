@@ -332,7 +332,7 @@ export default function AgendaPage() {
             className="rounded-2xl py-16 text-center"
             style={{
               background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
-              border: '0.5px solid rgba(255,255,255,0.08)',
+              border: '0.5px solid var(--admin-border)',
             }}
           >
             <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
@@ -487,7 +487,7 @@ function StatClickCard({
         background: active
           ? `linear-gradient(180deg, ${t.bg}, rgba(20,20,20,0.92))`
           : 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: active ? `0.5px solid ${t.activeBorder}` : '0.5px solid rgba(255,255,255,0.1)',
+        border: active ? `0.5px solid ${t.activeBorder}` : '0.5px solid var(--admin-border-strong)',
         boxShadow: active ? `0 0 24px ${t.bg}` : 'none',
         backdropFilter: 'blur(20px)',
       }}
@@ -602,7 +602,7 @@ function AgendaCard({
       className="relative rounded-2xl p-5 overflow-hidden transition-all duration-300 group"
       style={{
         background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -698,7 +698,7 @@ function AgendaCard({
                 className="mt-3 rounded-xl px-3.5 py-2.5"
                 style={{
                   background: 'rgba(255,255,255,0.03)',
-                  border: '0.5px solid rgba(255,255,255,0.06)',
+                  border: '0.5px solid var(--admin-accent-soft)',
                 }}
               >
                 <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg-subtle)', marginBottom: 4 }}>
@@ -745,7 +745,7 @@ function AgendaCard({
                   className="flex-1 min-w-[140px] px-2.5 py-1.5 rounded-lg outline-none transition-colors focus:border-white/30"
                   style={{
                     background: 'var(--admin-accent-soft)',
-                    border: '0.5px solid rgba(255,255,255,0.1)',
+                    border: '0.5px solid var(--admin-border-strong)',
                     color: 'var(--admin-fg)',
                     fontSize: 11,
                     fontFamily: 'var(--font-mono-tech)',
@@ -845,7 +845,7 @@ function AgendaCard({
         </div>
 
         {/* Henry's notes — history log */}
-        <div className="pt-4 space-y-2" style={{ borderTop: '0.5px solid rgba(255,255,255,0.08)' }}>
+        <div className="pt-4 space-y-2" style={{ borderTop: '0.5px solid var(--admin-border)' }}>
           <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', color: '#FACC15' }}>
             NOTAS HENRY
           </label>
@@ -920,7 +920,7 @@ function EditForm({
             className="rounded-xl px-3.5 py-3"
             style={{
               background: 'rgba(255,255,255,0.03)',
-              border: '0.5px solid rgba(255,255,255,0.06)',
+              border: '0.5px solid var(--admin-accent-soft)',
             }}
           >
             <p style={{ fontSize: 13, color: 'var(--admin-fg-muted)', lineHeight: 1.55 }}>{item.notes}</p>

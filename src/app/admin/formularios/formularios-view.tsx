@@ -130,7 +130,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
         className="rounded-2xl p-5 relative overflow-hidden"
         style={{
           background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-          border: '0.5px solid rgba(255,255,255,0.1)',
+          border: '0.5px solid var(--admin-border-strong)',
           backdropFilter: 'blur(20px)',
         }}
       >
@@ -166,7 +166,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
               className="group flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl transition-all duration-300 hover:bg-white/5"
               style={{
                 background: 'rgba(255,255,255,0.025)',
-                border: '0.5px solid rgba(255,255,255,0.08)',
+                border: '0.5px solid var(--admin-border)',
               }}
             >
               <div className="min-w-0">
@@ -235,14 +235,14 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all duration-300 whitespace-nowrap"
               style={{
                 background: isActive
-                  ? 'linear-gradient(180deg, rgba(255,255,255,0.1), rgba(255,255,255,0.04))'
+                  ? 'linear-gradient(180deg, var(--admin-border-strong), var(--admin-accent-soft))'
                   : 'rgba(255,255,255,0.025)',
-                border: isActive ? '0.5px solid rgba(255,255,255,0.3)' : '0.5px solid rgba(255,255,255,0.08)',
+                border: isActive ? '0.5px solid rgba(255,255,255,0.3)' : '0.5px solid var(--admin-border)',
                 color: isActive ? '#FFFFFF' : 'var(--admin-fg-muted)',
                 fontSize: 13,
                 fontWeight: isActive ? 600 : 500,
                 letterSpacing: '-0.005em',
-                boxShadow: isActive ? '0 4px 16px rgba(255,255,255,0.12), 0 0 0 0.5px rgba(255,255,255,0.05) inset' : 'none',
+                boxShadow: isActive ? '0 4px 16px rgba(255,255,255,0.12), 0 0 0 0.5px var(--admin-accent-soft) inset' : 'none',
               }}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -277,7 +277,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
           className="inline-flex items-center gap-1 p-1 rounded-full"
           style={{
             background: 'var(--admin-accent-soft)',
-            border: '0.5px solid rgba(255,255,255,0.08)',
+            border: '0.5px solid var(--admin-border)',
           }}
         >
           {filters.map((f) => {
@@ -340,7 +340,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
           className="rounded-2xl py-16 text-center"
           style={{
             background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
-            border: '0.5px solid rgba(255,255,255,0.08)',
+            border: '0.5px solid var(--admin-border)',
           }}
         >
           <p style={{ fontSize: 13, color: 'var(--admin-fg-subtle)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.15em' }}>
@@ -381,7 +381,7 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
       className="relative rounded-2xl p-5 overflow-hidden transition-all duration-300"
       style={{
         background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -454,7 +454,7 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-white/10 active:scale-95"
           style={{
             background: 'var(--admin-accent-soft)',
-            border: '0.5px solid rgba(255,255,255,0.1)',
+            border: '0.5px solid var(--admin-border-strong)',
             color: '#FFFFFF',
             fontSize: 11,
             fontWeight: 600,
@@ -471,14 +471,14 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
           className="mt-4 rounded-xl overflow-hidden"
           style={{
             background: 'rgba(255,255,255,0.02)',
-            border: '0.5px solid rgba(255,255,255,0.08)',
+            border: '0.5px solid var(--admin-border)',
           }}
         >
           <div
             className="px-3.5 py-2 flex justify-between items-center"
             style={{
               background: 'rgba(255,255,255,0.025)',
-              borderBottom: '0.5px solid rgba(255,255,255,0.06)',
+              borderBottom: '0.5px solid var(--admin-accent-soft)',
             }}
           >
             <span

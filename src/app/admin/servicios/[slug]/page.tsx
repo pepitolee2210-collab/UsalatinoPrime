@@ -88,7 +88,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
           right: '-15%',
           width: '55%',
           height: '60%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 60%)',
+          background: 'radial-gradient(circle, var(--admin-accent-soft) 0%, transparent 60%)',
           filter: 'blur(80px)',
           animation: 'tech-aurora-b 32s ease-in-out infinite',
         }}
@@ -97,7 +97,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
         aria-hidden
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(circle, var(--admin-accent-soft) 1px, transparent 1px)',
           backgroundSize: '24px 24px',
           maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 80%)',
           WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 80%)',
@@ -211,7 +211,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
               className="rounded-[24px] p-16 text-center space-y-3"
               style={{
                 background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-                border: '0.5px solid rgba(255,255,255,0.1)',
+                border: '0.5px solid var(--admin-border-strong)',
                 backdropFilter: 'blur(20px)',
               }}
             >
@@ -283,7 +283,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                 className="relative rounded-[20px] p-6 md:p-8 flex flex-col md:flex-row gap-6 items-start transition-all duration-500 hover:translate-x-1"
                 style={{
                   background: 'linear-gradient(180deg, rgba(20,20,20,0.7), rgba(8,8,8,0.7))',
-                  border: '0.5px solid rgba(255,255,255,0.1)',
+                  border: '0.5px solid var(--admin-border-strong)',
                   backdropFilter: 'blur(20px)',
                   animation: `tech-card-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both`,
                   animationDelay: `${idx * 100 + 500}ms`,
@@ -293,7 +293,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                   <div
                     className="relative w-14 h-14 rounded-2xl flex items-center justify-center"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
+                      background: 'linear-gradient(135deg, var(--admin-border-strong), rgba(255,255,255,0.02))',
                       border: '0.5px solid rgba(255,255,255,0.18)',
                     }}
                   >

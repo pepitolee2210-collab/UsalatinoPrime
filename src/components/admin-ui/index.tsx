@@ -116,7 +116,7 @@ export function PageHeader({ eyebrow, title, accentDot, description, action, tel
               className="inline-flex items-baseline gap-2 px-3 py-1.5 rounded-full"
               style={{
                 background: 'var(--admin-accent-soft)',
-                border: '0.5px solid rgba(255,255,255,0.08)',
+                border: '0.5px solid var(--admin-border)',
                 fontFamily: 'var(--font-mono-tech)',
                 fontSize: 11,
               }}
@@ -194,7 +194,7 @@ export function DataCard({ children, className = '', padding = 'md', accentTop }
       className={`relative rounded-2xl overflow-hidden ${pad} ${className}`}
       style={{
         background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -233,13 +233,13 @@ export function StatTile({ label, value, hint, icon, warning }: StatTileProps) {
       className="relative rounded-2xl p-4 overflow-hidden transition-transform duration-300 hover:-translate-y-0.5"
       style={{
         background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        border: '0.5px solid var(--admin-border-strong)',
       }}
     >
       <span
         aria-hidden
         className="absolute inset-0 pointer-events-none opacity-0 hover:opacity-100 transition-opacity duration-500"
-        style={{ background: 'radial-gradient(circle at top, rgba(255,255,255,0.06), transparent 60%)' }}
+        style={{ background: 'radial-gradient(circle at top, var(--admin-accent-soft), transparent 60%)' }}
       />
       <div className="relative">
         {icon && (
@@ -332,7 +332,7 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
       <div
         className="inline-flex items-center justify-center w-16 h-16 rounded-2xl"
         style={{
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))',
+          background: 'linear-gradient(135deg, var(--admin-border), rgba(255,255,255,0.02))',
           border: '0.5px solid rgba(255,255,255,0.12)',
         }}
       >
@@ -358,7 +358,7 @@ export function SectionDivider({ label }: { label?: string }) {
   if (label) {
     return (
       <div className="flex items-center gap-3 my-6">
-        <span className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.1))' }} />
+        <span className="flex-1 h-px" style={{ background: 'linear-gradient(90deg, transparent, var(--admin-border-strong))' }} />
         <span
           style={{
             fontFamily: 'var(--font-mono-tech)',
@@ -370,11 +370,11 @@ export function SectionDivider({ label }: { label?: string }) {
         >
           {label.toUpperCase()}
         </span>
-        <span className="flex-1 h-px" style={{ background: 'linear-gradient(-90deg, transparent, rgba(255,255,255,0.1))' }} />
+        <span className="flex-1 h-px" style={{ background: 'linear-gradient(-90deg, transparent, var(--admin-border-strong))' }} />
       </div>
     )
   }
-  return <span className="block h-px my-4" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)' }} />
+  return <span className="block h-px my-4" style={{ background: 'linear-gradient(90deg, transparent, var(--admin-border), transparent)' }} />
 }
 
 // ─────────────────────────────────────────────────────────────

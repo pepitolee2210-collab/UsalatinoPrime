@@ -793,7 +793,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
       className="relative rounded-2xl overflow-hidden"
       style={{
         background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -802,11 +802,11 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
         className="absolute top-0 left-0 right-0 h-px"
         style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)' }}
       />
-      <div className="relative px-5 pt-5 pb-3 flex items-start gap-3" style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
+      <div className="relative px-5 pt-5 pb-3 flex items-start gap-3" style={{ borderBottom: '0.5px solid var(--admin-border)' }}>
         <div
           className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
           style={{
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
+            background: 'linear-gradient(135deg, var(--admin-border-strong), rgba(255,255,255,0.02))',
             border: '0.5px solid rgba(255,255,255,0.15)',
           }}
         >

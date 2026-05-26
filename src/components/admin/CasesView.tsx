@@ -110,7 +110,7 @@ export function CasesView({ cases }: CasesViewProps) {
             className="w-full pl-10 pr-9 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/25"
             style={{
               background: 'rgba(255,255,255,0.03)',
-              border: '0.5px solid rgba(255,255,255,0.1)',
+              border: '0.5px solid var(--admin-border-strong)',
               color: 'var(--admin-fg)',
               fontSize: 13,
               letterSpacing: '-0.005em',
@@ -130,7 +130,7 @@ export function CasesView({ cases }: CasesViewProps) {
           className="inline-flex items-center gap-1 p-1 rounded-xl shrink-0"
           style={{
             background: 'var(--admin-accent-soft)',
-            border: '0.5px solid rgba(255,255,255,0.08)',
+            border: '0.5px solid var(--admin-border)',
           }}
         >
           <ToggleBtn active={viewMode === 'table'} onClick={() => handleViewChange('table')} icon={<TableIcon className="w-3.5 h-3.5" />}>
@@ -153,7 +153,7 @@ export function CasesView({ cases }: CasesViewProps) {
               className="group inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300"
               style={{
                 background: isActive ? '#FFFFFF' : 'var(--admin-accent-soft)',
-                border: isActive ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.1)',
+                border: isActive ? '0.5px solid #FFFFFF' : '0.5px solid var(--admin-border-strong)',
                 color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
                 fontSize: 12,
                 letterSpacing: '-0.005em',
@@ -193,7 +193,7 @@ export function CasesView({ cases }: CasesViewProps) {
               className="w-8 h-8 rounded-lg transition-all duration-300"
               style={{
                 background: isActive ? '#FFFFFF' : hasCase ? 'rgba(255,255,255,0.03)' : 'transparent',
-                border: isActive ? '0.5px solid #FFFFFF' : hasCase ? '0.5px solid rgba(255,255,255,0.08)' : '0.5px solid transparent',
+                border: isActive ? '0.5px solid #FFFFFF' : hasCase ? '0.5px solid var(--admin-border)' : '0.5px solid transparent',
                 color: isActive ? 'var(--admin-bg-deep)' : hasCase ? 'var(--admin-fg)' : 'var(--admin-fg-faint)',
                 fontSize: 11,
                 fontWeight: 600,

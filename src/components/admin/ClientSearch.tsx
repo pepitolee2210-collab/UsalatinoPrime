@@ -82,7 +82,7 @@ export function ClientSearch() {
           className="w-full pl-9 pr-3 h-9 rounded-lg text-sm outline-none transition-colors focus:border-white/25"
           style={{
             background: 'var(--admin-accent-soft)',
-            border: '0.5px solid rgba(255,255,255,0.1)',
+            border: '0.5px solid var(--admin-border-strong)',
             color: 'var(--admin-fg)',
             fontSize: 13,
             letterSpacing: '-0.005em',
@@ -99,7 +99,7 @@ export function ClientSearch() {
             background: 'linear-gradient(180deg, rgba(15,15,15,0.98), rgba(8,8,8,0.98))',
             border: '0.5px solid rgba(255,255,255,0.12)',
             backdropFilter: 'blur(20px)',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.6), 0 0 0 0.5px rgba(255,255,255,0.04) inset',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.6), 0 0 0 0.5px var(--admin-accent-soft) inset',
           }}
         >
           {results.map((r, idx) => (
@@ -108,7 +108,7 @@ export function ClientSearch() {
               onClick={() => handleSelect(r.id)}
               className="w-full text-left px-3 py-2.5 transition-colors hover:bg-white/5"
               style={{
-                borderBottom: idx < results.length - 1 ? '0.5px solid rgba(255,255,255,0.06)' : 'none',
+                borderBottom: idx < results.length - 1 ? '0.5px solid var(--admin-accent-soft)' : 'none',
               }}
             >
               <p style={{ fontSize: 13, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.005em' }}>

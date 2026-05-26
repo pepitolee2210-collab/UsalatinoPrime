@@ -202,7 +202,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           left: '-30%',
           width: '120%',
           height: '60%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, var(--admin-accent-soft) 0%, transparent 70%)',
           filter: 'blur(60px)',
         }}
       />
@@ -451,7 +451,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
         .admin-scroll::-webkit-scrollbar { width: 4px; }
         .admin-scroll::-webkit-scrollbar-track { background: transparent; }
-        .admin-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+        .admin-scroll::-webkit-scrollbar-thumb { background: var(--admin-border); border-radius: 2px; }
         .admin-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
       `}</style>
     </div>
@@ -476,7 +476,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           right: '-10%',
           width: '50%',
           height: '60%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 60%)',
+          background: 'radial-gradient(circle, var(--admin-accent-soft) 0%, transparent 60%)',
           filter: 'blur(80px)',
           animation: 'admin-aurora 30s ease-in-out infinite',
         }}
@@ -489,7 +489,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           left: '20%',
           width: '50%',
           height: '50%',
-          background: 'radial-gradient(circle, rgba(255,255,255,0.04) 0%, transparent 70%)',
+          background: 'radial-gradient(circle, var(--admin-accent-soft) 0%, transparent 70%)',
           filter: 'blur(90px)',
           animation: 'admin-aurora-b 36s ease-in-out infinite',
         }}
@@ -512,7 +512,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <SheetTrigger asChild>
             <button
               className="inline-flex items-center justify-center w-9 h-9 rounded-lg transition-colors hover:bg-white/5"
-              style={{ color: 'var(--admin-fg)', border: '0.5px solid rgba(255,255,255,0.1)' }}
+              style={{ color: 'var(--admin-fg)', border: '0.5px solid var(--admin-border-strong)' }}
             >
               <Menu className="w-4 h-4" />
             </button>

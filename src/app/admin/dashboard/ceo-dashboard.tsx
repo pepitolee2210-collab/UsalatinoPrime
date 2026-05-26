@@ -27,7 +27,7 @@ export function CeoDashboard({ data }: Props) {
         className="rounded-2xl px-6 py-5 flex items-center justify-between gap-4 flex-wrap relative overflow-hidden"
         style={{
           background: 'linear-gradient(180deg, rgba(20,20,20,0.95), rgba(8,8,8,0.95))',
-          border: '0.5px solid rgba(255,255,255,0.1)',
+          border: '0.5px solid var(--admin-border-strong)',
           backdropFilter: 'blur(20px)',
         }}
       >
@@ -207,7 +207,7 @@ function DashCard({ children, accent }: { children: React.ReactNode; accent?: bo
       className="relative rounded-2xl p-5 space-y-5 overflow-hidden"
       style={{
         background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -222,7 +222,7 @@ function DashCard({ children, accent }: { children: React.ReactNode; accent?: bo
         aria-hidden
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse at top, rgba(255,255,255,0.04), transparent 60%)',
+          background: 'radial-gradient(ellipse at top, var(--admin-accent-soft), transparent 60%)',
         }}
       />
       <div className="relative">{children}</div>
@@ -244,7 +244,7 @@ function SectionHeader({
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center"
           style={{
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
+            background: 'linear-gradient(135deg, var(--admin-border-strong), rgba(255,255,255,0.02))',
             border: '0.5px solid rgba(255,255,255,0.15)',
             color: '#FFFFFF',
           }}
@@ -278,20 +278,20 @@ function KpiCard({
       className="group relative overflow-hidden rounded-2xl p-4 transition-all duration-500 hover:-translate-y-0.5"
       style={{
         background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
       <span
         aria-hidden
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
-        style={{ background: 'radial-gradient(circle at top, rgba(255,255,255,0.08), transparent 60%)' }}
+        style={{ background: 'radial-gradient(circle at top, var(--admin-border), transparent 60%)' }}
       />
       <div className="relative">
         <div
           className="inline-flex w-8 h-8 rounded-lg items-center justify-center mb-3"
           style={{
-            background: warning ? 'rgba(255,255,255,0.12)' : 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
+            background: warning ? 'rgba(255,255,255,0.12)' : 'linear-gradient(135deg, var(--admin-border-strong), rgba(255,255,255,0.02))',
             border: '0.5px solid rgba(255,255,255,0.15)',
             color: '#FFFFFF',
           }}
@@ -499,7 +499,7 @@ function TrendChart({ points }: { points: CeoDashboardData['trend'] }) {
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-4 pt-3" style={{ fontSize: 10, color: 'var(--admin-fg-muted)', borderTop: '0.5px solid rgba(255,255,255,0.06)' }}>
+      <div className="flex items-center gap-4 pt-3" style={{ fontSize: 10, color: 'var(--admin-fg-muted)', borderTop: '0.5px solid var(--admin-accent-soft)' }}>
         <span className="inline-flex items-center gap-1.5">
           <span style={{ width: 10, height: 10, borderRadius: 2, background: '#FFFFFF' }} />
           Cobrado
@@ -528,7 +528,7 @@ function OpStatCard({
       className="group block rounded-xl p-4 transition-all duration-500"
       style={{
         background: 'var(--admin-accent-soft)',
-        border: '0.5px solid rgba(255,255,255,0.08)',
+        border: '0.5px solid var(--admin-border)',
       }}
     >
       <div className="flex items-start justify-between mb-2">
@@ -556,7 +556,7 @@ function PendingSignatureList({ items }: { items: CeoDashboardData['ops']['pendi
       className="rounded-xl p-4"
       style={{
         background: 'rgba(255,255,255,0.03)',
-        border: '0.5px solid rgba(255,255,255,0.08)',
+        border: '0.5px solid var(--admin-border)',
       }}
     >
       <div className="flex items-center justify-between mb-3">
@@ -595,7 +595,7 @@ function OverdueClientsList({ items }: { items: CeoDashboardData['ops']['overdue
       className="rounded-xl p-4"
       style={{
         background: 'rgba(255,255,255,0.03)',
-        border: '0.5px solid rgba(255,255,255,0.08)',
+        border: '0.5px solid var(--admin-border)',
       }}
     >
       <div className="flex items-center justify-between mb-3">
@@ -643,7 +643,7 @@ function AutoPilotCard({
       className="rounded-xl p-4"
       style={{
         background: 'rgba(255,255,255,0.03)',
-        border: '0.5px solid rgba(255,255,255,0.08)',
+        border: '0.5px solid var(--admin-border)',
       }}
     >
       <div className="flex items-center justify-between mb-3">

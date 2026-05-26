@@ -30,8 +30,8 @@ export function AdminThemeSwitcher() {
       aria-label="Modo visual del panel"
       className="flex items-center gap-1 p-1 rounded-full"
       style={{
-        background: 'var(--admin-accent-soft, rgba(255,255,255,0.04))',
-        border: '0.5px solid var(--admin-border, rgba(255,255,255,0.08))',
+        background: 'var(--admin-accent-soft, var(--admin-accent-soft))',
+        border: '0.5px solid var(--admin-border, var(--admin-border))',
       }}
     >
       {THEMES.map((t) => {

@@ -28,7 +28,7 @@ export default function AdminLoading() {
             className="h-32 rounded-xl"
             style={{
               background: 'var(--admin-accent-soft)',
-              border: '1px solid rgba(255,255,255,0.06)',
+              border: '1px solid var(--admin-accent-soft)',
             }}
           />
         ))}

@@ -167,7 +167,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
             className="w-full pl-10 pr-9 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/25"
             style={{
               background: 'rgba(255,255,255,0.03)',
-              border: '0.5px solid rgba(255,255,255,0.1)',
+              border: '0.5px solid var(--admin-border-strong)',
               color: 'var(--admin-fg)',
               fontSize: 13,
               letterSpacing: '-0.005em',
@@ -183,7 +183,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl"
           style={{
             background: 'rgba(255,255,255,0.03)',
-            border: '0.5px solid rgba(255,255,255,0.1)',
+            border: '0.5px solid var(--admin-border-strong)',
           }}
         >
           <Globe className="w-3.5 h-3.5" style={{ color: 'var(--admin-fg-subtle)' }} />
@@ -202,7 +202,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
           className="inline-flex items-center gap-1 p-1 rounded-full"
           style={{
             background: 'var(--admin-accent-soft)',
-            border: '0.5px solid rgba(255,255,255,0.08)',
+            border: '0.5px solid var(--admin-border)',
           }}
         >
           {['all', 'scheduled', 'completed', 'cancelled', 'no_show'].map(s => {
@@ -274,11 +274,11 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
         className="rounded-2xl overflow-hidden"
         style={{
           background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-          border: '0.5px solid rgba(255,255,255,0.1)',
+          border: '0.5px solid var(--admin-border-strong)',
           backdropFilter: 'blur(20px)',
         }}
       >
-        <div className="px-5 py-4 flex items-center gap-2.5" style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
+        <div className="px-5 py-4 flex items-center gap-2.5" style={{ borderBottom: '0.5px solid var(--admin-border)' }}>
           <CalendarClock className="w-4 h-4" style={{ color: '#FFFFFF' }} />
           <h2 style={{ fontSize: 14, fontWeight: 600, color: '#FFFFFF', letterSpacing: '-0.012em' }}>
             Citas
@@ -302,7 +302,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
+              <tr style={{ borderBottom: '0.5px solid var(--admin-border)', background: 'rgba(255,255,255,0.02)' }}>
                 <Th>Fecha / Hora</Th>
                 <Th>Cliente</Th>
                 <Th>Caso / Servicio</Th>
@@ -341,7 +341,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
         className="w-full inline-flex items-center justify-between px-5 py-3 rounded-2xl transition-colors hover:bg-white/[0.04]"
         style={{
           background: 'rgba(255,255,255,0.025)',
-          border: '0.5px solid rgba(255,255,255,0.1)',
+          border: '0.5px solid var(--admin-border-strong)',
           color: '#FFFFFF',
         }}
       >
@@ -553,7 +553,7 @@ function AppointmentRow({
     <>
       <tr
         style={{
-          borderBottom: !isLast ? '0.5px solid rgba(255,255,255,0.04)' : 'none',
+          borderBottom: !isLast ? '0.5px solid var(--admin-accent-soft)' : 'none',
           transition: 'background 0.2s',
         }}
         onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
@@ -589,7 +589,7 @@ function AppointmentRow({
                   borderRadius: 4,
                   background: completedCount === 0 ? 'rgba(96,165,250,0.10)' : 'var(--admin-accent-soft)',
                   color: completedCount === 0 ? '#93C5FD' : 'var(--admin-fg-muted)',
-                  border: completedCount === 0 ? '0.5px solid rgba(96,165,250,0.3)' : '0.5px solid rgba(255,255,255,0.1)',
+                  border: completedCount === 0 ? '0.5px solid rgba(96,165,250,0.3)' : '0.5px solid var(--admin-border-strong)',
                 }}
               >
                 {visitLabel(completedCount).toUpperCase()}
@@ -697,7 +697,7 @@ function AppointmentRow({
                     className="w-44 h-9 px-3 rounded-lg outline-none transition-colors focus:border-white/30"
                     style={{
                       background: 'var(--admin-accent-soft)',
-                      border: '0.5px solid rgba(255,255,255,0.1)',
+                      border: '0.5px solid var(--admin-border-strong)',
                       color: 'var(--admin-fg)',
                       fontSize: 12,
                       colorScheme: 'dark',
@@ -724,7 +724,7 @@ function AppointmentRow({
                             className="flex flex-col items-center px-3 py-1.5 rounded-xl transition-all duration-200"
                             style={{
                               background: isActive ? '#FFFFFF' : 'var(--admin-accent-soft)',
-                              border: isActive ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.1)',
+                              border: isActive ? '0.5px solid #FFFFFF' : '0.5px solid var(--admin-border-strong)',
                               color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg)',
                               boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.18)' : 'none',
                             }}
@@ -887,7 +887,7 @@ function ScheduleConfigPanel({
             className="rounded-xl p-4"
             style={{
               background: day.is_available ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.015)',
-              border: '0.5px solid rgba(255,255,255,0.08)',
+              border: '0.5px solid var(--admin-border)',
             }}
           >
             <div className="flex items-center gap-3">
@@ -937,7 +937,7 @@ function ScheduleConfigPanel({
           </div>
         ))}
 
-        <div className="space-y-3 pt-4" style={{ borderTop: '0.5px solid rgba(255,255,255,0.08)' }}>
+        <div className="space-y-3 pt-4" style={{ borderTop: '0.5px solid var(--admin-border)' }}>
           <div className="space-y-1.5">
             <label style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-muted)' }}>
               ZOOM LINK
@@ -1109,7 +1109,7 @@ function Panel({
       className="relative rounded-2xl p-5 overflow-hidden"
       style={{
         background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -1123,7 +1123,7 @@ function Panel({
           <span
             className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
             style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
+              background: 'linear-gradient(135deg, var(--admin-border-strong), rgba(255,255,255,0.02))',
               border: '0.5px solid rgba(255,255,255,0.15)',
               color: '#FFFFFF',
             }}
@@ -1184,7 +1184,7 @@ function HourInput({ value, onChange }: { value: number; onChange: (v: number) =
       className="w-16 text-center px-2 py-1.5 rounded-lg outline-none transition-colors focus:border-white/30"
       style={{
         background: 'var(--admin-accent-soft)',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        border: '0.5px solid var(--admin-border-strong)',
         color: 'var(--admin-fg)',
         fontFamily: 'var(--font-mono-tech)',
         fontSize: 12,

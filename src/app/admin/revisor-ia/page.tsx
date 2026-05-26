@@ -63,7 +63,7 @@ function renderMarkdown(text: string): string {
     .replace(/^## (.+)$/gm, '<h2 class="text-[14px] font-bold text-white mt-5 mb-2">$1</h2>')
     .replace(/^# (.+)$/gm, '<h1 class="text-[15px] font-bold text-white mt-5 mb-3">$1</h1>')
     .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-white">$1</strong>')
-    .replace(/`(.+?)`/g, '<code class="rounded px-1 py-0.5 text-[12px]" style="background:rgba(255,255,255,0.08);color:#FACC15;font-family:var(--font-mono-tech);border:0.5px solid rgba(255,255,255,0.1)">$1</code>')
+    .replace(/`(.+?)`/g, '<code class="rounded px-1 py-0.5 text-[12px]" style="background:var(--admin-border);color:#FACC15;font-family:var(--font-mono-tech);border:0.5px solid var(--admin-border-strong)">$1</code>')
     .replace(/^[-*] (.+)$/gm, '<li class="ml-5 list-disc mb-0.5" style="color:#D4D4D8">$1</li>')
     .replace(/^(\d+)\. (.+)$/gm, '<li class="ml-5 list-decimal mb-0.5" style="color:#D4D4D8">$2</li>')
     .split(/\n\n+/)
@@ -294,10 +294,10 @@ export default function RevisorIAPage() {
         className={`${sidebarOpen ? 'w-72' : 'w-0'} flex flex-col transition-all overflow-hidden`}
         style={{
           background: 'linear-gradient(180deg, rgba(15,15,15,0.95), rgba(8,8,8,0.95))',
-          borderRight: '0.5px solid rgba(255,255,255,0.08)',
+          borderRight: '0.5px solid var(--admin-border)',
         }}
       >
-        <div className="p-3" style={{ borderBottom: '0.5px solid rgba(255,255,255,0.08)' }}>
+        <div className="p-3" style={{ borderBottom: '0.5px solid var(--admin-border)' }}>
           <button
             onClick={handleNewSession}
             className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95"
@@ -398,14 +398,14 @@ export default function RevisorIAPage() {
           style={{
             background: 'rgba(10,10,10,0.85)',
             backdropFilter: 'blur(20px)',
-            borderBottom: '0.5px solid rgba(255,255,255,0.08)',
+            borderBottom: '0.5px solid var(--admin-border)',
           }}
         >
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-white/10"
-              style={{ color: 'var(--admin-fg-muted)', border: '0.5px solid rgba(255,255,255,0.1)' }}
+              style={{ color: 'var(--admin-fg-muted)', border: '0.5px solid var(--admin-border-strong)' }}
             >
               <ChevronRight
                 className="w-3.5 h-3.5 transition-transform"
@@ -522,7 +522,7 @@ export default function RevisorIAPage() {
                     className="text-left p-3.5 rounded-2xl transition-all duration-300 hover:-translate-y-0.5"
                     style={{
                       background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-                      border: '0.5px solid rgba(255,255,255,0.1)',
+                      border: '0.5px solid var(--admin-border-strong)',
                     }}
                   >
                     <div className="flex items-start gap-2.5">
@@ -582,7 +582,7 @@ export default function RevisorIAPage() {
           style={{
             background: 'rgba(10,10,10,0.85)',
             backdropFilter: 'blur(20px)',
-            borderTop: '0.5px solid rgba(255,255,255,0.08)',
+            borderTop: '0.5px solid var(--admin-border)',
           }}
         >
           <div className="max-w-3xl mx-auto">
@@ -594,7 +594,7 @@ export default function RevisorIAPage() {
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg"
                     style={{
                       background: 'var(--admin-accent-soft)',
-                      border: '0.5px solid rgba(255,255,255,0.1)',
+                      border: '0.5px solid var(--admin-border-strong)',
                       fontSize: 11,
                     }}
                   >
@@ -619,7 +619,7 @@ export default function RevisorIAPage() {
               className="flex items-end gap-2 rounded-2xl p-2 transition-colors"
               style={{
                 background: 'var(--admin-accent-soft)',
-                border: '0.5px solid rgba(255,255,255,0.1)',
+                border: '0.5px solid var(--admin-border-strong)',
               }}
             >
               <button
@@ -733,7 +733,7 @@ function MessageBubble({ message, isStreaming = false }: { message: Message; isS
                 }
               : {
                   background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-                  border: '0.5px solid rgba(255,255,255,0.1)',
+                  border: '0.5px solid var(--admin-border-strong)',
                   padding: '16px 20px',
                   backdropFilter: 'blur(20px)',
                 }
@@ -790,7 +790,7 @@ function MessageBubble({ message, isStreaming = false }: { message: Message; isS
           className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
           style={{
             background: 'var(--admin-accent-soft)',
-            border: '0.5px solid rgba(255,255,255,0.1)',
+            border: '0.5px solid var(--admin-border-strong)',
           }}
         >
           <User className="w-4 h-4" style={{ color: 'var(--admin-fg-muted)' }} />

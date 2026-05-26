@@ -215,7 +215,7 @@ export default function ProspectSchedulingConfigPage() {
               className="rounded-xl p-4"
               style={{
                 background: day.is_available ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.015)',
-                border: '0.5px solid rgba(255,255,255,0.08)',
+                border: '0.5px solid var(--admin-border)',
               }}
             >
               <div className="flex items-center justify-between">
@@ -406,7 +406,7 @@ function Panel({
       className="relative rounded-2xl p-5 overflow-hidden"
       style={{
         background: 'linear-gradient(180deg, rgba(20,20,20,0.92), rgba(8,8,8,0.92))',
-        border: '0.5px solid rgba(255,255,255,0.1)',
+        border: '0.5px solid var(--admin-border-strong)',
         backdropFilter: 'blur(20px)',
       }}
     >
@@ -420,7 +420,7 @@ function Panel({
           <span
             className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
             style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.02))',
+              background: 'linear-gradient(135deg, var(--admin-border-strong), rgba(255,255,255,0.02))',
               border: '0.5px solid rgba(255,255,255,0.15)',
               color: '#FFFFFF',
             }}
@@ -466,7 +466,7 @@ function FormField({ label, hint, className, children }: { label: string; hint?:
 
 const DARK_INPUT_STYLE: React.CSSProperties = {
   background: 'var(--admin-accent-soft)',
-  border: '0.5px solid rgba(255,255,255,0.1)',
+  border: '0.5px solid var(--admin-border-strong)',
   color: 'var(--admin-fg)',
   fontSize: 13,
   letterSpacing: '-0.005em',
@@ -522,7 +522,7 @@ function HourSelect({ value, onChange }: { value: number; onChange: (v: number) 
         className="appearance-none px-3 py-1.5 pr-7 rounded-lg outline-none cursor-pointer transition-colors focus:border-white/30"
         style={{
           background: 'var(--admin-accent-soft)',
-          border: '0.5px solid rgba(255,255,255,0.1)',
+          border: '0.5px solid var(--admin-border-strong)',
           color: 'var(--admin-fg)',
           fontFamily: 'var(--font-mono-tech)',
           fontSize: 11,
