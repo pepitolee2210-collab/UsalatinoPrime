@@ -272,9 +272,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             fontWeight: 700,
                             padding: '1px 5px',
                             borderRadius: 8,
-                            background: 'rgba(250,204,21,0.08)',
-                            color: 'rgba(253, 224, 71, 0.85)',
-                            border: '0.5px solid rgba(250,204,21,0.22)',
+                            background: 'var(--admin-accent-soft)',
+                            color: 'var(--admin-accent)',
+                            border: '0.5px solid var(--admin-accent-glow)',
                             minWidth: 16,
                             display: 'inline-flex',
                             justifyContent: 'center',
@@ -286,7 +286,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       <ChevronDown
                         className="w-3 h-3"
                         style={{
-                          color: 'rgba(253, 224, 71, 0.6)',
+                          color: 'var(--admin-accent)',
+                          opacity: 0.7,
                           transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)',
                           transition: 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1), color 0.4s cubic-bezier(0.32, 0.72, 0, 1)',
                         }}
@@ -319,8 +320,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       onClick={() => setMobileOpen(false)}
                       className={`group relative flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-300 ${!isCollapsed ? 'nav-item-stagger' : ''}`}
                       style={{
-                        background: isActive ? 'var(--admin-border)' : 'transparent',
-                        color: isActive ? '#FFFFFF' : 'var(--admin-fg-muted)',
+                        background: isActive ? 'var(--admin-accent-soft)' : 'transparent',
+                        color: isActive ? 'var(--admin-accent)' : 'var(--admin-fg-muted)',
                         animationDelay: !isCollapsed ? `${itemIdx * 0.045}s` : '0s',
                       }}
                     >
@@ -329,8 +330,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           aria-hidden
                           className="absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-full"
                           style={{
-                            background: 'var(--admin-bg-elev)',
-                            boxShadow: '0 0 8px rgba(255,255,255,0.6)',
+                            background: 'var(--admin-accent)',
+                            boxShadow: '0 0 8px var(--admin-accent-glow)',
                           }}
                         />
                       )}
@@ -354,8 +355,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             letterSpacing: '0.15em',
                             padding: '2px 5px',
                             borderRadius: 3,
-                            background: 'var(--admin-bg-elev)',
-                            color: 'var(--admin-bg-deep)',
+                            background: 'var(--admin-accent)',
+                            color: 'var(--admin-bg)',
                           }}
                         >
                           NEW
@@ -372,9 +373,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             height: 18,
                             padding: '0 5px',
                             borderRadius: 9,
-                            background: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.12)',
-                            color: isActive ? 'var(--admin-bg-deep)' : '#FFFFFF',
-                            border: isActive ? 'none' : '0.5px solid rgba(255,255,255,0.15)',
+                            background: isActive ? 'var(--admin-accent)' : 'var(--admin-accent-soft)',
+                            color: isActive ? 'var(--admin-bg)' : 'var(--admin-accent)',
+                            border: isActive ? 'none' : '0.5px solid var(--admin-accent-glow)',
                           }}
                         >
                           {badgeCount}

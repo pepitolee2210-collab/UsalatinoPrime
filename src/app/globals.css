@@ -1129,31 +1129,45 @@
   --admin-shadow-lg:    0 8px 32px rgba(11,37,69,0.12);
 }
 
-/* ── Sidebar institucional en modo claro ─────────────────────────────
-   El patrón Stripe/Linear: aunque el contenido sea blanco, el sidebar
-   mantiene un tono oscuro institucional. Le da ancla visual al menú,
-   refuerza identidad de marca y separa nav del workspace.
-   Override SOLO de los tokens — los componentes hijos no necesitan
-   cambiar nada porque CSS vars cascadean por herencia.
+/* ── Sidebar BLANCO institucional en modo claro ──────────────────────
+   Sidebar también claro pero con acentos institucionales saturados
+   (azul Utah + dorado real + navy texto). Sin neón amarillo plateado.
+   Override SOLO de los tokens — los componentes hijos heredan via CSS vars.
 
    Tailwind v4 / @tailwindcss/postcss a veces "tree-shakea" CSS plano
    no referenciado por clases. Forzamos preservación con :where(.admin-sidebar)
    (cero especificidad extra) + repetimos selector explícito.          */
 [data-admin-theme='light'] .admin-sidebar,
 [data-admin-theme='light'] :where(.admin-sidebar) {
-  --admin-bg:           #0B2545;            /* navy institucional UsaLatino */
-  --admin-bg-deep:      #051A38;
-  --admin-bg-elev:      #D4A017;            /* dorado = pulse del logo      */
-  --admin-bg-elev-2:    #122E5E;
-  --admin-fg:           #F5F7FB;
-  --admin-fg-muted:     rgba(245,247,251,0.68);
-  --admin-fg-subtle:    rgba(245,247,251,0.42);
-  --admin-fg-faint:     rgba(245,247,251,0.10);
-  --admin-accent:       #D4A017;            /* dorado = acentos / pulse     */
-  --admin-accent-soft:  rgba(212,160,23,0.16);
-  --admin-accent-glow:  rgba(212,160,23,0.32);
-  --admin-border:       rgba(255,255,255,0.08);
-  --admin-border-strong:rgba(255,255,255,0.18);
+  --admin-bg:           #FFFFFF;            /* sidebar blanco puro          */
+  --admin-bg-deep:      #F4F7FB;            /* gradient suave inferior      */
+  --admin-bg-elev:      #0B2545;            /* navy pulse del logo          */
+  --admin-bg-elev-2:    #ECF0F6;            /* hover sutil                  */
+  --admin-fg:           #0B2545;            /* texto NAVY institucional     */
+  --admin-fg-muted:     #1E40AF;            /* items en azul Utah saturado  */
+  --admin-fg-subtle:    #475569;            /* subtítulos                   */
+  --admin-fg-faint:     #DCE3EE;
+  --admin-accent:       #B8860B;            /* DORADO REAL para activos     */
+  --admin-accent-soft:  rgba(184,134,11,0.10);
+  --admin-accent-glow:  rgba(184,134,11,0.28);
+  --admin-border:       #DCE3EE;
+  --admin-border-strong:#1E40AF;            /* divisores en azul Utah       */
+}
+
+/* En modo claro: desactivar la animación "neón amarillo" de los
+   encabezados de grupo (SHOWCASE, OPERACIÓN…) — en fondo blanco se
+   veía como "medio plateado" sin contraste. Reemplazo por color sólido
+   navy institucional con peso tipográfico. Misma solución para chevron
+   y elementos auxiliares que estaban hardcoded en amarillo neón.      */
+[data-admin-theme='light'] .admin-sidebar .neon-letter {
+  animation: none !important;
+  color: #0B2545 !important;       /* navy autoridad */
+  text-shadow: none !important;
+  font-weight: 700;
+}
+[data-admin-theme='light'] .admin-sidebar .neon-heading-wrap:hover .neon-letter {
+  color: #B8860B !important;       /* dorado al hover */
+  transform: translateY(-1px);
 }
 
 /* Transición suave al cambiar de tema */
