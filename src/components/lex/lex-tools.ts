@@ -82,45 +82,53 @@ export const LEX_TOOLS: LexFunctionDeclaration[] = [
   {
     name: 'openNewContractForm',
     description:
-      'Abre el formulario "Nuevo Contrato" de la sección y lo PRE-RELLENA con los datos que Vanessa dictó. El form se ve en pantalla con los campos ya completos — Vanessa puede revisar visualmente. NO guarda nada todavía. Después llama a submitContractForm para guardar y generar el PDF. Antes de invocar esta tool, repite los datos y pide "¿confirmas que abro el formulario con estos datos?".',
+      'Abre el formulario "Nuevo Contrato" PRE-RELLENADO con los datos dictados. Los campos aparecen completados en pantalla y Vanessa puede revisarlos visualmente. NO guarda nada — para guardar usa submitContractForm. Antes de invocar repite los datos y pregunta "¿abro el formulario con estos datos?".',
     parameters: {
       type: 'object',
       properties: {
-        clientFullName: {
-          type: 'string',
-          description: 'Nombre completo del cliente, ej "María Pérez González".',
-        },
-        clientPhone: {
-          type: 'string',
-          description: 'Teléfono del cliente, ej "+1 555 0000".',
-        },
+        clientFullName: { type: 'string', description: 'Nombre completo del cliente.' },
+        clientPhone: { type: 'string', description: 'Teléfono. Ej "+15551234".' },
         serviceSlug: {
           type: 'string',
           description:
-            'Slug del servicio. Opciones: visa-juvenil, asilo-politico, reforzar-asilo, cambio-de-corte, cambio-de-estatus, ajuste-de-estatus, taxes, itin-number, licencia-de-conducir, mociones, apelacion.',
+            'visa-juvenil | asilo-politico | reforzar-asilo | cambio-de-corte | cambio-de-estatus | ajuste-de-estatus | taxes | itin-number | licencia-de-conducir | mociones | apelacion | adelantos',
         },
         totalPrice: {
           type: 'number',
-          description:
-            'Monto total acordado en USD. OPCIONAL — si no se dicta, usa el precio default del template.',
+          description: 'Monto USD. OPCIONAL — default del template.',
         },
         installmentCount: {
           type: 'number',
+          description: 'Cuotas. OPCIONAL — default del template.',
+        },
+        clientPassport: { type: 'string', description: 'Pasaporte. OPCIONAL.' },
+        clientDob: { type: 'string', description: 'Fecha nacimiento YYYY-MM-DD. OPCIONAL.' },
+        clientAddress: { type: 'string', description: 'Dirección. OPCIONAL.' },
+        clientCity: { type: 'string', description: 'Ciudad. OPCIONAL.' },
+        clientState: { type: 'string', description: 'Estado (UT, NV, TX…). OPCIONAL.' },
+        clientZip: { type: 'string', description: 'Código ZIP. OPCIONAL.' },
+        asylumFamilyType: {
+          type: 'string',
+          enum: ['married', 'cohabiting_with_kids', 'novios'],
           description:
-            'Número de cuotas. OPCIONAL — default es el del template (1 = pago único, normalmente 10 para servicios largos).',
+            'SOLO para asilo-politico: married (casados), cohabiting_with_kids (convivientes con hijos), novios (sin matrimonio).',
         },
-        clientPassport: {
-          type: 'string',
-          description: 'Número de pasaporte del cliente. OPCIONAL — se puede completar después.',
-        },
-        clientDob: {
-          type: 'string',
-          description: 'Fecha de nacimiento del cliente en formato YYYY-MM-DD. OPCIONAL.',
+        spouse: {
+          type: 'object',
+          description:
+            'SOLO para asilo-politico con asylumFamilyType=married o cohabiting_with_kids.',
+          properties: {
+            fullName: { type: 'string' },
+            dob: { type: 'string', description: 'YYYY-MM-DD' },
+            passport: { type: 'string' },
+            birthplace: { type: 'string' },
+          },
+          required: ['fullName'],
         },
         minors: {
           type: 'array',
           description:
-            'Lista de menores para servicios SIJS (visa-juvenil). OPCIONAL — solo si Vanessa los menciona y el servicio los requiere.',
+            'Para visa-juvenil (SIJS) o asilo familiar con hijos. Lista de menores.',
           items: {
             type: 'object',
             properties: {
@@ -245,6 +253,14 @@ export async function executeLexTool(
           serviceSlug: args.serviceSlug ? String(args.serviceSlug).trim() : undefined,
           clientPassport: args.clientPassport ? String(args.clientPassport).trim() : undefined,
           clientDob: args.clientDob ? String(args.clientDob).trim() : undefined,
+          clientAddress: args.clientAddress ? String(args.clientAddress).trim() : undefined,
+          clientCity: args.clientCity ? String(args.clientCity).trim() : undefined,
+          clientState: args.clientState ? String(args.clientState).trim().toUpperCase() : undefined,
+          clientZip: args.clientZip ? String(args.clientZip).trim() : undefined,
+          asylumFamilyType: args.asylumFamilyType
+            ? String(args.asylumFamilyType).trim()
+            : undefined,
+          spouse: typeof args.spouse === 'object' && args.spouse ? args.spouse : undefined,
           totalPrice: typeof args.totalPrice === 'number' ? args.totalPrice : undefined,
           installmentCount:
             typeof args.installmentCount === 'number' ? args.installmentCount : undefined,

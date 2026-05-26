@@ -104,9 +104,15 @@ interface QuickContractGeneratorProps {
   /** Extended pre-fills used by Lex (voice control of the form). */
   prefillPassport?: string
   prefillDob?: string
+  prefillAddress?: string
+  prefillCity?: string
+  prefillState?: string
+  prefillZip?: string
   prefillTotalPrice?: number
   prefillInstallmentCount?: number
   prefillMinors?: Array<{ fullName: string; dob?: string; passport?: string; birthplace?: string }>
+  prefillAsylumFamilyType?: 'married' | 'cohabiting_with_kids' | 'novios'
+  prefillSpouse?: { fullName: string; dob?: string; passport?: string; birthplace?: string }
 }
 
 const emptyMinor = (): MinorData => ({ fullName: '', dob: '', birthplace: '', passport: '' })
@@ -119,9 +125,15 @@ export function QuickContractGenerator({
   prefillService,
   prefillPassport,
   prefillDob,
+  prefillAddress,
+  prefillCity,
+  prefillState,
+  prefillZip,
   prefillTotalPrice,
   prefillInstallmentCount,
   prefillMinors,
+  prefillAsylumFamilyType,
+  prefillSpouse,
 }: QuickContractGeneratorProps) {
   const supabase = createClient()
   const [selectedSlug, setSelectedSlug] = useState('')
@@ -286,9 +298,15 @@ export function QuickContractGenerator({
       prefillService ||
       prefillPassport ||
       prefillDob ||
+      prefillAddress ||
+      prefillCity ||
+      prefillState ||
+      prefillZip ||
       prefillTotalPrice !== undefined ||
       prefillInstallmentCount !== undefined ||
-      (prefillMinors && prefillMinors.length > 0)
+      (prefillMinors && prefillMinors.length > 0) ||
+      prefillAsylumFamilyType ||
+      prefillSpouse
     if (!hasAnyPrefill) return
     setContractForm(prev => ({
       ...prev,
@@ -296,6 +314,10 @@ export function QuickContractGenerator({
       clientPhone: prefillPhone || prev.clientPhone,
       clientPassport: prefillPassport || prev.clientPassport,
       clientDOB: prefillDob || prev.clientDOB,
+      clientAddress: prefillAddress || prev.clientAddress,
+      clientCity: prefillCity || prev.clientCity,
+      clientState: prefillState || prev.clientState,
+      clientZip: prefillZip || prev.clientZip,
     }))
     if (prefillService) {
       // Use the existing service-change handler so the template loads too.
@@ -318,6 +340,17 @@ export function QuickContractGenerator({
           birthplace: m.birthplace || '',
         })),
       )
+    }
+    if (prefillAsylumFamilyType) {
+      setAsylumFamilyType(prefillAsylumFamilyType)
+    }
+    if (prefillSpouse) {
+      setSpouse({
+        fullName: prefillSpouse.fullName || '',
+        dob: prefillSpouse.dob || '',
+        passport: prefillSpouse.passport || '',
+        birthplace: prefillSpouse.birthplace || '',
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

@@ -147,6 +147,12 @@ function ContratosInner({ basePath, hideHeader }: Props) {
     serviceSlug?: string
     clientPassport?: string
     clientDob?: string
+    clientAddress?: string
+    clientCity?: string
+    clientState?: string
+    clientZip?: string
+    asylumFamilyType?: string
+    spouse?: { fullName: string; dob?: string; passport?: string; birthplace?: string }
     totalPrice?: number
     installmentCount?: number
     minors?: Array<{ fullName: string; dob?: string; passport?: string; birthplace?: string }>
@@ -347,9 +353,15 @@ function ContratosInner({ basePath, hideHeader }: Props) {
           prefillService={voicePrefill?.serviceSlug ?? (prefillFromVoice ? 'visa-juvenil' : undefined)}
           prefillPassport={voicePrefill?.clientPassport}
           prefillDob={voicePrefill?.clientDob}
+          prefillAddress={voicePrefill?.clientAddress}
+          prefillCity={voicePrefill?.clientCity}
+          prefillState={voicePrefill?.clientState}
+          prefillZip={voicePrefill?.clientZip}
           prefillTotalPrice={voicePrefill?.totalPrice}
           prefillInstallmentCount={voicePrefill?.installmentCount}
           prefillMinors={voicePrefill?.minors}
+          prefillAsylumFamilyType={voicePrefill?.asylumFamilyType as 'married' | 'cohabiting_with_kids' | 'novios' | undefined}
+          prefillSpouse={voicePrefill?.spouse}
         />
       </div>
     )
