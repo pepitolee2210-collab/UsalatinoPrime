@@ -30,7 +30,7 @@ export interface ContractExportRow {
   client_phone: string | null
   client_dob: string | null
   client_address: string | null
-  client_unit: string | null
+  client_address_unit: string | null
   client_city: string | null
   client_state: string | null
   client_zip: string | null
@@ -38,7 +38,9 @@ export interface ContractExportRow {
 
   service_name: string | null
   service_slug: string | null
+  subservice_slug: string | null
   variant_index: number | null
+  asylum_family_type: string | null
   objeto_del_contrato: string | null
   etapas: string[] | null
 
@@ -213,14 +215,16 @@ export async function buildContractsWorkbook(
     { key: 'client_phone', header: 'Teléfono', type: 'string' },
     { key: 'client_dob', header: 'Fecha Nacimiento', type: 'date' },
     { key: 'client_address', header: 'Dirección', type: 'string' },
-    { key: 'client_unit', header: 'Unidad', type: 'string' },
+    { key: 'client_address_unit', header: 'Unidad', type: 'string' },
     { key: 'client_city', header: 'Ciudad', type: 'string' },
     { key: 'client_state', header: 'Estado (US)', type: 'string' },
     { key: 'client_zip', header: 'ZIP', type: 'string' },
 
     { key: 'service_name', header: 'Servicio', type: 'string' },
     { key: 'service_slug', header: 'Slug', type: 'string' },
+    { key: 'subservice_slug', header: 'Subservicio', type: 'string' },
     { key: 'variant_index', header: 'Variante', type: 'number' },
+    { key: 'asylum_family_type', header: 'Asilo Tipo Familia', type: 'string' },
     { key: 'objeto_del_contrato', header: 'Objeto del Contrato', type: 'string' },
     { key: 'etapas', header: 'Etapas', type: 'string' },
 
@@ -295,14 +299,16 @@ export async function buildContractsWorkbook(
       client_phone: row.client_phone,
       client_dob: toDate(row.client_dob),
       client_address: row.client_address,
-      client_unit: row.client_unit,
+      client_address_unit: row.client_address_unit,
       client_city: row.client_city,
       client_state: row.client_state,
       client_zip: row.client_zip,
 
       service_name: row.service_name,
       service_slug: row.service_slug,
+      subservice_slug: row.subservice_slug,
       variant_index: row.variant_index,
+      asylum_family_type: row.asylum_family_type,
       objeto_del_contrato: row.objeto_del_contrato,
       etapas: Array.isArray(row.etapas) ? row.etapas.join('; ') : null,
 
