@@ -99,7 +99,12 @@ export async function POST() {
   if (error) {
     console.error('[contracts/export] query error:', error)
     return NextResponse.json(
-      { error: 'Error al cargar contratos' },
+      {
+        error: 'Error al cargar contratos',
+        detail: error.message,
+        code: error.code,
+        hint: error.hint,
+      },
       { status: 500 },
     )
   }
