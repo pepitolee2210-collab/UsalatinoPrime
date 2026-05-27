@@ -12,6 +12,7 @@ import path from 'node:path'
 import { PDFDocument } from 'pdf-lib'
 import { fillAcroForm } from '@/lib/legal/acroform-service'
 import { sanitizeFilledPdf } from '@/lib/pdf/sanitize-pdf'
+import { renderPdf417Barcodes } from '@/lib/pdf/render-barcodes'
 import { buildPartAValues, type I589PartsData } from './generate-i589-part-a'
 import { buildPartBCValues, appendSupplementBPages, type SupplementBEntry } from './generate-i589-part-b'
 import { buildPartDValues } from './generate-i589-part-d'
@@ -53,6 +54,13 @@ export async function generateI589CompletePdf(
   // base con XFA/XMP leftovers, esto garantiza que no lleguen al cliente
   // como paths "C:\Users\...\imagenN.jpg" en el footer.
   sanitizeFilledPdf(filledDoc)
+
+  // Renderiza los 12 códigos de barras PDF417 del footer. Los TextFields
+  // heredados del XFA original sólo cargan el payload (ej. "I-589|01/20/25|3")
+  // pero no se dibujan como imagen; aquí los convertimos en PNG embebido para
+  // que USCIS pueda escanearlos. Si la generación de un barcode falla, se
+  // loguea y el PDF se sirve igual (degradación elegante).
+  await renderPdf417Barcodes(filledDoc)
 
   // Adjuntar Supplement B cuando hay entradas extendidas.
   if (options.supplementBEntries && options.supplementBEntries.length > 0) {

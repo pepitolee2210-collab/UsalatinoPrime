@@ -47,24 +47,29 @@ export function buildPartBCValues(structured: StructuredI589BC): Record<string, 
     if (fld) out[fld] = true
   }
 
-  // Parte B — preguntas con Yes/No + textarea
+  // Parte B — preguntas con Yes/No + textarea.
+  // El textarea solo se rellena cuando la respuesta es "Sí". Si es "No", el
+  // espacio queda vacío: el solicitante no debe justificar la negación, y la
+  // IA suele generar textos del estilo "Applicant has not been accused..."
+  // que no aportan información a USCIS y consumen espacio del field.
   for (const [qKey, fields] of Object.entries(I589_PART_B_QUESTIONS)) {
     const q = structured[qKey as keyof StructuredI589BC] as
       | { yes: boolean; explanation: string }
       | undefined
     if (!q) continue
     out[q.yes ? fields.yes : fields.no] = true
-    if (q.explanation) out[fields.text] = q.explanation
+    if (q.yes && q.explanation) out[fields.text] = q.explanation
   }
 
-  // Parte C — preguntas con Yes/No; algunas tienen textarea
+  // Parte C — preguntas con Yes/No; algunas tienen textarea (misma regla:
+  // solo se llena cuando la respuesta es "Sí").
   for (const [qKey, fields] of Object.entries(I589_PART_C_QUESTIONS)) {
     const q = structured[qKey as keyof StructuredI589BC] as
       | { yes: boolean; explanation?: string }
       | undefined
     if (!q) continue
     out[q.yes ? fields.yes : fields.no] = true
-    if (fields.text && q.explanation) out[fields.text] = q.explanation
+    if (q.yes && fields.text && q.explanation) out[fields.text] = q.explanation
   }
 
   return out
