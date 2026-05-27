@@ -11,6 +11,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { PDFDocument } from 'pdf-lib'
 import { fillAcroForm } from '@/lib/legal/acroform-service'
+import { sanitizeFilledPdf } from '@/lib/pdf/sanitize-pdf'
 import { buildPartAValues, type I589PartsData } from './generate-i589-part-a'
 import { buildPartBCValues, appendSupplementBPages, type SupplementBEntry } from './generate-i589-part-b'
 import { buildPartDValues } from './generate-i589-part-d'
@@ -46,6 +47,12 @@ export async function generateI589CompletePdf(
   for (let i = filledDoc.getPageCount() - 1; i >= 12; i--) {
     filledDoc.removePage(i)
   }
+
+  // Defense-in-depth: aunque el PDF base ya esté limpio (ver
+  // scripts/clean-i589-base-pdf.mjs), si en el futuro alguien sube un PDF
+  // base con XFA/XMP leftovers, esto garantiza que no lleguen al cliente
+  // como paths "C:\Users\...\imagenN.jpg" en el footer.
+  sanitizeFilledPdf(filledDoc)
 
   // Adjuntar Supplement B cuando hay entradas extendidas.
   if (options.supplementBEntries && options.supplementBEntries.length > 0) {
