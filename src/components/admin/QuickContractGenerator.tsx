@@ -6,16 +6,16 @@ import { toast } from 'sonner'
 
 // ─── Dark techno helpers ───
 const DARK_INPUT_CLS =
-  'w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 ' +
-  'bg-white/[0.04]/[0.04] border border-white/10 text-white placeholder:text-white/30'
+  'w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-[var(--admin-gold)] ' +
+  'bg-[var(--admin-accent-soft)] border border-[var(--admin-border)] text-[var(--admin-fg)] placeholder:text-[var(--admin-fg)]/30'
 
 const DARK_INPUT_STYLE: React.CSSProperties = { colorScheme: 'dark' }
 
 const DARK_OPTION_STYLE: React.CSSProperties = { background: 'var(--admin-bg)', color: 'var(--admin-fg)' }
 
 const DARK_SELECT_CLS =
-  'w-full px-3.5 py-2.5 pr-10 rounded-xl text-sm outline-none transition-colors focus:border-white/30 appearance-none cursor-pointer ' +
-  'bg-white/[0.04]/[0.04] border border-white/10 text-white'
+  'w-full px-3.5 py-2.5 pr-10 rounded-xl text-sm outline-none transition-colors focus:border-[var(--admin-gold)] appearance-none cursor-pointer ' +
+  'bg-[var(--admin-accent-soft)] border border-[var(--admin-border)] text-[var(--admin-fg)]'
 
 function DarkLabel({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
@@ -101,11 +101,40 @@ interface QuickContractGeneratorProps {
   prefillPhone?: string
   /** Auto-select this service slug when the form opens. */
   prefillService?: string
+  /** Extended pre-fills used by Lex (voice control of the form). */
+  prefillPassport?: string
+  prefillDob?: string
+  prefillAddress?: string
+  prefillCity?: string
+  prefillState?: string
+  prefillZip?: string
+  prefillTotalPrice?: number
+  prefillInstallmentCount?: number
+  prefillMinors?: Array<{ fullName: string; dob?: string; passport?: string; birthplace?: string }>
+  prefillAsylumFamilyType?: 'married' | 'cohabiting_with_kids' | 'novios'
+  prefillSpouse?: { fullName: string; dob?: string; passport?: string; birthplace?: string }
 }
 
 const emptyMinor = (): MinorData => ({ fullName: '', dob: '', birthplace: '', passport: '' })
 
-export function QuickContractGenerator({ editData, onSaved, prefillName, prefillPhone, prefillService }: QuickContractGeneratorProps) {
+export function QuickContractGenerator({
+  editData,
+  onSaved,
+  prefillName,
+  prefillPhone,
+  prefillService,
+  prefillPassport,
+  prefillDob,
+  prefillAddress,
+  prefillCity,
+  prefillState,
+  prefillZip,
+  prefillTotalPrice,
+  prefillInstallmentCount,
+  prefillMinors,
+  prefillAsylumFamilyType,
+  prefillSpouse,
+}: QuickContractGeneratorProps) {
   const supabase = createClient()
   const [selectedSlug, setSelectedSlug] = useState('')
   const [selectedSubserviceSlug, setSelectedSubserviceSlug] = useState<string>('')
@@ -263,16 +292,78 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
   // Runs once on mount if we aren't editing an existing contract.
   useEffect(() => {
     if (editData) return
-    if (!prefillName && !prefillPhone && !prefillService) return
+    const hasAnyPrefill =
+      prefillName ||
+      prefillPhone ||
+      prefillService ||
+      prefillPassport ||
+      prefillDob ||
+      prefillAddress ||
+      prefillCity ||
+      prefillState ||
+      prefillZip ||
+      prefillTotalPrice !== undefined ||
+      prefillInstallmentCount !== undefined ||
+      (prefillMinors && prefillMinors.length > 0) ||
+      prefillAsylumFamilyType ||
+      prefillSpouse
+    if (!hasAnyPrefill) return
     setContractForm(prev => ({
       ...prev,
       clientFullName: prefillName || prev.clientFullName,
       clientPhone: prefillPhone || prev.clientPhone,
+      clientPassport: prefillPassport || prev.clientPassport,
+      clientDOB: prefillDob || prev.clientDOB,
+      clientAddress: prefillAddress || prev.clientAddress,
+      clientCity: prefillCity || prev.clientCity,
+      clientState: prefillState || prev.clientState,
+      clientZip: prefillZip || prev.clientZip,
     }))
     if (prefillService) {
       // Use the existing service-change handler so the template loads too.
       handleServiceChange(prefillService)
     }
+    if (prefillTotalPrice !== undefined) {
+      setCustomPrice(String(prefillTotalPrice))
+      setUseCustomPrice(true)
+    }
+    if (prefillInstallmentCount !== undefined) {
+      setCustomInstallments(String(prefillInstallmentCount))
+      setUseCustomInstallments(true)
+    }
+    if (prefillMinors && prefillMinors.length > 0) {
+      setMinors(
+        prefillMinors.map(m => ({
+          fullName: m.fullName || '',
+          dob: m.dob || '',
+          passport: m.passport || '',
+          birthplace: m.birthplace || '',
+        })),
+      )
+    }
+    if (prefillAsylumFamilyType) {
+      setAsylumFamilyType(prefillAsylumFamilyType)
+    }
+    if (prefillSpouse) {
+      setSpouse({
+        fullName: prefillSpouse.fullName || '',
+        dob: prefillSpouse.dob || '',
+        passport: prefillSpouse.passport || '',
+        birthplace: prefillSpouse.birthplace || '',
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Listener para que Lex pueda hacer click en "Generar contrato" por voz.
+  // Cuando Vanessa dice "guárdalo", la tool dispatcha este evento y nosotros
+  // ejecutamos handleGenerate exactamente como si Vanessa hubiera clickeado.
+  useEffect(() => {
+    function onLexSubmit() {
+      void handleGenerate()
+    }
+    window.addEventListener('lex:submitContractForm', onLexSubmit)
+    return () => window.removeEventListener('lex:submitContractForm', onLexSubmit)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -800,14 +891,14 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
       <span
         aria-hidden
         className="absolute top-0 left-0 right-0 h-px"
-        style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)' }}
+        style={{ background: 'linear-gradient(90deg, transparent, var(--admin-accent-glow), transparent)' }}
       />
       <div className="relative px-5 pt-5 pb-3 flex items-start gap-3" style={{ borderBottom: '0.5px solid var(--admin-border)' }}>
         <div
           className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
           style={{
-            background: 'linear-gradient(135deg, var(--admin-border-strong), rgba(255,255,255,0.02))',
-            border: '0.5px solid rgba(255,255,255,0.15)',
+            background: 'linear-gradient(135deg, var(--admin-border-strong), var(--admin-accent-soft))',
+            border: '0.5px solid var(--admin-border-strong)',
           }}
         >
           <FileText className="w-4 h-4" style={{ color: 'var(--admin-fg)' }} />
@@ -827,7 +918,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
       <div className="relative p-5 space-y-4">
         {/* Service selector */}
         <div className="space-y-1.5">
-          <DarkLabel>SERVICIO <span style={{ color: '#F87171' }}>*</span></DarkLabel>
+          <DarkLabel>SERVICIO <span style={{ color: 'var(--admin-red)' }}>*</span></DarkLabel>
           <div className="relative">
             <select
               value={selectedSlug}
@@ -840,7 +931,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                 <option key={s.slug} value={s.slug} style={DARK_OPTION_STYLE}>{s.label}</option>
               ))}
             </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--admin-fg-subtle)] pointer-events-none" />
           </div>
         </div>
 
@@ -848,7 +939,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
         {template?.subservices && template.subservices.length > 0 && (
           <div className="space-y-1.5">
             <DarkLabel className="flex items-center gap-1.5">
-              <PackagePlus className="w-3.5 h-3.5 text-white" />
+              <PackagePlus className="w-3.5 h-3.5 text-[var(--admin-fg)]" />
               Alcance del contrato
             </DarkLabel>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -863,19 +954,19 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                     onClick={() => handleSubserviceChange(sub.slug)}
                     className={`text-left px-3 py-2.5 rounded-lg border transition-colors ${
                       active
-                        ? 'border-white/30 bg-white/[0.04]/5 ring-1 ring-white/30'
-                        : 'border-white/10 bg-white/[0.04] hover:bg-white/[0.04]/5'
+                        ? 'border-[var(--admin-gold)] bg-[var(--admin-gold-soft)] ring-1 ring-[var(--admin-gold)]'
+                        : 'border-[var(--admin-border)] bg-[var(--admin-accent-soft)] hover:bg-[var(--admin-accent-soft)]'
                     }`}
                   >
-                    <p className={`text-sm font-medium ${active ? 'text-white' : 'text-white/85'}`}>
+                    <p className={`text-sm font-medium ${active ? 'text-[var(--admin-fg)]' : 'text-[var(--admin-fg)]'}`}>
                       {sub.label}
                     </p>
                     {sub.description && (
-                      <p className="text-[11px] text-white/55 mt-0.5 leading-snug">
+                      <p className="text-[11px] text-[var(--admin-fg-subtle)] mt-0.5 leading-snug">
                         {sub.description}
                       </p>
                     )}
-                    <p className="text-[11px] font-mono text-white mt-1">
+                    <p className="text-[11px] font-mono text-[var(--admin-fg)] mt-1">
                       Desde ${sub.variants[0].totalPrice.toLocaleString()}
                     </p>
                   </button>
@@ -897,8 +988,8 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                   onClick={() => { setSelectedVariantIndex(i); setUseCustomPrice(false); setCustomPrice(''); }}
                   className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${
                     selectedVariantIndex === i
-                      ? 'border-white/30 bg-white text-black'
-                      : 'border-white/10 bg-white/[0.04] text-white/85 hover:bg-white/[0.04]/5'
+                      ? 'border-[var(--admin-accent)] bg-[var(--admin-accent)] text-white'
+                      : 'border-[var(--admin-border)] bg-[var(--admin-accent-soft)] text-[var(--admin-fg)] hover:bg-[var(--admin-accent-soft)]'
                   }`}
                 >
                   {v.label} — ${v.totalPrice.toLocaleString()}
@@ -910,8 +1001,8 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                 'asilo-politico' y 'reforzar-asilo' — ver isAsylumService) */}
             {isAsylumService(selectedSlug)
               && getActiveVariants()[selectedVariantIndex]?.label === 'Familiar' && (
-              <div className="mt-2 p-3 rounded-lg bg-purple-500/10 border border-purple-500/30 space-y-2">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-purple-200">
+              <div className="mt-2 p-3 rounded-lg bg-[var(--admin-blue-soft)] border border-[var(--admin-blue)] space-y-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--admin-blue)]">
                   Tipo de familia (Asilo Político)
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -926,8 +1017,8 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                       onClick={() => setAsylumFamilyType(opt.value)}
                       className={`flex-1 min-w-[140px] text-left px-3 py-2 rounded-lg border text-xs transition-colors ${
                         asylumFamilyType === opt.value
-                          ? 'border-white bg-white text-black text-white'
-                          : 'border-purple-500/30 bg-white/[0.04] text-purple-200 hover:bg-purple-500/15'
+                          ? 'border-[var(--admin-accent)] bg-[var(--admin-accent)] text-white'
+                          : 'border-[var(--admin-blue)] bg-[var(--admin-accent-soft)] text-[var(--admin-blue)] hover:bg-[var(--admin-blue-soft)]'
                       }`}
                     >
                       <p className="font-bold">{opt.label}</p>
@@ -936,7 +1027,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                   ))}
                 </div>
                 {asylumFamilyType === 'novios' && (
-                  <p className="text-[11px] text-yellow-300 bg-yellow-500/10 border border-yellow-500/30 px-2 py-1.5 rounded">
+                  <p className="text-[11px] text-[var(--admin-gold)] bg-[var(--admin-gold-soft)] border border-[var(--admin-gold)] px-2 py-1.5 rounded">
                     ⚠ Recomendado: crear contratos individuales separados, uno por aplicante.
                   </p>
                 )}
@@ -951,25 +1042,25 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
             {addons.length > 0 && (
               <div className="space-y-2">
                 <DarkLabel className="flex items-center gap-1.5">
-                  <PackagePlus className="w-3.5 h-3.5 text-white" />
+                  <PackagePlus className="w-3.5 h-3.5 text-[var(--admin-fg)]" />
                   Servicios Adicionales
                 </DarkLabel>
                 {addons.map((addon, i) => (
-                  <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-white/15 bg-white/[0.04]/[0.04]">
-                    <span className="flex-1 text-sm text-white">{addon.label}</span>
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg border border-[var(--admin-border-strong)] bg-[var(--admin-accent-soft)]">
+                    <span className="flex-1 text-sm text-[var(--admin-fg)]">{addon.label}</span>
                     <div className="flex items-center gap-1">
-                      <span className="text-xs text-white/55">$</span>
+                      <span className="text-xs text-[var(--admin-fg-subtle)]">$</span>
                       <input
                         type="number"
                         value={addon.price}
                         onChange={(e) => updateAddonPrice(i, parseFloat(e.target.value) || 0)}
-                        className="w-20 h-7 text-sm text-right rounded border border-white/10 px-2"
+                        className="w-20 h-7 text-sm text-right rounded border border-[var(--admin-border)] px-2"
                       />
                     </div>
                     <button
                       type="button"
                       onClick={() => removeAddon(i)}
-                      className="flex items-center justify-center w-6 h-6 rounded border border-red-500/30 bg-white/[0.04] text-red-300 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+                      className="flex items-center justify-center w-6 h-6 rounded border border-[var(--admin-red)] bg-[var(--admin-accent-soft)] text-[var(--admin-red)] hover:bg-[var(--admin-red-soft)] hover:text-[var(--admin-red)] transition-colors"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -992,9 +1083,9 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                       <option key={s.slug} value={s.slug} style={DARK_OPTION_STYLE}>{s.label}</option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--admin-fg-subtle)] pointer-events-none" />
                 </div>
-                <button type="button" onClick={() => setShowAddonSelector(false)} className="text-xs text-white/40 hover:text-gray-600">
+                <button type="button" onClick={() => setShowAddonSelector(false)} className="text-xs text-[var(--admin-fg-subtle)] hover:text-[var(--admin-fg)]">
                   Cancelar
                 </button>
               </div>
@@ -1002,7 +1093,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
               <button
                 type="button"
                 onClick={() => setShowAddonSelector(true)}
-                className="w-full flex items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-[#F2A900]/30 hover:border-[#F2A900] bg-white/[0.04]/[0.04] hover:bg-[#FFF8E1] px-3 py-2 text-xs font-medium text-white/60 hover:text-white transition-all"
+                className="w-full flex items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-[var(--admin-gold)] hover:border-[var(--admin-gold)] bg-[var(--admin-accent-soft)] hover:bg-[var(--admin-gold-soft)] px-3 py-2 text-xs font-medium text-[var(--admin-fg-muted)] hover:text-[var(--admin-fg)] transition-all"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Agregar Servicio Adicional
@@ -1013,13 +1104,13 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
 
         {/* === PLAN FINANCIERO === */}
         {template && (
-          <div className="space-y-3 rounded-lg border border-white/30/10 bg-white/[0.04]/5 p-3">
-            <p className="text-xs font-bold text-white uppercase tracking-wide">Plan Financiero</p>
+          <div className="space-y-3 rounded-lg border border-[var(--admin-border)] bg-[var(--admin-accent-soft)] p-3">
+            <p className="text-xs font-bold text-[var(--admin-fg)] uppercase tracking-wide">Plan Financiero</p>
 
             {/* Desglose de servicios */}
             <div className="space-y-1">
               <div className="flex justify-between text-sm">
-                <span className="text-white/70">
+                <span className="text-[var(--admin-fg-muted)]">
                   {SERVICE_OPTIONS.find(s => s.slug === selectedSlug)?.label}
                   {(() => {
                     const sub = selectedSubserviceSlug && template.subservices
@@ -1028,14 +1119,14 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                     return sub ? ` — ${sub.label}` : ''
                   })()}:
                 </span>
-                <span className="font-medium text-white">
+                <span className="font-medium text-[var(--admin-fg)]">
                   ${(getActiveVariants()[selectedVariantIndex]?.totalPrice || 0).toLocaleString()}
                 </span>
               </div>
               {addons.map((a, i) => (
                 <div key={i} className="flex justify-between text-sm">
-                  <span className="text-white/70">{a.label}:</span>
-                  <span className="font-medium text-white">${a.price.toLocaleString()}</span>
+                  <span className="text-[var(--admin-fg-muted)]">{a.label}:</span>
+                  <span className="font-medium text-[var(--admin-fg)]">${a.price.toLocaleString()}</span>
                 </div>
               ))}
             </div>
@@ -1049,7 +1140,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                 onChange={(e) => { setUseCustomPrice(e.target.checked); if (!e.target.checked) setCustomPrice(''); }}
                 className="rounded border-gray-300"
               />
-              <label htmlFor="customPrice" className="text-xs text-white/70 flex items-center gap-1">
+              <label htmlFor="customPrice" className="text-xs text-[var(--admin-fg-muted)] flex items-center gap-1">
                 <DollarSign className="w-3 h-3" />
                 Precio total personalizado
               </label>
@@ -1059,21 +1150,21 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                   value={customPrice}
                   onChange={(e) => setCustomPrice(e.target.value)}
                   placeholder={getCalculatedTotal().toString()}
-                  className="w-24 h-7 text-sm text-right rounded border border-white/30/20 px-2"
+                  className="w-24 h-7 text-sm text-right rounded border border-[var(--admin-border)] px-2"
                 />
               )}
             </div>
 
             {/* Total */}
-            <div className="border-t border-white/30/20 pt-2 flex justify-between items-center">
-              <span className="text-sm font-bold text-white">Total del contrato:</span>
-              <span className="text-lg font-bold text-white">${getFinalPrice().toLocaleString()} USD</span>
+            <div className="border-t border-[var(--admin-border)] pt-2 flex justify-between items-center">
+              <span className="text-sm font-bold text-[var(--admin-fg)]">Total del contrato:</span>
+              <span className="text-lg font-bold text-[var(--admin-fg)]">${getFinalPrice().toLocaleString()} USD</span>
             </div>
 
             {/* Fecha de inicio */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-xs text-white/70 flex items-center gap-1">
+                <label className="text-xs text-[var(--admin-fg-muted)] flex items-center gap-1">
                   <CalendarClock className="w-3 h-3" />
                   Fecha de inicio del contrato
                 </label>
@@ -1086,7 +1177,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs text-white/70 flex items-center gap-1">
+                <label className="text-xs text-[var(--admin-fg-muted)] flex items-center gap-1">
                   <DollarSign className="w-3 h-3" />
                   Cuota inicial (enganche)
                 </label>
@@ -1104,14 +1195,14 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
             {/* Saldo restante */}
             {getInitialPayment() > 0 && (
               <div className="flex justify-between text-sm px-1">
-                <span className="text-white/70">Saldo restante:</span>
-                <span className="font-bold text-white">${getRemainingBalance().toLocaleString()} USD</span>
+                <span className="text-[var(--admin-fg-muted)]">Saldo restante:</span>
+                <span className="font-bold text-[var(--admin-fg)]">${getRemainingBalance().toLocaleString()} USD</span>
               </div>
             )}
 
             {/* Opciones de cuotas */}
-            <div className="space-y-2 border-t border-white/30/10 pt-2">
-              <p className="text-xs font-semibold text-white/70">Configurar cuotas mensuales:</p>
+            <div className="space-y-2 border-t border-[var(--admin-border)] pt-2">
+              <p className="text-xs font-semibold text-[var(--admin-fg-muted)]">Configurar cuotas mensuales:</p>
 
               {/* Opción 1: Número de cuotas */}
               <div className="flex items-center gap-2">
@@ -1123,7 +1214,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                   onChange={() => { setUseCustomMonthly(false); setCustomMonthlyAmount(''); }}
                   className="border-gray-300"
                 />
-                <label htmlFor="byInstallments" className="text-xs text-white/70 flex items-center gap-1">
+                <label htmlFor="byInstallments" className="text-xs text-[var(--admin-fg-muted)] flex items-center gap-1">
                   <Hash className="w-3 h-3" />
                   Por n&uacute;mero de cuotas
                 </label>
@@ -1134,11 +1225,11 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                     onChange={(e) => { setUseCustomInstallments(true); setCustomInstallments(e.target.value); }}
                     min="1"
                     max="36"
-                    className="w-16 h-7 text-sm text-center rounded border border-white/30/20 px-2"
+                    className="w-16 h-7 text-sm text-center rounded border border-[var(--admin-border)] px-2"
                   />
                 )}
                 {!useCustomMonthly && (
-                  <span className="text-xs text-white/55">= ${getFinalMonthly().toLocaleString()}/mes</span>
+                  <span className="text-xs text-[var(--admin-fg-subtle)]">= ${getFinalMonthly().toLocaleString()}/mes</span>
                 )}
               </div>
 
@@ -1152,7 +1243,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                   onChange={() => setUseCustomMonthly(true)}
                   className="border-gray-300"
                 />
-                <label htmlFor="byMonthly" className="text-xs text-white/70 flex items-center gap-1">
+                <label htmlFor="byMonthly" className="text-xs text-[var(--admin-fg-muted)] flex items-center gap-1">
                   <DollarSign className="w-3 h-3" />
                   Por monto mensual fijo
                 </label>
@@ -1164,10 +1255,10 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                       onChange={(e) => setCustomMonthlyAmount(e.target.value)}
                       placeholder="250"
                       min="1"
-                      className="w-20 h-7 text-sm text-right rounded border border-white/30/20 px-2"
+                      className="w-20 h-7 text-sm text-right rounded border border-[var(--admin-border)] px-2"
                     />
                     {customMonthlyAmount && parseFloat(customMonthlyAmount) > 0 && (
-                      <span className="text-xs text-white/55">= {getFinalInstallments()} cuotas</span>
+                      <span className="text-xs text-[var(--admin-fg-subtle)]">= {getFinalInstallments()} cuotas</span>
                     )}
                   </>
                 )}
@@ -1176,15 +1267,15 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
 
             {/* Preview cronograma */}
             {hasInstallments && getFinalInstallments() > 0 && (
-              <div className="border-t border-white/30/10 pt-2">
-                <p className="text-xs font-semibold text-white/70 mb-1">Cronograma de pagos:</p>
+              <div className="border-t border-[var(--admin-border)] pt-2">
+                <p className="text-xs font-semibold text-[var(--admin-fg-muted)] mb-1">Cronograma de pagos:</p>
                 <div className="max-h-40 overflow-y-auto space-y-0.5">
                   {buildPaymentSchedule().map((p) => (
-                    <div key={p.number} className="flex justify-between text-xs px-1 py-0.5 rounded hover:bg-white/[0.04]/5">
-                      <span className="text-white/60">
+                    <div key={p.number} className="flex justify-between text-xs px-1 py-0.5 rounded hover:bg-[var(--admin-accent-soft)]">
+                      <span className="text-[var(--admin-fg-muted)]">
                         {p.number === 0 ? 'Cuota inicial' : `Cuota ${p.number}`} — {new Date(p.date + 'T12:00:00').toLocaleDateString('es-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </span>
-                      <span className="font-medium text-white">${p.amount.toLocaleString()}</span>
+                      <span className="font-medium text-[var(--admin-fg)]">${p.amount.toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
@@ -1200,8 +1291,8 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <DarkLabel className="flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-white/40" />
-                  Nombre completo <span className="text-white">*</span>
+                  <User className="w-3.5 h-3.5 text-[var(--admin-fg-subtle)]" />
+                  Nombre completo <span className="text-[var(--admin-fg)]">*</span>
                 </DarkLabel>
                 <input
                   placeholder="Nombre y apellidos"
@@ -1212,8 +1303,8 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
               </div>
               <div className="space-y-1.5">
                 <DarkLabel className="flex items-center gap-1.5">
-                  <Stamp className="w-3.5 h-3.5 text-white/40" />
-                  Pasaporte <span className="text-white">*</span>
+                  <Stamp className="w-3.5 h-3.5 text-[var(--admin-fg-subtle)]" />
+                  Pasaporte <span className="text-[var(--admin-fg)]">*</span>
                 </DarkLabel>
                 <input
                   placeholder="Ej: A12345678"
@@ -1224,8 +1315,8 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
               </div>
               <div className="space-y-1.5">
                 <DarkLabel className="flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5 text-white/40" />
-                  Teléfono <span className="text-white">*</span>
+                  <Phone className="w-3.5 h-3.5 text-[var(--admin-fg-subtle)]" />
+                  Teléfono <span className="text-[var(--admin-fg)]">*</span>
                 </DarkLabel>
                 <input
                   placeholder="Ej: (786) 555-1234"
@@ -1234,7 +1325,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                   className={DARK_INPUT_CLS}
                 />
                 {existingClientLoading && (
-                  <p className="text-[11px] text-white/40 flex items-center gap-1">
+                  <p className="text-[11px] text-[var(--admin-fg-subtle)] flex items-center gap-1">
                     <span className="inline-block w-1 h-1 bg-gray-400 rounded-full animate-pulse" />
                     Buscando cliente existente...
                   </p>
@@ -1287,9 +1378,9 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
             )}
 
             {existingClient && !existingClient.found && (existingClient.alternative_matches?.length ?? 0) > 0 && !editData && (
-              <div className="rounded-xl border-2 border-amber-300 bg-yellow-500/10 p-3 text-sm">
+              <div className="rounded-xl border-2 border-amber-300 bg-[var(--admin-gold-soft)] p-3 text-sm">
                 <div className="flex items-start gap-2">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full border-yellow-500/30 text-yellow-200 flex items-center justify-center">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full border-[var(--admin-gold)] text-yellow-200 flex items-center justify-center">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                       <line x1="12" y1="9" x2="12" y2="13"/>
@@ -1300,19 +1391,19 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                     <p className="font-semibold text-yellow-200">
                       Posible duplicado detectado
                     </p>
-                    <p className="text-xs text-yellow-300 mt-0.5">
+                    <p className="text-xs text-[var(--admin-gold)] mt-0.5">
                       El nombre o pasaporte que ingresaste coincide con {existingClient.alternative_matches.length === 1 ? 'un cliente' : `${existingClient.alternative_matches.length} clientes`} existente{existingClient.alternative_matches.length === 1 ? '' : 's'} con un teléfono distinto.
                       Si es la misma persona, usa su teléfono original para que los contratos queden agrupados.
                     </p>
                     <div className="mt-2 space-y-2">
                       {existingClient.alternative_matches.map((m) => (
-                        <div key={m.client.id} className="rounded-lg bg-white/[0.04] border border-yellow-500/30 p-2">
+                        <div key={m.client.id} className="rounded-lg bg-[var(--admin-accent-soft)] border border-[var(--admin-gold)] p-2">
                           <div className="flex items-center justify-between gap-2 flex-wrap">
                             <div className="min-w-0">
                               <p className="text-xs font-semibold text-yellow-200">
                                 {m.client.first_name} {m.client.last_name}
                               </p>
-                              <p className="text-[11px] text-yellow-300">
+                              <p className="text-[11px] text-[var(--admin-gold)]">
                                 Teléfono registrado: <span className="font-mono">{m.client.phone || '—'}</span>
                                 <span className="ml-2 text-amber-600">
                                   · coincide por {m.reason === 'passport' ? 'pasaporte' : 'nombre'}
@@ -1327,7 +1418,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                                 }
                               }}
                               disabled={!m.client.phone}
-                              className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-40"
+                              className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-amber-600 text-[var(--admin-fg)] hover:bg-amber-700 disabled:opacity-40"
                             >
                               Usar este teléfono
                             </button>
@@ -1335,7 +1426,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                           {m.contracts.length > 0 && (
                             <ul className="mt-1.5 pl-3 space-y-0.5">
                               {m.contracts.slice(0, 3).map((c) => (
-                                <li key={c.id} className="text-[11px] text-yellow-300 list-disc">
+                                <li key={c.id} className="text-[11px] text-[var(--admin-gold)] list-disc">
                                   {c.service_name} · {c.minors_count} {c.minors_count === 1 ? 'menor' : 'menores'}{c.minor_names.length > 0 ? ` (${c.minor_names.join(', ')})` : ''} · <span className="capitalize">{c.status.replace('_', ' ')}</span>
                                 </li>
                               ))}
@@ -1347,7 +1438,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                         </div>
                       ))}
                     </div>
-                    <p className="text-[11px] text-yellow-300 italic mt-2">
+                    <p className="text-[11px] text-[var(--admin-gold)] italic mt-2">
                       Si confirmas que es un cliente nuevo distinto, ignora este aviso y continúa.
                     </p>
                   </div>
@@ -1358,8 +1449,8 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <DarkLabel className="flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-white/40" />
-                  Fecha de nacimiento <span className="text-white">*</span>
+                  <Calendar className="w-3.5 h-3.5 text-[var(--admin-fg-subtle)]" />
+                  Fecha de nacimiento <span className="text-[var(--admin-fg)]">*</span>
                 </DarkLabel>
                 <input
                   type="date"
@@ -1370,7 +1461,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
               </div>
               <div className="space-y-1.5">
                 <DarkLabel className="flex items-center gap-1.5">
-                  <PenLine className="w-3.5 h-3.5 text-white/40" />
+                  <PenLine className="w-3.5 h-3.5 text-[var(--admin-fg-subtle)]" />
                   Firma (nombre completo)
                 </DarkLabel>
                 <input
@@ -1385,15 +1476,15 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
             {/* Address section — USA only. City + state auto-fill from ZIP. */}
             <div className="space-y-3 pt-2">
               <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-white/50" />
-                <span className="text-sm font-semibold text-white/70">Dirección del cliente (USA)</span>
+                <MapPin className="w-4 h-4 text-[var(--admin-fg)]/50" />
+                <span className="text-sm font-semibold text-[var(--admin-fg-muted)]">Dirección del cliente (USA)</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5 sm:col-span-2">
                   <DarkLabel className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-white/40" />
-                    Dirección <span className="text-white">*</span>
+                    <MapPin className="w-3.5 h-3.5 text-[var(--admin-fg-subtle)]" />
+                    Dirección <span className="text-[var(--admin-fg)]">*</span>
                   </DarkLabel>
                   <input
                     placeholder="Ej: 1234 Pine Street"
@@ -1404,7 +1495,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                 </div>
                 <div className="space-y-1.5">
                   <DarkLabel className="flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-white/40" />
+                    <Building2 className="w-3.5 h-3.5 text-[var(--admin-fg-subtle)]" />
                     Apto / Unidad
                   </DarkLabel>
                   <input
@@ -1419,10 +1510,10 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
                   <DarkLabel className="flex items-center gap-1.5">
-                    <HashIcon className="w-3.5 h-3.5 text-white/40" />
-                    Código Postal (ZIP) <span className="text-white">*</span>
+                    <HashIcon className="w-3.5 h-3.5 text-[var(--admin-fg-subtle)]" />
+                    Código Postal (ZIP) <span className="text-[var(--admin-fg)]">*</span>
                     {zipLookup === 'loading' && (
-                      <Loader2 className="w-3 h-3 text-white animate-spin ml-auto" />
+                      <Loader2 className="w-3 h-3 text-[var(--admin-fg)] animate-spin ml-auto" />
                     )}
                     {zipLookup === 'found' && (
                       <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold text-green-600">
@@ -1450,8 +1541,8 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                 </div>
                 <div className="space-y-1.5">
                   <DarkLabel className="flex items-center gap-1.5">
-                    <Building2 className="w-3.5 h-3.5 text-white/40" />
-                    Ciudad <span className="text-white">*</span>
+                    <Building2 className="w-3.5 h-3.5 text-[var(--admin-fg-subtle)]" />
+                    Ciudad <span className="text-[var(--admin-fg)]">*</span>
                   </DarkLabel>
                   <input
                     placeholder="Se autocompleta con ZIP"
@@ -1462,8 +1553,8 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                 </div>
                 <div className="space-y-1.5">
                   <DarkLabel className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-white/40" />
-                    Estado <span className="text-white">*</span>
+                    <MapPin className="w-3.5 h-3.5 text-[var(--admin-fg-subtle)]" />
+                    Estado <span className="text-[var(--admin-fg)]">*</span>
                   </DarkLabel>
                   <input
                     placeholder="UT"
@@ -1485,11 +1576,11 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
               <div className="space-y-3 pt-2">
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-purple-700" />
-                  <span className="text-sm font-semibold text-white/70">
+                  <span className="text-sm font-semibold text-[var(--admin-fg-muted)]">
                     {asylumFamilyType === 'married' ? 'Cónyuge' : 'Conviviente'}
                   </span>
                 </div>
-                <div className="rounded-lg border border-purple-500/30 bg-purple-500/10/50 p-3 space-y-3">
+                <div className="rounded-lg border border-[var(--admin-blue)] bg-[var(--admin-blue-soft)]/50 p-3 space-y-3">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <input
                       placeholder={`Nombre completo del ${asylumFamilyType === 'married' ? 'cónyuge' : 'conviviente'} *`}
@@ -1530,24 +1621,24 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
             ) && (
               <div className="space-y-3 pt-2">
                 <div className="flex items-center gap-2">
-                  <Baby className="w-4 h-4 text-white/50" />
-                  <span className="text-sm font-semibold text-white/70">
+                  <Baby className="w-4 h-4 text-[var(--admin-fg)]/50" />
+                  <span className="text-sm font-semibold text-[var(--admin-fg-muted)]">
                     {isAsylumService(selectedSlug) ? 'Hijos beneficiarios' : 'Menores Beneficiarios'}
                   </span>
-                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-white text-black text-[10px] font-bold">
+                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[var(--admin-accent)] text-white text-[10px] font-bold">
                     {minors.length}
                   </span>
                 </div>
 
                 {minors.map((minor, index) => (
-                  <div key={index} className="rounded-lg border border-white/10 bg-gray-50/50 p-3 space-y-3">
+                  <div key={index} className="rounded-lg border border-[var(--admin-border)] bg-gray-50/50 p-3 space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-white">Hijo/a #{index + 1}</p>
+                      <p className="text-xs font-semibold text-[var(--admin-fg)]">Hijo/a #{index + 1}</p>
                       {minors.length > 1 && (
                         <button
                           type="button"
                           onClick={() => removeMinor(index)}
-                          className="flex items-center justify-center w-6 h-6 rounded border border-red-500/30 bg-white/[0.04] text-red-300 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+                          className="flex items-center justify-center w-6 h-6 rounded border border-[var(--admin-red)] bg-[var(--admin-accent-soft)] text-[var(--admin-red)] hover:bg-[var(--admin-red-soft)] hover:text-[var(--admin-red)] transition-colors"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -1565,7 +1656,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                 <button
                   type="button"
                   onClick={addMinor}
-                  className="w-full flex items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-[#F2A900]/30 hover:border-[#F2A900] bg-white/[0.04]/[0.04] hover:bg-[#FFF8E1] px-3 py-2 text-xs font-medium text-white/60 hover:text-white transition-all"
+                  className="w-full flex items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-[var(--admin-gold)] hover:border-[var(--admin-gold)] bg-[var(--admin-accent-soft)] hover:bg-[var(--admin-gold-soft)] px-3 py-2 text-xs font-medium text-[var(--admin-fg-muted)] hover:text-[var(--admin-fg)] transition-all"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   Agregar otro hijo/a
@@ -1585,7 +1676,7 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
                   fontSize: 13,
                   fontWeight: 600,
                   letterSpacing: '-0.005em',
-                  boxShadow: '0 4px 24px rgba(255,255,255,0.2), 0 0 0 0.5px rgba(255,255,255,0.5) inset',
+                  boxShadow: '0 4px 24px var(--admin-accent-glow), 0 0 0 0.5px var(--admin-accent-glow) inset',
                 }}
               >
                 {generating ? <>{<Loader2 className="w-3.5 h-3.5 animate-spin" />} Guardando…</> : (
@@ -1597,10 +1688,10 @@ export function QuickContractGenerator({ editData, onSaved, prefillName, prefill
               </button>
               <button
                 onClick={handleReset}
-                className="inline-flex items-center justify-center gap-1.5 px-5 py-3 rounded-full transition-all duration-200 hover:bg-white/[0.04]/10 active:scale-95"
+                className="inline-flex items-center justify-center gap-1.5 px-5 py-3 rounded-full transition-all duration-200 hover:bg-[var(--admin-accent-soft)]/10 active:scale-95"
                 style={{
                   background: 'var(--admin-accent-soft)',
-                  border: '0.5px solid rgba(255,255,255,0.15)',
+                  border: '0.5px solid var(--admin-border-strong)',
                   color: 'var(--admin-fg)',
                   fontSize: 13,
                   fontWeight: 600,
