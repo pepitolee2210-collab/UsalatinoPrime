@@ -177,6 +177,25 @@ interface ColumnDef {
   type: 'string' | 'number' | 'date'
 }
 
+function pickWidth(c: ColumnDef): number {
+  if (c.type === 'date') return 13
+  if (c.type === 'number') return 14
+  if (c.key.endsWith('_json')) return 50
+  const longHints = [
+    'Nombre',
+    'Dirección',
+    'Servicio',
+    'Subservicio',
+    'Objeto',
+    'Etapas',
+    'LugarNacimiento',
+    'Token',
+    'Case ID',
+  ]
+  if (longHints.some((h) => c.header.includes(h))) return 28
+  return 18
+}
+
 export async function buildContractsWorkbook(
   rows: ContractExportRow[],
 ): Promise<Buffer> {
@@ -276,7 +295,11 @@ export async function buildContractsWorkbook(
   wb.created = new Date()
   const ws = wb.addWorksheet('Contratos')
 
-  ws.columns = columns.map((c) => ({ key: c.key, header: c.header }))
+  ws.columns = columns.map((c) => ({
+    key: c.key,
+    header: c.header,
+    width: pickWidth(c),
+  }))
 
   rows.forEach((row, rowIndex) => {
     const minors = minorsByRow[rowIndex].slice(0, maxMinors).map(toMinor)
