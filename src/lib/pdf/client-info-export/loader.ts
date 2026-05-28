@@ -72,22 +72,34 @@ export async function loadClientInfoSnapshot(
   caseId: string,
   service: SupabaseClient,
 ): Promise<LoadResult | null> {
-  // 1. Carga el caso + profile del cliente
+  // 1. Carga el caso (sin join para evitar fallos por relación). El profile
+  //    se trae en una segunda query — patrón consistente con los otros
+  //    endpoints (i360-form, case-forms/[slug]) que no joinan.
   const { data: caseRow, error: caseErr } = await service
     .from('cases')
-    .select(
-      'id, case_number, service_slug, current_phase, client_id, client:profiles!cases_client_id_fkey(*)',
-    )
+    .select('id, case_number, service_slug, current_phase, client_id')
     .eq('id', caseId)
     .single()
 
-  if (caseErr || !caseRow) return null
+  if (caseErr || !caseRow) {
+    if (caseErr) {
+      console.warn('[client-info-pdf] case lookup failed:', caseErr.message)
+    }
+    return null
+  }
 
   const typedRow = caseRow as unknown as CaseRow
-  const rawClient = typedRow.client
-  // El join de Supabase a veces devuelve array; aceptamos ambas formas
-  const profile =
-    Array.isArray(rawClient) ? (rawClient[0] ?? null) : rawClient
+  let profile: Record<string, unknown> | null = null
+  if (typedRow.client_id) {
+    const { data: profileRow } = await service
+      .from('profiles')
+      .select(
+        'first_name, middle_name, last_name, phone, email, date_of_birth, country_of_birth, nationality, a_number, ssn, address_street, address_unit, address_city, address_state, address_zip',
+      )
+      .eq('id', typedRow.client_id)
+      .maybeSingle()
+    profile = profileRow as Record<string, unknown> | null
+  }
   const caseSnapshot = buildCaseSnapshot(typedRow)
   const clientProfile = buildProfileSnapshot(profile)
 
