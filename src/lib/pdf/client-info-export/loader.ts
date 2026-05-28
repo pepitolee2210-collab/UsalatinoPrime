@@ -100,16 +100,20 @@ export async function loadClientInfoSnapshot(
     serviceSlug = (serviceRow?.slug as string | undefined) ?? null
   }
 
-  // Cargar profile del cliente
+  // Cargar profile del cliente. Listamos solo columnas que existen en profiles
+  // (address_unit no existe — verificado contra el schema).
   let profile: Record<string, unknown> | null = null
   if (typedRow.client_id) {
-    const { data: profileRow } = await service
+    const { data: profileRow, error: profileErr } = await service
       .from('profiles')
       .select(
-        'first_name, middle_name, last_name, phone, email, date_of_birth, country_of_birth, nationality, a_number, ssn, address_street, address_unit, address_city, address_state, address_zip',
+        'first_name, middle_name, last_name, phone, email, date_of_birth, country_of_birth, nationality, a_number, ssn, address_street, address_city, address_state, address_zip',
       )
       .eq('id', typedRow.client_id)
       .maybeSingle()
+    if (profileErr) {
+      console.warn('[client-info-pdf] profile lookup failed:', profileErr.message)
+    }
     profile = profileRow as Record<string, unknown> | null
   }
   const caseSnapshot = buildCaseSnapshot(typedRow, serviceSlug)
