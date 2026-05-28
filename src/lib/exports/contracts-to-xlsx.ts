@@ -53,7 +53,16 @@ export interface ContractExportRow {
   spouse: unknown
   addon_services: unknown
   payment_schedule: unknown
+
+  // Enriquecidos en el route a partir de cases + documents (no vienen de contracts).
+  case_phase_label?: string
+  client_doc_count?: number
+  client_doc_names?: string
 }
+
+// Excel rechaza celdas con más de 32.767 caracteres. La lista de documentos
+// de un caso con decenas de uploads podría acercarse, así que la truncamos.
+const MAX_CELL_CHARS = 32000
 
 interface MinorRecord {
   fullName?: string
@@ -178,6 +187,8 @@ interface ColumnDef {
 }
 
 function pickWidth(c: ColumnDef): number {
+  if (c.key === 'client_doc_names') return 60
+  if (c.key === 'case_phase_label') return 22
   if (c.type === 'date') return 13
   if (c.type === 'number') return 14
   if (c.key.endsWith('_json')) return 50
@@ -227,6 +238,9 @@ export async function buildContractsWorkbook(
     { key: 'signed_at', header: 'Firmado El', type: 'date' },
     { key: 'contract_start_date', header: 'Inicio Contrato', type: 'date' },
     { key: 'case_id', header: 'Case ID', type: 'string' },
+    { key: 'case_phase_label', header: 'Fase Actual', type: 'string' },
+    { key: 'client_doc_count', header: 'Docs Cliente (cantidad)', type: 'number' },
+    { key: 'client_doc_names', header: 'Docs Cliente (lista)', type: 'string' },
     { key: 'signing_token', header: 'Token Firma', type: 'string' },
 
     { key: 'client_full_name', header: 'Cliente Nombre', type: 'string' },
@@ -315,6 +329,9 @@ export async function buildContractsWorkbook(
       signed_at: toDate(row.signed_at),
       contract_start_date: toDate(row.contract_start_date),
       case_id: row.case_id,
+      case_phase_label: row.case_phase_label ?? '',
+      client_doc_count: row.client_doc_count ?? 0,
+      client_doc_names: (row.client_doc_names ?? '').slice(0, MAX_CELL_CHARS),
       signing_token: row.signing_token,
 
       client_full_name: row.client_full_name,
