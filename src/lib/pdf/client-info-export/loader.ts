@@ -33,10 +33,9 @@ import { getServiceRegistry } from '@/lib/services/registry'
 interface CaseRow {
   id: string
   case_number: string
-  service_slug: string | null
+  service_id: string | null
   current_phase: CasePhase | null
   client_id: string | null
-  client: Record<string, unknown> | Record<string, unknown>[] | null
 }
 
 export interface LoadResult {
@@ -72,12 +71,12 @@ export async function loadClientInfoSnapshot(
   caseId: string,
   service: SupabaseClient,
 ): Promise<LoadResult | null> {
-  // 1. Carga el caso (sin join para evitar fallos por relación). El profile
-  //    se trae en una segunda query — patrón consistente con los otros
-  //    endpoints (i360-form, case-forms/[slug]) que no joinan.
+  // 1. Carga el caso. El service_slug NO vive en cases — se resuelve via
+  //    service_catalog en una segunda query (patrón de case-overview).
+  //    El profile también se trae aparte para evitar fallos del join.
   const { data: caseRow, error: caseErr } = await service
     .from('cases')
-    .select('id, case_number, service_slug, current_phase, client_id')
+    .select('id, case_number, service_id, current_phase, client_id')
     .eq('id', caseId)
     .single()
 
@@ -89,6 +88,19 @@ export async function loadClientInfoSnapshot(
   }
 
   const typedRow = caseRow as unknown as CaseRow
+
+  // Resolver service_slug
+  let serviceSlug: string | null = null
+  if (typedRow.service_id) {
+    const { data: serviceRow } = await service
+      .from('service_catalog')
+      .select('slug')
+      .eq('id', typedRow.service_id)
+      .maybeSingle()
+    serviceSlug = (serviceRow?.slug as string | undefined) ?? null
+  }
+
+  // Cargar profile del cliente
   let profile: Record<string, unknown> | null = null
   if (typedRow.client_id) {
     const { data: profileRow } = await service
@@ -100,7 +112,7 @@ export async function loadClientInfoSnapshot(
       .maybeSingle()
     profile = profileRow as Record<string, unknown> | null
   }
-  const caseSnapshot = buildCaseSnapshot(typedRow)
+  const caseSnapshot = buildCaseSnapshot(typedRow, serviceSlug)
   const clientProfile = buildProfileSnapshot(profile)
 
   // 2. Lee fuentes de datos en paralelo
@@ -174,14 +186,14 @@ export async function loadClientInfoSnapshot(
   }
 }
 
-function buildCaseSnapshot(row: CaseRow): CaseSnapshot {
-  const registry = getServiceRegistry(row.service_slug ?? null)
+function buildCaseSnapshot(row: CaseRow, serviceSlug: string | null): CaseSnapshot {
+  const registry = getServiceRegistry(serviceSlug)
   const phaseDef = registry?.phases.find((p) => p.code === row.current_phase) ?? null
   return {
     id: row.id,
     caseNumber: row.case_number,
-    serviceSlug: row.service_slug ?? '',
-    serviceName: registry?.name ?? row.service_slug ?? 'Servicio sin nombre',
+    serviceSlug: serviceSlug ?? '',
+    serviceName: registry?.name ?? serviceSlug ?? 'Servicio sin nombre',
     currentPhase: row.current_phase ?? null,
     currentPhaseLabel: phaseDef?.label ?? null,
   }
