@@ -41,21 +41,39 @@ interface PageProps {
 }
 
 const SERVICE_INFO: Record<string, { shortName: string; codename: string }> = {
-  'visa-juvenil':    { shortName: 'Visa Juvenil',     codename: 'SIJS-001' },
-  'asilo-politico':  { shortName: 'Asilo Político',   codename: 'I-589 · 02' },
-  'reforzar-asilo':  { shortName: 'Reforzar Asilo',   codename: 'I-589 R · 03' },
-  'apelacion':       { shortName: 'Apelación BIA',    codename: 'EOIR-26 · 04' },
-  'cambio-de-corte': { shortName: 'Cambio de Corte',  codename: 'EOIR-33 · 05' },
+  'apelacion':       { shortName: 'Apelación BIA',    codename: 'EOIR-26 · 01' },
+  'visa-juvenil':    { shortName: 'Visa Juvenil',     codename: 'SIJS · 02' },
+  'i360':            { shortName: 'I-360',            codename: 'USCIS · 03' },
+  'i485':            { shortName: 'I-485',            codename: 'GREEN-CARD · 04' },
+  'asilo-politico':  { shortName: 'Asilo Político',   codename: 'I-589 · 05' },
+  'reforzar-asilo':  { shortName: 'Reforzar Asilo',   codename: 'I-589 R · 06' },
+  'cambio-de-corte': { shortName: 'Cambio de Corte',  codename: 'EOIR-33 · 07' },
+  'itin-number':     { shortName: 'ITIN Number',      codename: 'IRS W-7 · 08' },
+  'taxes':           { shortName: 'Declaración de Impuestos', codename: 'IRS 1040 · 09' },
 }
+
+/** Slugs visibles en el showcase pero que aún NO están en SERVICE_REGISTRY.
+ *  Estos servicios son trámites planos (no usan fases SIJS) o sub-fases del
+ *  flujo SIJS (I-360, I-485). El detail page los acepta y renderiza una
+ *  versión simplificada — sin DemoPlayer ni grid de fases — hasta que se
+ *  modelen formalmente en el registry. */
+const SHOWCASE_ONLY_SLUGS = new Set(['i360', 'i485', 'itin-number', 'taxes'])
 
 export default async function ServicioDetallePage({ params }: PageProps) {
   const { slug } = await params
   const service = SERVICE_REGISTRY[slug]
-  if (!service) return notFound()
 
-  const script = getDemoScript(slug)
-  const realPhases = service.phases.filter((p) => !p.isCompletion)
-  const info = SERVICE_INFO[slug] ?? { shortName: service.name, codename: slug.toUpperCase() }
+  // Si no está en el registry pero sí es un slug del showcase (i360, i485,
+  // itin-number, taxes), renderizamos versión simplificada con info básica.
+  // Si no es ni una cosa ni la otra → 404.
+  if (!service && !SHOWCASE_ONLY_SLUGS.has(slug)) return notFound()
+
+  const script = service ? getDemoScript(slug) : null
+  const realPhases = service ? service.phases.filter((p) => !p.isCompletion) : []
+  const info = SERVICE_INFO[slug] ?? {
+    shortName: service?.name ?? slug,
+    codename: slug.toUpperCase(),
+  }
 
   return (
     <div
@@ -233,7 +251,8 @@ export default async function ServicioDetallePage({ params }: PageProps) {
           )}
         </div>
 
-        {/* Fases */}
+        {/* Fases — solo si el servicio está modelado en SERVICE_REGISTRY */}
+        {realPhases.length > 0 && (
         <section className="mt-28">
           <div className="text-center mb-14 space-y-3">
             <p
@@ -359,6 +378,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
             ))}
           </div>
         </section>
+        )}
       </div>
 
       <style>{`

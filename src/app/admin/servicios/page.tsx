@@ -29,18 +29,45 @@ interface ServiceShowcaseMeta {
 }
 
 const SHOWCASE_META: Record<string, ServiceShowcaseMeta> = {
+  'apelacion': {
+    shortName: 'Apelación BIA',
+    codename: 'EOIR-26 · 01',
+    description: 'Notice of Appeal con extracción IA y carta de exoneración argumentada. Plazo de 30 días.',
+    formularios: 3,
+    documentos: 8,
+    generadoresIA: 2,
+    icon: 'gavel',
+  },
   'visa-juvenil': {
     shortName: 'Visa Juvenil',
-    codename: 'SIJS-001',
+    codename: 'SIJS · 02',
     description: 'Custodia estatal, I-360 y I-485. Proceso completo hasta la Green Card.',
     formularios: 5,
     documentos: 24,
     generadoresIA: 2,
     icon: 'family_restroom',
   },
+  'i360': {
+    shortName: 'I-360',
+    codename: 'USCIS · 03',
+    description: 'Petición Inmigrante Juvenil Especial ante USCIS tras la custodia estatal. Fase 2 SIJS.',
+    formularios: 1,
+    documentos: 9,
+    generadoresIA: 1,
+    icon: 'description',
+  },
+  'i485': {
+    shortName: 'I-485',
+    codename: 'GREEN-CARD · 04',
+    description: 'Ajuste de Estatus a residente permanente. 6 formularios I-130/I-485/I-864/I-765/I-131/I-693 coordinados.',
+    formularios: 6,
+    documentos: 16,
+    generadoresIA: 2,
+    icon: 'badge',
+  },
   'asilo-politico': {
     shortName: 'Asilo Político',
-    codename: 'I-589 · 02',
+    codename: 'I-589 · 05',
     description: 'Solicitud afirmativa ante USCIS con declaración jurada generada por IA.',
     formularios: 4,
     documentos: 18,
@@ -49,35 +76,62 @@ const SHOWCASE_META: Record<string, ServiceShowcaseMeta> = {
   },
   'reforzar-asilo': {
     shortName: 'Reforzar Asilo',
-    codename: 'I-589 R · 03',
+    codename: 'I-589 R · 06',
     description: 'Evidencias, declaración reforzada y preparación de miedo creíble.',
     formularios: 2,
     documentos: 12,
     generadoresIA: 2,
     icon: 'verified_user',
   },
-  'apelacion': {
-    shortName: 'Apelación BIA',
-    codename: 'EOIR-26 · 04',
-    description: 'Notice of Appeal con extracción IA y carta de exoneración argumentada.',
-    formularios: 3,
-    documentos: 8,
-    generadoresIA: 2,
-    icon: 'gavel',
-  },
   'cambio-de-corte': {
     shortName: 'Cambio de Corte',
-    codename: 'EOIR-33 · 05',
+    codename: 'EOIR-33 · 07',
     description: 'Moción de Change of Venue para mover el caso a otra jurisdicción.',
     formularios: 1,
     documentos: 6,
     generadoresIA: 1,
     icon: 'my_location',
   },
+  'itin-number': {
+    shortName: 'ITIN Number',
+    codename: 'IRS W-7 · 08',
+    description: 'Solicitud W-7 ante IRS. Identificación fiscal para indocumentados con acompañamiento de la declaración 1040.',
+    formularios: 1,
+    documentos: 4,
+    generadoresIA: 1,
+    icon: 'fingerprint',
+  },
+  'taxes': {
+    shortName: 'Declaración de Impuestos',
+    codename: 'IRS 1040 · 09',
+    description: 'Declaración federal 1040 y estatal Utah TC-40. Crítico para tu caso migratorio y para acceder a beneficios.',
+    formularios: 2,
+    documentos: 5,
+    generadoresIA: 1,
+    icon: 'receipt_long',
+  },
 }
 
+// Orden visual del showcase — alineado con la landing pública.
+// Apelación BIA primero (urgencia 30 días), luego SIJS y sus fases I-360 e
+// I-485, asilo, refuerzo asilo, cambio de corte, ITIN, taxes.
+const SHOWCASE_ORDER: string[] = [
+  'apelacion',
+  'visa-juvenil',
+  'i360',
+  'i485',
+  'asilo-politico',
+  'reforzar-asilo',
+  'cambio-de-corte',
+  'itin-number',
+  'taxes',
+]
+
 export default function ServiciosPage() {
-  const services = Object.values(SERVICE_REGISTRY)
+  // Iteramos por SHOWCASE_ORDER (orden alineado con la landing pública).
+  // Para cada slug, traemos info del SERVICE_REGISTRY si existe (fases,
+  // nombre completo) — sino, el showcase usa solo SHOWCASE_META.
+  const showcaseSlugs = SHOWCASE_ORDER
 
   return (
     <div
@@ -157,14 +211,22 @@ export default function ServiciosPage() {
 
         {/* ─── Cards grid ─── */}
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {services.map((service, idx) => {
-            const meta = SHOWCASE_META[service.slug]
+          {showcaseSlugs.map((slug, idx) => {
+            const meta = SHOWCASE_META[slug]
             if (!meta) return null
-            const phaseCount = service.phases.filter((p) => !p.isCompletion).length || service.phases.length
+            const registryEntry = SERVICE_REGISTRY[slug]
+            // Si el servicio tiene fases en el registry, mostramos cantidad
+            // real. Si no (i485, itin-number, taxes son trámites planos sin
+            // fases SIJS), mostramos 1 etapa única — porque visualmente el
+            // chip "X FASES" en el card necesita un número.
+            const phaseCount = registryEntry
+              ? registryEntry.phases.filter((p) => !p.isCompletion).length ||
+                registryEntry.phases.length
+              : 1
             return (
               <ServiceCard
-                key={service.slug}
-                slug={service.slug}
+                key={slug}
+                slug={slug}
                 meta={meta}
                 phaseCount={phaseCount}
                 idx={idx}
