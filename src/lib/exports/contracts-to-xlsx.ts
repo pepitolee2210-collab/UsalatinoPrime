@@ -191,7 +191,6 @@ function pickWidth(c: ColumnDef): number {
   if (c.key === 'case_phase_label') return 22
   if (c.type === 'date') return 13
   if (c.type === 'number') return 14
-  if (c.key.endsWith('_json')) return 50
   const longHints = [
     'Nombre',
     'Dirección',
@@ -299,11 +298,6 @@ export async function buildContractsWorkbook(
     columns.push({ key: `addon_${i}_etapas`, header: `Addon${n}_Etapas`, type: 'string' })
   }
 
-  columns.push({ key: 'minors_json', header: 'Menores_JSON_Raw', type: 'string' })
-  columns.push({ key: 'spouse_json', header: 'Conyuge_JSON_Raw', type: 'string' })
-  columns.push({ key: 'addons_json', header: 'Addons_JSON_Raw', type: 'string' })
-  columns.push({ key: 'payments_json', header: 'Pagos_JSON_Raw', type: 'string' })
-
   const wb = new ExcelJS.Workbook()
   wb.creator = 'UsaLatinoPrime'
   wb.created = new Date()
@@ -363,12 +357,6 @@ export async function buildContractsWorkbook(
       spouse_nationality: spouse?.nationality ?? null,
       spouse_birthplace: spouse?.birthplace ?? null,
 
-      minors_json: row.minors == null ? '' : JSON.stringify(row.minors),
-      spouse_json: row.spouse == null ? '' : JSON.stringify(row.spouse),
-      addons_json:
-        row.addon_services == null ? '' : JSON.stringify(row.addon_services),
-      payments_json:
-        row.payment_schedule == null ? '' : JSON.stringify(row.payment_schedule),
     }
 
     for (let i = 0; i < maxPayments; i++) {
