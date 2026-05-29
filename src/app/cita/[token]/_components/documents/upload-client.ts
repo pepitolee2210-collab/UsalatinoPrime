@@ -35,17 +35,11 @@ export interface UploadParams {
   minorLabel?: string | null
 }
 
-export const ALLOWED_MIME = [
-  'application/pdf',
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-] as const
+export const ALLOWED_MIME = ['application/pdf'] as const
 
-export const ACCEPT_ATTR = ALLOWED_MIME.join(',')
+// Incluimos la extensión `.pdf` además del MIME: algunos navegadores móviles
+// no reportan `application/pdf` de forma fiable en el selector de archivos.
+export const ACCEPT_ATTR = 'application/pdf,.pdf'
 
 export const MAX_SIZE_BYTES = 40 * 1024 * 1024
 
@@ -71,8 +65,18 @@ export async function uploadClientDocument({
   if (file.size > MAX_SIZE_BYTES) {
     throw new Error('El archivo excede el límite de 40MB')
   }
-  if (file.type && !ALLOWED_MIME.includes(file.type as typeof ALLOWED_MIME[number])) {
-    throw new Error(`Formato no permitido: ${file.type || 'desconocido'}. Acepta PDF, JPG, PNG, WebP, HEIC.`)
+  // Solo PDF: validamos por MIME (cuando el navegador lo reporta) y por
+  // extensión (.pdf) como respaldo. Mensaje orientado a la causa más común:
+  // el cliente intenta subir una foto del documento.
+  const isPdfMime = file.type === 'application/pdf'
+  const isPdfExt = file.name.toLowerCase().endsWith('.pdf')
+  if (!isPdfMime && !(file.type === '' && isPdfExt)) {
+    throw new Error(
+      'Solo se permiten archivos PDF. Escanea tu documento y súbelo como PDF (no tomes una foto ni subas imágenes).',
+    )
+  }
+  if (!isPdfExt) {
+    throw new Error('El archivo debe tener extensión .pdf')
   }
 
   // 1. Signed URL

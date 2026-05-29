@@ -137,7 +137,7 @@ export function DocumentosScreen({ token }: DocumentosScreenProps) {
         </h1>
         <p className="ulp-body-md mt-2" style={{ color: 'var(--color-ulp-on-surface-variant)' }}>
           Sube los documentos requeridos para tu fase de{' '}
-          <strong>{phaseLabel?.toLowerCase()}</strong>. Acepta PDF, JPG, PNG, WebP y HEIC.
+          <strong>{phaseLabel?.toLowerCase()}</strong>. Solo se aceptan archivos PDF escaneados.
         </p>
       </header>
 
