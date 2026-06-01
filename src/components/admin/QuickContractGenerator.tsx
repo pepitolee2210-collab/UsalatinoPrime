@@ -763,9 +763,32 @@ export function QuickContractGenerator({
         }
         toast.success('Contrato actualizado')
       } else {
+        // Rastro del autor: quién crea el contrato. Leemos el propio profile
+        // (RLS siempre permite leer el tuyo) para snapshot del nombre — así la
+        // lista pinta el chip "Por X" sin JOIN. Solo en CREATE; al editar se
+        // preserva el autor original.
+        let createdBy: string | null = null
+        let createdByName: string | null = null
+        try {
+          const { data: { user } } = await supabase.auth.getUser()
+          if (user) {
+            createdBy = user.id
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('first_name, last_name')
+              .eq('id', user.id)
+              .single()
+            if (prof) {
+              createdByName = `${prof.first_name ?? ''} ${prof.last_name ?? ''}`.trim() || null
+            }
+          }
+        } catch {
+          // Si falla la lectura del autor, el contrato igual se crea (sin chip).
+        }
+
         const { data: inserted, error } = await supabase
           .from('contracts')
-          .insert(contractData)
+          .insert({ ...contractData, created_by: createdBy, created_by_name: createdByName })
           .select('id')
           .single()
         if (error) {

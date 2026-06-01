@@ -58,6 +58,8 @@ interface ContractRow {
   signing_token: string | null
   client_signature_image: string | null
   signed_at: string | null
+  created_by: string | null
+  created_by_name: string | null
 }
 
 const statusLabels: Record<string, string> = {
@@ -527,6 +529,7 @@ function ContratosInner({ basePath, hideHeader }: Props) {
             has_installments: c.has_installments,
             installment_count: c.installment_count,
             client_phone: c.client_phone,
+            created_by_name: c.created_by_name,
           }))}
           onEdit={(id) => {
             const c = contracts.find((x) => x.id === id)
@@ -629,6 +632,23 @@ function ContractCard({
               <span className="rounded-full" style={{ width: 5, height: 5, background: s.dot }} />
               {(statusLabels[c.status] || c.status).toUpperCase()}
             </span>
+            {c.created_by_name && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
+                style={{
+                  background: 'var(--admin-gold-soft)',
+                  border: '0.5px solid var(--admin-gold-border, var(--admin-gold))',
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 9,
+                  fontWeight: 700,
+                  letterSpacing: '0.08em',
+                  color: 'var(--admin-gold)',
+                }}
+                title={`Contrato creado por ${c.created_by_name}`}
+              >
+                POR {c.created_by_name.split(' ')[0].toUpperCase()}
+              </span>
+            )}
           </div>
 
           <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)' }}>

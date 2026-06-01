@@ -14,6 +14,7 @@ interface KanbanContract {
   has_installments: boolean
   installment_count: number
   client_phone: string | null
+  created_by_name: string | null
 }
 
 interface Props {
@@ -144,6 +145,23 @@ export function ContractsKanban({
                           >
                             {c.service_name}
                           </p>
+                          {c.created_by_name && (
+                            <span
+                              className="inline-flex items-center px-1.5 py-0.5 rounded-full mt-1"
+                              style={{
+                                background: 'var(--admin-gold-soft)',
+                                border: '0.5px solid var(--admin-gold-border, var(--admin-gold))',
+                                fontFamily: 'var(--font-mono-tech)',
+                                fontSize: 8,
+                                fontWeight: 700,
+                                letterSpacing: '0.08em',
+                                color: 'var(--admin-gold)',
+                              }}
+                              title={`Contrato creado por ${c.created_by_name}`}
+                            >
+                              POR {c.created_by_name.split(' ')[0].toUpperCase()}
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-baseline justify-between">
                           <span
