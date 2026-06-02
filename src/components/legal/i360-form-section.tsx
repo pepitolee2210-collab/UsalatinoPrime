@@ -185,62 +185,72 @@ export function I360FormSection({ caseId, caseNumber, clientName, submission }: 
     )
   }
 
-  const d = sub.form_data as Record<string, string>
+  const d = sub.form_data as Record<string, unknown>
   const status = sub.status
 
-  const sections = [
+  // Normaliza cualquier valor (string, number, array, null, undefined) a un string
+  // displayable. Necesario porque algunos campos del wizard son `multiselect` y se
+  // guardan como arrays en form_data (ej. `reunification_not_viable_reason`). Antes
+  // se casteaba todo a string y `.trim()` reventaba la tab con TypeError.
+  const s = (v: unknown): string => {
+    if (v == null) return ''
+    if (Array.isArray(v)) return v.map(s).filter(Boolean).join(', ')
+    return String(v)
+  }
+
+  const sections: Array<{ title: string; color: string; fields: Array<{ label: string; value: string }> }> = [
     { title: 'Part 1 — Peticionario', color: 'indigo', fields: [
-      { label: 'Nombre', value: `${d.petitioner_first_name || ''} ${d.petitioner_middle_name || ''} ${d.petitioner_last_name || ''}`.trim() },
-      { label: 'SSN', value: d.petitioner_ssn },
-      { label: 'A-Number', value: d.petitioner_a_number },
-      { label: 'Dirección', value: `${d.petitioner_address || ''}, ${d.petitioner_city || ''} ${d.petitioner_state || ''} ${d.petitioner_zip || ''}`.trim() },
-      { label: 'Dir. segura', value: d.safe_mailing_address ? `${d.safe_mailing_name} — ${d.safe_mailing_address}, ${d.safe_mailing_city} ${d.safe_mailing_state} ${d.safe_mailing_zip}` : '' },
+      { label: 'Nombre', value: `${s(d.petitioner_first_name)} ${s(d.petitioner_middle_name)} ${s(d.petitioner_last_name)}`.trim() },
+      { label: 'SSN', value: s(d.petitioner_ssn) },
+      { label: 'A-Number', value: s(d.petitioner_a_number) },
+      { label: 'Dirección', value: `${s(d.petitioner_address)}, ${s(d.petitioner_city)} ${s(d.petitioner_state)} ${s(d.petitioner_zip)}`.trim() },
+      { label: 'Dir. segura', value: d.safe_mailing_address ? `${s(d.safe_mailing_name)} — ${s(d.safe_mailing_address)}, ${s(d.safe_mailing_city)} ${s(d.safe_mailing_state)} ${s(d.safe_mailing_zip)}` : '' },
     ]},
     { title: 'Part 3 — Beneficiario (Menor)', color: 'blue', fields: [
-      { label: 'Nombre', value: `${d.beneficiary_first_name || ''} ${d.beneficiary_middle_name || ''} ${d.beneficiary_last_name || ''}`.trim() },
-      { label: 'Otros nombres', value: d.other_names },
-      { label: 'DOB', value: d.beneficiary_dob },
-      { label: 'País/Ciudad nacimiento', value: `${d.beneficiary_city_birth || ''}, ${d.beneficiary_country_birth || ''}` },
-      { label: 'Sexo', value: d.beneficiary_sex },
-      { label: 'Estado civil', value: d.beneficiary_marital_status },
-      { label: 'Dirección', value: `${d.beneficiary_address || ''}, ${d.beneficiary_city || ''} ${d.beneficiary_state || ''} ${d.beneficiary_zip || ''}`.trim() },
-      { label: 'SSN', value: d.beneficiary_ssn },
-      { label: 'A-Number', value: d.beneficiary_a_number },
-      { label: 'Pasaporte', value: `${d.beneficiary_passport_number || ''} (${d.beneficiary_passport_country || ''}) exp: ${d.beneficiary_passport_expiry || ''}` },
-      { label: 'I-94', value: d.beneficiary_i94_number },
-      { label: 'Última llegada', value: d.beneficiary_last_arrival_date },
-      { label: 'Status migratorio', value: d.beneficiary_nonimmigrant_status },
-      { label: 'Status expira', value: d.beneficiary_status_expiry },
-      { label: 'I-94 expira', value: d.beneficiary_i94_expiry },
+      { label: 'Nombre', value: `${s(d.beneficiary_first_name)} ${s(d.beneficiary_middle_name)} ${s(d.beneficiary_last_name)}`.trim() },
+      { label: 'Otros nombres', value: s(d.other_names) },
+      { label: 'DOB', value: s(d.beneficiary_dob) },
+      { label: 'País/Ciudad nacimiento', value: `${s(d.beneficiary_city_birth)}, ${s(d.beneficiary_country_birth)}` },
+      { label: 'Sexo', value: s(d.beneficiary_sex) },
+      { label: 'Estado civil', value: s(d.beneficiary_marital_status) },
+      { label: 'Dirección', value: `${s(d.beneficiary_address)}, ${s(d.beneficiary_city)} ${s(d.beneficiary_state)} ${s(d.beneficiary_zip)}`.trim() },
+      { label: 'SSN', value: s(d.beneficiary_ssn) },
+      { label: 'A-Number', value: s(d.beneficiary_a_number) },
+      { label: 'Pasaporte', value: `${s(d.beneficiary_passport_number)} (${s(d.beneficiary_passport_country)}) exp: ${s(d.beneficiary_passport_expiry)}` },
+      { label: 'I-94', value: s(d.beneficiary_i94_number) },
+      { label: 'Última llegada', value: s(d.beneficiary_last_arrival_date) },
+      { label: 'Status migratorio', value: s(d.beneficiary_nonimmigrant_status) },
+      { label: 'Status expira', value: s(d.beneficiary_status_expiry) },
+      { label: 'I-94 expira', value: s(d.beneficiary_i94_expiry) },
     ]},
     { title: 'Part 4 — Procesamiento', color: 'amber', fields: [
-      { label: 'Padre/Madre extranjero', value: `${d.foreign_parent_first_name || ''} ${d.foreign_parent_last_name || ''}`.trim() },
-      { label: 'Dir. extranjero', value: `${d.foreign_parent_address || ''}, ${d.foreign_parent_city || ''} ${d.foreign_parent_province || ''} ${d.foreign_parent_country || ''}`.trim() },
-      { label: 'En removal proceedings', value: d.in_removal_proceedings },
-      { label: 'Otras peticiones', value: d.other_petitions },
-      { label: 'Trabajó sin permiso', value: d.worked_without_permission },
-      { label: 'Ajuste de estatus adjunto', value: d.adjustment_attached },
+      { label: 'Padre/Madre extranjero', value: `${s(d.foreign_parent_first_name)} ${s(d.foreign_parent_last_name)}`.trim() },
+      { label: 'Dir. extranjero', value: `${s(d.foreign_parent_address)}, ${s(d.foreign_parent_city)} ${s(d.foreign_parent_province)} ${s(d.foreign_parent_country)}`.trim() },
+      { label: 'En removal proceedings', value: s(d.in_removal_proceedings) },
+      { label: 'Otras peticiones', value: s(d.other_petitions) },
+      { label: 'Trabajó sin permiso', value: s(d.worked_without_permission) },
+      { label: 'Ajuste de estatus adjunto', value: s(d.adjustment_attached) },
     ]},
     { title: 'Part 5 — Cónyuge/Hijos', color: 'emerald', fields: [
-      { label: 'Hijos presentaron peticiones separadas', value: d.children_filed_separate },
-      { label: 'Persona 1', value: d.spouse_child_1_first_name ? `${d.spouse_child_1_first_name} ${d.spouse_child_1_last_name} — ${d.spouse_child_1_relationship} — DOB: ${d.spouse_child_1_dob}` : '' },
+      { label: 'Hijos presentaron peticiones separadas', value: s(d.children_filed_separate) },
+      { label: 'Persona 1', value: d.spouse_child_1_first_name ? `${s(d.spouse_child_1_first_name)} ${s(d.spouse_child_1_last_name)} — ${s(d.spouse_child_1_relationship)} — DOB: ${s(d.spouse_child_1_dob)}` : '' },
     ]},
     { title: 'Part 8 — SIJS', color: 'purple', fields: [
-      { label: '2A. Dependiente de corte', value: d.declared_dependent_court },
-      { label: '2B. Corte/Agencia', value: d.state_agency_name },
-      { label: '2C. Bajo jurisdicción', value: d.currently_under_jurisdiction },
-      { label: '3A. En placement ordenado', value: d.in_court_ordered_placement },
-      { label: '4. Reunificación no viable', value: d.reunification_not_viable_reason },
-      { label: '5. Mejor interés no regresar', value: d.best_interest_not_return },
-      { label: '6A. Custodia HHS', value: d.previously_hhs_custody },
+      { label: '2A. Dependiente de corte', value: s(d.declared_dependent_court) },
+      { label: '2B. Corte/Agencia', value: s(d.state_agency_name) },
+      { label: '2C. Bajo jurisdicción', value: s(d.currently_under_jurisdiction) },
+      { label: '3A. En placement ordenado', value: s(d.in_court_ordered_placement) },
+      { label: '4. Reunificación no viable', value: s(d.reunification_not_viable_reason) },
+      { label: '5. Mejor interés no regresar', value: s(d.best_interest_not_return) },
+      { label: '6A. Custodia HHS', value: s(d.previously_hhs_custody) },
     ]},
     { title: 'Part 11/15 — Contacto', color: 'gray', fields: [
-      { label: 'Teléfono', value: d.petitioner_phone },
-      { label: 'Celular', value: d.petitioner_mobile },
-      { label: 'Email', value: d.petitioner_email },
-      { label: 'Idioma', value: d.language_understood },
-      { label: 'Necesita intérprete', value: d.interpreter_needed },
-      { label: 'Info adicional', value: d.additional_info },
+      { label: 'Teléfono', value: s(d.petitioner_phone) },
+      { label: 'Celular', value: s(d.petitioner_mobile) },
+      { label: 'Email', value: s(d.petitioner_email) },
+      { label: 'Idioma', value: s(d.language_understood) },
+      { label: 'Necesita intérprete', value: s(d.interpreter_needed) },
+      { label: 'Info adicional', value: s(d.additional_info) },
     ]},
   ]
 

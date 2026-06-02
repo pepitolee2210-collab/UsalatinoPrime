@@ -17,8 +17,10 @@
 
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { PDFDocument, StandardFonts } from 'pdf-lib'
-import { fillAcroForm } from '@/lib/legal/acroform-service'
+import { PDFDocument, PDFName, PDFDict, PDFBool, StandardFonts } from 'pdf-lib'
+import { fillAcroFormInPlace } from '@/lib/legal/acroform-service'
+import { renderPdf417Barcodes } from '@/lib/pdf/render-barcodes'
+import { sanitizeFilledPdf } from '@/lib/pdf/sanitize-pdf'
 import {
   I589_PART_B_PROTECTED_GROUNDS,
   I589_PART_B_QUESTIONS,
@@ -47,24 +49,29 @@ export function buildPartBCValues(structured: StructuredI589BC): Record<string, 
     if (fld) out[fld] = true
   }
 
-  // Parte B — preguntas con Yes/No + textarea
+  // Parte B — preguntas con Yes/No + textarea.
+  // El textarea solo se rellena cuando la respuesta es "Sí". Si es "No", el
+  // espacio queda vacío: el solicitante no debe justificar la negación, y la
+  // IA suele generar textos del estilo "Applicant has not been accused..."
+  // que no aportan información a USCIS y consumen espacio del field.
   for (const [qKey, fields] of Object.entries(I589_PART_B_QUESTIONS)) {
     const q = structured[qKey as keyof StructuredI589BC] as
       | { yes: boolean; explanation: string }
       | undefined
     if (!q) continue
     out[q.yes ? fields.yes : fields.no] = true
-    if (q.explanation) out[fields.text] = q.explanation
+    if (q.yes && q.explanation) out[fields.text] = q.explanation
   }
 
-  // Parte C — preguntas con Yes/No; algunas tienen textarea
+  // Parte C — preguntas con Yes/No; algunas tienen textarea (misma regla:
+  // solo se llena cuando la respuesta es "Sí").
   for (const [qKey, fields] of Object.entries(I589_PART_C_QUESTIONS)) {
     const q = structured[qKey as keyof StructuredI589BC] as
       | { yes: boolean; explanation?: string }
       | undefined
     if (!q) continue
     out[q.yes ? fields.yes : fields.no] = true
-    if (fields.text && q.explanation) out[fields.text] = q.explanation
+    if (q.yes && fields.text && q.explanation) out[fields.text] = q.explanation
   }
 
   return out
@@ -72,26 +79,45 @@ export function buildPartBCValues(structured: StructuredI589BC): Record<string, 
 
 /**
  * Genera el PDF I-589 Parte B/C/D (páginas 5-12) listo para descargar.
+ *
+ * Pipeline single-instance / single-save (mismo patrón que el I-360):
+ * load → fillInPlace → removePages → sanitize → renderBarcodes → save.
  */
 export async function generateI589PartBPdf(structured: StructuredI589BC): Promise<Uint8Array> {
   const values = buildPartBCValues(structured)
   const pdfPath = path.join(process.cwd(), PDF_DISK_PATH)
   const pdfBytes = await fs.readFile(pdfPath)
-  const filledBytes = await fillAcroForm(new Uint8Array(pdfBytes), values, { flatten: false })
+  const doc = await PDFDocument.load(new Uint8Array(pdfBytes))
 
-  // Truncar a páginas 5-12 removiendo las extras IN-PLACE. Crear un nuevo
-  // PDFDocument + copyPages perdería el /AcroForm dict y los widgets quedarían
-  // huérfanos; removePage preserva el AcroForm para que Diana pueda editar.
-  const filledDoc = await PDFDocument.load(filledBytes)
-  // Borrar del final hacia adelante para que los índices no se desfasen.
-  for (let i = filledDoc.getPageCount() - 1; i >= 12; i--) {
-    filledDoc.removePage(i)
+  // Fill sin save intermedio
+  fillAcroFormInPlace(doc, values)
+
+  // Truncar a páginas 5-12 (indices 4..11). Borrar del final hacia adelante
+  // para que los índices no se desfasen, luego eliminar las 4 primeras.
+  for (let i = doc.getPageCount() - 1; i >= 12; i--) {
+    doc.removePage(i)
   }
-  // Borrar páginas 0-3 (Parte A), también del final hacia adelante.
   for (let i = 3; i >= 0; i--) {
-    filledDoc.removePage(i)
+    doc.removePage(i)
   }
-  return await filledDoc.save()
+
+  // Defense-in-depth: quitar XFA/XMP leftovers si están presentes
+  sanitizeFilledPdf(doc)
+
+  // Renderizar los PDF417 del footer de las páginas restantes (8 barcodes:
+  // las páginas que originalmente eran 5-12). El helper itera todos los
+  // fields *BarCode* del form — algunos pueden tener widgets referenciando
+  // páginas removidas; el helper salta esos (skipped) y dibuja solo los
+  // visibles.
+  await renderPdf417Barcodes(doc)
+
+  // NeedAppearances=true: viewers regeneran appearances al abrir.
+  const acroForm = doc.catalog.lookup(PDFName.of('AcroForm'))
+  if (acroForm instanceof PDFDict) {
+    acroForm.set(PDFName.of('NeedAppearances'), PDFBool.True)
+  }
+
+  return await doc.save()
 }
 
 /**

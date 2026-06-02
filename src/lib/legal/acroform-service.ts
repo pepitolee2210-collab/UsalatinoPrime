@@ -87,22 +87,28 @@ function isTruthyValue(v: string | boolean | null | undefined): boolean {
   return s === 'yes' || s === 'true' || s === '1' || s === 'on' || s === 'sí' || s === 'si'
 }
 
+export interface FillAcroFormResult {
+  filledCount: number
+  skippedCount: number
+  warnings: string[]
+}
+
 /**
- * Rellena un AcroForm PDF con `values` (mapeado por nombre real de field).
- * Devuelve el PDF resultante. Si `flatten` es true (default), flattens los
- * campos a contenido fijo (no editable post-descarga) — comportamiento esperado
- * para una petición legal lista para imprimir.
+ * Rellena un PDFDocument ya cargado **sin guardar**. Útil cuando el caller
+ * necesita hacer más operaciones sobre la misma instance (drawImage,
+ * removePages, appendPages) antes del save final — es el patrón que sigue
+ * el generador del I-360 y que evita el bug de "double save" donde un save
+ * intermedio congela appearances que el segundo save degenera al regenerar
+ * (por ejemplo, los PDF417 del footer del I-589 que quedan tapados por
+ * widget appearances staled).
  *
- * Campos desconocidos se ignoran con warning. Errores por campo se loguean
- * pero no abortan el llenado del resto.
+ * El caller decide cuándo `form.flatten()`, cuándo setear `NeedAppearances`,
+ * y con qué opciones `doc.save()`.
  */
-export async function fillAcroForm(
-  pdfBytes: Uint8Array,
+export function fillAcroFormInPlace(
+  doc: PDFDocument,
   values: Record<string, string | boolean | null | undefined>,
-  opts: { flatten?: boolean } = {}
-): Promise<Uint8Array> {
-  const flatten = opts.flatten !== false
-  const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true })
+): FillAcroFormResult {
   const form = doc.getForm()
 
   let filledCount = 0
@@ -167,14 +173,38 @@ export async function fillAcroForm(
     }
   }
 
-  log.info('fillAcroForm', { filledCount, skippedCount, warningCount: warnings.length })
+  log.info('fillAcroFormInPlace', { filledCount, skippedCount, warningCount: warnings.length })
   if (warnings.length > 0 && warnings.length <= 10) {
-    log.warn('fillAcroForm warnings', { warnings })
+    log.warn('fillAcroFormInPlace warnings', { warnings })
   }
+
+  return { filledCount, skippedCount, warnings }
+}
+
+/**
+ * Rellena un AcroForm PDF con `values` (mapeado por nombre real de field).
+ * Devuelve el PDF resultante. Si `flatten` es true (default), flattens los
+ * campos a contenido fijo (no editable post-descarga) — comportamiento esperado
+ * para una petición legal lista para imprimir.
+ *
+ * Wrapper sobre `fillAcroFormInPlace`: carga el PDF, llena, opcionalmente
+ * flattens y guarda. Para flujos que necesitan mutaciones extra entre el
+ * fill y el save (drawImage, appendPages), usar `fillAcroFormInPlace`
+ * directamente.
+ */
+export async function fillAcroForm(
+  pdfBytes: Uint8Array,
+  values: Record<string, string | boolean | null | undefined>,
+  opts: { flatten?: boolean } = {}
+): Promise<Uint8Array> {
+  const flatten = opts.flatten !== false
+  const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true })
+
+  fillAcroFormInPlace(doc, values)
 
   if (flatten) {
     try {
-      form.flatten()
+      doc.getForm().flatten()
     } catch (err) {
       log.warn('flatten falló — devolvemos PDF con campos editables', { err: err instanceof Error ? err.message : err })
     }

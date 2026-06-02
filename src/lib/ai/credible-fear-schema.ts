@@ -81,6 +81,27 @@ const GOVERNMENT_ROLE_VALUES = [
 
 const ONE_YEAR_STATUS_VALUES = ['within', 'outside_with_exception', 'outside_no_exception'] as const
 
+const PROTECTED_GROUND_VALUES = [
+  'race',
+  'religion',
+  'nationality',
+  'political_opinion',
+  'particular_social_group',
+  'torture',
+] as const
+
+/**
+ * Aliases que Claude tiende a emitir cuando confunde el enum de
+ * `protected_grounds_identified_by_applicant` (que usa "torture") con la key
+ * `part_b_q1_grounds.torture_convention` del schema I-589 (donde el sufijo
+ * "_convention" sí es correcto). Normalizamos antes de validar para que el
+ * análisis no sea rechazado por una etiqueta sinonímica.
+ */
+const PROTECTED_GROUND_ALIASES: Record<string, (typeof PROTECTED_GROUND_VALUES)[number]> = {
+  torture_convention: 'torture',
+  cat: 'torture',
+}
+
 function coerceEnum<T extends readonly string[]>(
   values: T,
   fallback: T[number],
@@ -93,16 +114,30 @@ function coerceEnum<T extends readonly string[]>(
   }
 }
 
+/**
+ * Normaliza cada elemento del array contra el enum válido. Descarta valores
+ * irrecuperables en vez de devolver el array completo a fallback — así el
+ * análisis no pierde grounds legítimos por culpa de uno mal etiquetado.
+ */
+function coerceProtectedGroundArray(v: unknown): (typeof PROTECTED_GROUND_VALUES)[number][] {
+  if (!Array.isArray(v)) return []
+  const out: (typeof PROTECTED_GROUND_VALUES)[number][] = []
+  for (const item of v) {
+    if (typeof item !== 'string') continue
+    if ((PROTECTED_GROUND_VALUES as readonly string[]).includes(item)) {
+      out.push(item as (typeof PROTECTED_GROUND_VALUES)[number])
+      continue
+    }
+    const aliased = PROTECTED_GROUND_ALIASES[item]
+    if (aliased) out.push(aliased)
+  }
+  return out
+}
+
 export const caseAnalysisSchema = z.object({
-  protected_grounds_identified_by_applicant: z.array(
-    z.enum([
-      'race',
-      'religion',
-      'nationality',
-      'political_opinion',
-      'particular_social_group',
-      'torture',
-    ]),
+  protected_grounds_identified_by_applicant: z.preprocess(
+    coerceProtectedGroundArray,
+    z.array(z.enum(PROTECTED_GROUND_VALUES)),
   ).default([]),
   psg_articulated_by_applicant: z.string().nullable().optional(),
   primary_perpetrator_type: z.preprocess(

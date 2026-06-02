@@ -13,22 +13,15 @@ const log = createLogger('upload-confirm')
  * dinámico) y slot_label. Inyecta phase_when_uploaded automáticamente
  * desde cases.current_phase.
  *
- * Acepta múltiples formatos: PDF, JPG, PNG, WebP, HEIC.
+ * Solo acepta archivos PDF. Las fotos / imágenes se rechazan: el cliente
+ * debe escanear el documento y subirlo como PDF.
  *
  * El upload del binario en sí va por el flujo existente
  * /api/upload-signed-url (signed URL) → Supabase Storage. Este endpoint
  * solo registra el documento en BD una vez subido.
  */
 
-const ALLOWED_MIME = new Set([
-  'application/pdf',
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-])
+const ALLOWED_MIME = new Set(['application/pdf'])
 
 export async function POST(
   request: NextRequest,
@@ -85,8 +78,18 @@ export async function POST(
     return NextResponse.json({ error: 'document_type_id, file_path y file_name requeridos' }, { status: 400 })
   }
 
+  // Solo PDF: validamos por MIME (cuando viene) y exigimos extensión .pdf.
   if (file_type && !ALLOWED_MIME.has(file_type)) {
-    return NextResponse.json({ error: `Formato no permitido: ${file_type}` }, { status: 400 })
+    return NextResponse.json(
+      { error: 'Solo se permiten archivos PDF. Escanea tu documento y súbelo como PDF.' },
+      { status: 400 },
+    )
+  }
+  if (!file_name.toLowerCase().endsWith('.pdf')) {
+    return NextResponse.json(
+      { error: 'Solo se permiten archivos PDF. Escanea tu documento y súbelo como PDF.' },
+      { status: 400 },
+    )
   }
 
   const supabase = createServiceClient()

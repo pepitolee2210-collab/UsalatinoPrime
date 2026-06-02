@@ -317,7 +317,7 @@ function PendingUploadOverlay({
           Subir “{slotName}”
         </h2>
         <p className="ulp-body-sm" style={{ color: 'var(--color-ulp-on-surface-variant)' }}>
-          Selecciona el archivo (PDF, JPG, PNG, WebP o HEIC).
+          Selecciona el archivo. Solo se aceptan PDF escaneados.
         </p>
         <div className="flex justify-center gap-2">
           <button

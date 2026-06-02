@@ -30,6 +30,14 @@ export async function POST(
     return NextResponse.json({ error: 'document_type_id y file_name requeridos' }, { status: 400 })
   }
 
+  // Solo PDF: rechazamos en el primer gate del flujo de subida.
+  if (!file_name.toLowerCase().endsWith('.pdf')) {
+    return NextResponse.json(
+      { error: 'Solo se permiten archivos PDF. Escanea tu documento y súbelo como PDF.' },
+      { status: 400 },
+    )
+  }
+
   if (file_size && file_size > MAX_FILE_SIZE) {
     return NextResponse.json({ error: 'El archivo excede el límite de 40MB' }, { status: 400 })
   }

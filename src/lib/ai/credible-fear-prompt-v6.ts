@@ -70,7 +70,7 @@ OUTPUT FORMAT (strict JSON, no prose, no Markdown fences)
     { "flag_type": "one_year_bar|firm_resettlement|criminal_history|persecutor_bar|material_support|inconsistency|frivolous_risk", "details": "...", "module_source": "M1.persecutor_bar" }
   ],
   "case_analysis": {
-    "protected_grounds_identified_by_applicant": ["political_opinion", ...],
+    "protected_grounds_identified_by_applicant": ["race"|"religion"|"nationality"|"political_opinion"|"particular_social_group"|"torture", ...],   // EXACT enum values — use "torture" (NOT "torture_convention", that label only belongs in part_b_q1_grounds below)
     "psg_articulated_by_applicant": "string in the applicant's words, or null",
     "primary_perpetrator_type": "state_military|state_police|state_other|armed_group|organized_crime|gang|religious_extremist|family_partner|private_individual|other",
     "primary_perpetrator_name": "e.g., 'GNB and SEBIN; pro-government colectivos'",

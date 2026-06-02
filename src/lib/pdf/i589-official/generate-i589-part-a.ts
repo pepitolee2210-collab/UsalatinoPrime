@@ -18,8 +18,10 @@
 
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { PDFDocument } from 'pdf-lib'
-import { fillAcroForm } from '@/lib/legal/acroform-service'
+import { PDFDocument, PDFName, PDFDict, PDFBool } from 'pdf-lib'
+import { fillAcroFormInPlace } from '@/lib/legal/acroform-service'
+import { renderPdf417Barcodes } from '@/lib/pdf/render-barcodes'
+import { sanitizeFilledPdf } from '@/lib/pdf/sanitize-pdf'
 import {
   I589_TEXT_FIELD_MAP,
   I589_RADIO_FIELD_MAP,
@@ -86,25 +88,37 @@ export function buildPartAValues(parts: I589PartsData): Record<string, string | 
 
 /**
  * Genera el PDF I-589 Parte A (páginas 1-4) rellenado con los datos del
- * wizard. Devuelve `Uint8Array` listo para enviar como
- * `application/pdf`.
+ * wizard. Devuelve `Uint8Array` listo para enviar como `application/pdf`.
+ *
+ * Pipeline single-instance / single-save (mismo patrón que el I-360):
+ * load → fillInPlace → removePages → sanitize → renderBarcodes → save.
  */
 export async function generateI589PartAPdf(parts: I589PartsData): Promise<Uint8Array> {
   const valuesByPdfName = buildPartAValues(parts)
 
   const pdfPath = path.join(process.cwd(), PDF_DISK_PATH)
   const pdfBytes = await fs.readFile(pdfPath)
-  const filledBytes = await fillAcroForm(new Uint8Array(pdfBytes), valuesByPdfName, { flatten: false })
+  const doc = await PDFDocument.load(new Uint8Array(pdfBytes))
 
-  // Truncar a páginas 1-4 removiendo las extras IN-PLACE. Usar PDFDocument.create()
-  // + copyPages() borraría el /AcroForm dict del catálogo y los widgets quedarían
-  // huérfanos (campos no editables en algunos viewers). removePage() preserva
-  // el AcroForm completo, así Diana puede editar el PDF post-descarga.
-  const filledDoc = await PDFDocument.load(filledBytes)
-  const totalPages = filledDoc.getPageCount()
-  for (let i = totalPages - 1; i >= 4; i--) {
-    filledDoc.removePage(i)
+  // Fill sin save intermedio
+  fillAcroFormInPlace(doc, valuesByPdfName)
+
+  // Truncar a páginas 1-4 (preserva /AcroForm para edición post-descarga)
+  for (let i = doc.getPageCount() - 1; i >= 4; i--) {
+    doc.removePage(i)
   }
 
-  return await filledDoc.save()
+  // Defense-in-depth: quitar XFA/XMP leftovers
+  sanitizeFilledPdf(doc)
+
+  // Renderizar los PDF417 del footer (4 barcodes visibles tras el truncado)
+  await renderPdf417Barcodes(doc)
+
+  // NeedAppearances=true: viewers regeneran appearances al abrir
+  const acroForm = doc.catalog.lookup(PDFName.of('AcroForm'))
+  if (acroForm instanceof PDFDict) {
+    acroForm.set(PDFName.of('NeedAppearances'), PDFBool.True)
+  }
+
+  return await doc.save()
 }

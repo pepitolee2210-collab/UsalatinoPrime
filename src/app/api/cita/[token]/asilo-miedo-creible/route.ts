@@ -9,6 +9,11 @@ import {
   type CFOption,
 } from '@/lib/legal/asilo-miedo-creible-form-schema'
 import { isAsylumService } from '@/lib/services/asylum'
+import {
+  resolveApplicantCountry,
+  titleCaseCountry,
+} from '@/lib/asylum/resolve-applicant-country'
+import { logActivity } from '@/lib/activity/log-activity'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('api:asilo-miedo-creible')
@@ -185,20 +190,6 @@ function inferCountryCode(name: string | null | undefined): string | null {
   return COUNTRY_TO_ISO[key] ?? null
 }
 
-/**
- * Resuelve el código ISO del país preferentemente desde la respuesta
- * `m2_country_of_birth` del cuestionario (lo que el cliente reportó), y si
- * está vacío cae al perfil. Esto evita desfase cuando el contrato se firmó
- * con un país y el cliente declara otro en M2.
- */
-function resolveCountryCode(
-  answers: Record<string, unknown> | null | undefined,
-  profileCountry: string | null,
-): string | null {
-  const fromQuestionnaire = typeof answers?.m2_country_of_birth === 'string' ? answers.m2_country_of_birth : null
-  return inferCountryCode(fromQuestionnaire) ?? inferCountryCode(profileCountry)
-}
-
 async function loadCountryEvidenceOptions(
   supabase: ReturnType<typeof createServiceClient>,
   countryCode: string | null,
@@ -295,10 +286,12 @@ export async function GET(
   const instance = await ensureFormInstance(supabase, caseRow.id)
   const answers = instance.filled_values as CFAnswers
   const prefill = await buildPrefill(supabase, caseRow.id, caseRow.client)
-  const countryCode = resolveCountryCode(
-    instance.filled_values as Record<string, unknown> | null,
-    caseRow.client?.country_of_birth ?? caseRow.client?.nationality ?? null,
-  )
+  const resolved = await resolveApplicantCountry({
+    supabase,
+    caseId: caseRow.id,
+    profile: caseRow.client,
+  })
+  const countryCode = inferCountryCode(resolved.countryLower)
   const countryEvidenceOptions = await loadCountryEvidenceOptions(supabase, countryCode)
 
   const applicableModules = getApplicableModules(answers)
@@ -375,6 +368,68 @@ export async function PUT(
     return NextResponse.json({ error: 'Error al guardar' }, { status: 500 })
   }
 
+  // Auto-persistencia M2 → profile (write-if-empty): cuando el cliente
+  // confirma su país en el cuestionario y su profile está vacío, lo
+  // propagamos para que otros consumidores (jurisdiction lookup, legal
+  // review, dashboards) lo vean sin esperar a que admin lo registre.
+  // Scope acotado por la guardia `isAsylumService` arriba.
+  await persistProfileCountryIfEmpty({
+    supabase,
+    caseId: caseRow.id,
+    clientId: caseRow.client_id,
+    newAnswers: body.answers,
+  })
+
   const progress = calculateProgress(merged as CFAnswers)
   return NextResponse.json({ ok: true, progress })
+}
+
+/**
+ * Si el cliente envió `m2_country_of_birth` y su `profiles.country_of_birth`
+ * está vacío, lo llenamos con el valor normalizado (Title Case). Idempotente:
+ * jamás sobreescribe un valor ya presente. Fire-and-forget en el sentido
+ * de que cualquier error se loggea pero no falla el autosave.
+ */
+async function persistProfileCountryIfEmpty(args: {
+  supabase: ReturnType<typeof createServiceClient>
+  caseId: string
+  clientId: string
+  newAnswers: Record<string, unknown>
+}): Promise<void> {
+  const { supabase, caseId, clientId, newAnswers } = args
+  const raw = typeof newAnswers.m2_country_of_birth === 'string'
+    ? newAnswers.m2_country_of_birth.trim()
+    : ''
+  if (!raw) return
+  try {
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('country_of_birth')
+      .eq('id', clientId)
+      .maybeSingle<{ country_of_birth: string | null }>()
+    const currentValue = prof?.country_of_birth?.trim() ?? ''
+    if (currentValue.length > 0) return
+
+    const titled = titleCaseCountry(raw)
+    const { error: updErr } = await supabase
+      .from('profiles')
+      .update({ country_of_birth: titled, updated_at: new Date().toISOString() })
+      .eq('id', clientId)
+    if (updErr) {
+      log.warn('No se pudo persistir country_of_birth desde M2', { clientId, error: updErr })
+      return
+    }
+    await logActivity({
+      caseId,
+      category: 'system',
+      subcategory: 'system.profile_country_backfilled_from_m2',
+      description: `País del perfil completado automáticamente desde el cuestionario M2: ${titled}`,
+      metadata: { source: 'questionnaire_m2', value: titled },
+      visibleToClient: false,
+      actor: { kind: 'token', tokenType: 'cita', clientId },
+      client: supabase,
+    })
+  } catch (err) {
+    log.warn('persistProfileCountryIfEmpty falló (continuando)', { clientId, err: String(err) })
+  }
 }

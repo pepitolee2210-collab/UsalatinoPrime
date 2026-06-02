@@ -118,6 +118,7 @@ function ContratosInner({ basePath, hideHeader }: Props) {
   const [search, setSearch] = useState('')
   const [editingMinorsOf, setEditingMinorsOf] = useState<ContractRow | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list')
+  const [exporting, setExporting] = useState(false)
   const supabase = createClient()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -239,6 +240,38 @@ function ContratosInner({ basePath, hideHeader }: Props) {
     const url = `${window.location.origin}/contrato/${token}`
     await navigator.clipboard.writeText(url)
     toast.success('Enlace copiado al portapapeles')
+  }
+
+  async function handleExportExcel() {
+    if (exporting) return
+    setExporting(true)
+    const loadingToast = toast.loading('Generando Excel…')
+    try {
+      const res = await fetch('/api/contracts/export', {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        toast.error('No se pudo exportar (' + res.status + ')', { id: loadingToast })
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const today = new Date().toISOString().slice(0, 10)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `contratos-${today}.xlsx`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      toast.success('Excel descargado', { id: loadingToast })
+    } catch (err) {
+      console.error('[contratos] export error:', err)
+      toast.error('Error de conexión', { id: loadingToast })
+    } finally {
+      setExporting(false)
+    }
   }
 
   function handleWhatsApp(contract: ContractRow) {
@@ -421,6 +454,22 @@ function ContratosInner({ basePath, hideHeader }: Props) {
               Kanban
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            disabled={exporting || contracts.length === 0}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 hover:bg-white/5 active:scale-95 text-[12px] font-semibold tracking-tight disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              background: 'transparent',
+              border: '0.5px solid var(--admin-border-strong)',
+              color: 'var(--admin-fg)',
+            }}
+            title="Descarga un Excel sin estilos con todos los contratos para filtrar manualmente"
+          >
+            <Download className="w-3.5 h-3.5" />
+            {exporting ? 'Exportando…' : 'Exportar Excel'}
+          </button>
 
           <button onClick={handleNewContract} className={BTN_PRIMARY}>
             <Plus className="w-3.5 h-3.5" />

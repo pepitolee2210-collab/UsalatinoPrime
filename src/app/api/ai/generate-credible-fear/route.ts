@@ -15,6 +15,7 @@ import {
   type CFUrlValue,
 } from '@/lib/legal/asilo-miedo-creible-form-schema'
 import { validateCaseBeforeGeneration } from '@/lib/asylum/validate-case-before-generation'
+import { resolveApplicantCountry } from '@/lib/asylum/resolve-applicant-country'
 import { logActivity } from '@/lib/activity/log-activity'
 import { createLogger } from '@/lib/logger'
 import { isAsylumService } from '@/lib/services/asylum'
@@ -140,16 +141,38 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const country = caseRow.client?.country_of_birth ?? caseRow.client?.nationality ?? ''
-  if (!country) {
-    return NextResponse.json(
-      { error: 'No se conoce el país de origen del solicitante' },
-      { status: 400 },
-    )
-  }
+  // ──────────────────────────────────────────────────────────────────
+  // 2. Cargar cuestionario M1-M11 (necesario para la validación de país y
+  //    para derivar el tipo de persecución que alimenta Tavily/prompt).
+  // ──────────────────────────────────────────────────────────────────
+  const { data: questionnaire } = await service
+    .from('case_form_instances')
+    .select('filled_values, client_submitted_at')
+    .eq('case_id', caseId)
+    .eq('form_name', CREDIBLE_FEAR_QUESTIONNAIRE_SLUG)
+    .maybeSingle()
+  const answers = (questionnaire?.filled_values as CFAnswers | undefined) ?? {}
 
   // ──────────────────────────────────────────────────────────────────
-  // 2. Validación pre-generación
+  // 3. Resolver país canónico (M2 → I-589 wizard → OCR → profile → nationality).
+  //    El blocker formal vive en validateCaseBeforeGeneration; este resolver
+  //    también lo invoca, así que aquí solo extraemos el resultado para
+  //    propagarlo a Tavily y al prompt.
+  // ──────────────────────────────────────────────────────────────────
+  const resolved = await resolveApplicantCountry({
+    supabase: service,
+    caseId,
+    profile: caseRow.client,
+  })
+  log.info('applicant country resolved', {
+    caseId,
+    source: resolved.source,
+    country: resolved.country,
+    trace: resolved.trace,
+  })
+
+  // ──────────────────────────────────────────────────────────────────
+  // 4. Validación pre-generación (documentos + cuestionario + país)
   // ──────────────────────────────────────────────────────────────────
   const validation = await validateCaseBeforeGeneration(service, caseId)
   if (!validation.ready) {
@@ -162,21 +185,10 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  // ──────────────────────────────────────────────────────────────────
-  // 3. Cargar cuestionario M1-M11
-  // ──────────────────────────────────────────────────────────────────
-  const { data: questionnaire } = await service
-    .from('case_form_instances')
-    .select('filled_values, client_submitted_at')
-    .eq('case_id', caseId)
-    .eq('form_name', CREDIBLE_FEAR_QUESTIONNAIRE_SLUG)
-    .maybeSingle()
-  const answers = (questionnaire?.filled_values as CFAnswers | undefined) ?? {}
-
-  const countryFromQuestionnaire = typeof answers['m2_country_of_birth'] === 'string'
-    ? (answers['m2_country_of_birth'] as string)
-    : null
-  const effectiveCountry = countryFromQuestionnaire || country
+  // Tras `validation.ready=true` el blocker M2 garantizó que resolved.country
+  // está presente, pero TypeScript no puede inferirlo: asertamos no-null para
+  // los consumers siguientes.
+  const effectiveCountry = resolved.country!
 
   // Derivar tipo de persecución de M3 grounds para query de Tavily más relevante
   const grounds = Array.isArray(answers['m3_grounds']) ? (answers['m3_grounds'] as string[]) : []
@@ -193,7 +205,7 @@ export async function POST(request: NextRequest) {
     : 'general'
 
   // ──────────────────────────────────────────────────────────────────
-  // 4. Cargar I-589 Parte A submissions (para applicantMetadata)
+  // 5. Cargar I-589 Parte A submissions (para applicantMetadata)
   // ──────────────────────────────────────────────────────────────────
   const { data: i589Subs } = await service
     .from('case_form_submissions')
@@ -221,7 +233,7 @@ export async function POST(request: NextRequest) {
     : null
 
   // ──────────────────────────────────────────────────────────────────
-  // 5. Cargar documentos OCRed
+  // 6. Cargar documentos OCRed
   // ──────────────────────────────────────────────────────────────────
   await extractDocumentsForCase(caseId).catch((err) => {
     log.warn('extract docs falló (continuando)', { caseId, err: String(err) })
@@ -231,7 +243,7 @@ export async function POST(request: NextRequest) {
     .from('documents')
     .select(`
       id,
-      file_name,
+      name,
       extracted_text,
       document_type:document_types(code, name_es, category_code)
     `)
@@ -239,7 +251,7 @@ export async function POST(request: NextRequest) {
     .order('created_at', { ascending: true })
     .returns<{
       id: string
-      file_name: string | null
+      name: string | null
       extracted_text: string | null
       document_type: { code: string; name_es: string; category_code: string } | { code: string; name_es: string; category_code: string }[] | null
     }[]>()
@@ -250,7 +262,7 @@ export async function POST(request: NextRequest) {
       const dt = Array.isArray(d.document_type) ? d.document_type[0] : d.document_type
       return {
         document_id: d.id,
-        filename: d.file_name ?? '(sin nombre)',
+        filename: d.name ?? '(sin nombre)',
         declared_category: dt?.code ?? dt?.category_code ?? 'unknown',
         language: 'es',
         extracted_text: d.extracted_text ?? '',
@@ -258,7 +270,7 @@ export async function POST(request: NextRequest) {
     })
 
   // ──────────────────────────────────────────────────────────────────
-  // 6. Cargar evidence_links (cliente + M9 + Tavily)
+  // 7. Cargar evidence_links (cliente + M9 + Tavily)
   // ──────────────────────────────────────────────────────────────────
   const { data: clientUrls } = await service
     .from('case_evidence_urls')
@@ -336,7 +348,7 @@ export async function POST(request: NextRequest) {
   const evidenceLinks = [...clientEvidenceLinks, ...m9EvidenceLinks, ...m9CustomLinks, ...tavilyLinks]
 
   // ──────────────────────────────────────────────────────────────────
-  // 7. Llamada 1 + Llamada 2 IA
+  // 8. Llamada 1 + Llamada 2 IA
   // ──────────────────────────────────────────────────────────────────
   const tStart = Date.now()
   const baseInputs = {
@@ -344,7 +356,7 @@ export async function POST(request: NextRequest) {
       full_name: fullName || 'Solicitante',
       a_number: caseRow.client?.a_number,
       date_of_birth: caseRow.client?.date_of_birth,
-      city_country_of_birth: countryFromQuestionnaire || caseRow.client?.country_of_birth,
+      city_country_of_birth: resolved.country,
       current_nationality: caseRow.client?.nationality,
       date_entered_us: dateEnteredUs,
       port_of_entry: typeof i589Merged.port_of_entry === 'string' ? i589Merged.port_of_entry : null,

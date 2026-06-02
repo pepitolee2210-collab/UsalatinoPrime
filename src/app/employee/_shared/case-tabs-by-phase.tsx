@@ -81,6 +81,7 @@ export function CaseTabsByPhase({
   const [previewDoc, setPreviewDoc] = useState<UploadFile | null>(null)
   const [uploading, setUploading] = useState<UploadDirection | null>(null)
   const [editingFormSlug, setEditingFormSlug] = useState<string | null>(null)
+  const [exportingClientInfo, setExportingClientInfo] = useState(false)
 
   const currentPhase = overview?.case.current_phase ?? null
   const isPhased = isPhasedService(serviceSlug)
@@ -205,6 +206,44 @@ export function CaseTabsByPhase({
       setUploading(null)
     }
   }
+
+  // Descarga un PDF "Información del cliente" con todos los datos llenados
+  // por el cliente en este caso (todas las fases). Es un PDF interno — no es
+  // el formulario oficial USCIS (esos se siguen generando con "Generar PDF").
+  async function handleExportClientInfo() {
+    if (exportingClientInfo) return
+    setExportingClientInfo(true)
+    try {
+      const res = await fetch(`/api/admin/cases/${caseId}/client-info-pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || `Error ${res.status}`)
+      }
+      const blob = await res.blob()
+      const cd = res.headers.get('Content-Disposition') || ''
+      const m = /filename="([^"]+)"/.exec(cd)
+      const filename = m?.[1] ?? `info-cliente-${caseNumber}.pdf`
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      toast.success('Información del cliente descargada')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al generar el PDF')
+    } finally {
+      setExportingClientInfo(false)
+    }
+  }
+
+  const totalForms = countTotalForms(overview)
+  const hasAnyForm = totalForms > 0
 
   return (
     <div className="space-y-4">
@@ -444,6 +483,70 @@ export function CaseTabsByPhase({
       {/* === FORMULARIOS === */}
       {tab === 'forms' && !loading && overview && (
         <div className="space-y-3">
+          {/* Toolbar global del tab Formularios. El botón descarga un PDF
+              con TODA la información llenada por el cliente (todas las fases),
+              en un layout interno limpio — distinto del "Generar PDF" oficial
+              por formulario que ya existe en cada tarjeta. */}
+          <div
+            className="flex items-start justify-between gap-4 rounded-2xl px-4 py-3"
+            style={{
+              background: 'var(--admin-bg-elev)',
+              border: '0.5px solid var(--admin-border)',
+            }}
+          >
+            <div className="flex-1 min-w-0">
+              <p
+                style={{
+                  fontFamily: 'var(--font-mono-tech)',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.14em',
+                  color: 'var(--admin-fg-subtle)',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Formularios del caso · {totalForms}
+              </p>
+              <p style={{ fontSize: 12, color: 'var(--admin-fg-muted)', marginTop: 4 }}>
+                Genera PDFs oficiales por formulario, o descarga toda la información
+                llenada por el cliente en un solo expediente interno.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={exportingClientInfo || !hasAnyForm}
+              onClick={handleExportClientInfo}
+              aria-label="Descargar información del cliente en PDF"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full transition-all hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+              style={{
+                background: 'linear-gradient(135deg, var(--admin-accent), var(--admin-blue))',
+                color: '#FFFFFF',
+                border: '0.5px solid rgba(255,255,255,0.2)',
+                boxShadow: '0 8px 18px rgba(30,78,154,0.22)',
+                fontSize: 12,
+                fontWeight: 700,
+                letterSpacing: '0.01em',
+              }}
+              title={
+                hasAnyForm
+                  ? 'Descarga un PDF con TODA la información que el cliente llenó en este caso (todas las fases). Útil para revisión legal offline o entregar al cliente.'
+                  : 'Aún no hay formularios llenados en este caso.'
+              }
+            >
+              {exportingClientInfo ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Generando…
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" />
+                  Información del cliente
+                </>
+              )}
+            </button>
+          </div>
+
           {overview.phases.map(group => (
             <PhaseAccordion
               key={group.phase}
