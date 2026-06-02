@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { toast } from 'sonner'
 import { FormCard } from '../forms/form-card'
 import { FormRunner } from '../forms/form-runner'
+import { PortalSheet } from '../portal-sheet'
 import { ClientStoryWizard } from '../../client-story-wizard'
 import { I360WizardCore, type I360FormData } from '@/components/i360/I360WizardCore'
 import { I589PartAWizardCore } from '@/components/i589/I589PartAWizardCore'
@@ -277,16 +278,16 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
       )}
 
       {storyOpen && (
-        <Fullscreen
+        <PortalSheet
           title="Mi Historia — Declaración Jurada"
           onClose={() => { setStoryOpen(false); fetchData() }}
         >
           <ClientStoryWizard token={token} clientName={clientName} declarationDocs={[]} />
-        </Fullscreen>
+        </PortalSheet>
       )}
 
       {i360Open && i360Data && (
-        <Fullscreen
+        <PortalSheet
           title="Form I-360 — Petición SIJS"
           onClose={() => { setI360Open(false); fetchData() }}
         >
@@ -300,7 +301,7 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
             onSaved={fetchData}
             onClose={() => { setI360Open(false); fetchData() }}
           />
-        </Fullscreen>
+        </PortalSheet>
       )}
 
       {i360Loading && (
@@ -313,7 +314,7 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
       )}
 
       {i589Open && i589Data && (
-        <Fullscreen
+        <PortalSheet
           title="Formulario I-589 — Páginas 1 a 4"
           onClose={() => { setI589Open(false); fetchData() }}
         >
@@ -323,7 +324,7 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
             onSuccess={() => { setI589Open(false); fetchData() }}
             onClose={() => { setI589Open(false); fetchData() }}
           />
-        </Fullscreen>
+        </PortalSheet>
       )}
 
       {i589Loading && (
@@ -336,7 +337,7 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
       )}
 
       {urlsOpen && (
-        <Fullscreen
+        <PortalSheet
           title="Enlaces de noticias y evidencia"
           onClose={() => { setUrlsOpen(false); fetchData() }}
         >
@@ -347,11 +348,11 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
             </p>
             <EvidenceUrlsManager token={token} />
           </div>
-        </Fullscreen>
+        </PortalSheet>
       )}
 
       {ccCartaOpen && data && (
-        <Fullscreen
+        <PortalSheet
           title="Carta de Cambio de Corte (6 págs)"
           onClose={() => { setCcCartaOpen(false); fetchData() }}
         >
@@ -360,11 +361,11 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
             caseId={data.case_id}
             clientName={clientName}
           />
-        </Fullscreen>
+        </PortalSheet>
       )}
 
       {credibleFearOpen && (
-        <Fullscreen
+        <PortalSheet
           title="Cuestionario Miedo Creíble (M1-M11)"
           onClose={() => { setCredibleFearOpen(false); fetchData() }}
         >
@@ -372,35 +373,8 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
             token={token}
             onClose={() => { setCredibleFearOpen(false); fetchData() }}
           />
-        </Fullscreen>
+        </PortalSheet>
       )}
-    </div>
-  )
-}
-
-function Fullscreen({ children, onClose, title }: { children: React.ReactNode; onClose: () => void; title: string }) {
-  return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex flex-col" onClick={onClose}>
-      <div
-        className="mt-auto sm:mt-12 sm:mx-auto bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-3xl flex-1 sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className="px-4 py-3 flex items-center gap-3 border-b" style={{ borderColor: 'var(--color-ulp-outline-variant)' }}>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-9 h-9 rounded-full flex items-center justify-center"
-            style={{ background: 'var(--color-ulp-surface-container)' }}
-            aria-label="Cerrar"
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
-          </button>
-          <h2 className="ulp-body-md font-bold flex-1 truncate" style={{ color: 'var(--color-ulp-on-surface)' }}>
-            {title}
-          </h2>
-        </header>
-        <div className="flex-1 overflow-y-auto">{children}</div>
-      </div>
     </div>
   )
 }

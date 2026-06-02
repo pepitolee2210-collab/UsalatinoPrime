@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { CommunityPortal } from '../../community-portal'
 import { HenryDocuments } from '../../henry-documents'
 import type { QuickContact } from './inicio-screen'
@@ -404,11 +405,16 @@ function ExpedientesPreview({
   onClose: () => void
 }) {
   if (!doc) return null
+  if (typeof document === 'undefined') return null
   const url = `/api/client/preview-doc?token=${encodeURIComponent(token)}&id=${encodeURIComponent(doc.id)}&raw=1`
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: 'rgba(0,0,0,0.85)' }}
+      className="fixed inset-0 z-[100] flex flex-col"
+      style={{
+        background: 'rgba(0,0,0,0.85)',
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
       onClick={onClose}
     >
       <header
@@ -431,7 +437,8 @@ function ExpedientesPreview({
       <div className="flex-1 px-4 pb-4" onClick={(e) => e.stopPropagation()}>
         <iframe src={url} className="w-full h-full rounded-xl bg-white" title={doc.name} />
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

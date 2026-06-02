@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { Play, Megaphone, Video, Pin, ExternalLink, Calendar, Globe, ChevronDown, ChevronUp, X } from 'lucide-react'
 
 interface SchedulingDay {
@@ -181,10 +182,16 @@ function VideoModal({ post, ytId, rxCounts, myRx, bouncing, onReact, onClose }: 
     return () => { document.body.style.overflow = prev }
   }, [])
 
-  return (
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: 'rgba(0,0,0,0.92)' }}
+      className="fixed inset-0 z-[100] flex flex-col"
+      style={{
+        background: 'rgba(0,0,0,0.92)',
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
       onClick={onClose}
     >
       {/* Top bar */}
@@ -246,7 +253,8 @@ function VideoModal({ post, ytId, rxCounts, myRx, bouncing, onReact, onClose }: 
           bouncing={bouncing} onReact={onReact}
         />
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { EvidenceUrlsManager } from '../evidence-urls-manager'
 import { CredibleFearQuestionnaireWizard } from '../forms/credible-fear-questionnaire-wizard'
+import { PortalSheet } from '../portal-sheet'
 
 interface ReforzarScreenProps {
   token: string
@@ -403,33 +404,15 @@ export function ReforzarScreen({ token, clientName }: ReforzarScreenProps) {
       </section>
 
       {wizardOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex flex-col" onClick={() => { setWizardOpen(false); fetchAll() }}>
-          <div
-            className="mt-auto sm:mt-12 sm:mx-auto bg-white rounded-t-3xl sm:rounded-3xl w-full sm:max-w-3xl flex-1 sm:max-h-[90vh] flex flex-col overflow-hidden shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <header className="px-4 py-3 flex items-center gap-3 border-b" style={{ borderColor: 'var(--color-ulp-outline-variant)' }}>
-              <button
-                type="button"
-                onClick={() => { setWizardOpen(false); fetchAll() }}
-                className="w-9 h-9 rounded-full flex items-center justify-center"
-                style={{ background: 'var(--color-ulp-surface-container)' }}
-                aria-label="Cerrar"
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
-              </button>
-              <h2 className="ulp-body-md font-bold flex-1 truncate" style={{ color: 'var(--color-ulp-on-surface)' }}>
-                Cuestionario Miedo Creíble (M1-M11)
-              </h2>
-            </header>
-            <div className="flex-1 overflow-hidden">
-              <CredibleFearQuestionnaireWizard
-                token={token}
-                onClose={() => { setWizardOpen(false); fetchAll() }}
-              />
-            </div>
-          </div>
-        </div>
+        <PortalSheet
+          title="Cuestionario Miedo Creíble (M1-M11)"
+          onClose={() => { setWizardOpen(false); fetchAll() }}
+        >
+          <CredibleFearQuestionnaireWizard
+            token={token}
+            onClose={() => { setWizardOpen(false); fetchAll() }}
+          />
+        </PortalSheet>
       )}
     </div>
   )
