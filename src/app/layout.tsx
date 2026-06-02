@@ -33,7 +33,19 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
+// Detecta automáticamente la URL del deploy (Vercel) — necesario para que
+// la imagen de preview (opengraph-image.jpg) resuelva a URL absoluta al
+// compartir el link. Fallback a localhost en dev.
+const baseUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(baseUrl),
   title: "UsaLatinoPrime - Portal de Servicios Migratorios",
   description: "Portal automatizado de servicios migratorios",
   manifest: "/manifest.webmanifest",
@@ -48,9 +60,9 @@ export const metadata: Metadata = {
   other: {
     "mobile-web-app-capable": "yes",
   },
-  icons: {
-    apple: "/icons/apple-touch-icon.png",
-  },
+  // Favicon (icono de pestaña) y apple-icon se toman de src/app/icon.png y
+  // src/app/apple-icon.png (convención de Next.js). Sin `icons` explícito
+  // aquí para no pisar esos archivos.
 };
 
 export const viewport: Viewport = {
