@@ -22,7 +22,8 @@ export function CartaCambioCorteClientWizard({ token, caseId, clientName }: Prop
         clientName={clientName}
         apiUrl={`/api/cita/${encodeURIComponent(token)}/carta-cambio-corte`}
         showGenerateButton={false}
-        headerSubtitle="Llena los datos para la moción. Tu equipo legal generará el PDF final."
+        clientMode
+        headerSubtitle="Confirma tus datos y tu nueva dirección. Tu equipo legal determinará la nueva corte y generará el documento final."
       />
     </div>
   )
