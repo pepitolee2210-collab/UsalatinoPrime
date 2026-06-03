@@ -38,6 +38,15 @@ export interface CartaCambioCorteData {
   document_date: string // YYYY-MM-DD
   residence_proof_docs: string[]
   beneficiaries: Array<{ full_name: string; file_number: string }>
+  // Fiscal Principal (Chief Counsel) de la NUEVA corte — referencia sugerida por
+  // IA a partir de la nueva dirección. NO se imprime en la moción: el Certificate
+  // of Service (pág 6) se sirve al Chief Counsel de la corte ACTUAL
+  // (chief_counsel_address). Se guarda solo para que el staff lo tenga a mano.
+  new_court_chief_counsel_address?: string
+  // Contexto adicional sobre los documentos anexados (ej. contrato de alquiler a
+  // nombre del cónyuge). Texto libre redactado por el staff o propuesto por IA.
+  // SÍ se imprime como párrafo en la pág 2 de la moción.
+  additional_context?: string
 }
 
 const MONTHS_EN = [
@@ -269,6 +278,14 @@ export function generateCambioCorteLetter(s: CartaCambioCorteData): Uint8Array {
     }
     const docList = proofDocs.map(k => docLabels[k] || k).join(', ')
     paragraph(`To accredit my new residence, I attach the following: ${docList}.`, 11)
+  }
+
+  // Contexto adicional sobre los documentos anexados (caso "Elio": contrato de
+  // alquiler a nombre del cónyuge, constancia de trabajo, etc.). Se imprime tal
+  // cual lo redactó el staff / propuso la IA, en inglés legal.
+  const additionalContext = (s.additional_context ?? '').trim()
+  if (additionalContext) {
+    paragraph(additionalContext, 11)
   }
 
   paragraph(

@@ -59,6 +59,8 @@ export function emptyCartaValues(): CartaCambioCorteData {
     document_date: new Date().toISOString().slice(0, 10),
     residence_proof_docs: [],
     beneficiaries: [],
+    new_court_chief_counsel_address: '',
+    additional_context: '',
   }
 }
 
