@@ -109,7 +109,7 @@ export function CasesView({ cases }: CasesViewProps) {
             placeholder="Buscar por nombre, caso, email o servicio…"
             className="w-full pl-10 pr-9 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/25"
             style={{
-              background: 'rgba(255,255,255,0.03)',
+              background: 'var(--admin-veil-1)',
               border: '0.5px solid var(--admin-border-strong)',
               color: 'var(--admin-fg)',
               fontSize: 13,
@@ -152,20 +152,20 @@ export function CasesView({ cases }: CasesViewProps) {
               onClick={() => setActiveService(isActive ? null : name)}
               className="group inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-300"
               style={{
-                background: isActive ? '#FFFFFF' : 'var(--admin-accent-soft)',
-                border: isActive ? '0.5px solid #FFFFFF' : '0.5px solid var(--admin-border-strong)',
-                color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
+                background: isActive ? 'var(--primary)' : 'var(--admin-accent-soft)',
+                border: isActive ? '0.5px solid var(--primary)' : '0.5px solid var(--admin-border-strong)',
+                color: isActive ? 'var(--primary-foreground)' : 'var(--admin-fg-muted)',
                 fontSize: 12,
                 letterSpacing: '-0.005em',
-                boxShadow: isActive ? '0 0 16px rgba(255,255,255,0.18)' : 'none',
+                boxShadow: isActive ? 'var(--admin-shadow)' : 'none',
               }}
             >
               {name}
               <span
                 className="inline-flex items-center justify-center px-1.5 rounded-full"
                 style={{
-                  background: isActive ? 'rgba(0,0,0,0.15)' : 'var(--admin-border)',
-                  color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-subtle)',
+                  background: isActive ? 'color-mix(in srgb, var(--primary-foreground) 18%, transparent)' : 'var(--admin-border)',
+                  color: isActive ? 'var(--primary-foreground)' : 'var(--admin-fg-muted)',
                   fontFamily: 'var(--font-mono-tech)',
                   fontSize: 10,
                   fontWeight: 700,
@@ -192,13 +192,13 @@ export function CasesView({ cases }: CasesViewProps) {
               disabled={!hasCase && !isActive}
               className="w-8 h-8 rounded-lg transition-all duration-300"
               style={{
-                background: isActive ? '#FFFFFF' : hasCase ? 'rgba(255,255,255,0.03)' : 'transparent',
-                border: isActive ? '0.5px solid #FFFFFF' : hasCase ? '0.5px solid var(--admin-border)' : '0.5px solid transparent',
-                color: isActive ? 'var(--admin-bg-deep)' : hasCase ? 'var(--admin-fg)' : 'var(--admin-fg-faint)',
+                background: isActive ? 'var(--primary)' : hasCase ? 'var(--admin-veil-1)' : 'transparent',
+                border: isActive ? '0.5px solid var(--primary)' : hasCase ? '0.5px solid var(--admin-border)' : '0.5px solid transparent',
+                color: isActive ? 'var(--primary-foreground)' : hasCase ? 'var(--admin-fg)' : 'var(--admin-fg-subtle)',
                 fontSize: 11,
                 fontWeight: 600,
                 cursor: hasCase || isActive ? 'pointer' : 'not-allowed',
-                boxShadow: isActive ? '0 0 16px rgba(255,255,255,0.2)' : 'none',
+                boxShadow: isActive ? 'var(--admin-shadow)' : 'none',
                 fontFamily: 'var(--font-mono-tech)',
                 letterSpacing: '0.02em',
               }}
@@ -225,7 +225,7 @@ export function CasesView({ cases }: CasesViewProps) {
               fontSize: 10,
               fontWeight: 700,
               letterSpacing: '0.15em',
-              color: '#FCA5A5',
+              color: 'var(--admin-red-on)',
               marginLeft: 4,
             }}
           >
@@ -246,12 +246,12 @@ function ToggleBtn({ active, onClick, icon, children }: { active: boolean; onCli
       onClick={onClick}
       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-300"
       style={{
-        background: active ? '#FFFFFF' : 'transparent',
-        color: active ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
+        background: active ? 'var(--primary)' : 'transparent',
+        color: active ? 'var(--primary-foreground)' : 'var(--admin-fg-muted)',
         fontSize: 12,
         fontWeight: 600,
         letterSpacing: '-0.005em',
-        boxShadow: active ? '0 0 12px rgba(255,255,255,0.15)' : 'none',
+        boxShadow: active ? 'var(--admin-shadow)' : 'none',
       }}
     >
       {icon}
@@ -266,7 +266,7 @@ function FilterChip({ label, onRemove }: { label: string; onRemove: () => void }
       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
       style={{
         background: 'var(--admin-accent-soft)',
-        border: '0.5px solid rgba(255,255,255,0.12)',
+        border: '0.5px solid var(--admin-border)',
         fontFamily: 'var(--font-mono-tech)',
         fontSize: 10,
         fontWeight: 700,

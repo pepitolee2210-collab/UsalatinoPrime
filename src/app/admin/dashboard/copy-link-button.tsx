@@ -14,10 +14,10 @@ export function CopyLinkButton({ link }: { link: string }) {
   }
 
   return (
-    <div className="flex items-center gap-2 p-3 rounded-lg bg-[#002855]/5 border border-[#002855]/10">
+    <div className="flex items-center gap-2 p-3 rounded-lg bg-[color:var(--admin-accent-soft)] border border-[color:var(--admin-border)]">
       <div className="flex-1 min-w-0">
-        <p className="text-xs text-gray-500 mb-0.5">Link Universal de Citas</p>
-        <p className="text-sm font-mono text-[#002855] truncate">{link}</p>
+        <p className="text-xs text-[color:var(--admin-fg-muted)] mb-0.5">Link Universal de Citas</p>
+        <p className="text-sm font-mono text-[color:var(--admin-accent)] truncate">{link}</p>
       </div>
       <Button
         variant="outline"

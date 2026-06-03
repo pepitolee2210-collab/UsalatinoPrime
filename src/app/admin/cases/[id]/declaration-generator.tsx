@@ -540,7 +540,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
       )}
 
       <div className="flex items-center gap-2 mb-2">
-        <FileText className="w-5 h-5 text-[#F2A900]" />
+        <FileText className="w-5 h-5 text-[var(--admin-gold)]" />
         <h3 className="font-bold text-gray-900">Generar Declaraciones Juradas</h3>
       </div>
       <p className="text-xs text-gray-500">
@@ -635,7 +635,7 @@ export function DeclarationGenerator({ caseId, clientName, tutorData, clientWitn
       {/* Generate All */}
       {(minorStories.length > 0 || witnesses.length > 0) && (
         <Button
-          className="w-full bg-[#002855] hover:bg-[#001d3d] h-12"
+          className="w-full bg-[var(--primary)] hover:opacity-90 text-[var(--primary-foreground)] h-12"
           disabled={!!generating}
           onClick={async () => {
             for (let i = 0; i < minorStories.length; i++) {
@@ -741,8 +741,8 @@ function DocCard({ icon, title, subtitle, color, generating, generated, onGenera
 
         {generating ? (
           <div className="flex items-center gap-2">
-            <Loader2 className="w-4 h-4 animate-spin text-[#F2A900]" />
-            <span className="text-xs text-[#9a6500] font-medium">Henry está generando...</span>
+            <Loader2 className="w-4 h-4 animate-spin text-[var(--admin-gold)]" />
+            <span className="text-xs text-[var(--admin-gold-on)] font-medium">Henry está generando...</span>
           </div>
         ) : generated ? (
           <div className="flex items-center gap-1 flex-wrap">
@@ -767,7 +767,7 @@ function DocCard({ icon, title, subtitle, color, generating, generated, onGenera
             </Button>
           </div>
         ) : (
-          <Button size="sm" className="bg-[#F2A900] hover:bg-[#D4940A] text-[#001020] font-bold"
+          <Button size="sm" className="bg-[var(--admin-gold)] hover:opacity-90 text-[var(--primary-foreground)] font-bold"
             onClick={onGenerate}>
             Generar
           </Button>

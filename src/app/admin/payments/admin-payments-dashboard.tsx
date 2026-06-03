@@ -184,7 +184,7 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        {!hideHeader && <h1 className="text-2xl font-bold text-gray-900">Pagos</h1>}
+        {!hideHeader && <h1 className="text-2xl font-bold text-[var(--admin-fg)]">Pagos</h1>}
         {hideHeader && <span />}
         <div className="flex gap-2">
           {/* Register Single Payment */}
@@ -196,7 +196,7 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
             </DialogTrigger>
             <DialogContent className={DARK_DIALOG_CLS}>
               <DialogHeader>
-                <DialogTitle className="text-white" style={DARK_DIALOG_TITLE}>Registrar Pago Manual</DialogTitle>
+                <DialogTitle className="text-[var(--admin-fg)]" style={DARK_DIALOG_TITLE}>Registrar Pago Manual</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-2">
                 <Field label="Caso">
@@ -253,7 +253,7 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
             </DialogTrigger>
             <DialogContent className={DARK_DIALOG_CLS}>
               <DialogHeader>
-                <DialogTitle className="text-white" style={DARK_DIALOG_TITLE}>Crear Plan de Cuotas</DialogTitle>
+                <DialogTitle className="text-[var(--admin-fg)]" style={DARK_DIALOG_TITLE}>Crear Plan de Cuotas</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-2">
                 <Field label="Caso">
@@ -366,7 +366,7 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-3 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/25"
             style={{
-              background: 'rgba(255,255,255,0.03)',
+              background: 'var(--admin-veil-1)',
               border: '0.5px solid var(--admin-border-strong)',
               color: 'var(--admin-fg)',
               fontSize: 13,
@@ -408,7 +408,7 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr style={{ borderBottom: '0.5px solid var(--admin-border)', background: 'rgba(255,255,255,0.02)' }}>
+              <tr style={{ borderBottom: '0.5px solid var(--admin-border)', background: 'var(--admin-veil-1)' }}>
                 <DarkTh>Caso</DarkTh>
                 <DarkTh>Cliente</DarkTh>
                 <DarkTh>Servicio</DarkTh>
@@ -430,11 +430,12 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
                     key={p.id}
                     style={{
                       borderBottom: idx < filteredPayments.length - 1 ? '0.5px solid var(--admin-accent-soft)' : 'none',
-                      background: isOverdue ? 'rgba(248,113,113,0.04)' : 'transparent',
+                      background: 'transparent',
+                      boxShadow: isOverdue ? 'inset 3px 0 0 var(--admin-red)' : 'none',
                       transition: 'background 0.2s',
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = isOverdue ? 'rgba(248,113,113,0.07)' : 'rgba(255,255,255,0.025)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = isOverdue ? 'rgba(248,113,113,0.04)' : 'transparent')}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--admin-veil-1)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
                     <DarkTd>
                       <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 12, fontWeight: 700, color: 'var(--admin-fg)', letterSpacing: '0.02em' }}>
@@ -484,12 +485,12 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
                           disabled={markPaidLoading === p.id}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95"
                           style={{
-                            background: 'var(--admin-bg-elev)',
-                            color: 'var(--admin-bg-deep)',
+                            background: 'var(--primary)',
+                            color: 'var(--primary-foreground)',
                             fontSize: 11,
                             fontWeight: 600,
                             letterSpacing: '-0.005em',
-                            boxShadow: '0 0 12px rgba(255,255,255,0.18)',
+                            boxShadow: '0 0 12px var(--admin-shadow)',
                           }}
                         >
                           {markPaidLoading === p.id ? (
@@ -528,10 +529,10 @@ export function AdminPaymentsDashboard({ initialPayments, cases, hideHeader }: A
 type StatTone = 'success' | 'warning' | 'danger' | 'info'
 
 const TONE_STYLES: Record<StatTone, { bg: string; border: string; iconColor: string; valueColor: string }> = {
-  success: { bg: 'rgba(34,197,94,0.10)',  border: 'rgba(34,197,94,0.3)',  iconColor: '#4ADE80', valueColor: '#FFFFFF' },
-  warning: { bg: 'rgba(250,204,21,0.10)', border: 'rgba(250,204,21,0.3)', iconColor: '#FACC15', valueColor: '#FFFFFF' },
-  danger:  { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', iconColor: '#F87171', valueColor: '#FFFFFF' },
-  info:    { bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.3)', iconColor: '#60A5FA', valueColor: '#FFFFFF' },
+  success: { bg: 'var(--admin-green-soft)',  border: 'var(--admin-green)',  iconColor: 'var(--admin-green)', valueColor: 'var(--admin-fg)' },
+  warning: { bg: 'var(--admin-gold-soft)', border: 'var(--admin-gold)', iconColor: 'var(--admin-gold)', valueColor: 'var(--admin-fg)' },
+  danger:  { bg: 'var(--admin-red-soft)', border: 'var(--admin-red)', iconColor: 'var(--admin-red)', valueColor: 'var(--admin-fg)' },
+  info:    { bg: 'var(--admin-blue-soft)', border: 'var(--admin-blue)', iconColor: 'var(--admin-blue)', valueColor: 'var(--admin-fg)' },
 }
 
 function DarkStat({ icon, label, value, tone }: { icon: React.ReactNode; label: string; value: string | number; tone: StatTone }) {
@@ -616,12 +617,12 @@ function FilterChips({ value, onChange, options }: { value: string; onChange: (v
             onClick={() => onChange(opt.value)}
             className="px-3 py-1.5 rounded-full transition-all duration-200"
             style={{
-              background: isActive ? '#FFFFFF' : 'transparent',
-              color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
+              background: isActive ? 'var(--primary)' : 'transparent',
+              color: isActive ? 'var(--primary-foreground)' : 'var(--admin-fg-muted)',
               fontSize: 11,
               fontWeight: isActive ? 700 : 500,
               letterSpacing: '-0.005em',
-              boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.15)' : 'none',
+              boxShadow: isActive ? '0 0 12px var(--admin-shadow)' : 'none',
             }}
           >
             {opt.label}
@@ -633,11 +634,11 @@ function FilterChips({ value, onChange, options }: { value: string; onChange: (v
 }
 
 const PAY_STATUS_COLORS: Record<string, { bg: string; border: string; dot: string; text: string }> = {
-  pending:   { bg: 'rgba(250,204,21,0.10)', border: 'rgba(250,204,21,0.3)', dot: '#FACC15', text: '#FDE68A' },
-  completed: { bg: 'rgba(34,197,94,0.10)',  border: 'rgba(34,197,94,0.3)',  dot: '#4ADE80', text: '#86EFAC' },
-  failed:    { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', dot: '#F87171', text: '#FCA5A5' },
-  overdue:   { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', dot: '#F87171', text: '#FCA5A5' },
-  processing:{ bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.3)', dot: '#60A5FA', text: '#93C5FD' },
+  pending:   { bg: 'var(--admin-gold-soft)', border: 'var(--admin-gold)', dot: 'var(--admin-gold)', text: 'var(--admin-gold-on)' },
+  completed: { bg: 'var(--admin-green-soft)',  border: 'var(--admin-green)',  dot: 'var(--admin-green)', text: 'var(--admin-green-on)' },
+  failed:    { bg: 'var(--admin-red-soft)', border: 'var(--admin-red)', dot: 'var(--admin-red)', text: 'var(--admin-red-on)' },
+  overdue:   { bg: 'var(--admin-red-soft)', border: 'var(--admin-red)', dot: 'var(--admin-red)', text: 'var(--admin-red-on)' },
+  processing:{ bg: 'var(--admin-blue-soft)', border: 'var(--admin-blue)', dot: 'var(--admin-blue)', text: 'var(--admin-blue-on)' },
   refunded:  { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-fg-muted)', text: 'var(--admin-fg-muted)' },
 }
 
@@ -679,8 +680,8 @@ function PaymentStatusBadge({ status, label }: { status: string; label: string }
 // ════════════════════════════════════════════════════════════════════
 
 const DARK_DIALOG_CLS =
-  'bg-[#0A0A0A] border border-white/10 text-white shadow-2xl backdrop-blur-xl ' +
-  '[&>button]:text-white/60 [&>button]:hover:text-white'
+  'bg-[var(--admin-bg)] border border-white/10 text-[var(--admin-fg)] shadow-2xl backdrop-blur-xl ' +
+  '[&>button]:text-[var(--admin-fg-muted)] [&>button]:hover:text-[var(--admin-fg)]'
 
 const DARK_DIALOG_TITLE: React.CSSProperties = {
   fontSize: 20,
@@ -692,12 +693,12 @@ const DARK_DIALOG_TITLE: React.CSSProperties = {
 const DARK_BTN_GHOST =
   'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 ' +
   'hover:opacity-90 active:scale-95 text-[12px] font-semibold tracking-tight ' +
-  'bg-white/[0.06] border border-white/15 text-white'
+  'bg-white/[0.06] border border-white/15 text-[var(--admin-fg)]'
 
 const DARK_BTN_SOLID =
   'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 ' +
   'hover:opacity-90 active:scale-95 text-[12px] font-semibold tracking-tight ' +
-  'bg-white text-black shadow-[0_4px_20px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset]'
+  'bg-[var(--primary)] text-[var(--primary-foreground)] shadow-[0_4px_20px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset]'
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -805,12 +806,12 @@ function DarkSubmit({ onClick, loading, children }: { onClick: () => void; loadi
       disabled={loading}
       className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
       style={{
-        background: 'var(--admin-bg-elev)',
-        color: 'var(--admin-bg-deep)',
+        background: 'var(--primary)',
+        color: 'var(--primary-foreground)',
         fontSize: 13,
         fontWeight: 600,
         letterSpacing: '-0.005em',
-        boxShadow: '0 4px 24px rgba(255,255,255,0.2), 0 0 0 0.5px rgba(255,255,255,0.5) inset',
+        boxShadow: 'var(--admin-shadow)',
         marginTop: 8,
       }}
     >

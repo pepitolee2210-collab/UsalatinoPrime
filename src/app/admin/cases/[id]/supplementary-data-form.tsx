@@ -42,7 +42,7 @@ function Input({ label, value, onChange, placeholder, status }: {
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className={`w-full px-3 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-[#F2A900]/30 focus:border-[#F2A900] outline-none ${borderClass}`}
+        className={`w-full px-3 py-1.5 text-sm border rounded-lg focus:ring-2 focus:ring-[var(--admin-gold-soft)] focus:border-[var(--admin-gold)] outline-none ${borderClass}`}
       />
     </div>
   )
@@ -527,7 +527,7 @@ export function SupplementaryDataForm({ caseId, tutorData, minorStories, absentP
           ))}
 
           {hasEdits && (
-            <Button onClick={save} disabled={saving} className="w-full bg-[#F2A900] hover:bg-[#D4940A] text-[#001020] font-bold h-10">
+            <Button onClick={save} disabled={saving} className="w-full bg-[var(--admin-gold)] hover:opacity-90 text-[var(--primary-foreground)] font-bold h-10">
               <Save className="w-4 h-4 mr-2" />
               {saving ? 'Guardando...' : `Guardar ${Object.keys(localValues).length} cambio${Object.keys(localValues).length !== 1 ? 's' : ''}`}
             </Button>

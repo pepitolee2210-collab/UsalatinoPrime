@@ -650,8 +650,8 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
               <Building2 className="w-5 h-5 text-blue-600" />
             </div>
             <div className="min-w-0">
-              <p className="font-semibold text-gray-900 truncate">{submission.client_full_name}</p>
-              <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+              <p className="font-semibold truncate" style={{ color: 'var(--admin-fg)' }}>{submission.client_full_name}</p>
+              <div className="flex items-center gap-3 text-xs flex-wrap" style={{ color: 'var(--admin-fg-muted)' }}>
                 <span className="flex items-center gap-1">
                   <FileText className="w-3 h-3" />
                   A#: {submission.file_number}
@@ -669,7 +669,7 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <Badge className={statusInfo.class}>{statusInfo.label}</Badge>
-            {expanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+            {expanded ? <ChevronUp className="w-4 h-4" style={{ color: 'var(--admin-fg-subtle)' }} /> : <ChevronDown className="w-4 h-4" style={{ color: 'var(--admin-fg-subtle)' }} />}
           </div>
         </div>
 
@@ -680,7 +680,8 @@ export function CambioCorteRow({ submission }: { submission: Submission }) {
             <div className="flex items-center gap-2 py-3 border-b mb-4 flex-wrap">
               <Link
                 href={`/admin/cambio-corte/${submission.id}`}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#F2A900] text-white rounded-lg hover:bg-[#D4940A] transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white rounded-lg transition-colors"
+                style={{ background: 'var(--admin-gold)' }}
               >
                 <Pencil className="w-3.5 h-3.5" />
                 Editar

@@ -229,10 +229,10 @@ export async function WhatsappDetailView({
                   className={
                     'max-w-[70%] rounded-lg px-3 py-2 text-sm ' +
                     (m.direction === 'inbound'
-                      ? 'bg-slate-100 text-slate-800'
+                      ? 'bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-fg)]'
                       : m.role === 'admin'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-green-500 text-white')
+                        ? 'bg-[color:var(--admin-blue)] text-white'
+                        : 'bg-[color:var(--admin-green)] text-white')
                   }
                 >
                   <div className="whitespace-pre-wrap">{m.body ?? ''}</div>

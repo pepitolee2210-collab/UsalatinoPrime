@@ -75,7 +75,7 @@ export function AssignTaskButton({ services, employees }: { services: Service[];
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-[#F2A900] hover:bg-[#D4940A] text-[#001020] font-bold gap-2">
+        <Button className="bg-[color:var(--admin-gold)] hover:opacity-90 text-[color:var(--admin-bg-deep)] font-bold gap-2">
           <Briefcase className="w-4 h-4" />
           Asignar Trabajo a Empleado
         </Button>
@@ -83,7 +83,7 @@ export function AssignTaskButton({ services, employees }: { services: Service[];
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Briefcase className="w-5 h-5 text-[#F2A900]" />
+            <Briefcase className="w-5 h-5 text-[color:var(--admin-gold)]" />
             Nuevo Trabajo para Empleado
           </DialogTitle>
         </DialogHeader>
@@ -173,7 +173,7 @@ export function AssignTaskButton({ services, employees }: { services: Service[];
 
             <button
               onClick={() => fileRef.current?.click()}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-gray-300 text-sm font-medium text-gray-500 hover:border-[#F2A900] hover:text-[#F2A900] transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-[color:var(--admin-border-strong)] text-sm font-medium text-[color:var(--admin-fg-muted)] hover:border-[color:var(--admin-gold)] hover:text-[color:var(--admin-gold)] transition-colors"
             >
               <Upload className="w-4 h-4" />
               {files.length === 0 ? 'Subir documentos (PDF, DOC, imágenes)' : 'Agregar más documentos'}
@@ -182,7 +182,7 @@ export function AssignTaskButton({ services, employees }: { services: Service[];
 
           {/* Submit */}
           <Button
-            className="w-full bg-[#002855] hover:bg-[#001d3d] h-12"
+            className="w-full bg-[color:var(--primary)] hover:opacity-90 text-[color:var(--primary-foreground)] h-12"
             disabled={loading || !service || !employee}
             onClick={handleSubmit}
           >

@@ -38,10 +38,10 @@ interface Column {
 
 const COLUMNS: Column[] = [
   { id: 'borrador',        label: 'Borrador',        dot: 'var(--admin-fg-muted)', bg: 'var(--admin-accent-soft)',  border: 'var(--admin-border-strong)',  text: 'var(--admin-fg-muted)' },
-  { id: 'pendiente_firma', label: 'Pendiente Firma', dot: '#FACC15', bg: 'rgba(250,204,21,0.06)',   border: 'rgba(250,204,21,0.25)',  text: '#FDE68A' },
-  { id: 'firmado',         label: 'Firmado',         dot: '#60A5FA', bg: 'rgba(96,165,250,0.06)',   border: 'rgba(96,165,250,0.25)',  text: '#93C5FD' },
-  { id: 'activo',          label: 'Activo',          dot: '#4ADE80', bg: 'rgba(34,197,94,0.06)',    border: 'rgba(34,197,94,0.25)',   text: '#86EFAC' },
-  { id: 'completado',      label: 'Completado',      dot: '#FFFFFF', bg: 'var(--admin-accent-soft)',  border: 'rgba(255,255,255,0.18)', text: '#FFFFFF' },
+  { id: 'pendiente_firma', label: 'Pendiente Firma', dot: 'var(--admin-gold)', bg: 'var(--admin-gold-soft)',   border: 'var(--admin-gold)',  text: 'var(--admin-gold-on)' },
+  { id: 'firmado',         label: 'Firmado',         dot: 'var(--admin-blue)', bg: 'var(--admin-blue-soft)',   border: 'var(--admin-blue)',  text: 'var(--admin-blue-on)' },
+  { id: 'activo',          label: 'Activo',          dot: 'var(--admin-green)', bg: 'var(--admin-green-soft)',    border: 'var(--admin-green)',   text: 'var(--admin-green-on)' },
+  { id: 'completado',      label: 'Completado',      dot: 'var(--admin-fg)', bg: 'var(--admin-accent-soft)',  border: 'var(--admin-border-strong)', text: 'var(--admin-fg)' },
 ]
 
 const ICON_BTN =
@@ -192,12 +192,12 @@ export function ContractsKanban({
                           <span
                             className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full"
                             style={{
-                              background: 'rgba(34,197,94,0.10)',
-                              border: '0.5px solid rgba(34,197,94,0.3)',
+                              background: 'var(--admin-green-soft)',
+                              border: '0.5px solid var(--admin-green)',
                               fontFamily: 'var(--font-mono-tech)',
                               fontSize: 9,
                               fontWeight: 700,
-                              color: 'var(--admin-green)',
+                              color: 'var(--admin-green-on)',
                               letterSpacing: '0.1em',
                             }}
                           >

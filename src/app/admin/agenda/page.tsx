@@ -34,13 +34,13 @@ interface StatusStyle {
 }
 
 const STATUS_STYLES: Record<string, StatusStyle> = {
-  pending:        { bg: 'rgba(250,204,21,0.10)',  border: 'rgba(250,204,21,0.3)',  dot: '#FACC15', text: '#FDE68A', label: 'Pendiente',     icon: Clock },
-  called:         { bg: 'rgba(96,165,250,0.10)',  border: 'rgba(96,165,250,0.3)',  dot: '#60A5FA', text: '#93C5FD', label: 'Llamado',       icon: Phone },
-  follow_up:      { bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.3)', dot: '#A78BFA', text: '#C4B5FD', label: 'Seguimiento',   icon: CalendarClock },
-  converted:      { bg: 'rgba(34,197,94,0.10)',   border: 'rgba(34,197,94,0.3)',   dot: '#4ADE80', text: '#86EFAC', label: 'Convertido',    icon: UserCheck },
-  no_answer:      { bg: 'rgba(251,146,60,0.10)',  border: 'rgba(251,146,60,0.3)',  dot: '#FB923C', text: '#FDBA74', label: 'Sin Respuesta', icon: PhoneOff },
+  pending:        { bg: 'var(--admin-gold-soft)',  border: 'var(--admin-gold)',  dot: 'var(--admin-gold)', text: 'var(--admin-gold-on)', label: 'Pendiente',     icon: Clock },
+  called:         { bg: 'var(--admin-blue-soft)',  border: 'var(--admin-blue)',  dot: 'var(--admin-blue)', text: 'var(--admin-blue-on)', label: 'Llamado',       icon: Phone },
+  follow_up:      { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-accent)', text: 'var(--admin-accent)', label: 'Seguimiento',   icon: CalendarClock },
+  converted:      { bg: 'var(--admin-green-soft)',   border: 'var(--admin-green)',   dot: 'var(--admin-green)', text: 'var(--admin-green-on)', label: 'Convertido',    icon: UserCheck },
+  no_answer:      { bg: 'var(--admin-gold-soft)',  border: 'var(--admin-gold)',  dot: 'var(--admin-gold)', text: 'var(--admin-gold-on)', label: 'Sin Respuesta', icon: PhoneOff },
   not_interested: { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-fg-muted)', text: 'var(--admin-fg-muted)', label: 'No Interesado', icon: UserX },
-  closed:         { bg: 'rgba(148,163,184,0.10)', border: 'rgba(148,163,184,0.3)', dot: '#94A3B8', text: '#CBD5E1', label: 'Cerrado',       icon: XCircle },
+  closed:         { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-fg-muted)', text: 'var(--admin-fg-muted)', label: 'Cerrado',       icon: XCircle },
 }
 
 type CallbackStatus = keyof typeof STATUS_STYLES
@@ -77,35 +77,35 @@ type FilterTab = 'pending' | 'follow_up' | 'all' | 'closed'
 
 const BTN_PRIMARY =
   'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50 ' +
-  'bg-white text-black text-[12px] font-semibold tracking-tight ' +
-  'shadow-[0_4px_18px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset]'
+  'bg-[color:var(--primary)] text-[color:var(--primary-foreground)] text-[12px] font-semibold tracking-tight ' +
+  'shadow-[var(--admin-shadow)]'
 
 const BTN_GHOST =
   'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-white/10 active:scale-95 disabled:opacity-50 ' +
-  'bg-white/[0.04] border border-white/10 text-white text-[11px] font-semibold tracking-tight'
+  'bg-white/[0.04] border border-white/10 text-[color:var(--admin-fg)] text-[11px] font-semibold tracking-tight'
 
 const BTN_SUCCESS =
-  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-emerald-500/15 active:scale-95 disabled:opacity-50 ' +
-  'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px] font-semibold tracking-tight'
+  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50 ' +
+  'bg-[color:var(--admin-green-soft)] border border-[color:var(--admin-green)] text-[color:var(--admin-green-on)] text-[11px] font-semibold tracking-tight'
 
 const BTN_WARNING =
-  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-orange-500/15 active:scale-95 disabled:opacity-50 ' +
-  'bg-orange-500/10 border border-orange-500/30 text-orange-300 text-[11px] font-semibold tracking-tight'
+  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50 ' +
+  'bg-[color:var(--admin-gold-soft)] border border-[color:var(--admin-gold)] text-[color:var(--admin-gold-on)] text-[11px] font-semibold tracking-tight'
 
 const BTN_NEUTRAL =
   'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-white/10 active:scale-95 disabled:opacity-50 ' +
-  'bg-white/[0.04] border border-white/10 text-white/60 text-[11px] font-semibold tracking-tight'
+  'bg-white/[0.04] border border-white/10 text-[color:var(--admin-fg-muted)] text-[11px] font-semibold tracking-tight'
 
 const ICON_BTN =
   'inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/10 disabled:opacity-50'
 
 const DARK_DIALOG_CLS =
-  'bg-[#0A0A0A] border border-white/10 text-white shadow-2xl backdrop-blur-xl ' +
-  '[&>button]:text-white/60 [&>button]:hover:text-white'
+  'bg-[color:var(--admin-bg)] border border-white/10 text-[color:var(--admin-fg)] shadow-2xl backdrop-blur-xl ' +
+  '[&>button]:text-[color:var(--admin-fg-muted)] [&>button]:hover:text-[color:var(--admin-fg)]'
 
 const DARK_INPUT_CLS =
   'w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 ' +
-  'bg-white/[0.04] border border-white/10 text-white placeholder:text-white/30'
+  'bg-white/[0.04] border border-white/10 text-[color:var(--admin-fg)] placeholder:text-white/30'
 
 const LABEL_STYLE: React.CSSProperties = {
   fontFamily: 'var(--font-mono-tech)',
@@ -307,9 +307,9 @@ export default function AgendaPage() {
         <div
           className="rounded-xl px-4 py-3 text-sm flex items-center gap-3"
           style={{
-            background: 'rgba(250,204,21,0.06)',
-            border: '0.5px solid rgba(250,204,21,0.2)',
-            color: 'var(--admin-gold)',
+            background: 'var(--admin-gold-soft)',
+            border: '0.5px solid var(--admin-gold)',
+            color: 'var(--admin-gold-on)',
           }}
         >
           <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, letterSpacing: '0.18em', fontWeight: 700 }}>⚠ TRUNCATED</span>
@@ -355,7 +355,7 @@ export default function AgendaPage() {
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm() }}>
         <DialogContent className={DARK_DIALOG_CLS}>
           <DialogHeader>
-            <DialogTitle className="text-white" style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.018em' }}>
+            <DialogTitle style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.018em', color: 'var(--admin-fg)' }}>
               Registrar Nueva Llamada
             </DialogTitle>
           </DialogHeader>
@@ -423,12 +423,12 @@ export default function AgendaPage() {
               disabled={saving}
               className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
               style={{
-                background: 'var(--admin-bg-elev)',
-                color: 'var(--admin-bg-deep)',
+                background: 'var(--primary)',
+                color: 'var(--primary-foreground)',
                 fontSize: 13,
                 fontWeight: 600,
                 letterSpacing: '-0.005em',
-                boxShadow: '0 4px 24px rgba(255,255,255,0.2), 0 0 0 0.5px rgba(255,255,255,0.5) inset',
+                boxShadow: 'var(--admin-shadow)',
                 marginTop: 8,
               }}
             >
@@ -443,7 +443,7 @@ export default function AgendaPage() {
       <Dialog open={editingItem !== null} onOpenChange={(open) => { if (!open) setEditingItem(null) }}>
         <DialogContent className={DARK_DIALOG_CLS}>
           <DialogHeader>
-            <DialogTitle className="text-white" style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.018em' }}>
+            <DialogTitle style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.018em', color: 'var(--admin-fg)' }}>
               {editingItem?.prospect_name}
               <span style={{ color: 'var(--admin-fg-muted)', fontWeight: 400, marginLeft: 8, fontFamily: 'var(--font-mono-tech)', fontSize: 12 }}>
                 {editingItem?.phone}
@@ -469,10 +469,10 @@ export default function AgendaPage() {
 // ════════════════════════════════════════════════════════════════════
 
 const STAT_TONE: Record<string, { bg: string; border: string; activeBorder: string; iconColor: string; valueColor: string }> = {
-  warning: { bg: 'rgba(250,204,21,0.10)',  border: 'rgba(250,204,21,0.3)',  activeBorder: '#FACC15', iconColor: '#FACC15', valueColor: '#FDE68A' },
-  purple:  { bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.3)', activeBorder: '#A78BFA', iconColor: '#A78BFA', valueColor: '#C4B5FD' },
-  neutral: { bg: 'rgba(148,163,184,0.10)', border: 'rgba(148,163,184,0.3)', activeBorder: '#94A3B8', iconColor: '#94A3B8', valueColor: '#CBD5E1' },
-  info:    { bg: 'rgba(96,165,250,0.10)',  border: 'rgba(96,165,250,0.3)',  activeBorder: '#60A5FA', iconColor: '#60A5FA', valueColor: '#93C5FD' },
+  warning: { bg: 'var(--admin-gold-soft)',  border: 'var(--admin-gold)',  activeBorder: 'var(--admin-gold)', iconColor: 'var(--admin-gold)', valueColor: 'var(--admin-gold-on)' },
+  purple:  { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', activeBorder: 'var(--admin-accent)', iconColor: 'var(--admin-accent)', valueColor: 'var(--admin-accent)' },
+  neutral: { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', activeBorder: 'var(--admin-border-strong)', iconColor: 'var(--admin-fg-muted)', valueColor: 'var(--admin-fg-muted)' },
+  info:    { bg: 'var(--admin-blue-soft)',  border: 'var(--admin-blue)',  activeBorder: 'var(--admin-blue)', iconColor: 'var(--admin-blue)', valueColor: 'var(--admin-blue-on)' },
 }
 
 function StatClickCard({
@@ -495,7 +495,7 @@ function StatClickCard({
       <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-subtle)' }}>
         {label.toUpperCase()}
       </p>
-      <p style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.025em', color: active ? t.valueColor : '#FFFFFF', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+      <p style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.025em', color: active ? t.valueColor : 'var(--admin-fg)', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
         {value}
       </p>
     </button>
@@ -530,9 +530,9 @@ function StatusBadge({ status }: { status: CallbackStatus }) {
 
 function PriorityBadge({ priority }: { priority: { label: string; kind: 'danger' | 'warning' | 'success' } }) {
   const styles = {
-    danger:  { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', text: '#FCA5A5', dot: '#F87171' },
-    warning: { bg: 'rgba(250,204,21,0.10)',  border: 'rgba(250,204,21,0.3)',  text: '#FDE68A', dot: '#FACC15' },
-    success: { bg: 'rgba(34,197,94,0.10)',   border: 'rgba(34,197,94,0.3)',   text: '#86EFAC', dot: '#4ADE80' },
+    danger:  { bg: 'var(--admin-red-soft)', border: 'var(--admin-red)', text: 'var(--admin-red-on)', dot: 'var(--admin-red)' },
+    warning: { bg: 'var(--admin-gold-soft)',  border: 'var(--admin-gold)',  text: 'var(--admin-gold-on)', dot: 'var(--admin-gold)' },
+    success: { bg: 'var(--admin-green-soft)',   border: 'var(--admin-green)',   text: 'var(--admin-green-on)', dot: 'var(--admin-green)' },
   }[priority.kind]
   return (
     <span
@@ -609,7 +609,7 @@ function AgendaCard({
       <span
         aria-hidden
         className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse at top, rgba(255,255,255,0.03), transparent 60%)' }}
+        style={{ background: 'radial-gradient(ellipse at top, var(--admin-veil-1), transparent 60%)' }}
       />
 
       <div className="relative space-y-3">
@@ -626,13 +626,13 @@ function AgendaCard({
                 <span
                   className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full"
                   style={{
-                    background: 'rgba(167,139,250,0.10)',
-                    border: '0.5px solid rgba(167,139,250,0.3)',
+                    background: 'var(--admin-accent-soft)',
+                    border: '0.5px solid var(--admin-border-strong)',
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 9,
                     fontWeight: 700,
                     letterSpacing: '0.1em',
-                    color: '#C4B5FD',
+                    color: 'var(--admin-accent)',
                   }}
                 >
                   <Bot className="w-2.5 h-2.5" />
@@ -683,7 +683,7 @@ function AgendaCard({
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 10,
                     fontWeight: 700,
-                    color: '#93C5FD',
+                    color: 'var(--admin-blue-on)',
                     letterSpacing: '0.05em',
                   }}
                 >
@@ -716,7 +716,7 @@ function AgendaCard({
                   fontFamily: 'var(--font-mono-tech)',
                   fontSize: 10,
                   fontWeight: 700,
-                  color: '#C4B5FD',
+                  color: 'var(--admin-accent)',
                   letterSpacing: '0.05em',
                 }}
               >
@@ -729,8 +729,8 @@ function AgendaCard({
             <div
               className="mt-3 rounded-xl p-3"
               style={{
-                background: 'rgba(250,204,21,0.06)',
-                border: '0.5px solid rgba(250,204,21,0.25)',
+                background: 'var(--admin-gold-soft)',
+                border: '0.5px solid var(--admin-gold)',
               }}
             >
               <div className="flex items-center gap-2 flex-wrap">
@@ -757,7 +757,7 @@ function AgendaCard({
                   disabled={savingSched || !schedDate}
                   className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-40"
                   style={{
-                    background: '#FACC15',
+                    background: 'var(--admin-gold)',
                     color: 'var(--admin-bg-deep)',
                   }}
                 >
@@ -856,11 +856,11 @@ function AgendaCard({
                   key={i}
                   className="rounded-lg px-3 py-2"
                   style={{
-                    background: 'rgba(250,204,21,0.06)',
-                    border: '0.5px solid rgba(250,204,21,0.2)',
+                    background: 'var(--admin-gold-soft)',
+                    border: '0.5px solid var(--admin-gold)',
                   }}
                 >
-                  <p style={{ fontSize: 12.5, color: 'var(--admin-gold)', lineHeight: 1.5 }}>{entry.text}</p>
+                  <p style={{ fontSize: 12.5, color: 'var(--admin-gold-on)', lineHeight: 1.5 }}>{entry.text}</p>
                   <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: 'var(--admin-fg-subtle)', marginTop: 4, letterSpacing: '0.05em' }}>
                     {format(new Date(entry.date), "d MMM yyyy, h:mma", { locale: es }).toUpperCase()}
                   </p>
@@ -881,7 +881,7 @@ function AgendaCard({
               onClick={handleSaveNotes}
               className="inline-flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50"
               style={{
-                background: '#FACC15',
+                background: 'var(--admin-gold)',
                 color: 'var(--admin-bg-deep)',
               }}
             >
@@ -936,11 +936,11 @@ function EditForm({
                 key={i}
                 className="rounded-lg px-3 py-2"
                 style={{
-                  background: 'rgba(250,204,21,0.06)',
-                  border: '0.5px solid rgba(250,204,21,0.2)',
+                  background: 'var(--admin-gold-soft)',
+                  border: '0.5px solid var(--admin-gold)',
                 }}
               >
-                <p style={{ fontSize: 12.5, color: 'var(--admin-gold)', lineHeight: 1.5 }}>{entry.text}</p>
+                <p style={{ fontSize: 12.5, color: 'var(--admin-gold-on)', lineHeight: 1.5 }}>{entry.text}</p>
                 <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, color: 'var(--admin-fg-subtle)', marginTop: 4, letterSpacing: '0.05em' }}>
                   {format(new Date(entry.date), "d MMM yyyy, h:mma", { locale: es }).toUpperCase()}
                 </p>
@@ -971,12 +971,12 @@ function EditForm({
         <button
           className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50"
           style={{
-            background: 'var(--admin-bg-elev)',
-            color: 'var(--admin-bg-deep)',
+            background: 'var(--primary)',
+            color: 'var(--primary-foreground)',
             fontSize: 12,
             fontWeight: 600,
             letterSpacing: '-0.005em',
-            boxShadow: '0 4px 18px rgba(255,255,255,0.18), 0 0 0 0.5px rgba(255,255,255,0.4) inset',
+            boxShadow: 'var(--admin-shadow)',
           }}
           disabled={saving}
           onClick={async () => {

@@ -218,7 +218,7 @@ export function ProspectosView({ mode, hideHeader }: Props) {
                 className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition-all duration-300"
                 style={{
                   background: isActive ? 'var(--admin-accent-soft)' : 'transparent',
-                  color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
+                  color: isActive ? 'var(--admin-accent)' : 'var(--admin-fg-muted)',
                   fontSize: 12,
                   fontWeight: isActive ? 700 : 500,
                   letterSpacing: '-0.005em',
@@ -230,7 +230,7 @@ export function ProspectosView({ mode, hideHeader }: Props) {
                   <span
                     className="inline-flex items-center justify-center"
                     style={{
-                      background: isActive ? 'rgba(0,0,0,0.12)' : 'var(--admin-border-strong)',
+                      background: isActive ? 'var(--admin-veil-3)' : 'var(--admin-border-strong)',
                       color: isActive ? 'var(--admin-accent)' : 'var(--admin-fg-muted)',
                       fontFamily: 'var(--font-mono-tech)',
                       fontSize: 10,
@@ -453,17 +453,17 @@ export function ProspectosView({ mode, hideHeader }: Props) {
 const PROS_BTN_GHOST =
   'inline-flex items-center gap-1.5 px-3 py-2 rounded-full transition-all duration-200 ' +
   'hover:bg-white/10 active:scale-95 text-[12px] font-semibold tracking-tight ' +
-  'bg-white/[0.04] border border-white/10 text-white'
+  'bg-white/[0.04] border border-white/10 text-[color:var(--admin-fg)]'
 
 const PROS_BTN_SOLID =
   'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 ' +
   'hover:opacity-90 active:scale-95 text-[12px] font-semibold tracking-tight ' +
-  'bg-white text-black shadow-[0_4px_18px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset] disabled:opacity-50'
+  'bg-[color:var(--primary)] text-[color:var(--primary-foreground)] shadow-[var(--admin-shadow)] disabled:opacity-50'
 
 const PROS_BTN_OUTLINE =
   'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 ' +
   'hover:bg-white/10 active:scale-95 text-[12px] font-semibold tracking-tight ' +
-  'bg-white/[0.06] border border-white/20 text-white disabled:opacity-50'
+  'bg-white/[0.06] border border-white/20 text-[color:var(--admin-fg)] disabled:opacity-50'
 
 type StatTone = 'success' | 'warning' | 'danger' | 'info' | 'white'
 

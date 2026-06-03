@@ -88,8 +88,8 @@ export function CaseKanban({ cases: initialCases }: CaseKanbanProps) {
           return (
             <div key={column.id} className="flex-shrink-0 w-64">
               <div className="mb-3 flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-gray-700">{column.title}</h3>
-                <span className="text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-0.5">
+                <h3 className="text-sm font-semibold text-[var(--admin-fg)]">{column.title}</h3>
+                <span className="text-xs bg-[var(--admin-accent-soft)] text-[var(--admin-fg-muted)] rounded-full px-2 py-0.5">
                   {columnCases.length}
                 </span>
               </div>
@@ -100,8 +100,8 @@ export function CaseKanban({ cases: initialCases }: CaseKanbanProps) {
                     {...provided.droppableProps}
                     className={`min-h-[200px] rounded-lg p-2 space-y-2 transition-colors ${
                       snapshot.isDraggingOver
-                        ? 'bg-blue-50 border-2 border-dashed border-blue-300'
-                        : 'bg-gray-50 border border-gray-200'
+                        ? 'bg-[var(--admin-blue-soft)] border-2 border-dashed border-[var(--admin-blue)]'
+                        : 'bg-[var(--admin-veil-1)] border border-[var(--admin-border)]'
                     }`}
                   >
                     {columnCases.map((c, index) => (
@@ -125,7 +125,7 @@ export function CaseKanban({ cases: initialCases }: CaseKanbanProps) {
                     ))}
                     {provided.placeholder}
                     {columnCases.length === 0 && (
-                      <p className="text-xs text-gray-400 text-center py-8">Sin casos</p>
+                      <p className="text-xs text-[var(--admin-fg-subtle)] text-center py-8">Sin casos</p>
                     )}
                   </div>
                 )}

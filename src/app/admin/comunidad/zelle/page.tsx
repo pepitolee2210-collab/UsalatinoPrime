@@ -78,9 +78,9 @@ export default function AdminZellePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Pagos Zelle</h1>
+        <h1 className="text-2xl font-bold text-[color:var(--admin-fg)]">Pagos Zelle</h1>
         {pendingCount > 0 && (
-          <Badge className="bg-[#F2A900] text-white">
+          <Badge className="bg-[color:var(--admin-gold)] text-white">
             {pendingCount} pendiente{pendingCount > 1 ? 's' : ''}
           </Badge>
         )}
@@ -99,8 +99,8 @@ export default function AdminZellePage() {
             onClick={() => setFilter(f.key)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
               filter === f.key
-                ? 'bg-[#002855] text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-[color:var(--primary)] text-[color:var(--primary-foreground)]'
+                : 'bg-[color:var(--admin-accent-soft)] text-[color:var(--admin-fg-muted)] hover:opacity-80'
             }`}
           >
             {f.label}
@@ -110,10 +110,10 @@ export default function AdminZellePage() {
 
       {loading ? (
         <div className="flex justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+          <Loader2 className="w-8 h-8 animate-spin text-[color:var(--admin-fg-muted)]" />
         </div>
       ) : payments.length === 0 ? (
-        <p className="text-center text-gray-400 py-12">No hay pagos {filter === 'pending' ? 'pendientes' : ''}</p>
+        <p className="text-center text-[color:var(--admin-fg-muted)] py-12">No hay pagos {filter === 'pending' ? 'pendientes' : ''}</p>
       ) : (
         <div className="space-y-3">
           {payments.map(payment => (
@@ -141,7 +141,7 @@ export default function AdminZellePage() {
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <p className="font-semibold text-gray-900">
+                      <p className="font-semibold text-[color:var(--admin-fg)]">
                         {payment.user?.first_name} {payment.user?.last_name}
                       </p>
                       <Badge
@@ -153,9 +153,9 @@ export default function AdminZellePage() {
                         {payment.status === 'rejected' && '❌ Rechazado'}
                       </Badge>
                     </div>
-                    <p className="text-sm text-gray-500">{payment.user?.email}</p>
-                    <p className="text-sm font-medium text-[#002855]">${payment.amount}</p>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-sm text-[color:var(--admin-fg-muted)]">{payment.user?.email}</p>
+                    <p className="text-sm font-medium text-[color:var(--admin-accent)]">${payment.amount}</p>
+                    <p className="text-xs text-[color:var(--admin-fg-subtle)] mt-1">
                       {new Date(payment.created_at).toLocaleDateString('es-US', {
                         day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
                       })}

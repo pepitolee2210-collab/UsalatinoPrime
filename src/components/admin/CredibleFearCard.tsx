@@ -106,8 +106,8 @@ export function CredibleFearCard({ submission }: CredibleFearCardProps) {
   return (
     <div className="flex items-center justify-between p-3 rounded-lg border border-amber-100 bg-amber-50/50 hover:bg-amber-50 transition-colors">
       <div>
-        <p className="font-medium text-sm">{submission.full_name}</p>
-        <p className="text-xs text-gray-500">
+        <p className="font-medium text-sm" style={{ color: 'var(--admin-fg)' }}>{submission.full_name}</p>
+        <p className="text-xs" style={{ color: 'var(--admin-fg-muted)' }}>
           {submission.country_of_origin} &mdash; {format(new Date(submission.created_at), 'd MMM yyyy', { locale: es })}
         </p>
       </div>

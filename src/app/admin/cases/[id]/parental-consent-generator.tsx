@@ -441,9 +441,9 @@ export function ParentalConsentGenerator({ caseId, clientName, formSubmissions }
           </div>
 
           {isGenerating ? (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#002855]">
-              <Loader2 className="w-4 h-4 animate-spin text-[#F2A900]" />
-              <span className="text-xs text-white font-medium">Generando EN + ES...</span>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--primary)]">
+              <Loader2 className="w-4 h-4 animate-spin text-[var(--admin-gold)]" />
+              <span className="text-xs text-[var(--primary-foreground)] font-medium">Generando EN + ES...</span>
             </div>
           ) : hasContent ? (
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -468,7 +468,7 @@ export function ParentalConsentGenerator({ caseId, clientName, formSubmissions }
             <Button
               className={slot.accent === 'rose'
                 ? 'bg-rose-600 hover:bg-rose-700 text-white font-bold'
-                : 'bg-[#F2A900] hover:bg-[#D4940A] text-[#001020] font-bold'}
+                : 'bg-[var(--admin-gold)] hover:opacity-90 text-[var(--primary-foreground)] font-bold'}
               onClick={() => generate(slot)}
               disabled={!!generating}
             >

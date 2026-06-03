@@ -288,7 +288,7 @@ function Telemetry({ label, value, pulse }: { label: string; value: string; puls
 }
 
 function Divider() {
-  return <span style={{ color: 'var(--admin-fg-faint)' }}>·</span>
+  return <span style={{ color: 'var(--admin-fg-subtle)' }}>·</span>
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -546,7 +546,7 @@ function StatMono({ value, label }: { value: string; label: string }) {
 }
 
 function Sep() {
-  return <span style={{ color: 'var(--admin-fg-faint)', fontSize: 12 }}>·</span>
+  return <span style={{ color: 'var(--admin-fg-subtle)', fontSize: 12 }}>·</span>
 }
 
 // ────────────────────────────────────────────────────────────────────

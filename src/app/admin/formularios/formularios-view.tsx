@@ -111,12 +111,12 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
             href="/admin/cambio-corte/nuevo"
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95"
             style={{
-              background: 'var(--admin-bg-elev)',
-              color: 'var(--admin-bg-deep)',
+              background: 'var(--primary)',
+              color: 'var(--primary-foreground)',
               fontSize: 12,
               fontWeight: 600,
               letterSpacing: '-0.005em',
-              boxShadow: '0 4px 18px rgba(255,255,255,0.18), 0 0 0 0.5px rgba(255,255,255,0.4) inset',
+              boxShadow: 'var(--admin-shadow)',
             }}
           >
             <Plus className="w-3.5 h-3.5" />
@@ -139,7 +139,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
             className="inline-flex items-center justify-center w-8 h-8 rounded-xl"
             style={{
               background: 'var(--admin-accent-soft)',
-              border: '0.5px solid rgba(255,255,255,0.12)',
+              border: '0.5px solid var(--admin-border-strong)',
             }}
           >
             <Link2 className="w-3.5 h-3.5" style={{ color: 'var(--admin-fg)' }} />
@@ -165,7 +165,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
               key={fl.key}
               className="group flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl transition-all duration-300 hover:bg-white/5"
               style={{
-                background: 'rgba(255,255,255,0.025)',
+                background: 'var(--admin-veil-1)',
                 border: '0.5px solid var(--admin-border)',
               }}
             >
@@ -201,8 +201,8 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
                   onClick={() => handleCopyLink(fl.path)}
                   className="inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors"
                   style={{
-                    color: copiedLink === fl.path ? '#4ADE80' : 'var(--admin-fg-muted)',
-                    background: copiedLink === fl.path ? 'rgba(34,197,94,0.10)' : 'transparent',
+                    color: copiedLink === fl.path ? 'var(--admin-green-on)' : 'var(--admin-fg-muted)',
+                    background: copiedLink === fl.path ? 'var(--admin-green-soft)' : 'transparent',
                   }}
                   title="Copiar link"
                 >
@@ -236,13 +236,13 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
               style={{
                 background: isActive
                   ? 'linear-gradient(180deg, var(--admin-border-strong), var(--admin-accent-soft))'
-                  : 'rgba(255,255,255,0.025)',
-                border: isActive ? '0.5px solid rgba(255,255,255,0.3)' : '0.5px solid var(--admin-border)',
-                color: isActive ? '#FFFFFF' : 'var(--admin-fg-muted)',
+                  : 'var(--admin-veil-1)',
+                border: isActive ? '0.5px solid var(--admin-border-strong)' : '0.5px solid var(--admin-border)',
+                color: isActive ? 'var(--admin-accent)' : 'var(--admin-fg-muted)',
                 fontSize: 13,
                 fontWeight: isActive ? 600 : 500,
                 letterSpacing: '-0.005em',
-                boxShadow: isActive ? '0 4px 16px rgba(255,255,255,0.12), 0 0 0 0.5px var(--admin-accent-soft) inset' : 'none',
+                boxShadow: isActive ? 'var(--admin-shadow)' : 'none',
               }}
             >
               <Icon className="w-3.5 h-3.5" />
@@ -251,8 +251,8 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
                 <span
                   className="inline-flex items-center justify-center"
                   style={{
-                    background: isActive ? '#FFFFFF' : 'rgba(250,204,21,0.15)',
-                    color: isActive ? 'var(--admin-bg-deep)' : '#FDE68A',
+                    background: isActive ? 'var(--primary)' : 'var(--admin-gold-soft)',
+                    color: isActive ? 'var(--primary-foreground)' : 'var(--admin-gold-on)',
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 10,
                     fontWeight: 700,
@@ -260,7 +260,7 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
                     height: 18,
                     padding: '0 5px',
                     borderRadius: 9,
-                    border: isActive ? 'none' : '0.5px solid rgba(250,204,21,0.3)',
+                    border: isActive ? 'none' : '0.5px solid rgba(242,178,52,0.3)',
                   }}
                 >
                   {pendingCount}
@@ -288,12 +288,12 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
                 onClick={() => setStatusFilter(f)}
                 className="px-3.5 py-1.5 rounded-full transition-all duration-300"
                 style={{
-                  background: isActive ? '#FFFFFF' : 'transparent',
-                  color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
+                  background: isActive ? 'var(--primary)' : 'transparent',
+                  color: isActive ? 'var(--primary-foreground)' : 'var(--admin-fg-muted)',
                   fontSize: 11.5,
                   fontWeight: isActive ? 700 : 500,
                   letterSpacing: '-0.005em',
-                  boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.18)' : 'none',
+                  boxShadow: isActive ? 'var(--admin-shadow)' : 'none',
                 }}
               >
                 {filterLabels[f]}
@@ -355,10 +355,10 @@ export function FormulariosView({ visaJuvenil, asilo, ajuste, renuncia, cambioCo
 // === AI Document Row — dark techno ===
 const AI_STATUS_STYLES: Record<string, { bg: string; border: string; dot: string; text: string; label: string }> = {
   draft:            { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-fg-muted)', text: 'var(--admin-fg-muted)', label: 'Borrador' },
-  submitted:        { bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.3)', dot: '#60A5FA', text: '#93C5FD', label: 'Enviado' },
-  reviewed:         { bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.3)', dot: '#A78BFA', text: '#C4B5FD', label: 'Revisado' },
-  needs_correction: { bg: 'rgba(251,146,60,0.10)', border: 'rgba(251,146,60,0.3)', dot: '#FB923C', text: '#FDBA74', label: 'Correcciones' },
-  approved:         { bg: 'rgba(34,197,94,0.10)', border: 'rgba(34,197,94,0.3)', dot: '#4ADE80', text: '#86EFAC', label: 'Aprobado' },
+  submitted:        { bg: 'var(--admin-blue-soft)', border: 'rgba(96,165,250,0.3)', dot: 'var(--admin-blue)', text: 'var(--admin-blue-on)', label: 'Enviado' },
+  reviewed:         { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-accent)', text: 'var(--admin-accent)', label: 'Revisado' },
+  needs_correction: { bg: 'var(--admin-gold-soft)', border: 'rgba(242,178,52,0.3)', dot: 'var(--admin-gold)', text: 'var(--admin-gold-on)', label: 'Correcciones' },
+  approved:         { bg: 'var(--admin-green-soft)', border: 'rgba(34,197,94,0.3)', dot: 'var(--admin-green)', text: 'var(--admin-green-on)', label: 'Aprobado' },
 }
 
 function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
@@ -390,7 +390,7 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
         aria-hidden
         className="absolute top-0 left-0 bottom-0 w-[2px]"
         style={{
-          background: 'linear-gradient(180deg, transparent, #F2A900 30%, #F2A900 70%, transparent)',
+          background: 'linear-gradient(180deg, transparent, var(--admin-gold) 30%, var(--admin-gold) 70%, transparent)',
           opacity: 0.6,
         }}
       />
@@ -398,7 +398,7 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <Sparkles className="w-3.5 h-3.5" style={{ color: '#F2A900' }} />
+            <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--admin-gold)' }} />
             <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>
               {agentLabel}
             </span>
@@ -470,14 +470,14 @@ function AiDocRow({ submission }: { submission: Record<string, unknown> }) {
         <div
           className="mt-4 rounded-xl overflow-hidden"
           style={{
-            background: 'rgba(255,255,255,0.02)',
+            background: 'var(--admin-veil-1)',
             border: '0.5px solid var(--admin-border)',
           }}
         >
           <div
             className="px-3.5 py-2 flex justify-between items-center"
             style={{
-              background: 'rgba(255,255,255,0.025)',
+              background: 'var(--admin-veil-1)',
               borderBottom: '0.5px solid var(--admin-accent-soft)',
             }}
           >

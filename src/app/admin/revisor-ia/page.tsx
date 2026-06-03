@@ -59,17 +59,17 @@ function renderMarkdown(text: string): string {
     .replace(/>/g, '&gt;')
 
   return escaped
-    .replace(/^### (.+)$/gm, '<h3 class="text-[13px] font-bold text-white mt-5 mb-2">$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2 class="text-[14px] font-bold text-white mt-5 mb-2">$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1 class="text-[15px] font-bold text-white mt-5 mb-3">$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-white">$1</strong>')
-    .replace(/`(.+?)`/g, '<code class="rounded px-1 py-0.5 text-[12px]" style="background:var(--admin-border);color:#FACC15;font-family:var(--font-mono-tech);border:0.5px solid var(--admin-border-strong)">$1</code>')
-    .replace(/^[-*] (.+)$/gm, '<li class="ml-5 list-disc mb-0.5" style="color:#D4D4D8">$1</li>')
-    .replace(/^(\d+)\. (.+)$/gm, '<li class="ml-5 list-decimal mb-0.5" style="color:#D4D4D8">$2</li>')
+    .replace(/^### (.+)$/gm, '<h3 class="text-[13px] font-bold mt-5 mb-2" style="color:var(--admin-fg)">$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2 class="text-[14px] font-bold mt-5 mb-2" style="color:var(--admin-fg)">$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1 class="text-[15px] font-bold mt-5 mb-3" style="color:var(--admin-fg)">$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold" style="color:var(--admin-fg)">$1</strong>')
+    .replace(/`(.+?)`/g, '<code class="rounded px-1 py-0.5 text-[12px]" style="background:var(--admin-border);color:var(--admin-gold-on);font-family:var(--font-mono-tech);border:0.5px solid var(--admin-border-strong)">$1</code>')
+    .replace(/^[-*] (.+)$/gm, '<li class="ml-5 list-disc mb-0.5" style="color:var(--admin-fg)">$1</li>')
+    .replace(/^(\d+)\. (.+)$/gm, '<li class="ml-5 list-decimal mb-0.5" style="color:var(--admin-fg)">$2</li>')
     .split(/\n\n+/)
     .map(block => {
       if (block.startsWith('<h') || block.startsWith('<li')) return block
-      return `<p class="leading-relaxed mb-2" style="color:#D4D4D8">${block.replace(/\n/g, '<br />')}</p>`
+      return `<p class="leading-relaxed mb-2" style="color:var(--admin-fg)">${block.replace(/\n/g, '<br />')}</p>`
     })
     .join('\n')
 }
@@ -302,12 +302,12 @@ export default function RevisorIAPage() {
             onClick={handleNewSession}
             className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95"
             style={{
-              background: 'var(--admin-bg-elev)',
-              color: 'var(--admin-bg-deep)',
+              background: 'var(--primary)',
+              color: 'var(--primary-foreground)',
               fontSize: 12,
               fontWeight: 600,
               letterSpacing: '-0.005em',
-              boxShadow: '0 4px 18px rgba(255,255,255,0.18), 0 0 0 0.5px rgba(255,255,255,0.4) inset',
+              boxShadow: 'var(--admin-shadow)',
             }}
           >
             <Plus className="w-3.5 h-3.5" />
@@ -342,7 +342,7 @@ export default function RevisorIAPage() {
                     background: activeSessionId === s.id ? 'var(--admin-border)' : 'transparent',
                   }}
                   onMouseEnter={(e) => {
-                    if (activeSessionId !== s.id) e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
+                    if (activeSessionId !== s.id) e.currentTarget.style.background = 'var(--admin-veil-1)'
                   }}
                   onMouseLeave={(e) => {
                     if (activeSessionId !== s.id) e.currentTarget.style.background = 'transparent'
@@ -350,7 +350,7 @@ export default function RevisorIAPage() {
                 >
                   <MessageSquare
                     className="w-3.5 h-3.5 mt-0.5 flex-shrink-0"
-                    style={{ color: activeSessionId === s.id ? '#FACC15' : 'var(--admin-fg-subtle)' }}
+                    style={{ color: activeSessionId === s.id ? 'var(--admin-gold)' : 'var(--admin-fg-subtle)' }}
                   />
                   <div className="flex-1 min-w-0">
                     <p
@@ -358,7 +358,7 @@ export default function RevisorIAPage() {
                       style={{
                         fontSize: 12,
                         fontWeight: activeSessionId === s.id ? 600 : 500,
-                        color: activeSessionId === s.id ? '#FFFFFF' : 'var(--admin-fg-muted)',
+                        color: activeSessionId === s.id ? 'var(--admin-fg)' : 'var(--admin-fg-muted)',
                         letterSpacing: '-0.005em',
                       }}
                     >
@@ -416,8 +416,8 @@ export default function RevisorIAPage() {
               <div
                 className="w-9 h-9 rounded-xl flex items-center justify-center relative"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(250,204,21,0.18), rgba(250,204,21,0.04))',
-                  border: '0.5px solid rgba(250,204,21,0.3)',
+                  background: 'var(--admin-gold-soft)',
+                  border: '0.5px solid var(--admin-gold)',
                 }}
               >
                 <Scale className="w-4 h-4" style={{ color: 'var(--admin-gold)' }} />
@@ -439,9 +439,9 @@ export default function RevisorIAPage() {
                       fontFamily: 'var(--font-mono-tech)',
                       fontSize: 9,
                       fontWeight: 700,
-                      color: 'var(--admin-gold)',
-                      background: 'rgba(250,204,21,0.10)',
-                      border: '0.5px solid rgba(250,204,21,0.3)',
+                      color: 'var(--admin-gold-on)',
+                      background: 'var(--admin-gold-soft)',
+                      border: '0.5px solid var(--admin-gold)',
                       padding: '2px 5px',
                       borderRadius: 4,
                       letterSpacing: '0.1em',
@@ -473,9 +473,9 @@ export default function RevisorIAPage() {
               <div
                 className="w-16 h-16 rounded-2xl flex items-center justify-center mb-5"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(250,204,21,0.18), rgba(250,204,21,0.04))',
-                  border: '0.5px solid rgba(250,204,21,0.3)',
-                  boxShadow: '0 0 24px rgba(250,204,21,0.15)',
+                  background: 'var(--admin-gold-soft)',
+                  border: '0.5px solid var(--admin-gold)',
+                  boxShadow: 'var(--admin-shadow)',
                 }}
               >
                 <Scale className="w-8 h-8" style={{ color: 'var(--admin-gold)' }} />
@@ -665,7 +665,7 @@ export default function RevisorIAPage() {
                 <button
                   onClick={handleStopStream}
                   className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-opacity hover:opacity-90"
-                  style={{ background: '#EF4444', color: 'var(--admin-fg)' }}
+                  style={{ background: 'var(--admin-red)', color: 'var(--admin-fg)' }}
                   title="Detener"
                 >
                   <div className="w-3 h-3 bg-white rounded-sm" />
@@ -676,9 +676,9 @@ export default function RevisorIAPage() {
                   disabled={!input.trim() && pendingAttachments.length === 0}
                   className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{
-                    background: '#FACC15',
+                    background: 'var(--admin-gold)',
                     color: 'var(--admin-bg-deep)',
-                    boxShadow: '0 0 16px rgba(250,204,21,0.3)',
+                    boxShadow: 'var(--admin-shadow)',
                   }}
                 >
                   <Send className="w-4 h-4" />
@@ -712,9 +712,9 @@ function MessageBubble({ message, isStreaming = false }: { message: Message; isS
         <div
           className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
           style={{
-            background: 'linear-gradient(135deg, rgba(250,204,21,0.18), rgba(250,204,21,0.04))',
-            border: '0.5px solid rgba(250,204,21,0.3)',
-            boxShadow: '0 0 12px rgba(250,204,21,0.18)',
+            background: 'var(--admin-gold-soft)',
+            border: '0.5px solid var(--admin-gold)',
+            boxShadow: 'var(--admin-shadow)',
           }}
         >
           <Scale className="w-4 h-4" style={{ color: 'var(--admin-gold)' }} />
@@ -726,10 +726,10 @@ function MessageBubble({ message, isStreaming = false }: { message: Message; isS
           style={
             isUser
               ? {
-                  background: 'var(--admin-bg-elev)',
-                  color: 'var(--admin-bg-deep)',
+                  background: 'var(--primary)',
+                  color: 'var(--primary-foreground)',
                   padding: '12px 16px',
-                  boxShadow: '0 4px 18px rgba(255,255,255,0.12)',
+                  boxShadow: 'var(--admin-shadow)',
                 }
               : {
                   background: 'var(--admin-panel-grad)',
@@ -746,9 +746,9 @@ function MessageBubble({ message, isStreaming = false }: { message: Message; isS
                   key={i}
                   className="flex items-center gap-1.5 px-2 py-1 rounded"
                   style={{
-                    background: isUser ? 'rgba(0,0,0,0.06)' : 'var(--admin-accent-soft)',
+                    background: isUser ? 'var(--admin-veil-2)' : 'var(--admin-accent-soft)',
                     fontSize: 10,
-                    color: isUser ? 'var(--admin-bg-deep)' : '#FFFFFF',
+                    color: isUser ? 'var(--primary-foreground)' : 'var(--admin-fg)',
                   }}
                 >
                   <FileIcon className="w-3 h-3" />
@@ -767,7 +767,7 @@ function MessageBubble({ message, isStreaming = false }: { message: Message; isS
               dangerouslySetInnerHTML={{
                 __html:
                   renderMarkdown(message.content) +
-                  (isStreaming ? '<span class="inline-block w-1.5 h-4 ml-0.5 animate-pulse" style="background:#FACC15;vertical-align:middle" />' : ''),
+                  (isStreaming ? '<span class="inline-block w-1.5 h-4 ml-0.5 animate-pulse" style="background:var(--admin-gold);vertical-align:middle" />' : ''),
               }}
             />
           )}

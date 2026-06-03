@@ -80,17 +80,17 @@ export function CaseFormViewer({ serviceSlug, formData }: CaseFormViewerProps) {
   }
 
   function renderValue(field: WorkflowField, value: unknown): React.ReactNode {
-    if (value === undefined || value === null || value === '') return <span className="text-gray-400">&mdash;</span>
+    if (value === undefined || value === null || value === '') return <span className="text-[var(--admin-fg-subtle)]">&mdash;</span>
     if (typeof value === 'boolean') return value ? 'S\u00ed' : 'No'
     if (Array.isArray(value)) {
-      if (value.length === 0) return <span className="text-gray-400">&mdash;</span>
+      if (value.length === 0) return <span className="text-[var(--admin-fg-subtle)]">&mdash;</span>
       if (typeof value[0] === 'object') {
         return (
           <div className="space-y-2">
             {value.map((entry: any, i: number) => (
-              <div key={i} className="bg-gray-50 rounded p-2 text-xs">
+              <div key={i} className="bg-[var(--admin-accent-soft)] rounded p-2 text-xs">
                 {Object.entries(entry).map(([k, v]) => (
-                  <div key={k}><span className="text-gray-500">{getLabel(k)}:</span> {formatLeafValue(v)}</div>
+                  <div key={k}><span className="text-[var(--admin-fg-muted)]">{getLabel(k)}:</span> {formatLeafValue(v)}</div>
                 ))}
               </div>
             ))}
@@ -101,9 +101,9 @@ export function CaseFormViewer({ serviceSlug, formData }: CaseFormViewerProps) {
     }
     if (typeof value === 'object') {
       return (
-        <div className="bg-gray-50 rounded p-2 text-xs">
+        <div className="bg-[var(--admin-accent-soft)] rounded p-2 text-xs">
           {Object.entries(value as Record<string, unknown>).map(([k, v]) => (
-            <div key={k}><span className="text-gray-500">{getLabel(k)}:</span> {formatLeafValue(v)}</div>
+            <div key={k}><span className="text-[var(--admin-fg-muted)]">{getLabel(k)}:</span> {formatLeafValue(v)}</div>
           ))}
         </div>
       )
@@ -116,7 +116,7 @@ export function CaseFormViewer({ serviceSlug, formData }: CaseFormViewerProps) {
       {formSteps.map((step) => (
         <Card key={step.step}>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold text-gray-700">
+            <CardTitle className="text-sm font-semibold text-[var(--admin-fg)]">
               Paso {step.step}: {step.title}
             </CardTitle>
           </CardHeader>
@@ -126,8 +126,8 @@ export function CaseFormViewer({ serviceSlug, formData }: CaseFormViewerProps) {
                 if (!evaluateCondition(field.conditional, formData)) return null
                 const value = formData[field.key]
                 return (
-                  <div key={field.key} className="grid grid-cols-1 md:grid-cols-3 gap-1 py-1 border-b border-gray-50 last:border-0">
-                    <span className="text-xs text-gray-500">{field.label}</span>
+                  <div key={field.key} className="grid grid-cols-1 md:grid-cols-3 gap-1 py-1 border-b border-[var(--admin-border)] last:border-0">
+                    <span className="text-xs text-[var(--admin-fg-muted)]">{field.label}</span>
                     <div className="md:col-span-2 text-sm font-medium">
                       {renderValue(field, value)}
                     </div>

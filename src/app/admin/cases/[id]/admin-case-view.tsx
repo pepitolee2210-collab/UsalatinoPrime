@@ -237,18 +237,18 @@ export function AdminCaseView({ caseData, documents, activities: _activities, pa
 
   return (
     <div className="space-y-6">
-      <Link href="/admin/cases" className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900">
+      <Link href="/admin/cases" className="inline-flex items-center text-sm text-[var(--admin-fg-muted)] hover:text-[var(--admin-fg)]">
         <ArrowLeft className="w-4 h-4 mr-1" /> Volver a Casos
       </Link>
 
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold">Caso #{caseData.case_number}</h1>
-          <p className="text-gray-600">{caseData.service?.name}</p>
-          <p className="text-sm text-gray-500">
+          <p className="text-[var(--admin-fg-muted)]">{caseData.service?.name}</p>
+          <p className="text-sm text-[var(--admin-fg-muted)]">
             {caseData.client?.first_name} {caseData.client?.last_name}
           </p>
-          <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+          <div className="flex items-center gap-3 text-xs text-[var(--admin-fg-muted)] mt-1">
             {caseData.client?.phone && <span>{caseData.client.phone}</span>}
             {caseData.client?.email && !caseData.client.email.includes('@usalatinoprime.internal') && (
               <span>{caseData.client.email}</span>
@@ -323,7 +323,7 @@ export function AdminCaseView({ caseData, documents, activities: _activities, pa
             onClick={handleToggleAccess}
             disabled={accessLoading}
             className={caseData.access_granted
-              ? 'border-green-300 text-green-700 hover:bg-green-50'
+              ? 'border-[var(--admin-green)] text-[var(--admin-green-on)] hover:bg-[var(--admin-green-soft)]'
               : 'bg-[#002855] hover:bg-[#003570]'}
           >
             {accessLoading ? (
@@ -526,9 +526,9 @@ function I360Review({
 
   if (!sub) return (
     <div className="text-center py-12">
-      <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-      <p className="text-sm text-gray-500">El cliente aún no ha llenado el formulario I-360.</p>
-      <p className="text-xs text-gray-400 mt-1">
+      <FileText className="w-10 h-10 text-[var(--admin-fg-subtle)] mx-auto mb-3" />
+      <p className="text-sm text-[var(--admin-fg-muted)]">El cliente aún no ha llenado el formulario I-360.</p>
+      <p className="text-xs text-[var(--admin-fg-subtle)] mt-1">
         Puedes empezar a llenarlo en nombre del cliente y guardar. El cliente verá tus respuestas en su portal.
       </p>
       <Button
@@ -621,21 +621,21 @@ function I360Review({
   ]
 
   const colorMap: Record<string, { bg: string; border: string; text: string }> = {
-    indigo: { bg: 'bg-indigo-50', border: 'border-indigo-200', text: 'text-indigo-900' },
-    blue: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-900' },
-    amber: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-900' },
-    emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-900' },
-    purple: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-900' },
-    gray: { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-900' },
+    indigo: { bg: 'bg-[var(--admin-accent-soft)]', border: 'border-indigo-200', text: 'text-[var(--admin-accent)]' },
+    blue: { bg: 'bg-[var(--admin-blue-soft)]', border: 'border-blue-200', text: 'text-[var(--admin-blue-on)]' },
+    amber: { bg: 'bg-[var(--admin-gold-soft)]', border: 'border-amber-200', text: 'text-[var(--admin-gold-on)]' },
+    emerald: { bg: 'bg-[var(--admin-green-soft)]', border: 'border-emerald-200', text: 'text-[var(--admin-green-on)]' },
+    purple: { bg: 'bg-[var(--admin-accent-soft)]', border: 'border-purple-200', text: 'text-[var(--admin-accent)]' },
+    gray: { bg: 'bg-[var(--admin-accent-soft)]', border: 'border-gray-200', text: 'text-[var(--admin-fg)]' },
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h3 className="font-bold text-gray-900">Formulario I-360 — SIJS</h3>
+          <h3 className="font-bold text-[var(--admin-fg)]">Formulario I-360 — SIJS</h3>
           {sub.updated_at && (
-            <p className="text-[11px] text-gray-500 mt-0.5">
+            <p className="text-[11px] text-[var(--admin-fg-muted)] mt-0.5">
               Última edición: {format(new Date(sub.updated_at), "d MMM yyyy 'a las' HH:mm", { locale: es })}
             </p>
           )}
@@ -658,9 +658,9 @@ function I360Review({
             Descargar I-360
           </button>
           <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-            status === 'submitted' ? 'bg-purple-100 text-purple-700' :
-            status === 'approved' ? 'bg-green-100 text-green-700' :
-            'bg-gray-100 text-gray-600'
+            status === 'submitted' ? 'bg-[var(--admin-accent-soft)] text-[var(--admin-accent)]' :
+            status === 'approved' ? 'bg-[var(--admin-green-soft)] text-[var(--admin-green-on)]' :
+            'bg-[var(--admin-accent-soft)] text-[var(--admin-fg-muted)]'
           }`}>
             {status === 'submitted' ? 'Enviado por el cliente' : status === 'approved' ? 'Aprobado' : status === 'draft' ? 'Borrador' : status}
           </span>
@@ -699,8 +699,8 @@ function I360Review({
             <div className="p-4 grid grid-cols-2 gap-x-4 gap-y-2">
               {filledFields.map(f => (
                 <div key={f.label}>
-                  <span className="text-[10px] text-gray-400 uppercase">{f.label}</span>
-                  <p className="text-sm text-gray-900">{f.value}</p>
+                  <span className="text-[10px] text-[var(--admin-fg-subtle)] uppercase">{f.label}</span>
+                  <p className="text-sm text-[var(--admin-fg)]">{f.value}</p>
                 </div>
               ))}
             </div>

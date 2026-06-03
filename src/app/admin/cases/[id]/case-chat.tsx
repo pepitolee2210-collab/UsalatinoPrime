@@ -200,7 +200,7 @@ export function CaseChat({ caseId, clientName, serviceName, documentCount, paren
       {/* Header */}
       <div className="flex items-center justify-between pb-3 border-b">
         <div className="flex items-center gap-2">
-          <MessageSquare className="w-5 h-5 text-[#F2A900]" />
+          <MessageSquare className="w-5 h-5 text-[var(--admin-gold)]" />
           <h3 className="font-semibold text-gray-900">Chat IA</h3>
           <Badge variant="secondary" className="text-xs">{clientName}</Badge>
         </div>
@@ -234,8 +234,8 @@ export function CaseChat({ caseId, clientName, serviceName, documentCount, paren
 
         {historyLoaded && !hasMessages && !isStreaming && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#F2A900]/20 to-[#D4940A]/20 flex items-center justify-center mb-4">
-              <Bot className="w-8 h-8 text-[#F2A900]" />
+            <div className="w-16 h-16 rounded-2xl bg-[var(--admin-gold-soft)] flex items-center justify-center mb-4">
+              <Bot className="w-8 h-8 text-[var(--admin-gold)]" />
             </div>
             <h4 className="font-semibold text-gray-900 mb-1">Chat IA para este caso</h4>
             <p className="text-sm text-gray-500 max-w-md mb-6">
@@ -250,7 +250,7 @@ export function CaseChat({ caseId, clientName, serviceName, documentCount, paren
                   key={i}
                   onClick={() => sendMessage(t.prompt)}
                   disabled={isStreaming}
-                  className="text-left p-3 rounded-xl border border-gray-200 hover:border-[#F2A900] hover:bg-[#F2A900]/5 transition-colors text-sm"
+                  className="text-left p-3 rounded-xl border border-gray-200 hover:border-[var(--admin-gold)] hover:bg-[var(--admin-gold-soft)] transition-colors text-sm"
                 >
                   <span className="text-gray-800 font-medium">{t.label}</span>
                 </button>
@@ -272,13 +272,13 @@ export function CaseChat({ caseId, clientName, serviceName, documentCount, paren
         {/* Streaming message */}
         {isStreaming && streamingText && (
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#F2A900] to-[#D4940A] flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[var(--admin-gold)] flex items-center justify-center flex-shrink-0">
               <Bot className="w-4 h-4 text-white" />
             </div>
             <div className="flex-1 bg-white rounded-2xl rounded-tl-sm p-4 shadow-sm border max-w-[85%]">
               <div className="prose prose-sm max-w-none whitespace-pre-wrap">{streamingText}</div>
               <div className="flex items-center gap-1 mt-2">
-                <Loader2 className="w-3 h-3 animate-spin text-[#F2A900]" />
+                <Loader2 className="w-3 h-3 animate-spin text-[var(--admin-gold)]" />
                 <span className="text-xs text-gray-400">Generando...</span>
               </div>
             </div>
@@ -287,15 +287,15 @@ export function CaseChat({ caseId, clientName, serviceName, documentCount, paren
 
         {isStreaming && !streamingText && (
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#F2A900] to-[#D4940A] flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[var(--admin-gold)] flex items-center justify-center flex-shrink-0">
               <Bot className="w-4 h-4 text-white" />
             </div>
             <div className="bg-white rounded-2xl rounded-tl-sm p-4 shadow-sm border">
               <div className="flex items-center gap-2">
                 <div className="flex gap-1">
-                  <div className="w-2 h-2 rounded-full bg-[#F2A900] animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-2 h-2 rounded-full bg-[#F2A900] animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-2 h-2 rounded-full bg-[#F2A900] animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div className="w-2 h-2 rounded-full bg-[var(--admin-gold)] animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-2 h-2 rounded-full bg-[var(--admin-gold)] animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-2 h-2 rounded-full bg-[var(--admin-gold)] animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
                 <span className="text-xs text-gray-400">Pensando...</span>
               </div>
@@ -315,7 +315,7 @@ export function CaseChat({ caseId, clientName, serviceName, documentCount, paren
                 key={i}
                 onClick={() => sendMessage(t.prompt)}
                 disabled={isStreaming}
-                className="flex-shrink-0 text-xs px-3 py-1.5 rounded-full border border-gray-200 hover:border-[#F2A900] hover:bg-[#F2A900]/5 transition-colors text-gray-600 disabled:opacity-50"
+                className="flex-shrink-0 text-xs px-3 py-1.5 rounded-full border border-gray-200 hover:border-[var(--admin-gold)] hover:bg-[var(--admin-gold-soft)] transition-colors text-gray-600 disabled:opacity-50"
               >
                 {t.label}
               </button>
@@ -331,12 +331,12 @@ export function CaseChat({ caseId, clientName, serviceName, documentCount, paren
             placeholder="Escribe un mensaje... (Enter para enviar, Shift+Enter nueva línea)"
             disabled={isStreaming || isLoading}
             rows={2}
-            className="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#F2A900]/50 focus:border-[#F2A900] disabled:opacity-50 disabled:bg-gray-50"
+            className="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--admin-gold-soft)] focus:border-[var(--admin-gold)] disabled:opacity-50 disabled:bg-gray-50"
           />
           <Button
             onClick={() => sendMessage(input)}
             disabled={!input.trim() || isStreaming || isLoading}
-            className="self-end bg-[#F2A900] hover:bg-[#D4940A] text-white rounded-xl px-4 h-11"
+            className="self-end bg-[var(--admin-gold)] hover:opacity-90 text-[var(--primary-foreground)] rounded-xl px-4 h-11"
           >
             {isStreaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
@@ -372,7 +372,7 @@ function MessageBubble({
       <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
         isUser
           ? 'bg-gray-700'
-          : 'bg-gradient-to-br from-[#F2A900] to-[#D4940A]'
+          : 'bg-[var(--admin-gold)]'
       }`}>
         {isUser
           ? <User className="w-4 h-4 text-white" />

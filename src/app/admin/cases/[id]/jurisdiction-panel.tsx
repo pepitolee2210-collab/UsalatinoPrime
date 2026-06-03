@@ -339,7 +339,7 @@ export function JurisdictionPanel({ caseId }: Props) {
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-black/[0.02] transition-colors"
       >
         <div className="flex items-center gap-2 min-w-0">
-          <Scale className="w-4 h-4 text-[#002855] flex-shrink-0" />
+          <Scale className="w-4 h-4 text-[var(--primary)] flex-shrink-0" />
           {headerIcon}
           <span className="text-sm font-bold text-gray-900">Jurisdicción detectada</span>
           <span className="text-[11px] text-gray-600 truncate">— {headerBadgeText}</span>
@@ -428,7 +428,7 @@ export function JurisdictionPanel({ caseId }: Props) {
                     size="sm"
                     onClick={investigate}
                     disabled={researching}
-                    className="bg-[#F2A900] hover:bg-[#D4940A] text-white"
+                    className="bg-[var(--admin-gold)] hover:opacity-90 text-[var(--primary-foreground)]"
                   >
                     {researching
                       ? <><Loader2 className="w-4 h-4 animate-spin mr-1.5" /> Reintentando…</>
@@ -467,7 +467,7 @@ export function JurisdictionPanel({ caseId }: Props) {
                     size="sm"
                     onClick={investigate}
                     disabled={researching}
-                    className="bg-[#F2A900] hover:bg-[#D4940A] text-white"
+                    className="bg-[var(--admin-gold)] hover:opacity-90 text-[var(--primary-foreground)]"
                   >
                     {researching
                       ? <><Loader2 className="w-4 h-4 animate-spin mr-1.5" /> Re-verificando…</>
@@ -490,7 +490,7 @@ export function JurisdictionPanel({ caseId }: Props) {
                     size="sm"
                     onClick={investigate}
                     disabled={researching}
-                    className="bg-[#F2A900] hover:bg-[#D4940A] text-white font-semibold"
+                    className="bg-[var(--admin-gold)] hover:opacity-90 text-[var(--primary-foreground)] font-semibold"
                   >
                     {researching ? (
                       <><Loader2 className="w-4 h-4 animate-spin mr-1.5" /> Investigando…</>
@@ -827,7 +827,7 @@ function StepsBlock({ steps }: { steps: FilingStep[] }) {
       <ol className="space-y-2">
         {sorted.map((s) => (
           <li key={s.step_number} className="flex gap-3">
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#002855] text-white text-[11px] font-bold flex items-center justify-center">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] text-[11px] font-bold flex items-center justify-center">
               {s.step_number}
             </span>
             <div className="flex-1 min-w-0">

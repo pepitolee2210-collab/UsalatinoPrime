@@ -68,11 +68,11 @@ interface EndReasonStyle {
 }
 
 const END_REASON_STYLES: Record<string, EndReasonStyle> = {
-  'user-hangup':  { label: 'Colgó cliente',  icon: PhoneOff,    bg: 'rgba(148,163,184,0.10)', border: 'rgba(148,163,184,0.3)', text: '#CBD5E1', dot: '#94A3B8' },
-  'timeout':      { label: 'Timeout 15min',  icon: Clock,       bg: 'rgba(250,204,21,0.10)',  border: 'rgba(250,204,21,0.3)',  text: '#FDE68A', dot: '#FACC15' },
-  'error':        { label: 'Error',          icon: AlertCircle, bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', text: '#FCA5A5', dot: '#F87171' },
-  'server-close': { label: 'Cerró servidor', icon: XCircle,     bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', text: '#FCA5A5', dot: '#F87171' },
-  'unmount':      { label: 'Navegó fuera',   icon: PhoneOff,    bg: 'rgba(148,163,184,0.10)', border: 'rgba(148,163,184,0.3)', text: '#CBD5E1', dot: '#94A3B8' },
+  'user-hangup':  { label: 'Colgó cliente',  icon: PhoneOff,    bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', text: 'var(--admin-fg-muted)', dot: 'var(--admin-fg-muted)' },
+  'timeout':      { label: 'Timeout 15min',  icon: Clock,       bg: 'var(--admin-gold-soft)',  border: 'var(--admin-gold)',  text: 'var(--admin-gold-on)', dot: 'var(--admin-gold)' },
+  'error':        { label: 'Error',          icon: AlertCircle, bg: 'var(--admin-red-soft)', border: 'var(--admin-red)', text: 'var(--admin-red-on)', dot: 'var(--admin-red)' },
+  'server-close': { label: 'Cerró servidor', icon: XCircle,     bg: 'var(--admin-red-soft)', border: 'var(--admin-red)', text: 'var(--admin-red-on)', dot: 'var(--admin-red)' },
+  'unmount':      { label: 'Navegó fuera',   icon: PhoneOff,    bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', text: 'var(--admin-fg-muted)', dot: 'var(--admin-fg-muted)' },
 }
 
 interface OutcomeStyle {
@@ -85,12 +85,12 @@ interface OutcomeStyle {
 }
 
 function outcomeLabel(call: VoiceCall): OutcomeStyle {
-  if (call.appointment_id) return { label: 'Cita agendada',   icon: CalendarCheck, bg: 'rgba(34,197,94,0.10)',   border: 'rgba(34,197,94,0.3)',   text: '#86EFAC', dot: '#4ADE80' }
-  if (call.lead_id)        return { label: 'Lead capturado',  icon: CheckCircle,   bg: 'rgba(96,165,250,0.10)',  border: 'rgba(96,165,250,0.3)',  text: '#93C5FD', dot: '#60A5FA' }
+  if (call.appointment_id) return { label: 'Cita agendada',   icon: CalendarCheck, bg: 'var(--admin-green-soft)',   border: 'var(--admin-green)',   text: 'var(--admin-green-on)', dot: 'var(--admin-green)' }
+  if (call.lead_id)        return { label: 'Lead capturado',  icon: CheckCircle,   bg: 'var(--admin-blue-soft)',  border: 'var(--admin-blue)',  text: 'var(--admin-blue-on)', dot: 'var(--admin-blue)' }
   if (call.end_reason === 'error' || call.end_reason === 'server-close') {
-    return { label: 'Error', icon: AlertCircle, bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', text: '#FCA5A5', dot: '#F87171' }
+    return { label: 'Error', icon: AlertCircle, bg: 'var(--admin-red-soft)', border: 'var(--admin-red)', text: 'var(--admin-red-on)', dot: 'var(--admin-red)' }
   }
-  if (!call.ended_at) return { label: 'En curso', icon: Activity, bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.3)', text: '#C4B5FD', dot: '#A78BFA' }
+  if (!call.ended_at) return { label: 'En curso', icon: Activity, bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', text: 'var(--admin-accent)', dot: 'var(--admin-accent)' }
   return { label: 'Sin resultado', icon: PhoneOff, bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', text: 'var(--admin-fg-muted)', dot: 'var(--admin-fg-muted)' }
 }
 
@@ -110,8 +110,8 @@ const BTN_ICON =
   'bg-white/[0.04] border border-white/10 text-white'
 
 const DARK_DIALOG_CLS =
-  'bg-[#0A0A0A] border border-white/10 text-white shadow-2xl backdrop-blur-xl max-w-2xl ' +
-  '[&>button]:text-white/60 [&>button]:hover:text-white'
+  'bg-[color:var(--admin-bg)] border border-white/10 text-[color:var(--admin-fg)] shadow-2xl backdrop-blur-xl max-w-2xl ' +
+  '[&>button]:text-[color:var(--admin-fg-muted)] [&>button]:hover:text-[color:var(--admin-fg)]'
 
 // ════════════════════════════════════════════════════════════════════
 
@@ -173,13 +173,13 @@ export default function VoiceCallsPage() {
                     onClick={() => setDays(d)}
                     className="px-3 py-1.5 rounded-full transition-all duration-300"
                     style={{
-                      background: isActive ? '#FFFFFF' : 'transparent',
-                      color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
+                      background: isActive ? 'var(--primary)' : 'transparent',
+                      color: isActive ? 'var(--primary-foreground)' : 'var(--admin-fg-muted)',
                       fontFamily: 'var(--font-mono-tech)',
                       fontSize: 11,
                       fontWeight: isActive ? 700 : 500,
                       letterSpacing: '0.05em',
-                      boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.18)' : 'none',
+                      boxShadow: isActive ? 'var(--admin-shadow)' : 'none',
                     }}
                   >
                     {d}D
@@ -331,7 +331,7 @@ export default function VoiceCallsPage() {
                         letterSpacing: '0.05em',
                       }}
                     >
-                      <Clock className="w-3 h-3" style={{ color: '#A78BFA' }} />
+                      <Clock className="w-3 h-3" style={{ color: 'var(--admin-accent)' }} />
                       {formatDuration(call.duration_seconds)}
                     </span>
                     {call.lead?.phone && (
@@ -339,7 +339,7 @@ export default function VoiceCallsPage() {
                         style={{
                           fontFamily: 'var(--font-mono-tech)',
                           fontSize: 11,
-                          color: '#93C5FD',
+                          color: 'var(--admin-blue-on)',
                           letterSpacing: '0.02em',
                         }}
                       >
@@ -351,7 +351,7 @@ export default function VoiceCallsPage() {
                         style={{
                           fontFamily: 'var(--font-mono-tech)',
                           fontSize: 11,
-                          color: '#86EFAC',
+                          color: 'var(--admin-green-on)',
                           letterSpacing: '0.02em',
                         }}
                       >
@@ -364,7 +364,7 @@ export default function VoiceCallsPage() {
                           fontFamily: 'var(--font-mono-tech)',
                           fontSize: 11,
                           fontWeight: 700,
-                          color: '#86EFAC',
+                          color: 'var(--admin-green-on)',
                           letterSpacing: '0.05em',
                         }}
                       >
@@ -383,7 +383,7 @@ export default function VoiceCallsPage() {
       <Dialog open={selected !== null} onOpenChange={(open) => { if (!open) setSelected(null) }}>
         <DialogContent className={DARK_DIALOG_CLS}>
           <DialogHeader>
-            <DialogTitle className="text-white" style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.018em' }}>
+            <DialogTitle style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.018em', color: 'var(--admin-fg)' }}>
               <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg-subtle)', display: 'block' }}>
                 LLAMADA · DETALLE
               </span>
@@ -404,10 +404,10 @@ export default function VoiceCallsPage() {
 type StatTone = 'info' | 'success' | 'danger' | 'purple'
 
 const STAT_TONE: Record<StatTone, { bg: string; border: string; iconColor: string }> = {
-  info:    { bg: 'rgba(96,165,250,0.10)',  border: 'rgba(96,165,250,0.3)',  iconColor: '#60A5FA' },
-  success: { bg: 'rgba(34,197,94,0.10)',   border: 'rgba(34,197,94,0.3)',   iconColor: '#4ADE80' },
-  danger:  { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', iconColor: '#F87171' },
-  purple:  { bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.3)', iconColor: '#A78BFA' },
+  info:    { bg: 'var(--admin-blue-soft)',  border: 'var(--admin-blue)',  iconColor: 'var(--admin-blue)' },
+  success: { bg: 'var(--admin-green-soft)',   border: 'var(--admin-green)',   iconColor: 'var(--admin-green)' },
+  danger:  { bg: 'var(--admin-red-soft)', border: 'var(--admin-red)', iconColor: 'var(--admin-red)' },
+  purple:  { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', iconColor: 'var(--admin-accent)' },
 }
 
 function StatCard({
@@ -515,14 +515,14 @@ function CallDetail({ call }: { call: VoiceCall }) {
         <div
           className="rounded-xl p-3"
           style={{
-            background: 'rgba(248,113,113,0.08)',
-            border: '0.5px solid rgba(248,113,113,0.3)',
+            background: 'var(--admin-red-soft)',
+            border: '0.5px solid var(--admin-red)',
           }}
         >
-          <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: '#F87171', marginBottom: 4 }}>
+          <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--admin-red-on)', marginBottom: 4 }}>
             ⚠ ERROR
           </p>
-          <p style={{ fontSize: 11, color: '#FCA5A5', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em', wordBreak: 'break-word' }}>
+          <p style={{ fontSize: 11, color: 'var(--admin-red-on)', fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.02em', wordBreak: 'break-word' }}>
             {call.error_message}
           </p>
         </div>
@@ -532,19 +532,19 @@ function CallDetail({ call }: { call: VoiceCall }) {
         <div
           className="rounded-xl p-3.5"
           style={{
-            background: 'rgba(96,165,250,0.08)',
-            border: '0.5px solid rgba(96,165,250,0.3)',
+            background: 'var(--admin-blue-soft)',
+            border: '0.5px solid var(--admin-blue)',
           }}
         >
           <p
             className="inline-flex items-center gap-1.5 mb-2"
-            style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: '#60A5FA' }}
+            style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--admin-blue-on)' }}
           >
             <CheckCircle className="w-3 h-3" />
             LEAD CAPTURADO
           </p>
           <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.005em' }}>{call.lead.prospect_name}</p>
-          <p style={{ fontSize: 11, color: '#93C5FD', fontFamily: 'var(--font-mono-tech)', marginTop: 2 }}>{call.lead.phone}</p>
+          <p style={{ fontSize: 11, color: 'var(--admin-blue-on)', fontFamily: 'var(--font-mono-tech)', marginTop: 2 }}>{call.lead.phone}</p>
           <p style={{ fontSize: 10, color: 'var(--admin-fg-subtle)', marginTop: 4, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.1em' }}>
             STATUS · {call.lead.status.toUpperCase()}
           </p>
@@ -555,13 +555,13 @@ function CallDetail({ call }: { call: VoiceCall }) {
         <div
           className="rounded-xl p-3.5"
           style={{
-            background: 'rgba(34,197,94,0.08)',
-            border: '0.5px solid rgba(34,197,94,0.3)',
+            background: 'var(--admin-green-soft)',
+            border: '0.5px solid var(--admin-green)',
           }}
         >
           <p
             className="inline-flex items-center gap-1.5 mb-2"
-            style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: '#4ADE80' }}
+            style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--admin-green-on)' }}
           >
             <CalendarCheck className="w-3 h-3" />
             CITA AGENDADA
@@ -570,7 +570,7 @@ function CallDetail({ call }: { call: VoiceCall }) {
             {call.appointment.guest_name || 'Sin nombre'}
           </p>
           {call.appointment.guest_phone && (
-            <p style={{ fontSize: 11, color: '#86EFAC', fontFamily: 'var(--font-mono-tech)', marginTop: 2 }}>
+            <p style={{ fontSize: 11, color: 'var(--admin-green-on)', fontFamily: 'var(--font-mono-tech)', marginTop: 2 }}>
               {call.appointment.guest_phone}
             </p>
           )}
@@ -579,7 +579,7 @@ function CallDetail({ call }: { call: VoiceCall }) {
               fontFamily: 'var(--font-mono-tech)',
               fontSize: 11,
               fontWeight: 700,
-              color: '#86EFAC',
+              color: 'var(--admin-green-on)',
               marginTop: 6,
               letterSpacing: '0.05em',
             }}
@@ -604,14 +604,14 @@ function CallDetail({ call }: { call: VoiceCall }) {
                 key={i}
                 className="flex items-center gap-2 px-3 py-2 rounded-lg"
                 style={{
-                  background: 'rgba(255,255,255,0.025)',
+                  background: 'var(--admin-veil-1)',
                   border: '0.5px solid var(--admin-accent-soft)',
                 }}
               >
                 {t.ok ? (
-                  <CheckCircle className="w-3 h-3 shrink-0" style={{ color: '#4ADE80' }} />
+                  <CheckCircle className="w-3 h-3 shrink-0" style={{ color: 'var(--admin-green)' }} />
                 ) : (
-                  <XCircle className="w-3 h-3 shrink-0" style={{ color: '#F87171' }} />
+                  <XCircle className="w-3 h-3 shrink-0" style={{ color: 'var(--admin-red)' }} />
                 )}
                 <code
                   className="px-1.5 py-0.5 rounded"

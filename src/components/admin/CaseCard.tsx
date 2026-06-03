@@ -15,27 +15,27 @@ export function CaseCard({ caseData }: CaseCardProps) {
 
   return (
     <Link href={`/admin/cases/${caseData.id}`}>
-      <div className={`bg-white rounded-lg border p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${isUrgent ? 'border-l-4 border-l-red-400' : ''}`}>
+      <div className={`bg-[var(--admin-bg-elev)] rounded-lg border border-[var(--admin-border)] p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${isUrgent ? 'border-l-4 border-l-[var(--admin-red)]' : ''}`}>
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-semibold text-blue-600">#{caseData.case_number}</span>
+          <span className="text-sm font-semibold text-[var(--admin-blue-on)]">#{caseData.case_number}</span>
           {isUrgent && (
-            <span className="flex items-center gap-1 text-xs text-red-500" title={`${daysSinceUpdate} dias sin actualizar`}>
+            <span className="flex items-center gap-1 text-xs text-[var(--admin-red-on)]" title={`${daysSinceUpdate} dias sin actualizar`}>
               <Clock className="w-3 h-3" />
               {daysSinceUpdate}d
             </span>
           )}
         </div>
-        <p className="text-sm font-medium text-gray-900 truncate">
+        <p className="text-sm font-medium text-[var(--admin-fg)] truncate">
           {caseData.client?.first_name} {caseData.client?.last_name}
         </p>
-        <p className="text-xs text-gray-500 truncate">{caseData.service?.name}</p>
+        <p className="text-xs text-[var(--admin-fg-muted)] truncate">{caseData.service?.name}</p>
         <div className="mt-2 flex items-center justify-between">
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-[var(--admin-fg-subtle)]">
             {format(new Date(caseData.created_at), 'd MMM', { locale: es })}
           </span>
           <div className="flex items-center gap-1.5">
             {(caseData.doc_count > 0) && (
-              <span className="flex items-center gap-0.5 text-xs text-blue-600" title={`${caseData.doc_count} documentos`}>
+              <span className="flex items-center gap-0.5 text-xs text-[var(--admin-blue-on)]" title={`${caseData.doc_count} documentos`}>
                 <FileText className="w-3 h-3" />
                 {caseData.doc_count}
               </span>
@@ -43,7 +43,7 @@ export function CaseCard({ caseData }: CaseCardProps) {
             {(caseData.submission_total > 0) && (
               <span
                 className={`flex items-center gap-0.5 text-xs ${
-                  caseData.submission_done === caseData.submission_total ? 'text-green-600' : 'text-amber-600'
+                  caseData.submission_done === caseData.submission_total ? 'text-[var(--admin-green-on)]' : 'text-[var(--admin-gold-on)]'
                 }`}
                 title={`${caseData.submission_done}/${caseData.submission_total} historias enviadas`}
               >

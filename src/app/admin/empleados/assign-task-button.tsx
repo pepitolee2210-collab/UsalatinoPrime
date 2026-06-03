@@ -15,7 +15,7 @@ interface ActiveCase {
 
 const DARK_INPUT_CLS =
   'w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 ' +
-  'bg-white/[0.04] border border-white/10 text-white placeholder:text-white/30'
+  'bg-white/[0.04] border border-white/10 text-[color:var(--admin-fg)] placeholder:text-white/30'
 
 const LABEL_STYLE: React.CSSProperties = {
   fontFamily: 'var(--font-mono-tech)',
@@ -26,13 +26,13 @@ const LABEL_STYLE: React.CSSProperties = {
 }
 
 const DARK_DIALOG_CLS =
-  'bg-[#0A0A0A] border border-white/10 text-white shadow-2xl backdrop-blur-xl max-w-lg max-h-[90vh] overflow-y-auto admin-scroll ' +
-  '[&>button]:text-white/60 [&>button]:hover:text-white'
+  'bg-[color:var(--admin-bg)] border border-white/10 text-[color:var(--admin-fg)] shadow-2xl backdrop-blur-xl max-w-lg max-h-[90vh] overflow-y-auto admin-scroll ' +
+  '[&>button]:text-[color:var(--admin-fg-muted)] [&>button]:hover:text-[color:var(--admin-fg)]'
 
 const BTN_TRIGGER =
   'inline-flex items-center gap-2 px-4 py-2.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 ' +
-  'bg-white text-black text-[12px] font-semibold tracking-tight ' +
-  'shadow-[0_4px_18px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset]'
+  'bg-[color:var(--primary)] text-[color:var(--primary-foreground)] text-[12px] font-semibold tracking-tight ' +
+  'shadow-[var(--admin-shadow)]'
 
 export function AssignTaskButton({ services, employees, activeCases = [] }: {
   services: Service[]; employees: Employee[]; activeCases?: ActiveCase[]
@@ -102,8 +102,8 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
       <DialogContent className={DARK_DIALOG_CLS}>
         <DialogHeader>
           <DialogTitle
-            className="flex items-center gap-2 text-white"
-            style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.018em' }}
+            className="flex items-center gap-2"
+            style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.018em', color: 'var(--admin-fg)' }}
           >
             <Briefcase className="w-4 h-4" style={{ color: 'var(--admin-gold)' }} /> Asignar Trabajo
           </DialogTitle>
@@ -142,8 +142,8 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
                   onClick={() => setMode('case')}
                   className="p-5 rounded-2xl text-center transition-all duration-300 hover:-translate-y-0.5"
                   style={{
-                    background: 'linear-gradient(180deg, rgba(96,165,250,0.06), var(--admin-bg-elev))',
-                    border: '0.5px solid rgba(96,165,250,0.25)',
+                    background: 'linear-gradient(180deg, var(--admin-blue-soft), var(--admin-bg-elev))',
+                    border: '0.5px solid var(--admin-blue)',
                   }}
                 >
                   <FolderOpen className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--admin-blue)' }} />
@@ -158,8 +158,8 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
                   onClick={() => setMode('standalone')}
                   className="p-5 rounded-2xl text-center transition-all duration-300 hover:-translate-y-0.5"
                   style={{
-                    background: 'linear-gradient(180deg, rgba(250,204,21,0.06), var(--admin-bg-elev))',
-                    border: '0.5px solid rgba(250,204,21,0.25)',
+                    background: 'linear-gradient(180deg, var(--admin-gold-soft), var(--admin-bg-elev))',
+                    border: '0.5px solid var(--admin-gold)',
                   }}
                 >
                   <Plus className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--admin-gold)' }} />
@@ -227,8 +227,8 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
                       onClick={() => setSelectedCase(c.id)}
                       className="w-full text-left px-3 py-2.5 rounded-lg transition-colors"
                       style={{
-                        background: isActive ? '#FFFFFF' : 'transparent',
-                        boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.18)' : 'none',
+                        background: isActive ? 'var(--primary)' : 'transparent',
+                        boxShadow: isActive ? 'var(--admin-shadow)' : 'none',
                       }}
                       onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'var(--admin-accent-soft)' }}
                       onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
@@ -238,7 +238,7 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
                           style={{
                             fontSize: 13,
                             fontWeight: 600,
-                            color: isActive ? 'var(--admin-bg-deep)' : '#FFFFFF',
+                            color: isActive ? 'var(--primary-foreground)' : 'var(--admin-fg)',
                             letterSpacing: '-0.005em',
                           }}
                         >
@@ -249,7 +249,7 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
                             fontFamily: 'var(--font-mono-tech)',
                             fontSize: 10,
                             fontWeight: 700,
-                            color: isActive ? 'rgba(0,0,0,0.6)' : 'var(--admin-fg-subtle)',
+                            color: isActive ? 'var(--primary-foreground)' : 'var(--admin-fg-subtle)',
                             letterSpacing: '0.05em',
                           }}
                         >
@@ -259,7 +259,7 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
                       <p
                         style={{
                           fontSize: 11,
-                          color: isActive ? 'rgba(0,0,0,0.55)' : 'var(--admin-fg-muted)',
+                          color: isActive ? 'var(--primary-foreground)' : 'var(--admin-fg-muted)',
                           marginTop: 2,
                         }}
                       >
@@ -273,11 +273,11 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
                 <div
                   className="p-3 rounded-xl"
                   style={{
-                    background: 'rgba(34,197,94,0.06)',
-                    border: '0.5px solid rgba(34,197,94,0.25)',
+                    background: 'var(--admin-green-soft)',
+                    border: '0.5px solid var(--admin-green)',
                   }}
                 >
-                  <p style={{ fontSize: 12, color: 'var(--admin-green)', lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 12, color: 'var(--admin-green-on)', lineHeight: 1.5 }}>
                     Diana recibirá el caso con todos los documentos ya subidos.
                   </p>
                 </div>
@@ -337,12 +337,12 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
                     key={i}
                     className="flex items-center gap-2 px-3 py-2 rounded-lg"
                     style={{
-                      background: 'rgba(96,165,250,0.06)',
-                      border: '0.5px solid rgba(96,165,250,0.25)',
+                      background: 'var(--admin-blue-soft)',
+                      border: '0.5px solid var(--admin-blue)',
                     }}
                   >
                     <FileText className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--admin-blue)' }} />
-                    <span style={{ fontSize: 12, color: '#93C5FD' }} className="truncate flex-1">{f.name}</span>
+                    <span style={{ fontSize: 12, color: 'var(--admin-blue-on)' }} className="truncate flex-1">{f.name}</span>
                     <button onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))}>
                       <Trash2 className="w-3 h-3" style={{ color: 'var(--admin-red)' }} />
                     </button>
@@ -361,7 +361,7 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
                   className="w-full flex items-center justify-center gap-2 py-3 rounded-xl transition-all duration-200"
                   style={{
                     background: 'var(--admin-accent-soft)',
-                    border: '2px dashed rgba(255,255,255,0.12)',
+                    border: '2px dashed var(--admin-border-strong)',
                     color: 'var(--admin-fg-muted)',
                     fontSize: 12,
                     fontWeight: 500,
@@ -392,12 +392,12 @@ export function AssignTaskButton({ services, employees, activeCases = [] }: {
                 onClick={handleSubmit}
                 className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
                 style={{
-                  background: 'var(--admin-bg-elev)',
-                  color: 'var(--admin-bg-deep)',
+                  background: 'var(--primary)',
+                  color: 'var(--primary-foreground)',
                   fontSize: 13,
                   fontWeight: 600,
                   letterSpacing: '-0.005em',
-                  boxShadow: '0 4px 24px rgba(255,255,255,0.2), 0 0 0 0.5px rgba(255,255,255,0.5) inset',
+                  boxShadow: 'var(--admin-shadow)',
                 }}
               >
                 {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}

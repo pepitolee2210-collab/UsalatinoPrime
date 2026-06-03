@@ -221,8 +221,8 @@ export function VisaJuvenilRow({ submission }: { submission: Submission }) {
               <Baby className="w-5 h-5 text-blue-600" />
             </div>
             <div className="min-w-0">
-              <p className="font-semibold text-gray-900 truncate">{minorName}</p>
-              <div className="flex items-center gap-3 text-xs text-gray-500">
+              <p className="font-semibold truncate" style={{ color: 'var(--admin-fg)' }}>{minorName}</p>
+              <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--admin-fg-muted)' }}>
                 <span className="flex items-center gap-1">
                   <MapPin className="w-3 h-3" />
                   {submission.minor_country_of_birth}
@@ -231,7 +231,7 @@ export function VisaJuvenilRow({ submission }: { submission: Submission }) {
                   <Calendar className="w-3 h-3" />
                   {format(new Date(submission.created_at), "d MMM yyyy, HH:mm", { locale: es })}
                 </span>
-                <span className="text-gray-400">{submission.minor_age} anos</span>
+                <span style={{ color: 'var(--admin-fg-subtle)' }}>{submission.minor_age} anos</span>
                 {(submission.father_abuse_neglect || submission.mother_abuse_neglect) && (
                   <span className="flex items-center gap-1 text-red-600 font-medium">
                     <AlertTriangle className="w-3 h-3" />
@@ -243,7 +243,7 @@ export function VisaJuvenilRow({ submission }: { submission: Submission }) {
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <Badge className={statusInfo.class}>{statusInfo.label}</Badge>
-            {expanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+            {expanded ? <ChevronUp className="w-4 h-4" style={{ color: 'var(--admin-fg-subtle)' }} /> : <ChevronDown className="w-4 h-4" style={{ color: 'var(--admin-fg-subtle)' }} />}
           </div>
         </div>
 

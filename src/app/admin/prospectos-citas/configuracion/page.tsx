@@ -214,7 +214,7 @@ export default function ProspectSchedulingConfigPage() {
               key={day.day_of_week}
               className="rounded-xl p-4"
               style={{
-                background: day.is_available ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.015)',
+                background: day.is_available ? 'var(--admin-veil-2)' : 'var(--admin-veil-1)',
                 border: '0.5px solid var(--admin-border)',
               }}
             >
@@ -228,7 +228,7 @@ export default function ProspectSchedulingConfigPage() {
                     style={{
                       fontSize: 14,
                       fontWeight: 600,
-                      color: day.is_available ? '#FFFFFF' : 'var(--admin-fg-subtle)',
+                      color: day.is_available ? 'var(--admin-fg)' : 'var(--admin-fg-subtle)',
                       letterSpacing: '-0.005em',
                     }}
                   >
@@ -297,7 +297,7 @@ export default function ProspectSchedulingConfigPage() {
                       <button
                         onClick={() => removeBlock(idx, bIdx)}
                         className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/10"
-                        style={{ color: '#FCA5A5' }}
+                        style={{ color: 'var(--admin-red-on)' }}
                         title="Eliminar bloque"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -347,12 +347,12 @@ export default function ProspectSchedulingConfigPage() {
                 key={b.id}
                 className="flex items-center justify-between p-3 rounded-xl"
                 style={{
-                  background: 'rgba(248,113,113,0.06)',
-                  border: '0.5px solid rgba(248,113,113,0.2)',
+                  background: 'var(--admin-red-soft)',
+                  border: '0.5px solid var(--admin-red)',
                 }}
               >
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#FCA5A5' }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-red-on)' }}>
                     {new Date(b.blocked_date + 'T12:00:00').toLocaleDateString('es-US', {
                       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
                     })}
@@ -366,7 +366,7 @@ export default function ProspectSchedulingConfigPage() {
                 <button
                   onClick={() => toggleBlockDate('unblock', b.blocked_date)}
                   className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/15"
-                  style={{ color: '#FCA5A5' }}
+                  style={{ color: 'var(--admin-red-on)' }}
                   title="Desbloquear"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -387,16 +387,16 @@ export default function ProspectSchedulingConfigPage() {
 const PRIMARY_BTN =
   'inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-full transition-all duration-200 ' +
   'hover:opacity-90 active:scale-95 text-[12px] font-semibold tracking-tight ' +
-  'bg-white text-black shadow-[0_4px_18px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset] disabled:opacity-50'
+  'bg-[color:var(--primary)] text-[color:var(--primary-foreground)] shadow-[var(--admin-shadow)] disabled:opacity-50'
 
 const GHOST_BTN =
   'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ' +
   'hover:bg-white/10 active:scale-95 text-[11px] font-semibold tracking-tight ' +
-  'bg-white/[0.04] border border-white/10 text-white'
+  'bg-white/[0.04] border border-white/10 text-[color:var(--admin-fg)]'
 
 const ICON_BTN =
   'inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors ' +
-  'hover:bg-white/10 text-white border border-white/10 disabled:opacity-50'
+  'hover:bg-white/10 text-[color:var(--admin-fg)] border border-white/10 disabled:opacity-50'
 
 function Panel({
   icon, title, description, children,
@@ -413,15 +413,15 @@ function Panel({
       <span
         aria-hidden
         className="absolute inset-0 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse at top, rgba(255,255,255,0.03), transparent 60%)' }}
+        style={{ background: 'radial-gradient(ellipse at top, var(--admin-veil-1), transparent 60%)' }}
       />
       <div className="relative">
         <div className="flex items-start gap-3 mb-4">
           <span
             className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
             style={{
-              background: 'linear-gradient(135deg, var(--admin-border-strong), rgba(255,255,255,0.02))',
-              border: '0.5px solid rgba(255,255,255,0.15)',
+              background: 'linear-gradient(135deg, var(--admin-border-strong), var(--admin-veil-1))',
+              border: '0.5px solid var(--admin-border-strong)',
               color: 'var(--admin-fg)',
             }}
           >
@@ -555,14 +555,14 @@ function CustomCheckbox({ checked, onChange }: { checked: boolean; onChange: (c:
       onClick={(e) => { e.preventDefault(); onChange(!checked) }}
       className="inline-flex items-center justify-center w-5 h-5 rounded-md transition-all duration-200"
       style={{
-        background: checked ? '#FFFFFF' : 'var(--admin-accent-soft)',
-        border: checked ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.15)',
-        boxShadow: checked ? '0 0 12px rgba(255,255,255,0.18)' : 'none',
+        background: checked ? 'var(--primary)' : 'var(--admin-accent-soft)',
+        border: checked ? '0.5px solid var(--primary)' : '0.5px solid var(--admin-border-strong)',
+        boxShadow: checked ? 'var(--admin-shadow)' : 'none',
       }}
     >
       {checked && (
         <svg width="11" height="9" viewBox="0 0 12 10" fill="none">
-          <path d="M1.5 5L4.5 8L10.5 1.5" stroke="#000000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M1.5 5L4.5 8L10.5 1.5" stroke="var(--primary-foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       )}
     </button>

@@ -76,7 +76,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full pl-10 pr-9 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/25"
           style={{
-            background: 'rgba(255,255,255,0.03)',
+            background: 'var(--admin-veil-1)',
             border: '0.5px solid var(--admin-border-strong)',
             color: 'var(--admin-fg)',
             fontSize: 13,
@@ -105,7 +105,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr style={{ borderBottom: '0.5px solid var(--admin-border)', background: 'rgba(255,255,255,0.02)' }}>
+              <tr style={{ borderBottom: '0.5px solid var(--admin-border)', background: 'var(--admin-veil-1)' }}>
                 <Th>Nombre</Th>
                 <Th>Email</Th>
                 <Th>Teléfono</Th>
@@ -131,7 +131,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
                       borderBottom: idx < filtered.length - 1 ? '0.5px solid var(--admin-accent-soft)' : 'none',
                       transition: 'background 0.2s',
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--admin-veil-1)')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                   >
                     <Td>
@@ -162,7 +162,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
                           className="inline-flex items-center justify-center"
                           style={{
                             background: 'var(--admin-accent-soft)',
-                            border: '0.5px solid rgba(255,255,255,0.12)',
+                            border: '0.5px solid var(--admin-border-strong)',
                             borderRadius: 6,
                             padding: '2px 8px',
                             fontFamily: 'var(--font-mono-tech)',
@@ -187,7 +187,7 @@ export function ClientsList({ initialClients }: ClientsListProps) {
                         onClick={() => handleDelete(c)}
                         disabled={deletingId === c.id}
                         className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/10"
-                        style={{ color: deletingId === c.id ? 'var(--admin-fg-subtle)' : '#FCA5A5' }}
+                        style={{ color: deletingId === c.id ? 'var(--admin-fg-subtle)' : 'var(--admin-red)' }}
                       >
                         {deletingId === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                       </button>

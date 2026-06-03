@@ -37,22 +37,22 @@ type TabKey = 'pending_review' | 'approved' | 'rejected' | 'published' | 'all'
 const BTN_GHOST =
   'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ' +
   'hover:bg-white/10 active:scale-95 text-[11px] font-semibold tracking-tight ' +
-  'bg-white/[0.04] border border-white/10 text-white disabled:opacity-50'
+  'bg-white/[0.04] border border-white/10 text-[color:var(--admin-fg)] disabled:opacity-50'
 
 const BTN_SUCCESS =
   'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ' +
-  'hover:bg-emerald-500/15 active:scale-95 text-[11px] font-semibold tracking-tight ' +
-  'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 disabled:opacity-50'
+  'hover:opacity-90 active:scale-95 text-[11px] font-semibold tracking-tight ' +
+  'bg-[color:var(--admin-green-soft)] border border-[color:var(--admin-green)] text-[color:var(--admin-green-on)] disabled:opacity-50'
 
 const BTN_DANGER =
   'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ' +
-  'hover:bg-red-500/15 active:scale-95 text-[11px] font-semibold tracking-tight ' +
-  'bg-red-500/10 border border-red-500/30 text-red-300 disabled:opacity-50'
+  'hover:opacity-90 active:scale-95 text-[11px] font-semibold tracking-tight ' +
+  'bg-[color:var(--admin-red-soft)] border border-[color:var(--admin-red)] text-[color:var(--admin-red-on)] disabled:opacity-50'
 
 const BTN_DANGER_PRIMARY =
   'inline-flex items-center gap-1.5 px-4 py-2 rounded-full transition-all duration-200 ' +
   'hover:opacity-90 active:scale-95 text-[12px] font-semibold tracking-tight ' +
-  'bg-red-500 text-white shadow-[0_4px_18px_rgba(248,113,113,0.3)] disabled:opacity-50'
+  'bg-[color:var(--destructive)] text-white shadow-[var(--admin-shadow)] disabled:opacity-50'
 
 export default function RevisionInternaAdminPage() {
   const [docs, setDocs] = useState<DocumentRow[]>([])
@@ -176,13 +176,13 @@ export default function RevisionInternaAdminPage() {
         onClick={() => setTab('all')}
         className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full transition-all duration-200"
         style={{
-          background: tab === 'all' ? '#FFFFFF' : 'var(--admin-accent-soft)',
-          color: tab === 'all' ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
-          border: tab === 'all' ? '0.5px solid #FFFFFF' : '0.5px solid var(--admin-border-strong)',
+          background: tab === 'all' ? 'var(--primary)' : 'var(--admin-accent-soft)',
+          color: tab === 'all' ? 'var(--primary-foreground)' : 'var(--admin-fg-muted)',
+          border: tab === 'all' ? '0.5px solid var(--primary)' : '0.5px solid var(--admin-border-strong)',
           fontSize: 11.5,
           fontWeight: tab === 'all' ? 700 : 500,
           letterSpacing: '-0.005em',
-          boxShadow: tab === 'all' ? '0 0 12px rgba(255,255,255,0.18)' : 'none',
+          boxShadow: tab === 'all' ? 'var(--admin-shadow)' : 'none',
         }}
       >
         Todos
@@ -237,7 +237,7 @@ export default function RevisionInternaAdminPage() {
                   className="inline-flex items-center px-2 py-0.5 rounded-full"
                   style={{
                     background: 'var(--admin-accent-soft)',
-                    border: '0.5px solid rgba(255,255,255,0.12)',
+                    border: '0.5px solid var(--admin-border-strong)',
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 10,
                     fontWeight: 700,
@@ -296,13 +296,13 @@ export default function RevisionInternaAdminPage() {
             className="w-full max-w-md rounded-2xl p-6 space-y-3"
             style={{
               background: 'var(--admin-panel-grad)',
-              border: '0.5px solid rgba(255,255,255,0.12)',
+              border: '0.5px solid var(--admin-border-strong)',
               backdropFilter: 'blur(20px)',
               boxShadow: '0 32px 64px rgba(0,0,0,0.6)',
             }}
           >
             <div className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5" style={{ color: '#F87171' }} />
+              <AlertCircle className="w-5 h-5" style={{ color: 'var(--admin-red)' }} />
               <h3 style={{ fontSize: 17, fontWeight: 600, color: 'var(--admin-fg)', letterSpacing: '-0.018em' }}>
                 Rechazar documento
               </h3>
@@ -349,10 +349,10 @@ export default function RevisionInternaAdminPage() {
 
 type StatTone = 'warning' | 'success' | 'danger' | 'info'
 const TONE_MAP: Record<StatTone, { bg: string; border: string; activeBorder: string; iconColor: string }> = {
-  warning: { bg: 'rgba(250,204,21,0.10)', border: 'rgba(250,204,21,0.3)', activeBorder: '#FACC15', iconColor: '#FACC15' },
-  success: { bg: 'rgba(34,197,94,0.10)',  border: 'rgba(34,197,94,0.3)',  activeBorder: '#4ADE80', iconColor: '#4ADE80' },
-  danger:  { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', activeBorder: '#F87171', iconColor: '#F87171' },
-  info:    { bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.3)', activeBorder: '#60A5FA', iconColor: '#60A5FA' },
+  warning: { bg: 'var(--admin-gold-soft)', border: 'var(--admin-gold)', activeBorder: 'var(--admin-gold)', iconColor: 'var(--admin-gold)' },
+  success: { bg: 'var(--admin-green-soft)',  border: 'var(--admin-green)',  activeBorder: 'var(--admin-green)', iconColor: 'var(--admin-green)' },
+  danger:  { bg: 'var(--admin-red-soft)', border: 'var(--admin-red)', activeBorder: 'var(--admin-red)', iconColor: 'var(--admin-red)' },
+  info:    { bg: 'var(--admin-blue-soft)', border: 'var(--admin-blue)', activeBorder: 'var(--admin-blue)', iconColor: 'var(--admin-blue)' },
 }
 
 function StatCard({
@@ -412,10 +412,10 @@ function StatCard({
 // ════════════════════════════════════════════════════════════════════
 
 const DOC_STATUS_STYLES = {
-  pending_review: { bg: 'rgba(250,204,21,0.10)', border: 'rgba(250,204,21,0.3)', text: '#FDE68A', dot: '#FACC15', label: 'Esperando revisión' },
-  approved:       { bg: 'rgba(34,197,94,0.10)',  border: 'rgba(34,197,94,0.3)',  text: '#86EFAC', dot: '#4ADE80', label: 'Aprobado' },
-  rejected:       { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', text: '#FCA5A5', dot: '#F87171', label: 'Rechazado' },
-  published:      { bg: 'rgba(96,165,250,0.10)', border: 'rgba(96,165,250,0.3)', text: '#93C5FD', dot: '#60A5FA', label: 'Publicado' },
+  pending_review: { bg: 'var(--admin-gold-soft)', border: 'var(--admin-gold)', text: 'var(--admin-gold-on)', dot: 'var(--admin-gold)', label: 'Esperando revisión' },
+  approved:       { bg: 'var(--admin-green-soft)',  border: 'var(--admin-green)',  text: 'var(--admin-green-on)', dot: 'var(--admin-green)', label: 'Aprobado' },
+  rejected:       { bg: 'var(--admin-red-soft)', border: 'var(--admin-red)', text: 'var(--admin-red-on)', dot: 'var(--admin-red)', label: 'Rechazado' },
+  published:      { bg: 'var(--admin-blue-soft)', border: 'var(--admin-blue)', text: 'var(--admin-blue-on)', dot: 'var(--admin-blue)', label: 'Publicado' },
 } as const
 
 function DocRow({
@@ -434,7 +434,7 @@ function DocRow({
     <div
       className="rounded-xl p-3.5 transition-colors"
       style={{
-        background: 'rgba(255,255,255,0.025)',
+        background: 'var(--admin-veil-1)',
         border: '0.5px solid var(--admin-accent-soft)',
       }}
     >
@@ -463,7 +463,7 @@ function DocRow({
               <span
                 style={{
                   background: 'var(--admin-accent-soft)',
-                  border: '0.5px solid rgba(255,255,255,0.12)',
+                  border: '0.5px solid var(--admin-border-strong)',
                   fontFamily: 'var(--font-mono-tech)',
                   fontSize: 9,
                   fontWeight: 700,
@@ -488,14 +488,14 @@ function DocRow({
             <div
               className="mt-2 px-3 py-2 rounded-lg"
               style={{
-                background: 'rgba(96,165,250,0.06)',
-                border: '0.5px solid rgba(96,165,250,0.2)',
+                background: 'var(--admin-blue-soft)',
+                border: '0.5px solid var(--admin-blue)',
               }}
             >
-              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: '#60A5FA', marginBottom: 2 }}>
+              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--admin-blue-on)', marginBottom: 2 }}>
                 NOTA
               </p>
-              <p style={{ fontSize: 11.5, color: '#93C5FD', lineHeight: 1.5 }}>{doc.upload_notes}</p>
+              <p style={{ fontSize: 11.5, color: 'var(--admin-blue-on)', lineHeight: 1.5 }}>{doc.upload_notes}</p>
             </div>
           )}
 
@@ -503,19 +503,19 @@ function DocRow({
             <div
               className="mt-2 px-3 py-2 rounded-lg"
               style={{
-                background: 'rgba(248,113,113,0.06)',
-                border: '0.5px solid rgba(248,113,113,0.2)',
+                background: 'var(--admin-red-soft)',
+                border: '0.5px solid var(--admin-red)',
               }}
             >
-              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: '#F87171', marginBottom: 2 }}>
+              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--admin-red-on)', marginBottom: 2 }}>
                 MOTIVO
               </p>
-              <p style={{ fontSize: 11.5, color: '#FCA5A5', lineHeight: 1.5 }}>{doc.review_comment}</p>
+              <p style={{ fontSize: 11.5, color: 'var(--admin-red-on)', lineHeight: 1.5 }}>{doc.review_comment}</p>
             </div>
           )}
 
           {doc.status === 'published' && doc.published_at && (
-            <p style={{ fontSize: 11, color: '#93C5FD', marginTop: 6, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
+            <p style={{ fontSize: 11, color: 'var(--admin-blue-on)', marginTop: 6, fontFamily: 'var(--font-mono-tech)', letterSpacing: '0.05em' }}>
               ENTREGADO · {uploaderName.toUpperCase()} · {format(new Date(doc.published_at), 'd MMM yyyy · HH:mm', { locale: es }).toUpperCase()}
             </p>
           )}

@@ -1045,7 +1045,7 @@
   --ceo-text:         #0B1F3A;             /* navy autoridad */
   --ceo-text-2:       #3D5A80;
   --ceo-text-3:       #5F728E;
-  --ceo-gold:         #A4730A;             /* oro profundo */
+  --ceo-gold:         #8A6109;             /* oro profundo (AA como texto pequeño) */
   --ceo-gold-soft:    #FAEBC8;
   --ceo-good:         #15803D;
   --ceo-good-soft:    #DCFCE7;
@@ -1076,6 +1076,19 @@
 }
 [data-admin-theme='light'] .ceo-scope [class*="border-white/"] {
   border-color: var(--ceo-line) !important;
+}
+
+/* ── Red de seguridad modo claro (admin general) ─────────────────────
+   Realces y bordes blancos translúcidos legacy (bg-white/x, border-white/x)
+   quedan invisibles sobre superficies claras. Los remapeamos a velo / borde
+   navy sutil. NO tocamos text-white (puede ir sobre botones de color sólido
+   donde el blanco es correcto) — eso se migra token a token en el componente.
+   El override de .ceo-scope es más específico, así que mantiene su valor.   */
+[data-admin-theme='light'] [class*="bg-white/"] {
+  background-color: var(--admin-veil-1);
+}
+[data-admin-theme='light'] [class*="border-white/"] {
+  border-color: var(--admin-border);
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -1115,6 +1128,15 @@
   --admin-panel-grad:   linear-gradient(180deg, rgba(20,20,20,0.95), rgba(8,8,8,0.95));
   --admin-shadow:       0 10px 32px rgba(0,0,0,0.45);
   --admin-shadow-lg:    0 24px 64px rgba(0,0,0,0.55);
+  /* Estado — texto/dot AA garantizado SOBRE el -soft del mismo color (badges) */
+  --admin-green-on:     #86EFAC;
+  --admin-gold-on:      #FDE68A;
+  --admin-red-on:       #FCA5A5;
+  --admin-blue-on:      #93C5FD;
+  /* Velos de realce translúcidos (hover / elevación sutil) */
+  --admin-veil-1:       rgba(255,255,255,0.03);
+  --admin-veil-2:       rgba(255,255,255,0.06);
+  --admin-veil-3:       rgba(255,255,255,0.10);
 }
 
 [data-admin-theme='institutional'] {
@@ -1142,6 +1164,13 @@
   --admin-panel-grad:   linear-gradient(180deg, rgba(18,40,80,0.95), rgba(10,26,58,0.95));
   --admin-shadow:       0 10px 32px rgba(5,13,31,0.55);
   --admin-shadow-lg:    0 24px 64px rgba(5,13,31,0.7);
+  --admin-green-on:     #22FFA0;
+  --admin-gold-on:      #FDE68A;
+  --admin-red-on:       #FF8FA3;
+  --admin-blue-on:      #9DC2FF;
+  --admin-veil-1:       rgba(255,255,255,0.04);
+  --admin-veil-2:       rgba(255,255,255,0.07);
+  --admin-veil-3:       rgba(255,255,255,0.11);
 }
 
 [data-admin-theme='light'] {
@@ -1155,8 +1184,8 @@
   --admin-bg-elev:      #FFFFFF;            /* cards blancas                       */
   --admin-bg-elev-2:    #F9FAFD;            /* surface-soft                        */
   --admin-fg:           #10233F;            /* text-main — navy oscuro             */
-  --admin-fg-muted:     #5F728E;            /* text-muted                          */
-  --admin-fg-subtle:    #8EA0B8;            /* text-light                          */
+  --admin-fg-muted:     #4C5E78;            /* text-muted  — AA sobre bg/soft claros */
+  --admin-fg-subtle:    #5C6E88;            /* text-light  — AA en texto pequeño    */
   --admin-fg-faint:     #D8E1EE;            /* border base                         */
   --admin-accent:       #0B1F3A;            /* brand-navy — autoridad legal        */
   --admin-accent-soft:  #EAF1FF;            /* blue-soft — pills, hovers           */
@@ -1167,15 +1196,24 @@
   --admin-blue-soft:    #EAF1FF;
   --admin-red:          #B91C1C;            /* brand-red — solo errores/críticos   */
   --admin-red-soft:     #FEE2E2;
-  --admin-gold:         #A4730A;            /* brand-gold — oro profundo saturado  */
-  --admin-gold-soft:    #FAEBC8;            /* fondo gold-soft con más cuerpo      */
+  --admin-gold:         #8A6109;            /* brand-gold — oro profundo (AA como texto pequeño) */
+  --admin-gold-soft:    #FCF3D8;            /* fondo gold-soft (texto secundario AA) */
   --admin-gold-border:  #C9971B;
-  --admin-green:        #15803D;
+  --admin-green:        #166534;
   --admin-green-soft:   #DCFCE7;
   --admin-panel-grad:   linear-gradient(180deg, #FFFFFF 0%, #F8FAFE 100%);
   --admin-shadow:       0 18px 45px rgba(11,31,58,0.08);
   --admin-shadow-lg:    0 24px 60px rgba(11,31,58,0.13);
   --admin-shadow-gold:  0 18px 40px rgba(164,115,10,0.22);
+  /* Estado — texto/dot con AA garantizado SOBRE el -soft del mismo color (badges) */
+  --admin-green-on:     #166534;            /* verde profundo sobre #DCFCE7 */
+  --admin-gold-on:      #854D0E;            /* ámbar profundo sobre #FAEBC8 */
+  --admin-red-on:       #B91C1C;            /* rojo profundo sobre #FEE2E2  */
+  --admin-blue-on:      #1E4E9A;            /* azul institucional sobre #EAF1FF */
+  /* Velos de realce translúcidos (tinte navy sutil sobre superficie clara) */
+  --admin-veil-1:       rgba(16,35,63,0.03);
+  --admin-veil-2:       rgba(16,35,63,0.05);
+  --admin-veil-3:       rgba(16,35,63,0.07);
 }
 
 /* Fondo global del modo claro — radial gradient sutil azul/dorado sobre

@@ -40,7 +40,7 @@ type Post = {
 
 const DARK_INPUT_CLS =
   'w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 ' +
-  'bg-white/[0.04] border border-white/10 text-white placeholder:text-white/30'
+  'bg-white/[0.04] border border-white/10 text-[color:var(--admin-fg)] placeholder:text-white/30'
 
 const LABEL_STYLE: React.CSSProperties = {
   fontFamily: 'var(--font-mono-tech)',
@@ -52,8 +52,8 @@ const LABEL_STYLE: React.CSSProperties = {
 
 const BTN_PRIMARY =
   'inline-flex items-center gap-2 px-4 py-2.5 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50 ' +
-  'bg-white text-black text-[12px] font-semibold tracking-tight ' +
-  'shadow-[0_4px_18px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset]'
+  'bg-[color:var(--primary)] text-[color:var(--primary-foreground)] text-[12px] font-semibold tracking-tight ' +
+  'shadow-[var(--admin-shadow)]'
 
 export default function AdminComunidadPage() {
   const [posts, setPosts] = useState<Post[]>([])
@@ -251,13 +251,13 @@ export default function AdminComunidadPage() {
           className="rounded-2xl p-4 transition-all duration-300 cursor-pointer hover:-translate-y-0.5"
           style={{
             background: stats.zellePending > 0
-              ? 'linear-gradient(180deg, rgba(250,204,21,0.10), var(--admin-bg-elev))'
+              ? 'linear-gradient(180deg, var(--admin-gold-soft), var(--admin-bg-elev))'
               : 'var(--admin-panel-grad)',
             border: stats.zellePending > 0
-              ? '0.5px solid rgba(250,204,21,0.3)'
+              ? '0.5px solid var(--admin-gold)'
               : '0.5px solid var(--admin-border-strong)',
             backdropFilter: 'blur(20px)',
-            boxShadow: stats.zellePending > 0 ? '0 0 24px rgba(250,204,21,0.15)' : 'none',
+            boxShadow: stats.zellePending > 0 ? 'var(--admin-shadow)' : 'none',
           }}
         >
           <div className="flex items-center justify-between">
@@ -265,9 +265,9 @@ export default function AdminComunidadPage() {
               <div
                 className="w-11 h-11 rounded-xl flex items-center justify-center"
                 style={{
-                  background: stats.zellePending > 0 ? 'rgba(250,204,21,0.15)' : 'var(--admin-accent-soft)',
-                  border: stats.zellePending > 0 ? '0.5px solid rgba(250,204,21,0.3)' : '0.5px solid var(--admin-border-strong)',
-                  color: stats.zellePending > 0 ? '#FACC15' : 'var(--admin-fg-muted)',
+                  background: stats.zellePending > 0 ? 'var(--admin-gold-soft)' : 'var(--admin-accent-soft)',
+                  border: stats.zellePending > 0 ? '0.5px solid var(--admin-gold)' : '0.5px solid var(--admin-border-strong)',
+                  color: stats.zellePending > 0 ? 'var(--admin-gold)' : 'var(--admin-fg-muted)',
                 }}
               >
                 <DollarSign className="w-5 h-5" />
@@ -287,13 +287,13 @@ export default function AdminComunidadPage() {
               <span
                 className="inline-flex items-center gap-1 px-3 py-1 rounded-full"
                 style={{
-                  background: '#FACC15',
+                  background: 'var(--admin-gold)',
                   color: 'var(--admin-bg-deep)',
                   fontFamily: 'var(--font-mono-tech)',
                   fontSize: 11,
                   fontWeight: 700,
                   letterSpacing: '0.05em',
-                  boxShadow: '0 0 16px rgba(250,204,21,0.4)',
+                  boxShadow: 'var(--admin-shadow)',
                 }}
               >
                 {stats.zellePending} →
@@ -337,8 +337,8 @@ export default function AdminComunidadPage() {
               key={day.day_of_week}
               className="flex items-center gap-3 px-4 py-3 rounded-xl"
               style={{
-                background: day.is_available ? 'rgba(250,204,21,0.06)' : 'rgba(255,255,255,0.025)',
-                border: day.is_available ? '0.5px solid rgba(250,204,21,0.25)' : '0.5px solid var(--admin-border)',
+                background: day.is_available ? 'var(--admin-gold-soft)' : 'var(--admin-veil-1)',
+                border: day.is_available ? '0.5px solid var(--admin-gold)' : '0.5px solid var(--admin-border)',
               }}
             >
               <button
@@ -349,9 +349,9 @@ export default function AdminComunidadPage() {
                   width: 40,
                   height: 22,
                   borderRadius: 11,
-                  background: day.is_available ? '#FACC15' : 'var(--admin-border)',
-                  border: day.is_available ? '0.5px solid #FACC15' : '0.5px solid rgba(255,255,255,0.15)',
-                  boxShadow: day.is_available ? '0 0 12px rgba(250,204,21,0.3)' : 'none',
+                  background: day.is_available ? 'var(--admin-gold)' : 'var(--admin-border)',
+                  border: day.is_available ? '0.5px solid var(--admin-gold)' : '0.5px solid var(--admin-border-strong)',
+                  boxShadow: day.is_available ? 'var(--admin-shadow)' : 'none',
                 }}
               >
                 <span
@@ -370,7 +370,7 @@ export default function AdminComunidadPage() {
                   width: 96,
                   fontSize: 13,
                   fontWeight: 600,
-                  color: day.is_available ? '#FFFFFF' : 'var(--admin-fg-subtle)',
+                  color: day.is_available ? 'var(--admin-fg)' : 'var(--admin-fg-subtle)',
                   letterSpacing: '-0.005em',
                 }}
               >
@@ -430,12 +430,12 @@ export default function AdminComunidadPage() {
                   onClick={() => setNewPost({ ...newPost, type })}
                   className="px-3 py-1.5 rounded-full transition-all duration-300"
                   style={{
-                    background: isActive ? '#FFFFFF' : 'transparent',
-                    color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
+                    background: isActive ? 'var(--primary)' : 'transparent',
+                    color: isActive ? 'var(--primary-foreground)' : 'var(--admin-fg-muted)',
                     fontSize: 11.5,
                     fontWeight: isActive ? 700 : 500,
                     letterSpacing: '-0.005em',
-                    boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.15)' : 'none',
+                    boxShadow: isActive ? 'var(--admin-shadow)' : 'none',
                   }}
                 >
                   {type === 'text' && '📝 Texto'}
@@ -498,7 +498,7 @@ export default function AdminComunidadPage() {
               className="rounded-2xl p-4"
               style={{
                 background: 'var(--admin-panel-grad)',
-                border: post.pinned ? '0.5px solid rgba(250,204,21,0.3)' : '0.5px solid var(--admin-border-strong)',
+                border: post.pinned ? '0.5px solid var(--admin-gold)' : '0.5px solid var(--admin-border-strong)',
                 backdropFilter: 'blur(20px)',
               }}
             >
@@ -509,7 +509,7 @@ export default function AdminComunidadPage() {
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
                       style={{
                         background: 'var(--admin-accent-soft)',
-                        border: '0.5px solid rgba(255,255,255,0.12)',
+                        border: '0.5px solid var(--admin-border-strong)',
                         fontFamily: 'var(--font-mono-tech)',
                         fontSize: 9,
                         fontWeight: 700,
@@ -525,12 +525,12 @@ export default function AdminComunidadPage() {
                       <span
                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
                         style={{
-                          background: 'rgba(250,204,21,0.12)',
-                          border: '0.5px solid rgba(250,204,21,0.3)',
+                          background: 'var(--admin-gold-soft)',
+                          border: '0.5px solid var(--admin-gold)',
                           fontFamily: 'var(--font-mono-tech)',
                           fontSize: 9,
                           fontWeight: 700,
-                          color: 'var(--admin-gold)',
+                          color: 'var(--admin-gold-on)',
                           letterSpacing: '0.1em',
                         }}
                       >
@@ -578,7 +578,7 @@ export default function AdminComunidadPage() {
                     onClick={() => togglePin(post.id, post.pinned)}
                     title={post.pinned ? 'Desfijar' : 'Fijar'}
                     className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-white/10"
-                    style={{ color: post.pinned ? '#FACC15' : 'var(--admin-fg-muted)' }}
+                    style={{ color: post.pinned ? 'var(--admin-gold)' : 'var(--admin-fg-muted)' }}
                   >
                     {post.pinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
                   </button>
@@ -626,8 +626,8 @@ function Panel({
   iconTone?: 'white' | 'yellow'
 }) {
   const tone = iconTone === 'yellow'
-    ? { bg: 'rgba(250,204,21,0.12)', border: 'rgba(250,204,21,0.3)', color: 'var(--admin-gold)' }
-    : { bg: 'var(--admin-accent-soft)', border: 'rgba(255,255,255,0.12)', color: 'var(--admin-fg)' }
+    ? { bg: 'var(--admin-gold-soft)', border: 'var(--admin-gold)', color: 'var(--admin-gold)' }
+    : { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', color: 'var(--admin-fg)' }
 
   return (
     <div
@@ -641,7 +641,7 @@ function Panel({
       <span
         aria-hidden
         className="absolute inset-0 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse at top, rgba(255,255,255,0.03), transparent 60%)' }}
+        style={{ background: 'radial-gradient(ellipse at top, var(--admin-veil-1), transparent 60%)' }}
       />
       <div className="relative">
         <div className="flex items-start gap-3 mb-4">
@@ -669,9 +669,9 @@ function Panel({
 }
 
 const STAT_TONE = {
-  white:   { valueColor: '#FFFFFF' },
-  success: { valueColor: '#86EFAC' },
-  neutral: { valueColor: '#CBD5E1' },
+  white:   { valueColor: 'var(--admin-fg)' },
+  success: { valueColor: 'var(--admin-green-on)' },
+  neutral: { valueColor: 'var(--admin-fg-muted)' },
 } as const
 
 function StatCard({ icon, label, value, tone }: { icon?: React.ReactNode; label: string; value: number; tone: keyof typeof STAT_TONE }) {
@@ -686,7 +686,7 @@ function StatCard({ icon, label, value, tone }: { icon?: React.ReactNode; label:
       }}
     >
       {icon && (
-        <div className="mb-2 inline-flex items-center justify-center w-8 h-8 rounded-lg" style={{ background: 'var(--admin-accent-soft)', border: '0.5px solid rgba(255,255,255,0.12)', color: 'var(--admin-fg)' }}>
+        <div className="mb-2 inline-flex items-center justify-center w-8 h-8 rounded-lg" style={{ background: 'var(--admin-accent-soft)', border: '0.5px solid var(--admin-border-strong)', color: 'var(--admin-fg)' }}>
           {icon}
         </div>
       )}

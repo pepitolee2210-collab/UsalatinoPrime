@@ -54,9 +54,9 @@ function evalField(primary: string, supplementary?: string): FieldStatus {
 }
 
 function StatusIcon({ status }: { status: FieldStatus }) {
-  if (status === 'filled') return <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-  if (status === 'unknown') return <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-  return <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+  if (status === 'filled') return <CheckCircle className="w-3.5 h-3.5 text-[var(--admin-green)] flex-shrink-0" />
+  if (status === 'unknown') return <AlertTriangle className="w-3.5 h-3.5 text-[var(--admin-gold)] flex-shrink-0" />
+  return <AlertCircle className="w-3.5 h-3.5 text-[var(--admin-red)] flex-shrink-0" />
 }
 
 export function ReadinessPanel({ tutorData, minorStories, absentParents, supplementaryData, caseId }: ReadinessPanelProps) {
@@ -187,10 +187,10 @@ export function ReadinessPanel({ tutorData, minorStories, absentParents, supplem
 
   const overallColor =
     report.overall === 'ready'
-      ? 'border-green-200 bg-green-50/60'
+      ? 'border-green-200 bg-[var(--admin-green-soft)]'
       : report.overall === 'warnings'
-        ? 'border-amber-200 bg-amber-50/60'
-        : 'border-red-200 bg-red-50/60'
+        ? 'border-amber-200 bg-[var(--admin-gold-soft)]'
+        : 'border-red-200 bg-[var(--admin-red-soft)]'
 
   const overallLabel =
     report.overall === 'ready'
@@ -201,11 +201,11 @@ export function ReadinessPanel({ tutorData, minorStories, absentParents, supplem
 
   const overallIcon =
     report.overall === 'ready' ? (
-      <CheckCircle className="w-4 h-4 text-green-600" />
+      <CheckCircle className="w-4 h-4 text-[var(--admin-green-on)]" />
     ) : report.overall === 'warnings' ? (
-      <AlertTriangle className="w-4 h-4 text-amber-600" />
+      <AlertTriangle className="w-4 h-4 text-[var(--admin-gold-on)]" />
     ) : (
-      <AlertCircle className="w-4 h-4 text-red-600" />
+      <AlertCircle className="w-4 h-4 text-[var(--admin-red-on)]" />
     )
 
   return (
@@ -217,40 +217,40 @@ export function ReadinessPanel({ tutorData, minorStories, absentParents, supplem
       >
         <div className="flex items-center gap-2">
           {overallIcon}
-          <span className="text-sm font-bold text-gray-900">Verificación antes de generar</span>
+          <span className="text-sm font-bold text-[var(--admin-fg)]">Verificación antes de generar</span>
           <span
             className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
               report.overall === 'ready'
-                ? 'bg-green-200 text-green-900'
+                ? 'bg-[var(--admin-green-soft)] text-[var(--admin-green-on)]'
                 : report.overall === 'warnings'
-                  ? 'bg-amber-200 text-amber-900'
-                  : 'bg-red-200 text-red-900'
+                  ? 'bg-[var(--admin-gold-soft)] text-[var(--admin-gold-on)]'
+                  : 'bg-[var(--admin-red-soft)] text-[var(--admin-red-on)]'
             }`}
           >
             {overallLabel}
           </span>
-          <span className="text-[11px] text-gray-500 font-mono tabular-nums">
+          <span className="text-[11px] text-[var(--admin-fg-muted)] font-mono tabular-nums">
             {report.filled}/{report.total} completos
           </span>
         </div>
-        {open ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+        {open ? <ChevronUp className="w-4 h-4 text-[var(--admin-fg-muted)]" /> : <ChevronDown className="w-4 h-4 text-[var(--admin-fg-muted)]" />}
       </button>
 
       {open && (
         <div className="px-4 pb-4 space-y-3">
-          <div className="flex items-center gap-3 text-[11px] text-gray-600 flex-wrap">
+          <div className="flex items-center gap-3 text-[11px] text-[var(--admin-fg-muted)] flex-wrap">
             <span className="flex items-center gap-1">
-              <CheckCircle className="w-3 h-3 text-green-500" />
+              <CheckCircle className="w-3 h-3 text-[var(--admin-green)]" />
               <strong>{report.filled}</strong> con dato real
             </span>
             <span className="flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3 text-amber-500" />
+              <AlertTriangle className="w-3 h-3 text-[var(--admin-gold)]" />
               <strong>{report.unknown}</strong> &ldquo;No tengo dato&rdquo; → el documento dirá &ldquo;manifiesta no conocer&rdquo;
             </span>
             <span className="flex items-center gap-1">
-              <AlertCircle className="w-3 h-3 text-red-500" />
+              <AlertCircle className="w-3 h-3 text-[var(--admin-red)]" />
               <strong>{report.missing}</strong> vacío → el documento saldrá con{' '}
-              <code className="text-[10px] bg-red-100 px-1 rounded">[FALTA:...]</code>
+              <code className="text-[10px] bg-[var(--admin-red-soft)] px-1 rounded">[FALTA:...]</code>
             </span>
           </div>
 
@@ -259,32 +259,32 @@ export function ReadinessPanel({ tutorData, minorStories, absentParents, supplem
           {caseId && jurisdiction && (
             <div className={`rounded-lg border p-2.5 ${
               jurisdiction.hasCourt && jurisdiction.confidence === 'high'
-                ? 'border-green-200 bg-white/60'
+                ? 'border-green-200 bg-[var(--admin-veil-1)]'
                 : jurisdiction.hasCourt
-                  ? 'border-amber-200 bg-white'
+                  ? 'border-amber-200 bg-[var(--admin-bg-elev)]'
                   : jurisdiction.stateLabel
-                    ? 'border-amber-200 bg-white'
-                    : 'border-red-200 bg-white'
+                    ? 'border-amber-200 bg-[var(--admin-bg-elev)]'
+                    : 'border-red-200 bg-[var(--admin-bg-elev)]'
             }`}>
               <div className="flex items-center gap-2 mb-1">
-                <Scale className="w-3.5 h-3.5 text-[#002855]" />
-                <span className="text-xs font-bold text-gray-800">Jurisdicción</span>
+                <Scale className="w-3.5 h-3.5 text-[var(--admin-accent)]" />
+                <span className="text-xs font-bold text-[var(--admin-fg)]">Jurisdicción</span>
                 {jurisdiction.hasCourt ? (
                   jurisdiction.confidence === 'high' ? (
-                    <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                    <CheckCircle className="w-3.5 h-3.5 text-[var(--admin-green)]" />
                   ) : (
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                    <AlertTriangle className="w-3.5 h-3.5 text-[var(--admin-gold)]" />
                   )
                 ) : (
-                  <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                  <AlertCircle className="w-3.5 h-3.5 text-[var(--admin-red)]" />
                 )}
               </div>
-              <div className="pl-5 text-[11px] text-gray-700 leading-relaxed">
+              <div className="pl-5 text-[11px] text-[var(--admin-fg)] leading-relaxed">
                 {jurisdiction.hasCourt ? (
                   <>
-                    <span className="text-gray-600">Corte detectada:</span>{' '}
+                    <span className="text-[var(--admin-fg-muted)]">Corte detectada:</span>{' '}
                     <strong>{jurisdiction.courtName}</strong>{' '}
-                    <span className="text-gray-500">— {jurisdiction.stateLabel}</span>
+                    <span className="text-[var(--admin-fg-muted)]">— {jurisdiction.stateLabel}</span>
                   </>
                 ) : jurisdiction.stateLabel ? (
                   <>
@@ -292,7 +292,7 @@ export function ReadinessPanel({ tutorData, minorStories, absentParents, supplem
                     Abre el panel <em>Jurisdicción detectada</em> arriba para investigar.
                   </>
                 ) : (
-                  <>No se pudo detectar el estado del cliente — los documentos saldrán con <code className="text-[10px] bg-red-100 px-1 rounded">[FALTA: Nombre del tribunal]</code>.</>
+                  <>No se pudo detectar el estado del cliente — los documentos saldrán con <code className="text-[10px] bg-[var(--admin-red-soft)] px-1 rounded">[FALTA: Nombre del tribunal]</code>.</>
                 )}
               </div>
             </div>
@@ -308,21 +308,21 @@ export function ReadinessPanel({ tutorData, minorStories, absentParents, supplem
                   key={si}
                   className={`rounded-lg border p-2.5 ${
                     sectionMissing > 0
-                      ? 'border-red-200 bg-white'
+                      ? 'border-red-200 bg-[var(--admin-bg-elev)]'
                       : sectionUnknown > 0
-                        ? 'border-amber-200 bg-white'
-                        : 'border-green-200 bg-white/60'
+                        ? 'border-amber-200 bg-[var(--admin-bg-elev)]'
+                        : 'border-green-200 bg-[var(--admin-veil-1)]'
                   }`}
                 >
                   <div className="flex items-center gap-2 mb-1.5">
                     {sectionOK ? (
-                      <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                      <CheckCircle className="w-3.5 h-3.5 text-[var(--admin-green)]" />
                     ) : sectionMissing > 0 ? (
-                      <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                      <AlertCircle className="w-3.5 h-3.5 text-[var(--admin-red)]" />
                     ) : (
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                      <AlertTriangle className="w-3.5 h-3.5 text-[var(--admin-gold)]" />
                     )}
-                    <span className="text-xs font-bold text-gray-800">{section.name}</span>
+                    <span className="text-xs font-bold text-[var(--admin-fg)]">{section.name}</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 pl-5">
                     {section.fields.map((f, fi) => (
@@ -331,10 +331,10 @@ export function ReadinessPanel({ tutorData, minorStories, absentParents, supplem
                         <span
                           className={
                             f.status === 'missing'
-                              ? 'text-red-600 font-medium'
+                              ? 'text-[var(--admin-red-on)] font-medium'
                               : f.status === 'unknown'
-                                ? 'text-amber-700'
-                                : 'text-gray-700'
+                                ? 'text-[var(--admin-gold-on)]'
+                                : 'text-[var(--admin-fg)]'
                           }
                         >
                           {f.label}
@@ -347,8 +347,8 @@ export function ReadinessPanel({ tutorData, minorStories, absentParents, supplem
             })}
           </div>
 
-          <div className="flex items-start gap-2 text-[11px] text-gray-600 p-2 bg-white/70 rounded-lg border border-gray-200">
-            <HelpCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-gray-400" />
+          <div className="flex items-start gap-2 text-[11px] text-[var(--admin-fg-muted)] p-2 bg-[var(--admin-veil-1)] rounded-lg border border-[var(--admin-border)]">
+            <HelpCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-[var(--admin-fg-subtle)]" />
             <span>
               Completa los campos en rojo desde <strong>Datos Suplementarios</strong> (abajo) antes de generar.
               Los amarillos son válidos — el documento redactará &ldquo;manifiesta no conocer&rdquo; en su lugar.

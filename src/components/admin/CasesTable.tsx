@@ -52,7 +52,7 @@ export function CasesTable({ cases }: CasesTableProps) {
             <tr
               style={{
                 borderBottom: '0.5px solid var(--admin-border)',
-                background: 'rgba(255,255,255,0.02)',
+                background: 'var(--admin-veil-1)',
               }}
             >
               <Th>Caso</Th>
@@ -80,7 +80,7 @@ export function CasesTable({ cases }: CasesTableProps) {
                   style={{
                     borderBottom: idx < cases.length - 1 ? '0.5px solid var(--admin-accent-soft)' : 'none',
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--admin-veil-1)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
                   <Td>
@@ -125,7 +125,7 @@ export function CasesTable({ cases }: CasesTableProps) {
                       onClick={() => handleDelete(c.id as string, c.case_number as string)}
                       disabled={deleting === c.id}
                       className="inline-flex items-center justify-center w-8 h-8 rounded-lg transition-colors hover:bg-red-500/10"
-                      style={{ color: deleting === c.id ? 'var(--admin-fg-subtle)' : '#FCA5A5' }}
+                      style={{ color: deleting === c.id ? 'var(--admin-fg-subtle)' : 'var(--admin-red-on)' }}
                     >
                       {deleting === c.id ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -189,10 +189,10 @@ function mapStatusVariant(status: string): StatusVariant {
 }
 
 const STATUS_STYLES: Record<StatusVariant, { bg: string; border: string; dot: string; text: string }> = {
-  active:    { bg: 'rgba(34,197,94,0.10)', border: 'rgba(34,197,94,0.3)', dot: '#4ADE80', text: '#86EFAC' },
-  pending:   { bg: 'rgba(250,204,21,0.10)', border: 'rgba(250,204,21,0.3)', dot: '#FACC15', text: '#FDE68A' },
-  completed: { bg: 'var(--admin-border)', border: 'rgba(255,255,255,0.18)', dot: '#FFFFFF', text: '#FFFFFF' },
-  paused:    { bg: 'rgba(148,163,184,0.10)', border: 'rgba(148,163,184,0.3)', dot: '#94A3B8', text: '#CBD5E1' },
+  active:    { bg: 'var(--admin-green-soft)', border: 'rgba(34,197,94,0.3)', dot: 'var(--admin-green)', text: 'var(--admin-green-on)' },
+  pending:   { bg: 'var(--admin-gold-soft)', border: 'rgba(250,204,21,0.3)', dot: 'var(--admin-gold)', text: 'var(--admin-gold-on)' },
+  completed: { bg: 'var(--admin-border)', border: 'var(--admin-border-strong)', dot: 'var(--admin-fg)', text: 'var(--admin-fg)' },
+  paused:    { bg: 'rgba(148,163,184,0.10)', border: 'rgba(148,163,184,0.3)', dot: 'var(--admin-fg-muted)', text: 'var(--admin-fg-muted)' },
   neutral:   { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-fg-muted)', text: 'var(--admin-fg-muted)' },
 }
 
@@ -249,11 +249,11 @@ function ProgressIndicator({ docCount, subTotal, subDone }: { docCount: number; 
         <span
           className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded"
           style={{
-            background: allSubmitted ? 'rgba(34,197,94,0.12)' : 'rgba(250,204,21,0.10)',
+            background: allSubmitted ? 'var(--admin-green-soft)' : 'var(--admin-gold-soft)',
             border: allSubmitted ? '0.5px solid rgba(34,197,94,0.3)' : '0.5px solid rgba(250,204,21,0.3)',
             fontFamily: 'var(--font-mono-tech)',
             fontSize: 10,
-            color: allSubmitted ? '#86EFAC' : '#FDE68A',
+            color: allSubmitted ? 'var(--admin-green-on)' : 'var(--admin-gold-on)',
             fontWeight: 600,
             letterSpacing: '0.02em',
           }}

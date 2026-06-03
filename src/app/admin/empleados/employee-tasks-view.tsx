@@ -45,11 +45,11 @@ interface StatusStyle {
 }
 
 const STATUS_STYLES: Record<string, StatusStyle> = {
-  assigned:         { label: 'Asignado',           bg: 'rgba(96,165,250,0.10)',  border: 'rgba(96,165,250,0.3)',  text: '#93C5FD', dot: '#60A5FA', icon: Clock },
-  in_progress:      { label: 'En progreso',         bg: 'rgba(250,204,21,0.10)',  border: 'rgba(250,204,21,0.3)',  text: '#FDE68A', dot: '#FACC15', icon: FileText },
-  submitted:        { label: 'Enviado a revisión',  bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.3)', text: '#C4B5FD', dot: '#A78BFA', icon: Send },
-  needs_correction: { label: 'Correcciones',        bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', text: '#FCA5A5', dot: '#F87171', icon: AlertTriangle },
-  approved:         { label: 'Aprobado',            bg: 'rgba(34,197,94,0.10)',   border: 'rgba(34,197,94,0.3)',   text: '#86EFAC', dot: '#4ADE80', icon: CheckCircle },
+  assigned:         { label: 'Asignado',           bg: 'var(--admin-blue-soft)',  border: 'var(--admin-blue)',  text: 'var(--admin-blue-on)', dot: 'var(--admin-blue)', icon: Clock },
+  in_progress:      { label: 'En progreso',         bg: 'var(--admin-gold-soft)',  border: 'var(--admin-gold)',  text: 'var(--admin-gold-on)', dot: 'var(--admin-gold)', icon: FileText },
+  submitted:        { label: 'Enviado a revisión',  bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', text: 'var(--admin-accent)', dot: 'var(--admin-accent)', icon: Send },
+  needs_correction: { label: 'Correcciones',        bg: 'var(--admin-red-soft)', border: 'var(--admin-red)', text: 'var(--admin-red-on)', dot: 'var(--admin-red)', icon: AlertTriangle },
+  approved:         { label: 'Aprobado',            bg: 'var(--admin-green-soft)',   border: 'var(--admin-green)',   text: 'var(--admin-green-on)', dot: 'var(--admin-green)', icon: CheckCircle },
   completed:        { label: 'Completado',          bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', text: 'var(--admin-fg-muted)', dot: 'var(--admin-fg-muted)', icon: CheckCircle },
 }
 
@@ -62,12 +62,12 @@ interface ActiveCase {
 
 const BTN_PRIMARY =
   'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50 ' +
-  'bg-white text-black text-[12px] font-semibold tracking-tight ' +
-  'shadow-[0_4px_18px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset]'
+  'bg-[color:var(--primary)] text-[color:var(--primary-foreground)] text-[12px] font-semibold tracking-tight ' +
+  'shadow-[var(--admin-shadow)]'
 
 const BTN_GHOST =
   'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 hover:bg-white/10 active:scale-95 disabled:opacity-50 ' +
-  'bg-white/[0.04] border border-white/10 text-white text-[11px] font-semibold tracking-tight'
+  'bg-white/[0.04] border border-white/10 text-[color:var(--admin-fg)] text-[11px] font-semibold tracking-tight'
 
 export function EmployeeTasksView({ employees, assignments: initial, services, activeCases }: {
   employees: Employee[]
@@ -196,8 +196,8 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(255,255,255,0.15), var(--admin-accent-soft))',
-                      border: '0.5px solid rgba(255,255,255,0.18)',
+                      background: 'linear-gradient(135deg, var(--admin-veil-3), var(--admin-accent-soft))',
+                      border: '0.5px solid var(--admin-border-strong)',
                       color: 'var(--admin-fg)',
                       fontSize: 12,
                       fontWeight: 700,
@@ -217,12 +217,12 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                     <span
                       className="ml-auto inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
                       style={{
-                        background: 'rgba(167,139,250,0.10)',
-                        border: '0.5px solid rgba(167,139,250,0.3)',
+                        background: 'var(--admin-accent-soft)',
+                        border: '0.5px solid var(--admin-border-strong)',
                         fontFamily: 'var(--font-mono-tech)',
                         fontSize: 9,
                         fontWeight: 700,
-                        color: '#C4B5FD',
+                        color: 'var(--admin-accent)',
                         letterSpacing: '0.05em',
                       }}
                     >
@@ -260,12 +260,12 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                 onClick={() => setFilter(f.value)}
                 className="px-3 py-1.5 rounded-full transition-all duration-300"
                 style={{
-                  background: isActive ? '#FFFFFF' : 'transparent',
-                  color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
+                  background: isActive ? 'var(--primary)' : 'transparent',
+                  color: isActive ? 'var(--primary-foreground)' : 'var(--admin-fg-muted)',
                   fontSize: 11.5,
                   fontWeight: isActive ? 700 : 500,
                   letterSpacing: '-0.005em',
-                  boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.15)' : 'none',
+                  boxShadow: isActive ? 'var(--admin-shadow)' : 'none',
                 }}
               >
                 {f.label}
@@ -350,12 +350,12 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                     }}
                   >
                     <span>{serviceLabel.toUpperCase()}</span>
-                    <span style={{ color: '#3F3F46' }}>·</span>
+                    <span style={{ color: 'var(--admin-fg-subtle)' }}>·</span>
                     <span className="inline-flex items-center gap-1">
                       <User className="w-3 h-3" />
                       {a.employee ? `${a.employee.first_name} ${a.employee.last_name}`.toUpperCase() : 'SIN ASIGNAR'}
                     </span>
-                    <span style={{ color: '#3F3F46' }}>·</span>
+                    <span style={{ color: 'var(--admin-fg-subtle)' }}>·</span>
                     <span>{new Date(a.assigned_at).toLocaleDateString('es-US', { day: 'numeric', month: 'short' }).toUpperCase()}</span>
                   </div>
                 </div>
@@ -370,8 +370,8 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
               <div
                 className="p-3.5 rounded-xl mb-3"
                 style={{
-                  background: 'rgba(250,204,21,0.06)',
-                  border: '0.5px solid rgba(250,204,21,0.25)',
+                  background: 'var(--admin-gold-soft)',
+                  border: '0.5px solid var(--admin-gold)',
                 }}
               >
                 <div className="flex items-center justify-between mb-2">
@@ -381,7 +381,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                       fontFamily: 'var(--font-mono-tech)',
                       fontSize: 10,
                       fontWeight: 700,
-                      color: 'var(--admin-gold)',
+                      color: 'var(--admin-gold-on)',
                       letterSpacing: '0.18em',
                     }}
                   >
@@ -395,7 +395,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                         fontFamily: 'var(--font-mono-tech)',
                         fontSize: 10,
                         fontWeight: 700,
-                        color: 'var(--admin-gold)',
+                        color: 'var(--admin-gold-on)',
                         letterSpacing: '0.1em',
                       }}
                     >
@@ -434,9 +434,9 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                     </div>
                   </div>
                 ) : (
-                  <p style={{ fontSize: 13, color: 'var(--admin-gold)', whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>
+                  <p style={{ fontSize: 13, color: 'var(--admin-gold-on)', whiteSpace: 'pre-wrap', lineHeight: 1.55 }}>
                     {a.task_description || (
-                      <span style={{ color: 'var(--admin-fg-subtle)', fontStyle: 'italic' }}>Sin notas — toca Editar para agregar</span>
+                      <span style={{ color: 'var(--admin-fg-muted)', fontStyle: 'italic' }}>Sin notas — toca Editar para agregar</span>
                     )}
                   </p>
                 )}
@@ -467,12 +467,12 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                   <label
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-opacity hover:opacity-90 cursor-pointer"
                     style={{
-                      background: 'var(--admin-bg-elev)',
-                      color: 'var(--admin-bg-deep)',
+                      background: 'var(--primary)',
+                      color: 'var(--primary-foreground)',
                       fontSize: 11,
                       fontWeight: 600,
                       letterSpacing: '-0.005em',
-                      boxShadow: '0 0 12px rgba(255,255,255,0.15)',
+                      boxShadow: 'var(--admin-shadow)',
                     }}
                   >
                     {uploadingId === a.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
@@ -540,7 +540,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                     {a.submissionStats.total} ENVÍO{a.submissionStats.total !== 1 ? 'S' : ''}
                   </span>
                   {a.submissionStats.submitted > 0 && (
-                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, color: '#C4B5FD', letterSpacing: '0.05em' }}>
+                    <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, color: 'var(--admin-accent)', letterSpacing: '0.05em' }}>
                       {a.submissionStats.submitted} PENDIENTE{a.submissionStats.submitted !== 1 ? 'S' : ''}
                     </span>
                   )}
@@ -567,7 +567,7 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                       disabled={savingId === a.id}
                       className="px-2.5 py-1 rounded-full transition-all duration-200"
                       style={{
-                        background: isActive ? sc.bg : 'rgba(255,255,255,0.025)',
+                        background: isActive ? sc.bg : 'var(--admin-veil-1)',
                         border: isActive ? `0.5px solid ${sc.border}` : '0.5px solid var(--admin-accent-soft)',
                         color: isActive ? sc.text : 'var(--admin-fg-subtle)',
                         fontFamily: 'var(--font-mono-tech)',
@@ -599,9 +599,9 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
                   disabled={savingId === a.id}
                   className="ml-auto inline-flex items-center gap-1 px-3 py-1 rounded-full transition-all duration-200 hover:bg-red-500/15"
                   style={{
-                    background: 'rgba(248,113,113,0.10)',
-                    border: '0.5px solid rgba(248,113,113,0.25)',
-                    color: 'var(--admin-red)',
+                    background: 'var(--admin-red-soft)',
+                    border: '0.5px solid var(--admin-red)',
+                    color: 'var(--admin-red-on)',
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 9,
                     fontWeight: 700,
@@ -624,10 +624,10 @@ export function EmployeeTasksView({ employees, assignments: initial, services, a
 // ════════════════════════════════════════════════════════════════════
 
 const STAT_TONE = {
-  white:   { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)',  valueColor: '#FFFFFF' },
-  info:    { bg: 'rgba(96,165,250,0.10)',  border: 'rgba(96,165,250,0.3)',   valueColor: '#93C5FD' },
-  purple:  { bg: 'rgba(167,139,250,0.10)', border: 'rgba(167,139,250,0.3)',  valueColor: '#C4B5FD' },
-  success: { bg: 'rgba(34,197,94,0.10)',   border: 'rgba(34,197,94,0.3)',    valueColor: '#86EFAC' },
+  white:   { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)',  valueColor: 'var(--admin-fg)' },
+  info:    { bg: 'var(--admin-blue-soft)',  border: 'var(--admin-blue)',   valueColor: 'var(--admin-blue-on)' },
+  purple:  { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)',  valueColor: 'var(--admin-accent)' },
+  success: { bg: 'var(--admin-green-soft)',   border: 'var(--admin-green)',    valueColor: 'var(--admin-green-on)' },
 } as const
 
 function StatCard({ label, value, tone }: { label: string; value: number; tone: keyof typeof STAT_TONE }) {

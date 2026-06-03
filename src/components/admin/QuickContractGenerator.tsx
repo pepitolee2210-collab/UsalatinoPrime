@@ -1401,9 +1401,9 @@ export function QuickContractGenerator({
             )}
 
             {existingClient && !existingClient.found && (existingClient.alternative_matches?.length ?? 0) > 0 && !editData && (
-              <div className="rounded-xl border-2 border-amber-300 bg-[var(--admin-gold-soft)] p-3 text-sm">
+              <div className="rounded-xl border-2 border-[var(--admin-gold)] bg-[var(--admin-gold-soft)] p-3 text-sm">
                 <div className="flex items-start gap-2">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full border-[var(--admin-gold)] text-yellow-200 flex items-center justify-center">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full border-[var(--admin-gold)] text-[var(--admin-gold-on)] flex items-center justify-center">
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                       <line x1="12" y1="9" x2="12" y2="13"/>
@@ -1411,7 +1411,7 @@ export function QuickContractGenerator({
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-yellow-200">
+                    <p className="font-semibold text-[var(--admin-gold-on)]">
                       Posible duplicado detectado
                     </p>
                     <p className="text-xs text-[var(--admin-gold)] mt-0.5">
@@ -1423,12 +1423,12 @@ export function QuickContractGenerator({
                         <div key={m.client.id} className="rounded-lg bg-[var(--admin-accent-soft)] border border-[var(--admin-gold)] p-2">
                           <div className="flex items-center justify-between gap-2 flex-wrap">
                             <div className="min-w-0">
-                              <p className="text-xs font-semibold text-yellow-200">
+                              <p className="text-xs font-semibold text-[var(--admin-gold-on)]">
                                 {m.client.first_name} {m.client.last_name}
                               </p>
                               <p className="text-[11px] text-[var(--admin-gold)]">
                                 Teléfono registrado: <span className="font-mono">{m.client.phone || '—'}</span>
-                                <span className="ml-2 text-amber-600">
+                                <span className="ml-2 text-[var(--admin-gold-on)]">
                                   · coincide por {m.reason === 'passport' ? 'pasaporte' : 'nombre'}
                                 </span>
                               </p>
@@ -1454,7 +1454,7 @@ export function QuickContractGenerator({
                                 </li>
                               ))}
                               {m.contracts.length > 3 && (
-                                <li className="text-[11px] text-amber-600 italic">y {m.contracts.length - 3} más...</li>
+                                <li className="text-[11px] text-[var(--admin-gold-on)] italic">y {m.contracts.length - 3} más...</li>
                               )}
                             </ul>
                           )}
@@ -1539,13 +1539,13 @@ export function QuickContractGenerator({
                       <Loader2 className="w-3 h-3 text-[var(--admin-fg)] animate-spin ml-auto" />
                     )}
                     {zipLookup === 'found' && (
-                      <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold text-green-600">
+                      <span className="ml-auto inline-flex items-center gap-1 text-[10px] font-semibold text-[var(--admin-green)]">
                         <CheckCircle2 className="w-3 h-3" />
                         Auto-completado
                       </span>
                     )}
                     {zipLookup === 'not-found' && (
-                      <span className="ml-auto text-[10px] font-semibold text-red-500">
+                      <span className="ml-auto text-[10px] font-semibold text-[var(--admin-red)]">
                         ZIP no encontrado
                       </span>
                     )}
@@ -1598,7 +1598,7 @@ export function QuickContractGenerator({
               && (asylumFamilyType === 'married' || asylumFamilyType === 'cohabiting_with_kids') && (
               <div className="space-y-3 pt-2">
                 <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-purple-700" />
+                  <Users className="w-4 h-4 text-[var(--admin-accent)]" />
                   <span className="text-sm font-semibold text-[var(--admin-fg-muted)]">
                     {asylumFamilyType === 'married' ? 'Cónyuge' : 'Conviviente'}
                   </span>
@@ -1694,8 +1694,8 @@ export function QuickContractGenerator({
                 disabled={generating}
                 className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
                 style={{
-                  background: 'var(--admin-bg-elev)',
-                  color: 'var(--admin-bg-deep)',
+                  background: 'var(--primary)',
+                  color: 'var(--primary-foreground)',
                   fontSize: 13,
                   fontWeight: 600,
                   letterSpacing: '-0.005em',

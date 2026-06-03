@@ -101,7 +101,7 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
       <div
         className="w-full max-w-2xl h-full overflow-y-auto admin-scroll"
         style={{
-          background: 'linear-gradient(180deg, #0B0B0E 0%, #050505 100%)',
+          background: 'var(--admin-panel-grad)',
           borderLeft: '0.5px solid var(--admin-border-strong)',
           boxShadow: '-40px 0 80px rgba(0,0,0,0.5)',
           color: 'var(--admin-fg)',
@@ -121,11 +121,11 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
               <span
                 className="inline-flex items-center justify-center w-9 h-9 rounded-xl"
                 style={{
-                  background: 'rgba(96,165,250,0.12)',
-                  border: '0.5px solid rgba(96,165,250,0.3)',
+                  background: 'var(--admin-blue-soft)',
+                  border: '0.5px solid var(--admin-blue)',
                 }}
               >
-                <PhoneCall className="w-4 h-4" style={{ color: '#60A5FA' }} />
+                <PhoneCall className="w-4 h-4" style={{ color: 'var(--admin-blue)' }} />
               </span>
               <div>
                 <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.2em', color: 'var(--admin-fg-subtle)' }}>
@@ -160,12 +160,12 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
           <div
             className="rounded-xl p-3.5 flex gap-2.5"
             style={{
-              background: 'rgba(96,165,250,0.06)',
-              border: '0.5px solid rgba(96,165,250,0.2)',
+              background: 'var(--admin-blue-soft)',
+              border: '0.5px solid var(--admin-blue)',
             }}
           >
-            <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#60A5FA' }} />
-            <div style={{ fontSize: 12, color: '#93C5FD', lineHeight: 1.55 }}>
+            <Info className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: 'var(--admin-blue)' }} />
+            <div style={{ fontSize: 12, color: 'var(--admin-blue-on)', lineHeight: 1.55 }}>
               <strong style={{ color: 'var(--admin-fg)' }}>Recordatorio:</strong> UsaLatino Prime es una plataforma que guía al usuario a organizar su propio expediente. Tu rol es acompañar al cliente, evaluar viabilidad y capturar los datos clave. No das asesoría legal.
             </div>
           </div>
@@ -331,22 +331,22 @@ export function ProspectoCapturePanel({ prospecto, onClose, onSaved, onConvert }
 const BTN_GHOST =
   'inline-flex items-center gap-1.5 px-3 py-2 rounded-full transition-all duration-200 ' +
   'hover:bg-white/10 active:scale-95 text-[12px] font-semibold tracking-tight ' +
-  'bg-white/[0.04] border border-white/10 text-white disabled:opacity-50'
+  'bg-white/[0.04] border border-white/10 text-[color:var(--admin-fg)] disabled:opacity-50'
 
 const BTN_DANGER =
   'inline-flex items-center gap-1.5 px-3 py-2 rounded-full transition-all duration-200 ' +
-  'hover:bg-red-500/15 active:scale-95 text-[12px] font-semibold tracking-tight ' +
-  'bg-red-500/10 border border-red-500/30 text-red-300 disabled:opacity-50'
+  'hover:opacity-90 active:scale-95 text-[12px] font-semibold tracking-tight ' +
+  'bg-[color:var(--admin-red-soft)] border border-[color:var(--admin-red)] text-[color:var(--admin-red-on)] disabled:opacity-50'
 
 const BTN_SUCCESS =
   'inline-flex items-center gap-1.5 px-3 py-2 rounded-full transition-all duration-200 ' +
-  'hover:bg-emerald-500/15 active:scale-95 text-[12px] font-semibold tracking-tight ' +
-  'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 disabled:opacity-50'
+  'hover:opacity-90 active:scale-95 text-[12px] font-semibold tracking-tight ' +
+  'bg-[color:var(--admin-green-soft)] border border-[color:var(--admin-green)] text-[color:var(--admin-green-on)] disabled:opacity-50'
 
 const BTN_PRIMARY =
   'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 ' +
   'hover:opacity-90 active:scale-95 text-[12px] font-semibold tracking-tight ' +
-  'bg-white text-black shadow-[0_4px_18px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset] disabled:opacity-50'
+  'bg-[color:var(--primary)] text-[color:var(--primary-foreground)] shadow-[var(--admin-shadow)] disabled:opacity-50'
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -436,13 +436,13 @@ function RadioGroup({
               onClick={() => onChange(opt.value)}
               className="px-3 py-1.5 rounded-full transition-all duration-200"
               style={{
-                background: isActive ? '#FFFFFF' : 'var(--admin-accent-soft)',
-                color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
-                border: isActive ? '0.5px solid #FFFFFF' : '0.5px solid var(--admin-border-strong)',
+                background: isActive ? 'var(--primary)' : 'var(--admin-accent-soft)',
+                color: isActive ? 'var(--primary-foreground)' : 'var(--admin-fg-muted)',
+                border: isActive ? '0.5px solid var(--primary)' : '0.5px solid var(--admin-border-strong)',
                 fontSize: 12,
                 fontWeight: isActive ? 700 : 500,
                 letterSpacing: '-0.005em',
-                boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.15)' : 'none',
+                boxShadow: isActive ? 'var(--admin-shadow)' : 'none',
               }}
             >
               {opt.label}

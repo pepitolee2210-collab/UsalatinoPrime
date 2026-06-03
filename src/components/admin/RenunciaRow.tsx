@@ -383,8 +383,8 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
               <FileText className="w-5 h-5 text-purple-600" />
             </div>
             <div className="min-w-0">
-              <p className="font-semibold text-gray-900 truncate">{signerName}</p>
-              <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+              <p className="font-semibold truncate" style={{ color: 'var(--admin-fg)' }}>{signerName}</p>
+              <div className="flex items-center gap-3 text-xs flex-wrap" style={{ color: 'var(--admin-fg-muted)' }}>
                 <span className="flex items-center gap-1">
                   <User className="w-3 h-3" />
                   {hasMultipleChildren ? `${allChildren.length} hijos` : `${childLabel}: ${childName}`}
@@ -398,7 +398,7 @@ export function RenunciaRow({ submission }: { submission: Submission }) {
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <Badge className={statusInfo.class}>{statusInfo.label}</Badge>
-            {expanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+            {expanded ? <ChevronUp className="w-4 h-4" style={{ color: 'var(--admin-fg-subtle)' }} /> : <ChevronDown className="w-4 h-4" style={{ color: 'var(--admin-fg-subtle)' }} />}
           </div>
         </div>
 

@@ -20,7 +20,7 @@ interface Props {
 
 const DARK_INPUT_CLS =
   'w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 ' +
-  'bg-white/[0.04] border border-white/10 text-white placeholder:text-white/30'
+  'bg-white/[0.04] border border-white/10 text-[var(--admin-fg)] placeholder:text-[var(--admin-fg-subtle)]'
 
 const LABEL_STYLE: React.CSSProperties = {
   fontFamily: 'var(--font-mono-tech)',
@@ -91,9 +91,9 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
         onClick={(e) => e.stopPropagation()}
         style={{
           background: 'var(--admin-panel-grad)',
-          border: '0.5px solid rgba(255,255,255,0.12)',
+          border: '0.5px solid var(--admin-border-strong)',
           backdropFilter: 'blur(20px)',
-          boxShadow: '0 32px 80px rgba(0,0,0,0.6)',
+          boxShadow: 'var(--admin-shadow-lg)',
         }}
       >
         <header
@@ -142,12 +142,12 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
             <div
               className="rounded-xl p-4 flex items-start gap-3"
               style={{
-                background: 'rgba(250,204,21,0.06)',
-                border: '0.5px solid rgba(250,204,21,0.25)',
+                background: 'var(--admin-gold-soft)',
+                border: '0.5px solid var(--admin-gold)',
               }}
             >
-              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--admin-gold)' }} />
-              <p style={{ fontSize: 13, color: 'var(--admin-gold)' }}>
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: 'var(--admin-gold-on)' }} />
+              <p style={{ fontSize: 13, color: 'var(--admin-gold-on)' }}>
                 Este contrato no tiene menores registrados.
               </p>
             </div>
@@ -221,12 +221,12 @@ export function MinorEditorModal({ contractId, minors, onClose, onSaved }: Props
                   disabled={savingIndex === idx}
                   className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-50"
                   style={{
-                    background: 'var(--admin-bg-elev)',
-                    color: 'var(--admin-bg-deep)',
+                    background: 'var(--primary)',
+                    color: 'var(--primary-foreground)',
                     fontSize: 12,
                     fontWeight: 600,
                     letterSpacing: '-0.005em',
-                    boxShadow: '0 4px 18px rgba(255,255,255,0.18), 0 0 0 0.5px rgba(255,255,255,0.4) inset',
+                    boxShadow: 'var(--admin-shadow)',
                   }}
                 >
                   {savingIndex === idx ? (

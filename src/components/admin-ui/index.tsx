@@ -214,13 +214,13 @@ export function DataCard({ children, className = '', padding = 'md', accentTop }
         <span
           aria-hidden
           className="absolute top-0 left-0 right-0 h-px"
-          style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)' }}
+          style={{ background: 'linear-gradient(90deg, transparent, var(--admin-border-strong), transparent)' }}
         />
       )}
       <span
         aria-hidden
         className="absolute inset-0 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse at top, rgba(255,255,255,0.03), transparent 60%)' }}
+        style={{ background: 'radial-gradient(ellipse at top, var(--admin-veil-1), transparent 60%)' }}
       />
       <div className="relative">{children}</div>
     </div>
@@ -258,9 +258,9 @@ export function StatTile({ label, value, hint, icon, warning }: StatTileProps) {
           <div
             className="inline-flex w-8 h-8 rounded-lg items-center justify-center mb-3"
             style={{
-              background: warning ? 'rgba(248,113,113,0.12)' : 'var(--admin-accent-soft)',
-              border: warning ? '0.5px solid rgba(248,113,113,0.3)' : '0.5px solid rgba(255,255,255,0.12)',
-              color: warning ? '#FCA5A5' : '#FFFFFF',
+              background: warning ? 'var(--admin-red-soft)' : 'var(--admin-accent-soft)',
+              border: warning ? '0.5px solid rgba(239,68,68,0.3)' : '0.5px solid var(--admin-border-strong)',
+              color: warning ? 'var(--admin-red-on)' : 'var(--admin-accent)',
             }}
           >
             {icon}
@@ -269,7 +269,7 @@ export function StatTile({ label, value, hint, icon, warning }: StatTileProps) {
         <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, fontWeight: 500, letterSpacing: '0.18em', color: 'var(--admin-fg-subtle)' }}>
           {label.toUpperCase()}
         </p>
-        <p style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.025em', color: warning ? '#FCA5A5' : '#FFFFFF', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+        <p style={{ fontSize: 28, fontWeight: 600, letterSpacing: '-0.025em', color: warning ? 'var(--admin-red-on)' : 'var(--admin-fg)', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
           {value}
         </p>
         {hint && (
@@ -288,11 +288,11 @@ export function StatTile({ label, value, hint, icon, warning }: StatTileProps) {
 type StatusKind = 'active' | 'pending' | 'completed' | 'paused' | 'warning' | 'neutral'
 
 const STATUS_COLORS: Record<StatusKind, { bg: string; border: string; dot: string; text: string }> = {
-  active:    { bg: 'rgba(34,197,94,0.10)',  border: 'rgba(34,197,94,0.3)',  dot: '#4ADE80', text: '#86EFAC' },
-  pending:   { bg: 'rgba(250,204,21,0.10)', border: 'rgba(250,204,21,0.3)', dot: '#FACC15', text: '#FDE68A' },
-  completed: { bg: 'var(--admin-border)', border: 'rgba(255,255,255,0.18)', dot: '#FFFFFF', text: '#FFFFFF' },
-  paused:    { bg: 'rgba(148,163,184,0.10)', border: 'rgba(148,163,184,0.3)', dot: '#94A3B8', text: '#CBD5E1' },
-  warning:   { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', dot: '#F87171', text: '#FCA5A5' },
+  active:    { bg: 'var(--admin-green-soft)', border: 'rgba(34,197,94,0.3)',  dot: 'var(--admin-green)', text: 'var(--admin-green-on)' },
+  pending:   { bg: 'var(--admin-gold-soft)',  border: 'rgba(242,178,52,0.3)', dot: 'var(--admin-gold)',  text: 'var(--admin-gold-on)' },
+  completed: { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-accent)', text: 'var(--admin-accent)' },
+  paused:    { bg: 'var(--admin-veil-2)', border: 'var(--admin-border)', dot: 'var(--admin-fg-subtle)', text: 'var(--admin-fg-muted)' },
+  warning:   { bg: 'var(--admin-red-soft)', border: 'rgba(239,68,68,0.3)', dot: 'var(--admin-red)', text: 'var(--admin-red-on)' },
   neutral:   { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-fg-muted)', text: 'var(--admin-fg-muted)' },
 }
 
@@ -344,8 +344,8 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
       <div
         className="inline-flex items-center justify-center w-16 h-16 rounded-2xl"
         style={{
-          background: 'linear-gradient(135deg, var(--admin-border), rgba(255,255,255,0.02))',
-          border: '0.5px solid rgba(255,255,255,0.12)',
+          background: 'linear-gradient(135deg, var(--admin-border), var(--admin-veil-1))',
+          border: '0.5px solid var(--admin-border-strong)',
         }}
       >
         <span className="material-symbols-outlined" style={{ fontSize: 32, color: 'var(--admin-fg-muted)' }}>

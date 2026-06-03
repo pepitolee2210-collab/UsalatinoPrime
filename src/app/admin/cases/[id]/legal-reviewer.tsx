@@ -121,21 +121,21 @@ export function LegalReviewer({ caseId }: Props) {
   return (
     <div className="space-y-5">
       {/* Header + CTA */}
-      <div className="rounded-2xl border border-[#002855]/10 bg-gradient-to-br from-[#002855] to-[#001d3d] p-5 text-white">
+      <div className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-bg-elev)] p-5 text-[var(--admin-fg)]">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div className="flex items-start gap-3">
             <div className="w-11 h-11 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
-              <Scale className="w-6 h-6 text-[#F2A900]" />
+              <Scale className="w-6 h-6 text-[var(--admin-gold)]" />
             </div>
             <div>
               <h3 className="text-lg font-bold flex items-center gap-2">
                 Super Revisor Legal
-                <Badge className="bg-white/10 text-white/80 text-[10px] border-white/10">
+                <Badge className="bg-white/10 text-[var(--admin-fg-muted)] text-[10px] border-white/10">
                   <Sparkles className="w-3 h-3 mr-1" />
                   Gemini 3.1 Pro
                 </Badge>
               </h3>
-              <p className="text-sm text-white/70 mt-0.5 max-w-xl">
+              <p className="text-sm text-[var(--admin-fg-muted)] mt-0.5 max-w-xl">
                 Última revisión antes de la corte. Un abogado senior virtual analiza tus documentos contra el playbook del tipo de caso y te dice exactamente qué falta.
               </p>
             </div>
@@ -144,7 +144,7 @@ export function LegalReviewer({ caseId }: Props) {
             size="lg"
             onClick={runReview}
             disabled={running}
-            className="bg-[#F2A900] hover:bg-[#D4940A] text-[#001020] font-bold shadow-lg shadow-[#F2A900]/20"
+            className="bg-[var(--admin-gold)] hover:opacity-90 text-[var(--primary-foreground)] font-bold shadow-lg shadow-black/10"
           >
             {running ? (
               <>

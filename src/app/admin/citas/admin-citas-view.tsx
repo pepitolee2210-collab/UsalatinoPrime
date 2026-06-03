@@ -36,10 +36,10 @@ const STATUS_KIND: Record<string, StatusKind> = {
 }
 
 const STATUS_STYLES: Record<StatusKind, { bg: string; border: string; dot: string; text: string }> = {
-  active:    { bg: 'rgba(96,165,250,0.10)',  border: 'rgba(96,165,250,0.3)',  dot: '#60A5FA', text: '#93C5FD' },
-  success:   { bg: 'rgba(34,197,94,0.10)',   border: 'rgba(34,197,94,0.3)',   dot: '#4ADE80', text: '#86EFAC' },
-  warning:   { bg: 'rgba(250,204,21,0.10)',  border: 'rgba(250,204,21,0.3)',  dot: '#FACC15', text: '#FDE68A' },
-  danger:    { bg: 'rgba(248,113,113,0.10)', border: 'rgba(248,113,113,0.3)', dot: '#F87171', text: '#FCA5A5' },
+  active:    { bg: 'var(--admin-blue-soft)',  border: 'var(--admin-blue)',  dot: 'var(--admin-blue)', text: 'var(--admin-blue-on)' },
+  success:   { bg: 'var(--admin-green-soft)',   border: 'var(--admin-green)',   dot: 'var(--admin-green)', text: 'var(--admin-green-on)' },
+  warning:   { bg: 'var(--admin-gold-soft)',  border: 'var(--admin-gold)',  dot: 'var(--admin-gold)', text: 'var(--admin-gold-on)' },
+  danger:    { bg: 'var(--admin-red-soft)', border: 'var(--admin-red)', dot: 'var(--admin-red)', text: 'var(--admin-red-on)' },
   neutral:   { bg: 'var(--admin-accent-soft)', border: 'var(--admin-border-strong)', dot: 'var(--admin-fg-muted)', text: 'var(--admin-fg-muted)' },
 }
 
@@ -93,40 +93,40 @@ function visitLabel(count: number): string {
 const BTN_GHOST =
   'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 ' +
   'hover:bg-white/10 active:scale-95 text-[12px] font-semibold tracking-tight ' +
-  'bg-white/[0.04] border border-white/10 text-white disabled:opacity-50'
+  'bg-white/[0.04] border border-white/10 text-[var(--admin-fg)] disabled:opacity-50'
 
 const BTN_PRIMARY =
   'inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full transition-all duration-200 ' +
   'hover:opacity-90 active:scale-95 text-[12px] font-semibold tracking-tight ' +
-  'bg-white text-black shadow-[0_4px_18px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset] disabled:opacity-50'
+  'bg-[var(--primary)] text-[var(--primary-foreground)] shadow-[0_4px_18px_rgba(255,255,255,0.18),0_0_0_0.5px_rgba(255,255,255,0.4)_inset] disabled:opacity-50'
 
 const BTN_SUCCESS =
   'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ' +
   'hover:bg-emerald-500/15 active:scale-95 text-[11px] font-semibold tracking-tight ' +
-  'bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 disabled:opacity-50'
+  'bg-[var(--admin-green-soft)] border border-[var(--admin-green)] text-[var(--admin-green-on)] disabled:opacity-50'
 
 const BTN_DANGER =
   'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ' +
   'hover:bg-red-500/15 active:scale-95 text-[11px] font-semibold tracking-tight ' +
-  'bg-red-500/10 border border-red-500/30 text-red-300 disabled:opacity-50'
+  'bg-[var(--admin-red-soft)] border border-[var(--admin-red)] text-[var(--admin-red-on)] disabled:opacity-50'
 
 const BTN_INFO =
   'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ' +
   'hover:bg-blue-500/15 active:scale-95 text-[11px] font-semibold tracking-tight ' +
-  'bg-blue-500/10 border border-blue-500/30 text-blue-300 disabled:opacity-50'
+  'bg-[var(--admin-blue-soft)] border border-[var(--admin-blue)] text-[var(--admin-blue-on)] disabled:opacity-50'
 
 const BTN_WARNING =
   'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ' +
   'hover:bg-yellow-500/15 active:scale-95 text-[11px] font-semibold tracking-tight ' +
-  'bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 disabled:opacity-50'
+  'bg-[var(--admin-gold-soft)] border border-[var(--admin-gold)] text-[var(--admin-gold-on)] disabled:opacity-50'
 
 const DARK_DIALOG_CLS =
-  'bg-[#0A0A0A] border border-white/10 text-white shadow-2xl backdrop-blur-xl ' +
-  '[&>button]:text-white/60 [&>button]:hover:text-white'
+  'bg-[var(--admin-bg)] border border-white/10 text-[var(--admin-fg)] shadow-2xl backdrop-blur-xl ' +
+  '[&>button]:text-[var(--admin-fg-muted)] [&>button]:hover:text-[var(--admin-fg)]'
 
 const DARK_INPUT_CLS =
   'w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-colors focus:border-white/30 ' +
-  'bg-white/[0.04] border border-white/10 text-white placeholder:text-white/30'
+  'bg-white/[0.04] border border-white/10 text-[var(--admin-fg)] placeholder:text-[var(--admin-fg-subtle)]'
 
 // ════════════════════════════════════════════════════════════════════
 // Main view
@@ -213,12 +213,12 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
                 onClick={() => setFilter(s)}
                 className="px-3.5 py-1.5 rounded-full transition-all duration-300"
                 style={{
-                  background: isActive ? '#FFFFFF' : 'transparent',
-                  color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
+                  background: isActive ? 'var(--primary)' : 'transparent',
+                  color: isActive ? 'var(--primary-foreground)' : 'var(--admin-fg-muted)',
                   fontSize: 12,
                   fontWeight: isActive ? 700 : 500,
                   letterSpacing: '-0.005em',
-                  boxShadow: isActive ? '0 0 16px rgba(255,255,255,0.18)' : 'none',
+                  boxShadow: isActive ? '0 0 16px var(--admin-shadow)' : 'none',
                 }}
               >
                 {s === 'all' ? 'Todas' : statusLabels[s]}
@@ -236,7 +236,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
             </DialogTrigger>
             <DialogContent className={`sm:max-w-md ${DARK_DIALOG_CLS}`}>
               <DialogHeader>
-                <DialogTitle className="text-white" style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.022em' }}>
+                <DialogTitle className="text-[var(--admin-fg)]" style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.022em' }}>
                   Agendar Visita · No Cliente
                 </DialogTitle>
               </DialogHeader>
@@ -255,7 +255,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
             </DialogTrigger>
             <DialogContent className={`sm:max-w-md ${DARK_DIALOG_CLS}`}>
               <DialogHeader>
-                <DialogTitle className="text-white" style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.022em' }}>
+                <DialogTitle className="text-[var(--admin-fg)]" style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.022em' }}>
                   Agendar Cita para Cliente
                 </DialogTitle>
               </DialogHeader>
@@ -287,7 +287,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
             className="inline-flex items-center justify-center px-2 py-0.5 rounded-full"
             style={{
               background: 'var(--admin-accent-soft)',
-              border: '0.5px solid rgba(255,255,255,0.12)',
+              border: '0.5px solid var(--admin-border-strong)',
               fontFamily: 'var(--font-mono-tech)',
               fontSize: 10,
               fontWeight: 700,
@@ -350,7 +350,7 @@ export function AdminCitasView({ appointments, config, settings, blockedDates, a
             className="inline-flex items-center justify-center w-8 h-8 rounded-xl"
             style={{
               background: 'var(--admin-accent-soft)',
-              border: '0.5px solid rgba(255,255,255,0.12)',
+              border: '0.5px solid var(--admin-border-strong)',
             }}
           >
             <Settings className="w-4 h-4" />
@@ -556,7 +556,7 @@ function AppointmentRow({
           borderBottom: !isLast ? '0.5px solid var(--admin-accent-soft)' : 'none',
           transition: 'background 0.2s',
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.025)')}
+        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--admin-veil-1)')}
         onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
       >
         <Td>
@@ -587,9 +587,9 @@ function AppointmentRow({
                   letterSpacing: '0.15em',
                   padding: '2px 6px',
                   borderRadius: 4,
-                  background: completedCount === 0 ? 'rgba(96,165,250,0.10)' : 'var(--admin-accent-soft)',
-                  color: completedCount === 0 ? '#93C5FD' : 'var(--admin-fg-muted)',
-                  border: completedCount === 0 ? '0.5px solid rgba(96,165,250,0.3)' : '0.5px solid var(--admin-border-strong)',
+                  background: completedCount === 0 ? 'var(--admin-blue-soft)' : 'var(--admin-accent-soft)',
+                  color: completedCount === 0 ? 'var(--admin-blue-on)' : 'var(--admin-fg-muted)',
+                  border: completedCount === 0 ? '0.5px solid var(--admin-blue)' : '0.5px solid var(--admin-border-strong)',
                 }}
               >
                 {visitLabel(completedCount).toUpperCase()}
@@ -647,12 +647,12 @@ function AppointmentRow({
                 <span
                   className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full"
                   style={{
-                    background: 'rgba(34,197,94,0.10)',
-                    border: '0.5px solid rgba(34,197,94,0.3)',
+                    background: 'var(--admin-green-soft)',
+                    border: '0.5px solid var(--admin-green)',
                     fontFamily: 'var(--font-mono-tech)',
                     fontSize: 9,
                     fontWeight: 700,
-                    color: 'var(--admin-green)',
+                    color: 'var(--admin-green-on)',
                     letterSpacing: '0.1em',
                   }}
                 >
@@ -674,11 +674,11 @@ function AppointmentRow({
             <div
               className="px-5 py-4 space-y-4"
               style={{
-                background: 'rgba(96,165,250,0.04)',
-                borderLeft: '2px solid #60A5FA',
+                background: 'var(--admin-blue-soft)',
+                borderLeft: '2px solid var(--admin-blue)',
               }}
             >
-              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', color: '#93C5FD' }}>
+              <p style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em', color: 'var(--admin-blue-on)' }}>
                 REPROGRAMAR · {(client?.first_name || guestName || '').toUpperCase()} {(client?.last_name || '').toUpperCase()}
               </p>
               <div className="flex items-end gap-3 flex-wrap">
@@ -723,10 +723,10 @@ function AppointmentRow({
                             onClick={() => setRescheduleSlot(slot)}
                             className="flex flex-col items-center px-3 py-1.5 rounded-xl transition-all duration-200"
                             style={{
-                              background: isActive ? '#FFFFFF' : 'var(--admin-accent-soft)',
-                              border: isActive ? '0.5px solid #FFFFFF' : '0.5px solid var(--admin-border-strong)',
-                              color: isActive ? 'var(--admin-bg-deep)' : 'var(--admin-fg)',
-                              boxShadow: isActive ? '0 0 12px rgba(255,255,255,0.18)' : 'none',
+                              background: isActive ? 'var(--primary)' : 'var(--admin-accent-soft)',
+                              border: isActive ? '0.5px solid var(--primary)' : '0.5px solid var(--admin-border-strong)',
+                              color: isActive ? 'var(--primary-foreground)' : 'var(--admin-fg)',
+                              boxShadow: isActive ? '0 0 12px var(--admin-shadow)' : 'none',
                             }}
                           >
                             <span className="inline-flex items-center gap-1" style={{ fontSize: 12, fontWeight: 700 }}>
@@ -734,7 +734,7 @@ function AppointmentRow({
                               {formatTime(slot, viewTz)}
                             </span>
                             {!tzIsOffice && (
-                              <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, marginTop: 1, color: isActive ? 'rgba(0,0,0,0.6)' : 'var(--admin-fg-subtle)' }}>
+                              <span style={{ fontFamily: 'var(--font-mono-tech)', fontSize: 9, marginTop: 1, color: isActive ? 'color-mix(in srgb, var(--primary-foreground) 65%, transparent)' : 'var(--admin-fg-subtle)' }}>
                                 {formatTime(slot, OFFICE_TIMEZONE)} MT
                               </span>
                             )}
@@ -886,13 +886,13 @@ function ScheduleConfigPanel({
             key={day.day_of_week}
             className="rounded-xl p-4"
             style={{
-              background: day.is_available ? 'rgba(255,255,255,0.025)' : 'rgba(255,255,255,0.015)',
+              background: day.is_available ? 'var(--admin-veil-2)' : 'var(--admin-veil-1)',
               border: '0.5px solid var(--admin-border)',
             }}
           >
             <div className="flex items-center gap-3">
               <DarkSwitch checked={day.is_available} onChange={v => toggleDay(day.day_of_week, v)} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: day.is_available ? '#FFFFFF' : 'var(--admin-fg-subtle)', letterSpacing: '-0.005em' }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: day.is_available ? 'var(--admin-fg)' : 'var(--admin-fg-subtle)', letterSpacing: '-0.005em' }}>
                 {DAY_NAMES[day.day_of_week]}
               </span>
               {day.is_available && (
@@ -1067,12 +1067,12 @@ function BlockedDatesPanel({ blockedDates: initial }: { blockedDates: BlockedDat
                 key={d.id}
                 className="flex items-center justify-between p-3 rounded-xl"
                 style={{
-                  background: 'rgba(248,113,113,0.06)',
-                  border: '0.5px solid rgba(248,113,113,0.2)',
+                  background: 'var(--admin-red-soft)',
+                  border: '0.5px solid var(--admin-red)',
                 }}
               >
                 <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-red)' }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--admin-red-on)' }}>
                     {new Date(d.blocked_date + 'T12:00:00').toLocaleDateString('es-US', {
                       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
                     })}
@@ -1116,15 +1116,15 @@ function Panel({
       <span
         aria-hidden
         className="absolute inset-0 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse at top, rgba(255,255,255,0.03), transparent 60%)' }}
+        style={{ background: 'radial-gradient(ellipse at top, var(--admin-veil-1), transparent 60%)' }}
       />
       <div className="relative">
         <div className="flex items-start gap-3 mb-4">
           <span
             className="inline-flex items-center justify-center w-9 h-9 rounded-xl shrink-0"
             style={{
-              background: 'linear-gradient(135deg, var(--admin-border-strong), rgba(255,255,255,0.02))',
-              border: '0.5px solid rgba(255,255,255,0.15)',
+              background: 'linear-gradient(135deg, var(--admin-border-strong), var(--admin-veil-1))',
+              border: '0.5px solid var(--admin-border-strong)',
               color: 'var(--admin-fg)',
             }}
           >
@@ -1155,9 +1155,9 @@ function DarkSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boo
         width: 36,
         height: 20,
         borderRadius: 10,
-        background: checked ? '#FFFFFF' : 'var(--admin-border)',
-        border: checked ? '0.5px solid #FFFFFF' : '0.5px solid rgba(255,255,255,0.15)',
-        boxShadow: checked ? '0 0 12px rgba(255,255,255,0.18)' : 'none',
+        background: checked ? 'var(--primary)' : 'var(--admin-border)',
+        border: checked ? '0.5px solid var(--primary)' : '0.5px solid var(--admin-border-strong)',
+        boxShadow: checked ? '0 0 12px var(--admin-shadow)' : 'none',
       }}
     >
       <span
@@ -1165,7 +1165,7 @@ function DarkSwitch({ checked, onChange }: { checked: boolean; onChange: (v: boo
         style={{
           width: 14,
           height: 14,
-          background: checked ? 'var(--admin-bg-deep)' : 'var(--admin-fg-muted)',
+          background: checked ? 'var(--primary-foreground)' : 'var(--admin-fg-muted)',
           transform: `translateX(${checked ? 18 : 3}px)`,
         }}
       />

@@ -100,10 +100,10 @@ export function PhaseStatusPanel({
   const activeFlags = Object.entries(flags).filter(([, v]) => v).map(([k]) => k)
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 mb-4">
+    <div className="rounded-2xl border border-[var(--admin-border)] bg-[var(--admin-bg-elev)] p-5 mb-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--admin-fg-muted)]">
             Estado del caso — {registry.name}
           </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -112,19 +112,19 @@ export function PhaseStatusPanel({
                 {currentDef.label}
               </Badge>
             ) : (
-              <Badge variant="outline" className="text-gray-500">Sin fase asignada</Badge>
+              <Badge variant="outline" className="text-[var(--admin-fg-muted)]">Sin fase asignada</Badge>
             )}
             {stateUs && (
-              <Badge variant="outline" className="text-gray-700">Estado: {stateUs}</Badge>
+              <Badge variant="outline" className="text-[var(--admin-fg)]">Estado: {stateUs}</Badge>
             )}
             {activeFlags.length > 0 && activeFlags.map((f) => (
-              <Badge key={f} className="bg-amber-50 text-amber-800 border border-amber-200 text-[10px]">
+              <Badge key={f} className="bg-[var(--admin-gold-soft)] text-[var(--admin-gold-on)] border border-amber-200 text-[10px]">
                 {humanizeFlag(f)}
               </Badge>
             ))}
           </div>
           {currentDef && (
-            <p className="text-xs text-gray-500 mt-2 max-w-xl">{currentDef.description}</p>
+            <p className="text-xs text-[var(--admin-fg-muted)] mt-2 max-w-xl">{currentDef.description}</p>
           )}
         </div>
         {nextDefault && (
@@ -146,7 +146,7 @@ export function PhaseStatusPanel({
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-bold uppercase text-gray-600 mb-1 block">Avanzar a</label>
+              <label className="text-xs font-bold uppercase text-[var(--admin-fg-muted)] mb-1 block">Avanzar a</label>
               <Select value={toPhase} onValueChange={(v) => setToPhase(v as CasePhase)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecciona fase destino" />
@@ -160,16 +160,16 @@ export function PhaseStatusPanel({
             </div>
 
             {isRetreat && (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
-                <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-amber-800">
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-[var(--admin-gold-soft)] border border-amber-200">
+                <AlertTriangle className="w-4 h-4 text-[var(--admin-gold)] flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-[var(--admin-gold-on)]">
                   Estás retrocediendo de fase. Se enviará con `force=true`.
                 </p>
               </div>
             )}
 
             <div>
-              <label className="text-xs font-bold uppercase text-gray-600 mb-1 block">Razón del cambio (obligatorio)</label>
+              <label className="text-xs font-bold uppercase text-[var(--admin-fg-muted)] mb-1 block">Razón del cambio (obligatorio)</label>
               <Textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
@@ -177,10 +177,10 @@ export function PhaseStatusPanel({
                 placeholder="Ej: La corte aprobó la orden de custodia con hallazgos SIJS el 15 de marzo. Procedemos con I-360 ante USCIS."
                 maxLength={500}
               />
-              <p className="text-[10px] text-gray-400 mt-1 text-right">{reason.length}/500</p>
+              <p className="text-[10px] text-[var(--admin-fg-subtle)] mt-1 text-right">{reason.length}/500</p>
             </div>
 
-            <div className="text-xs text-gray-500 p-3 rounded-lg bg-gray-50 border border-gray-200">
+            <div className="text-xs text-[var(--admin-fg-muted)] p-3 rounded-lg bg-[var(--admin-veil-1)] border border-[var(--admin-border)]">
               ✦ Esto archivará automáticamente los documentos y formularios de la fase actual y le mostrará al cliente los nuevos requeridos para <strong>{targetDef?.number ?? '...'}</strong>.
             </div>
 

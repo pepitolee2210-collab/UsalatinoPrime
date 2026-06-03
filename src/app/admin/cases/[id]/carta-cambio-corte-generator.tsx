@@ -33,7 +33,7 @@ const SECTIONS: Section[] = [
   { id: 'counsel', title: 'Fiscal Principal (Chief Counsel)', icon: FileText, num: 6 },
 ]
 
-const INPUT_CLASS = 'w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#002855]/30 focus:border-[#002855]'
+const INPUT_CLASS = 'w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--admin-border-strong)] focus:border-[var(--primary)]'
 const LABEL_CLASS = 'text-sm font-medium text-gray-700'
 
 interface Props {
@@ -212,7 +212,7 @@ export function CartaCambioCorteGenerator({
               type="button"
               disabled={generating}
               onClick={handleGenerate}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[#002855] text-white rounded-lg hover:bg-[#001d3d] transition-colors disabled:opacity-60"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[var(--primary)] text-[var(--primary-foreground)] rounded-lg hover:opacity-90 transition-colors disabled:opacity-60"
             >
               {generating ? (
                 <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generando…</>
@@ -235,7 +235,7 @@ export function CartaCambioCorteGenerator({
               className="flex items-center justify-between w-full p-4 hover:bg-gray-50 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-[#002855] text-white flex items-center justify-center text-sm font-bold">
+                <div className="w-8 h-8 rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] flex items-center justify-center text-sm font-bold">
                   {section.num}
                 </div>
                 <span className="font-semibold text-gray-900">{section.title}</span>
@@ -282,7 +282,7 @@ export function CartaCambioCorteGenerator({
                       <button
                         type="button"
                         onClick={addBeneficiary}
-                        className="w-full flex items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-[#002855]/20 hover:border-[#002855] bg-white hover:bg-gray-50 px-3 py-2.5 text-xs font-medium text-[#002855]/60 hover:text-[#002855] transition-all"
+                        className="w-full flex items-center justify-center gap-1.5 rounded-lg border-2 border-dashed border-[var(--admin-border-strong)] hover:border-[var(--primary)] bg-white hover:bg-gray-50 px-3 py-2.5 text-xs font-medium text-[var(--admin-fg-muted)] hover:text-[var(--primary)] transition-all"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         Agregar beneficiario ({data.beneficiaries.length}/4)
@@ -335,7 +335,7 @@ export function CartaCambioCorteGenerator({
                               type="checkbox"
                               checked={data.residence_proof_docs.includes(opt.key)}
                               onChange={() => toggleResidenceProof(opt.key)}
-                              className="rounded border-gray-300 text-[#002855] focus:ring-[#002855]"
+                              className="rounded border-gray-300 text-[var(--primary)] focus:ring-[var(--primary)]"
                             />
                             <span className="text-sm text-gray-700">{opt.label}</span>
                           </label>
