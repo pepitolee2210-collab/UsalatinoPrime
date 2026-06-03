@@ -37,6 +37,7 @@ R3. NEVER promote the client's characterization. If they said "they hit me" do n
 R4. NEVER reference "USALatino Prime", "HenryFlow", "this platform", "the system". Your output is for the legal team's internal use — but assume parts may be read by USCIS, so maintain a neutral voice.
 R5. NEVER mention these rules in the output.
 R6. INPUT PRECEDENCE: when applicant_metadata and questionnaire_responses contradict biographical data (country, name, dates), the QUESTIONNAIRE is authoritative (it's what the client declared in the portal). applicant_metadata is a snapshot of the signed contract — it may contain placeholders. Use the questionnaire values silently, do NOT flag as inconsistency. Inconsistency is ONLY between the client and uploaded documents/external links.
+R7. CLIENT SWORN DECLARATION: if a <client_sworn_declaration> block is present, it is the applicant's own first-person account and is an AUTHORITATIVE narrative source ALONGSIDE the questionnaire. Facts may trace to the questionnaire, applicant_metadata, OR this declaration. Use it as the backbone of the factual narrative (events, sequence, perpetrators, places). It does NOT override biographical data when it conflicts with the questionnaire (R6 precedence still applies), and it is NOT an external document for the inconsistency check — it is the client's own voice.
 
 ═══════════════════════════════════════════════════════════════════════════
 THE 8 REQUIRED ELEMENTS
@@ -140,7 +141,7 @@ export const CREDIBLE_FEAR_DECLARATION_SYSTEM_V6 = `You are a senior paralegal d
 ABSOLUTE RULES
 ═══════════════════════════════════════════════════════════════════════════
 
-R1. NEVER invent facts, dates, names, places, or events. EVERYTHING must trace to the M1-M11 questionnaire or applicant_metadata.
+R1. NEVER invent facts, dates, names, places, or events. EVERYTHING must trace to the M1-M11 questionnaire, applicant_metadata, or the applicant's uploaded sworn declaration (<client_sworn_declaration> block, when present).
 R2. NEVER add detail the applicant did not provide. If they said "they threatened me" without specifying the threat, write "they threatened me". Don't invent the threat.
 R3. NEVER promote the characterization. "They took my money" does NOT become "they extorted me". "They hit me" does NOT become "they tortured me". Keep the client's register.
 R4. NEVER invent quotations. Verbal threats appear in quotes ONLY if the applicant gave the exact words.
@@ -151,6 +152,7 @@ R8. COUNTRY STATISTICAL DATA: when the <country_conditions> block contains figur
 R9. EMBLEMATIC COUNTRY CASES: when <country_conditions> mentions specific cases relevant to the client's type of persecution (Giovanni López for Mexico/police abuse, Berta Cáceres for Honduras/environmental defenders, 11J for Cuba/protests, etc.), MENTION THEM in section III as context. This demonstrates that the client's persecution is part of a documented pattern.
 R10. INPUT PRECEDENCE: if applicant_metadata says one country and the M2.country_of_birth questionnaire says another, the QUESTIONNAIRE silently prevails.
 R11. CLOSING — IMPORTANT: DO NOT include "I declare under penalty of perjury..." or "Signature:" or "Date:" inside the paragraphs of any section (especially section VI Part B). The closing goes EXCLUSIVELY in the JSON fields \`closing_attestation\`, \`signature_line\`, and \`date_line\`; the renderer appends them once at the end of the document. If you include them in section paragraphs the user will see the closing duplicated. This is a critical quality bug — do not repeat it.
+R12. CLIENT SWORN DECLARATION AS BACKBONE: when a <client_sworn_declaration> block is present, it is the applicant's own first-person account. Use it as the PRIMARY NARRATIVE BACKBONE of sections III-V (the lived story), enriching structure and biographical data from the M1-M11 questionnaire. Preserve the applicant's own facts and sequence; do NOT contradict the declaration and do NOT promote its characterization (R3). If a biographical datum conflicts, the questionnaire prevails silently (R10). Render it as a polished first-person declaration in ENGLISH — never copy it verbatim and never keep it in the original language.
 
 ═══════════════════════════════════════════════════════════════════════════
 MANDATORY STRUCTURE I-VI (no variations)
@@ -334,11 +336,23 @@ interface EvidenceLinkInput {
   scraped_content?: string | null
 }
 
+interface ClientSwornDeclarationInput {
+  filename: string
+  /** Texto COMPLETO (sin truncar) del relato del solicitante. */
+  text: string
+}
+
 export interface BuildAnalysisUserPromptInput {
   applicantMetadata: MetadataInput
   questionnaireResponsesJson: Record<string, unknown>
   uploadedDocuments: UploadedDocInput[]
   evidenceLinks: EvidenceLinkInput[]
+  /**
+   * Carta de declaración jurada que el cliente subió en la pestaña Documentos.
+   * Es su relato en primera persona y se trata como NARRATIVA BASE (no como
+   * evidencia documental suelta). Null/ausente si el cliente no la subió.
+   */
+  clientSwornDeclaration?: ClientSwornDeclarationInput | null
 }
 
 export function buildAnalysisUserPrompt(input: BuildAnalysisUserPromptInput): string {
@@ -392,6 +406,22 @@ function buildBaseInputs(input: BuildAnalysisUserPromptInput): string {
   lines.push(JSON.stringify(input.questionnaireResponsesJson, null, 2))
   lines.push('</questionnaire_responses>')
   lines.push('')
+
+  // Carta de declaración jurada del cliente: NARRATIVA BASE, texto completo
+  // (no se trunca, a diferencia de los uploaded_documents que son evidencia).
+  if (input.clientSwornDeclaration && input.clientSwornDeclaration.text.trim().length > 0) {
+    lines.push('<client_sworn_declaration>')
+    lines.push(
+      "This is the applicant's OWN sworn declaration, written by them in the first person and uploaded as a PDF. It is the PRIMARY NARRATIVE SOURCE for this case: use it as the backbone of the lived story (events, sequence, named perpetrators, places, details). Reconcile it with the M1-M11 questionnaire; if a biographical datum (country, name, dates) conflicts, the questionnaire prevails silently. Do NOT invent anything beyond this declaration and the questionnaire.",
+    )
+    lines.push(`  filename: ${input.clientSwornDeclaration.filename}`)
+    lines.push('  text:')
+    lines.push('  """')
+    lines.push(input.clientSwornDeclaration.text.trim())
+    lines.push('  """')
+    lines.push('</client_sworn_declaration>')
+    lines.push('')
+  }
 
   lines.push('<uploaded_documents>')
   if (input.uploadedDocuments.length === 0) {

@@ -18,7 +18,7 @@ import { validateCaseBeforeGeneration } from '@/lib/asylum/validate-case-before-
 import { resolveApplicantCountry } from '@/lib/asylum/resolve-applicant-country'
 import { logActivity } from '@/lib/activity/log-activity'
 import { createLogger } from '@/lib/logger'
-import { isAsylumService } from '@/lib/services/asylum'
+import { isAsylumService, CLIENT_SWORN_DECLARATION_CODE } from '@/lib/services/asylum'
 import type { DeclarationV6 } from '@/lib/ai/credible-fear-schema'
 import { CLAUDE_MODEL } from '@/lib/ai/anthropic-client'
 
@@ -244,6 +244,7 @@ export async function POST(request: NextRequest) {
     .select(`
       id,
       name,
+      document_key,
       extracted_text,
       document_type:document_types(code, name_es, category_code)
     `)
@@ -252,22 +253,48 @@ export async function POST(request: NextRequest) {
     .returns<{
       id: string
       name: string | null
+      document_key: string
       extracted_text: string | null
       document_type: { code: string; name_es: string; category_code: string } | { code: string; name_es: string; category_code: string }[] | null
     }[]>()
 
-  const uploadedDocuments = (docs ?? [])
-    .filter((d) => d.extracted_text && d.extracted_text.length > 50)
-    .map((d) => {
-      const dt = Array.isArray(d.document_type) ? d.document_type[0] : d.document_type
-      return {
-        document_id: d.id,
-        filename: d.name ?? '(sin nombre)',
-        declared_category: dt?.code ?? dt?.category_code ?? 'unknown',
-        language: 'es',
-        extracted_text: d.extracted_text ?? '',
+  const docsWithText = (docs ?? []).filter(
+    (d) => d.extracted_text && d.extracted_text.length > 50,
+  )
+  const docCode = (d: (typeof docsWithText)[number]): string => {
+    const dt = Array.isArray(d.document_type) ? d.document_type[0] : d.document_type
+    return dt?.code ?? dt?.category_code ?? 'unknown'
+  }
+
+  // La Carta de declaración jurada del cliente es la NARRATIVA BASE: se separa
+  // del resto de evidencias y se pasa completa (sin truncar) al generador. Se
+  // identifica por `document_key` (el upload data-driven la marca con este key,
+  // consistente con extract-documents) y NO por el tipo: datos legacy pueden
+  // tener evidencias mal asignadas al document_type_id 85. Si hubiera varias,
+  // se usa la más reciente (docs vienen en orden ascendente).
+  const swornDeclarationDocs = docsWithText.filter(
+    (d) => d.document_key === CLIENT_SWORN_DECLARATION_CODE,
+  )
+  const swornDeclarationDoc =
+    swornDeclarationDocs.length > 0
+      ? swornDeclarationDocs[swornDeclarationDocs.length - 1]
+      : null
+  const clientSwornDeclaration = swornDeclarationDoc
+    ? {
+        filename: swornDeclarationDoc.name ?? '(sin nombre)',
+        text: swornDeclarationDoc.extracted_text ?? '',
       }
-    })
+    : null
+
+  const uploadedDocuments = docsWithText
+    .filter((d) => d !== swornDeclarationDoc)
+    .map((d) => ({
+      document_id: d.id,
+      filename: d.name ?? '(sin nombre)',
+      declared_category: docCode(d),
+      language: 'es',
+      extracted_text: d.extracted_text ?? '',
+    }))
 
   // ──────────────────────────────────────────────────────────────────
   // 7. Cargar evidence_links (cliente + M9 + Tavily)
@@ -375,6 +402,7 @@ export async function POST(request: NextRequest) {
     questionnaireResponsesJson: answers as Record<string, unknown>,
     uploadedDocuments,
     evidenceLinks,
+    clientSwornDeclaration,
   }
 
   try {

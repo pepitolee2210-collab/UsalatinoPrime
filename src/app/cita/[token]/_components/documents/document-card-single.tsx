@@ -34,12 +34,30 @@ export function DocumentCardSingle({
       className="rounded-2xl border overflow-hidden"
       style={{
         background: 'var(--color-ulp-surface-container-lowest)',
-        borderColor: 'var(--color-ulp-outline-variant)',
+        borderColor: doc.highlight ? 'var(--color-ulp-primary)' : 'var(--color-ulp-outline-variant)',
         borderLeftWidth: 4,
-        borderLeftColor: visual.borderLeftColor === 'transparent' ? 'var(--color-ulp-outline-variant)' : visual.borderLeftColor,
+        borderLeftColor: doc.highlight
+          ? 'var(--color-ulp-primary)'
+          : visual.borderLeftColor === 'transparent'
+            ? 'var(--color-ulp-outline-variant)'
+            : visual.borderLeftColor,
       }}
     >
       <div className="p-4">
+        {doc.highlight && (
+          <div
+            className="inline-flex items-center gap-1.5 mb-2 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider"
+            style={{
+              background: 'var(--color-ulp-primary-container)',
+              color: 'var(--color-ulp-on-primary-container)',
+            }}
+          >
+            <span className="material-symbols-outlined" data-fill="1" style={{ fontSize: 13 }}>
+              history_edu
+            </span>
+            Importante para tu carta del Miedo Creíble
+          </div>
+        )}
         <header className="flex items-start justify-between gap-3 mb-2">
           <div className="flex-1 min-w-0">
             <h3 className="ulp-body-md font-semibold" style={{ color: 'var(--color-ulp-on-surface)' }}>

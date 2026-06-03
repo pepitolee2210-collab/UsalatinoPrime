@@ -5,7 +5,7 @@ import { getPhaseCategory } from '@/lib/document-types/phase-category-overrides'
 import { resolvePhaseCategory, type DocumentTypePhaseRow } from '@/lib/document-types/phase-overrides-registry'
 import { isPhasedService } from '@/lib/services/registry'
 import { getFamilyMembers, memberSuffix, type FamilyMember, type MemberRole } from '@/lib/contracts/family-members'
-import { isAsylumService } from '@/lib/services/asylum'
+import { isAsylumService, CLIENT_SWORN_DECLARATION_CODE } from '@/lib/services/asylum'
 
 /**
  * GET /api/cita/[token]/required-documents
@@ -68,6 +68,8 @@ interface DocItem {
   minor_index: number | null
   /** @deprecated — usar `member_label`. */
   minor_label: string | null
+  /** Realce visual destacado en la UI (ej. la Carta de declaración jurada). */
+  highlight?: boolean
 }
 
 interface CategoryGroup {
@@ -560,6 +562,7 @@ export async function GET(
       // Shims legacy (deprecated)
       minor_index: role === 'minor' ? memberIdx : null,
       minor_label: role === 'minor' ? fm?.fullName ?? null : null,
+      highlight: dt.code === CLIENT_SWORN_DECLARATION_CODE,
     }
   }
 

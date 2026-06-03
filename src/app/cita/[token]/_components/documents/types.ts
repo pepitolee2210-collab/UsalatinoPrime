@@ -44,6 +44,11 @@ export interface DocItem {
   minor_index: number | null
   /** @deprecated — usar `member_label`. */
   minor_label: string | null
+  /**
+   * Realce visual destacado en la UI. Lo activa el endpoint para documentos
+   * clave (ej. la Carta de declaración jurada que alimenta el Miedo Creíble).
+   */
+  highlight?: boolean
 }
 
 export interface CategoryGroup {

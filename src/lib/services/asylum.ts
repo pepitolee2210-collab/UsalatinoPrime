@@ -26,3 +26,16 @@ export function isAsylumService(slug: string | null | undefined): boolean {
   if (!slug) return false
   return ASYLUM_SERVICE_SLUGS.has(slug)
 }
+
+/**
+ * `document_types.code` de la "Carta de declaración jurada" que el cliente sube
+ * en la pestaña Documentos de la Fase 2 (asilo_reforzar). Es el relato en
+ * primera persona del solicitante y se usa como NARRATIVA BASE del generador de
+ * Miedo Creíble (no como evidencia documental suelta).
+ *
+ * Centralizado aquí porque tres capas dependen de este code y deben cambiar
+ * juntas si se renombra: (1) el realce visual en /api/cita/[token]/required-documents,
+ * (2) la extracción de narrativa completa en lib/ai/extract-documents,
+ * (3) la separación como <client_sworn_declaration> en /api/ai/generate-credible-fear.
+ */
+export const CLIENT_SWORN_DECLARATION_CODE = 'asylum_personal_affidavit'
