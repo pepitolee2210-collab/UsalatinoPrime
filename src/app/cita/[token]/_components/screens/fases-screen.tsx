@@ -11,6 +11,7 @@ import { I589PartAWizardCore } from '@/components/i589/I589PartAWizardCore'
 import { EvidenceUrlsManager } from '../evidence-urls-manager'
 import { CartaCambioCorteClientWizard } from '../carta-cambio-corte-wizard'
 import { CredibleFearQuestionnaireWizard } from '../forms/credible-fear-questionnaire-wizard'
+import { WitnessLettersWizard } from '../forms/witness-letters-wizard'
 import type { CasePhase } from '@/types/database'
 import type { RequiredFormsResponse, FormSummary } from '../forms/types'
 
@@ -105,6 +106,7 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
   const [urlsOpen, setUrlsOpen] = useState(false)
   const [ccCartaOpen, setCcCartaOpen] = useState(false)
   const [credibleFearOpen, setCredibleFearOpen] = useState(false)
+  const [witnessOpen, setWitnessOpen] = useState(false)
 
   const fetchData = useCallback(async () => {
     try {
@@ -212,6 +214,11 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
     if (form.is_special_credible_fear_questionnaire) {
       // Cuestionario Miedo Creíble (Fase 2 Asilo Político / Reforzar Asilo).
       setCredibleFearOpen(true)
+      return
+    }
+    if (form.is_special_witness_form) {
+      // Formulario de Testigos (Fase 2 Asilo Político / Reforzar Asilo).
+      setWitnessOpen(true)
       return
     }
     if (form.is_special_cc_carta) {
@@ -372,6 +379,18 @@ export function FasesScreen({ token, clientName, currentPhase }: FasesScreenProp
           <CredibleFearQuestionnaireWizard
             token={token}
             onClose={() => { setCredibleFearOpen(false); fetchData() }}
+          />
+        </PortalSheet>
+      )}
+
+      {witnessOpen && (
+        <PortalSheet
+          title="Cartas de Testigos"
+          onClose={() => { setWitnessOpen(false); fetchData() }}
+        >
+          <WitnessLettersWizard
+            token={token}
+            onClose={() => { setWitnessOpen(false); fetchData() }}
           />
         </PortalSheet>
       )}

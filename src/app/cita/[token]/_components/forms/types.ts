@@ -78,6 +78,8 @@ export interface FormSummary {
   is_special_evidence_urls?: boolean
   /** Cuestionario de 11 módulos para generar Miedo Creíble (Asilo Político Fase 2). */
   is_special_credible_fear_questionnaire?: boolean
+  /** Formulario de Testigos para generar sus cartas juradas (Asilo Político / Reforzar Asilo Fase 2). */
+  is_special_witness_form?: boolean
   /** Carta de Cambio de Corte (6 págs custom, Cambio de Corte). */
   is_special_cc_carta?: boolean
   client_last_edit_at: string | null

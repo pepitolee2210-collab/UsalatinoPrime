@@ -12,6 +12,11 @@ import {
   calculateProgress as calculateCredibleFearProgress,
   type CFAnswers,
 } from '@/lib/legal/asilo-miedo-creible-form-schema'
+import {
+  WITNESS_FORM_SLUG,
+  calculateWitnessProgress,
+  readWitnesses,
+} from '@/lib/legal/asilo-testigos-form-schema'
 
 /**
  * GET /api/cita/[token]/required-forms
@@ -52,6 +57,8 @@ interface FormSummary {
   is_special_evidence_urls?: boolean
   /** Cuestionario de 11 módulos para generar Miedo Creíble (Asilo Político Fase 2). */
   is_special_credible_fear_questionnaire?: boolean
+  /** Formulario de Testigos para generar sus cartas juradas (Asilo Político / Reforzar Asilo Fase 2). */
+  is_special_witness_form?: boolean
   /** Carta de Cambio de Corte (6 págs custom, Cambio de Corte). */
   is_special_cc_carta?: boolean
   client_last_edit_at: string | null
@@ -391,6 +398,31 @@ export async function GET(
       is_special_credible_fear_questionnaire: true,
       client_last_edit_at: (cfInstance?.client_last_edit_at as string | undefined) ?? null,
       client_submitted_at: (cfInstance?.client_submitted_at as string | undefined) ?? null,
+    })
+
+    // 1b. Formulario de Testigos — captura estructurada de los testigos para
+    // generar sus declaraciones juradas. Opcional (no todos los casos tienen).
+    const witnessInstance = instances.find((i) => i.form_name === WITNESS_FORM_SLUG)
+    const witnessList = readWitnesses(witnessInstance?.filled_values)
+    const witnessProgress = calculateWitnessProgress(witnessList)
+    summaries.push({
+      slug: '__witness_letters__',
+      form_name: 'Cartas de Testigos',
+      description_es:
+        'Agrega a las personas que vieron o vivieron de cerca lo que te pasó. Tu equipo legal redacta con sus datos la declaración jurada de cada testigo.',
+      state: null,
+      packet_type: 'merits',
+      template_type: 'special',
+      icon: 'groups',
+      total_user_fields: witnessProgress.totalRequired,
+      completed_user_fields: witnessProgress.answeredRequired,
+      pct: witnessProgress.pct,
+      instance_status: (witnessInstance?.status as string | undefined) ?? null,
+      locked_for_client: Boolean(witnessInstance?.locked_for_client),
+      is_mandatory: false,
+      is_special_witness_form: true,
+      client_last_edit_at: (witnessInstance?.client_last_edit_at as string | undefined) ?? null,
+      client_submitted_at: (witnessInstance?.client_submitted_at as string | undefined) ?? null,
     })
 
     // 2. URLs de evidencia (legacy quick-add).

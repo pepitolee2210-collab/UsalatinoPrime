@@ -27,6 +27,7 @@ import { CartaCambioCorteGenerator } from '@/app/admin/cases/[id]/carta-cambio-c
 import { I589Review } from '@/app/admin/cases/[id]/i589-review'
 import { I589PartAReview } from '@/app/admin/cases/[id]/i589-part-a-review'
 import { CredibleFearGenerator } from '@/app/admin/cases/[id]/credible-fear-generator'
+import { AsylumWitnessLetterGenerator } from '@/app/admin/cases/[id]/asylum-witness-letter-generator'
 import { I485FormSection } from '@/components/legal/i485-form-section'
 import { GeneratorsTab } from '@/app/employee/_shared/generators-tab'
 
@@ -52,6 +53,7 @@ export type DashboardTabId =
   | 'bitacora'
   | 'cobranza'
   | 'credible-fear'
+  | 'cartas-testigos'
   | 'i589-part-a'
   | 'i589-review'
   | 'client-story'
@@ -205,6 +207,15 @@ export const SERVICE_DASHBOARD_TABS: Record<string, DashboardTabDef[]> = {
         <CredibleFearGenerator caseId={ctx.caseId} caseNumber={ctx.caseNumber} />
       ),
     },
+    {
+      id: 'cartas-testigos',
+      label: 'Cartas de Testigos',
+      // Solo en Fase 2 (asilo_reforzar) del proceso completo.
+      isVisible: (ctx) => ctx.currentPhase === 'asilo_reforzar',
+      render: (ctx) => (
+        <AsylumWitnessLetterGenerator caseId={ctx.caseId} caseNumber={ctx.caseNumber} clientName={ctx.clientName} />
+      ),
+    },
   ],
   // Reforzar Asilo — servicio standalone (solo Fase 2). Reusa el wizard
   // de revisión I-589 Parte B/C de Henry y el generador de Miedo Creíble.
@@ -239,6 +250,13 @@ export const SERVICE_DASHBOARD_TABS: Record<string, DashboardTabDef[]> = {
       label: 'Miedo Creíble',
       render: (ctx) => (
         <CredibleFearGenerator caseId={ctx.caseId} caseNumber={ctx.caseNumber} />
+      ),
+    },
+    {
+      id: 'cartas-testigos',
+      label: 'Cartas de Testigos',
+      render: (ctx) => (
+        <AsylumWitnessLetterGenerator caseId={ctx.caseId} caseNumber={ctx.caseNumber} clientName={ctx.clientName} />
       ),
     },
   ],

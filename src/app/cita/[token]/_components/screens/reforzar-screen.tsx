@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { EvidenceUrlsManager } from '../evidence-urls-manager'
 import { CredibleFearQuestionnaireWizard } from '../forms/credible-fear-questionnaire-wizard'
+import { WitnessLettersWizard } from '../forms/witness-letters-wizard'
 import { PortalSheet } from '../portal-sheet'
 
 interface ReforzarScreenProps {
@@ -44,11 +45,18 @@ interface CredibleFearDraft {
   edited_by_diana: boolean
 }
 
+interface WitnessSummary {
+  witnessCount: number
+  completeWitnesses: number
+  pct: number
+}
+
 interface ScreenContext {
   questionnaire: QuestionnaireSummary | null
   validation: ValidationData | null
   draft: CredibleFearDraft | null
   documentsByCategory: Record<string, number>
+  witnesses: WitnessSummary | null
 }
 
 const DOCUMENT_CATEGORY_LABELS: Record<string, string> = {
@@ -75,27 +83,31 @@ const DOCUMENT_CATEGORY_LABELS: Record<string, string> = {
 export function ReforzarScreen({ token, clientName }: ReforzarScreenProps) {
   const [loading, setLoading] = useState(true)
   const [wizardOpen, setWizardOpen] = useState(false)
+  const [witnessWizardOpen, setWitnessWizardOpen] = useState(false)
   const [ctx, setCtx] = useState<ScreenContext>({
     questionnaire: null,
     validation: null,
     draft: null,
     documentsByCategory: {},
+    witnesses: null,
   })
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [qRes, validationRes, draftRes, docsRes] = await Promise.all([
+      const [qRes, validationRes, draftRes, docsRes, witnessRes] = await Promise.all([
         fetch(`/api/cita/${encodeURIComponent(token)}/asilo-miedo-creible`, { cache: 'no-store' }),
         fetch(`/api/cita/${encodeURIComponent(token)}/asilo-miedo-creible/validation`, { cache: 'no-store' }),
         fetch(`/api/cita/${encodeURIComponent(token)}/credible-fear-current`, { cache: 'no-store' }),
         fetch(`/api/cita/${encodeURIComponent(token)}/required-documents`, { cache: 'no-store' }),
+        fetch(`/api/cita/${encodeURIComponent(token)}/asilo-testigos`, { cache: 'no-store' }),
       ])
 
       const qJson = qRes.ok ? await qRes.json() : null
       const validationJson = validationRes.ok ? await validationRes.json() : null
       const draftJson = draftRes.ok ? await draftRes.json() : null
       const docsJson = docsRes.ok ? await docsRes.json() : null
+      const witnessJson = witnessRes.ok ? await witnessRes.json() : null
 
       const documentsByCategory: Record<string, number> = {}
       if (docsJson?.categories) {
@@ -119,6 +131,13 @@ export function ReforzarScreen({ token, clientName }: ReforzarScreenProps) {
         validation: validationJson,
         draft: draftJson?.draft ?? null,
         documentsByCategory,
+        witnesses: witnessJson?.progress
+          ? {
+              witnessCount: witnessJson.progress.witnessCount ?? 0,
+              completeWitnesses: witnessJson.progress.completeWitnesses ?? 0,
+              pct: witnessJson.progress.pct ?? 0,
+            }
+          : null,
       })
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error cargando datos')
@@ -143,6 +162,8 @@ export function ReforzarScreen({ token, clientName }: ReforzarScreenProps) {
   const qPct = ctx.questionnaire?.progress.pct ?? 0
   const modulesDone = ctx.questionnaire?.progress.modulesComplete ?? 0
   const modulesTotal = ctx.questionnaire?.progress.modulesTotal ?? 11
+  const witnessCount = ctx.witnesses?.witnessCount ?? 0
+  const witnessComplete = ctx.witnesses?.completeWitnesses ?? 0
 
   return (
     <div className="ulp-screen px-6 py-6 max-w-2xl mx-auto space-y-6">
@@ -206,7 +227,40 @@ export function ReforzarScreen({ token, clientName }: ReforzarScreenProps) {
         </button>
       </section>
 
-      {/* 2. URLs de evidencia */}
+      {/* 2. Cartas de Testigos */}
+      <section className="rounded-2xl border bg-white p-5 space-y-3" style={{ borderColor: 'var(--color-ulp-outline-variant)' }}>
+        <header className="flex items-start gap-3">
+          <span className="material-symbols-outlined text-indigo-700" data-fill="1" style={{ fontSize: 22 }}>
+            groups
+          </span>
+          <div className="flex-1">
+            <h2 className="text-sm font-bold text-gray-900">
+              2. Cartas de Testigos
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Agrega a las personas que vieron o vivieron de cerca lo que te pasó. Con sus datos, tu equipo legal redacta la declaración jurada de cada testigo lista para firmar.
+            </p>
+          </div>
+        </header>
+        {witnessCount > 0 && (
+          <p className="text-[11px] font-bold tabular-nums" style={{ color: 'var(--color-ulp-primary)' }}>
+            {witnessComplete}/{witnessCount} testigos con datos completos
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={() => setWitnessWizardOpen(true)}
+          className="w-full px-4 py-2.5 rounded-full text-sm font-bold"
+          style={{
+            background: witnessCount > 0 ? 'var(--color-ulp-surface-container)' : 'var(--color-ulp-primary-container)',
+            color: witnessCount > 0 ? 'var(--color-ulp-on-surface)' : 'var(--color-ulp-on-primary-container)',
+          }}
+        >
+          {witnessCount > 0 ? 'Revisar mis testigos' : 'Agregar testigos'}
+        </button>
+      </section>
+
+      {/* 3. URLs de evidencia */}
       <section className="rounded-2xl border bg-white p-5 space-y-3" style={{ borderColor: 'var(--color-ulp-outline-variant)' }}>
         <header className="flex items-start gap-3">
           <span className="material-symbols-outlined text-blue-700" data-fill="1" style={{ fontSize: 22 }}>
@@ -214,7 +268,7 @@ export function ReforzarScreen({ token, clientName }: ReforzarScreenProps) {
           </span>
           <div className="flex-1">
             <h2 className="text-sm font-bold text-gray-900">
-              2. URLs de evidencia
+              3. URLs de evidencia
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
               Atajo para pegar URLs sueltas. Si prefieres elegirlas con guía, hazlo desde el Módulo 9 del cuestionario.
@@ -238,7 +292,7 @@ export function ReforzarScreen({ token, clientName }: ReforzarScreenProps) {
           </span>
           <div className="flex-1">
             <h2 className="text-sm font-bold text-gray-900">
-              3. Sube evidencia que respalde tu caso (opcional pero muy recomendado)
+              4. Sube evidencia que respalde tu caso (opcional pero muy recomendado)
             </h2>
             <p className="text-xs text-gray-700 mt-0.5">
               La IA legal cita tus documentos como evidencia ante USCIS. Mientras más pruebas concretas tengas, más fuerte tu caso.
@@ -314,7 +368,7 @@ export function ReforzarScreen({ token, clientName }: ReforzarScreenProps) {
             </span>
             <div className="flex-1">
               <h2 className="text-sm font-bold text-gray-900">
-                4. {ctx.validation.ready ? 'Listo para generar' : 'Aún faltan datos'}
+                5. {ctx.validation.ready ? 'Listo para generar' : 'Aún faltan datos'}
               </h2>
               <p className="text-xs text-gray-700 mt-0.5">
                 {ctx.validation.ready
@@ -358,7 +412,7 @@ export function ReforzarScreen({ token, clientName }: ReforzarScreenProps) {
           </span>
           <div className="flex-1">
             <h2 className="text-sm font-bold text-gray-900">
-              5. Tu relato de Miedo Creíble
+              6. Tu relato de Miedo Creíble
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
               Cuando tu equipo legal genere tu declaración verás aquí la versión actual.
@@ -411,6 +465,18 @@ export function ReforzarScreen({ token, clientName }: ReforzarScreenProps) {
           <CredibleFearQuestionnaireWizard
             token={token}
             onClose={() => { setWizardOpen(false); fetchAll() }}
+          />
+        </PortalSheet>
+      )}
+
+      {witnessWizardOpen && (
+        <PortalSheet
+          title="Cartas de Testigos"
+          onClose={() => { setWitnessWizardOpen(false); fetchAll() }}
+        >
+          <WitnessLettersWizard
+            token={token}
+            onClose={() => { setWitnessWizardOpen(false); fetchAll() }}
           />
         </PortalSheet>
       )}
