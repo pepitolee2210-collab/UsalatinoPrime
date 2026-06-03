@@ -404,14 +404,16 @@ export const COURTS_BY_STATE: Record<string, EoirCourt[]> = EOIR_COURTS.reduce(
   {} as Record<string, EoirCourt[]>,
 )
 
-/** Serializa el catálogo (o un subconjunto) a texto compacto para el prompt. */
+/** Serializa el catálogo (o un subconjunto) a texto compacto para el prompt.
+ *  Incluye `key` (que el modelo debe devolver), estado y ciudad (señal para el
+ *  matching geográfico), corte y OPLA. */
 export function serializeCourtsForPrompt(courts: EoirCourt[] = EOIR_COURTS): string {
   return courts
     .map((c) => {
       const cc = c.chiefCounselAddress.replace(/\n/g, ' | ')
       const flags = c.detainedOnly ? ' [DETAINED]' : ''
       const note = c.note ? ` (nota: ${c.note})` : ''
-      return `- ${c.name}${flags} — Corte: ${c.courtStreet}, ${c.courtCityStateZip} — Chief Counsel/OPLA: ${cc}${note}`
+      return `- key="${c.key}"${flags} — ${c.name} — Estado: ${c.state}, Ciudad: ${c.city} — Corte: ${c.courtStreet}, ${c.courtCityStateZip} — Chief Counsel/OPLA: ${cc}${note}`
     })
     .join('\n')
 }
