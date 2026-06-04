@@ -65,6 +65,7 @@ export async function buildCredibleFearDocx(opts: BuildOpts): Promise<Uint8Array
       line.trim().startsWith('|') &&
       idx + 1 < lines.length &&
       lines[idx + 1].includes('-') &&
+      lines[idx + 1].includes('|') &&
       /^\|?[\s:|-]+\|?$/.test(lines[idx + 1].trim())
     ) {
       const header = parseTableRow(line)

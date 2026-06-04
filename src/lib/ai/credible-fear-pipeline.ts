@@ -70,9 +70,13 @@ export async function createCredibleFearV7Draft(
   return data.id as string
 }
 
-async function patchDraft(service: SupabaseClient, draftId: string, patch: Record<string, unknown>): Promise<void> {
+async function patchDraft(service: SupabaseClient, draftId: string, patch: Record<string, unknown>): Promise<{ error: string | null }> {
   const { error } = await service.from(TABLE).update(patch).eq('id', draftId)
-  if (error) log.error('patchDraft failed', { draftId, err: error.message })
+  if (error) {
+    log.error('patchDraft failed', { draftId, err: error.message })
+    return { error: error.message }
+  }
+  return { error: null }
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -204,7 +208,7 @@ export async function runDraftPhase(args: {
     // Marcar el draft current (desmarca otros) — solo ahora que está completo.
     await service.from(TABLE).update({ is_current: false }).eq('case_id', caseId).eq('is_current', true)
 
-    await patchDraft(service, draftId, {
+    const finalPatch = {
       status: 'DRAFT_COMPLETE',
       is_current: true,
       legal_brief_json: brief.sections,
@@ -214,7 +218,15 @@ export async function runDraftPhase(args: {
       declaration_input_tokens: brief.usage.inputTokens + chrono.usage.inputTokens,
       declaration_output_tokens: brief.usage.outputTokens + chrono.usage.outputTokens,
       declaration_cached_tokens: brief.usage.cacheReadTokens + chrono.usage.cacheReadTokens,
-    })
+    }
+    // El write terminal NO puede perderse en silencio: si falla, reintentar una
+    // vez y, si vuelve a fallar, lanzar para que el catch lo marque FAILED (en
+    // vez de dejar el draft atascado en DRAFTING con el documento perdido).
+    let saved = await patchDraft(service, draftId, finalPatch)
+    if (saved.error) {
+      saved = await patchDraft(service, draftId, finalPatch)
+      if (saved.error) throw new Error(`No se pudo guardar el memorándum final: ${saved.error}`)
+    }
     log.info('draft phase done', { caseId, draftId, words: totalWords })
     return { status: 'DRAFT_COMPLETE' }
   } catch (err) {

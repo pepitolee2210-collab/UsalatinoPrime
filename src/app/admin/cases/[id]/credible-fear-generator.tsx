@@ -155,7 +155,7 @@ export function CredibleFearGenerator({ caseId, caseNumber }: CredibleFearGenera
           </div>
           <Button
             onClick={handleGenerate}
-            disabled={generating}
+            disabled={generating || IN_PROGRESS.has(drafts[0]?.status ?? '')}
             className="bg-purple-700 hover:bg-purple-800 text-white"
           >
             {generating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1.5" />}
