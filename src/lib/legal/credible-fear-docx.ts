@@ -6,6 +6,10 @@ import {
   AlignmentType,
   TextRun,
   ExternalHyperlink,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
 } from 'docx'
 
 /**
@@ -37,15 +41,15 @@ interface BuildOpts {
 }
 
 export async function buildCredibleFearDocx(opts: BuildOpts): Promise<Uint8Array> {
-  const children: Paragraph[] = []
+  const children: (Paragraph | Table)[] = []
 
   const lines = opts.bodyMarkdown.split('\n')
   // Estado: si estamos dentro de un bloque HTML comment (<!-- ... -->)
   // skipear líneas. El prompt v3 embebía un JSON estructurado para la
   // Parte B/C del I-589 dentro de un comment; no debe aparecer en Word.
   let insideComment = false
-  for (const raw of lines) {
-    const line = raw.replace(/\r$/, '')
+  for (let idx = 0; idx < lines.length; idx++) {
+    const line = lines[idx].replace(/\r$/, '')
     if (insideComment) {
       if (line.includes('-->')) insideComment = false
       continue
@@ -54,6 +58,27 @@ export async function buildCredibleFearDocx(opts: BuildOpts): Promise<Uint8Array
       if (!line.includes('-->')) insideComment = true
       continue
     }
+
+    // Tabla markdown (Apéndice A cronología): header `| a | b |` + separador
+    // `| --- | --- |`. Se renderiza como una docx Table real.
+    if (
+      line.trim().startsWith('|') &&
+      idx + 1 < lines.length &&
+      lines[idx + 1].includes('-') &&
+      /^\|?[\s:|-]+\|?$/.test(lines[idx + 1].trim())
+    ) {
+      const header = parseTableRow(line)
+      idx++ // consumir la línea separadora
+      const bodyRows: string[][] = []
+      while (idx + 1 < lines.length && lines[idx + 1].trim().startsWith('|')) {
+        idx++
+        bodyRows.push(parseTableRow(lines[idx]))
+      }
+      children.push(buildDocxTable(header, bodyRows))
+      children.push(new Paragraph({ spacing: { after: 120 }, children: [run('')] }))
+      continue
+    }
+
     if (!line.trim()) {
       children.push(new Paragraph({ children: [run('')] }))
       continue
@@ -238,4 +263,44 @@ function parseInlineRuns(text: string): (TextRun | ExternalHyperlink)[] {
     out.push(run(text))
   }
   return out
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Tabla markdown → docx Table (Apéndice A — cronología)
+// ──────────────────────────────────────────────────────────────────
+
+function parseTableRow(line: string): string[] {
+  let t = line.trim()
+  if (t.startsWith('|')) t = t.slice(1)
+  if (t.endsWith('|')) t = t.slice(0, -1)
+  return t.split('|').map((c) => c.replace(/\\\|/g, '|').trim())
+}
+
+function buildDocxTable(header: string[], rows: string[][]): Table {
+  const colCount = Math.max(header.length, 1)
+  const colWidth = Math.floor(100 / colCount)
+  const tableRows: TableRow[] = []
+
+  tableRows.push(new TableRow({
+    tableHeader: true,
+    children: header.map((h) => new TableCell({
+      width: { size: colWidth, type: WidthType.PERCENTAGE },
+      shading: { fill: 'EEEEEE' },
+      children: [new Paragraph({ spacing: { after: 0 }, children: [run(h, { bold: true })] })],
+    })),
+  }))
+
+  for (const r of rows) {
+    tableRows.push(new TableRow({
+      children: Array.from({ length: colCount }, (_, i) => new TableCell({
+        width: { size: colWidth, type: WidthType.PERCENTAGE },
+        children: [new Paragraph({ spacing: { after: 0 }, children: parseInlineRuns(r[i] ?? '') })],
+      })),
+    }))
+  }
+
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: tableRows,
+  })
 }
