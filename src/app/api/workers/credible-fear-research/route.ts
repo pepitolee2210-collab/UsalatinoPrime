@@ -8,7 +8,7 @@ const log = createLogger('worker:credible-fear-research')
 
 // Worker A del Miedo Creíble v7: análisis E1-E8 + jurisprudencia (web_search) +
 // noticias verificadas. Al terminar (status DRAFTING) encola el Worker B1.
-export const maxDuration = 800
+export const maxDuration = 300
 
 export async function POST(request: NextRequest) {
   const raw = await request.text()
