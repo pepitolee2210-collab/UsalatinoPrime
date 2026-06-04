@@ -76,13 +76,18 @@ export async function generateLegalBrief(
   ctx: V7CaseContext,
   jurisprudence: JurisprudenceCase[],
   news: NewsAppendixItem[],
-  opts: { signal?: AbortSignal } = {},
+  opts: { signal?: AbortSignal; sectionIds?: string[] } = {},
 ): Promise<BriefResult> {
   const jurisBlock = buildVerifiedJurisprudenceBlock(jurisprudence)
   const ccBlock = buildCountryConditionsBlock(news)
+  // Permite generar solo un subconjunto de secciones (el pipeline parte la
+  // redacción en 2 workers para no exceder el límite de tiempo de Vercel).
+  const defs = opts.sectionIds
+    ? LEGAL_BRIEF_SECTIONS.filter((d) => opts.sectionIds!.includes(d.id))
+    : LEGAL_BRIEF_SECTIONS
 
   const settled = await Promise.all(
-    LEGAL_BRIEF_SECTIONS.map(async (def) => {
+    defs.map(async (def) => {
       const user = buildBriefSectionUserPrompt(def.id, inputs, ctx, jurisBlock, ccBlock)
       try {
         const { text, usage } = await generateTextWithUsage({

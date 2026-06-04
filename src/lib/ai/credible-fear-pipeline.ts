@@ -24,6 +24,8 @@ import type {
   CaseAnalysis,
   JurisprudenceCase,
   NewsAppendixItem,
+  LegalBriefSection,
+  ChronologyRow,
 } from './credible-fear-schema'
 import { createLogger } from '@/lib/logger'
 
@@ -157,81 +159,131 @@ export async function runResearchPhase(args: {
 // Fase B — draft (brief seccionado + cronología + ensamblaje)
 // ──────────────────────────────────────────────────────────────────
 
-export async function runDraftPhase(args: {
+// La redacción se parte en 2 sub-fases (2 workers) para no exceder el límite de
+// tiempo de Vercel: cada worker genera ~2-3 secciones densas.
+const BRIEF_SECTIONS_P1 = ['I.1', 'I.2', 'I.3']
+const BRIEF_SECTIONS_P2 = ['I.4', 'I.5']
+
+async function loadDraftCtx(caseId: string, draftId: string, service: SupabaseClient) {
+  const collected = await collectCredibleFearInputs(caseId, service)
+  if (!collected.ok) return { error: collected.error } as const
+  const { baseInputs, country, persecutionType, protectedGrounds } = collected.data
+  const { data: draft } = await service
+    .from(TABLE)
+    .select('case_analysis_json, jurisprudence_json, news_appendix_json, legal_brief_json, chronology_json, declaration_input_tokens, declaration_output_tokens, declaration_cached_tokens')
+    .eq('id', draftId)
+    .single()
+  const caseAnalysis = (draft?.case_analysis_json ?? {}) as CaseAnalysis
+  const ctx: V7CaseContext = {
+    nationality: country,
+    persecutionType,
+    protectedGrounds,
+    analysisJson: JSON.stringify(caseAnalysis),
+    caseSummary: buildCaseSummary(caseAnalysis),
+  }
+  return {
+    baseInputs,
+    ctx,
+    jurisprudence: (draft?.jurisprudence_json ?? []) as JurisprudenceCase[],
+    news: (draft?.news_appendix_json ?? []) as NewsAppendixItem[],
+    partialSections: (draft?.legal_brief_json ?? []) as LegalBriefSection[],
+    chronoRows: (draft?.chronology_json ?? []) as ChronologyRow[],
+    prevTokens: {
+      input: (draft?.declaration_input_tokens as number | null) ?? 0,
+      output: (draft?.declaration_output_tokens as number | null) ?? 0,
+      cached: (draft?.declaration_cached_tokens as number | null) ?? 0,
+    },
+  } as const
+}
+
+/** Worker B1: secciones I.1-I.3 del brief + tabla cronológica. Persiste parcial
+ *  (status sigue DRAFTING) y deja que el caller encole el Worker B2. */
+export async function runDraftPhase1(args: {
+  caseId: string
+  draftId: string
+  service: SupabaseClient
+}): Promise<{ status: 'DRAFTING' | 'FAILED' }> {
+  const { caseId, draftId, service } = args
+  try {
+    const loaded = await loadDraftCtx(caseId, draftId, service)
+    if ('error' in loaded) {
+      await patchDraft(service, draftId, { status: 'FAILED', generation_error: loaded.error })
+      return { status: 'FAILED' }
+    }
+    const { baseInputs, ctx, jurisprudence, news } = loaded
+    const [brief, chrono] = await Promise.all([
+      generateLegalBrief(baseInputs, ctx, jurisprudence, news, { sectionIds: BRIEF_SECTIONS_P1 }),
+      generateChronology(baseInputs, ctx),
+    ])
+    await patchDraft(service, draftId, {
+      legal_brief_json: brief.sections,
+      chronology_json: chrono.rows,
+      declaration_input_tokens: brief.usage.inputTokens + chrono.usage.inputTokens,
+      declaration_output_tokens: brief.usage.outputTokens + chrono.usage.outputTokens,
+      declaration_cached_tokens: brief.usage.cacheReadTokens + chrono.usage.cacheReadTokens,
+    })
+    log.info('draft phase 1 done', { caseId, draftId, sections: brief.sections.length, chrono: chrono.rows.length })
+    return { status: 'DRAFTING' }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    log.error('draft phase 1 threw', { caseId, draftId, err: msg })
+    await patchDraft(service, draftId, { status: 'FAILED', generation_error: msg.slice(0, 500) })
+    return { status: 'FAILED' }
+  }
+}
+
+/** Worker B2: secciones I.4-I.5, ensambla TODO el documento y persiste DRAFT_COMPLETE. */
+export async function runDraftPhase2(args: {
   caseId: string
   draftId: string
   service: SupabaseClient
 }): Promise<{ status: 'DRAFT_COMPLETE' | 'FAILED' }> {
   const { caseId, draftId, service } = args
   try {
-    const collected = await collectCredibleFearInputs(caseId, service)
-    if (!collected.ok) {
-      await patchDraft(service, draftId, { status: 'FAILED', generation_error: collected.error })
+    const loaded = await loadDraftCtx(caseId, draftId, service)
+    if ('error' in loaded) {
+      await patchDraft(service, draftId, { status: 'FAILED', generation_error: loaded.error })
       return { status: 'FAILED' }
     }
-    const { baseInputs, country, persecutionType, protectedGrounds } = collected.data
+    const { baseInputs, ctx, jurisprudence, news, partialSections, chronoRows, prevTokens } = loaded
 
-    const { data: draft } = await service
-      .from(TABLE)
-      .select('case_analysis_json, jurisprudence_json, news_appendix_json')
-      .eq('id', draftId)
-      .single()
-    const caseAnalysis = (draft?.case_analysis_json ?? {}) as CaseAnalysis
-    const jurisprudence = (draft?.jurisprudence_json ?? []) as JurisprudenceCase[]
-    const news = (draft?.news_appendix_json ?? []) as NewsAppendixItem[]
-
-    const ctx: V7CaseContext = {
-      nationality: country,
-      persecutionType,
-      protectedGrounds,
-      analysisJson: JSON.stringify(caseAnalysis),
-      caseSummary: buildCaseSummary(caseAnalysis),
-    }
-
-    // Fase 4 — brief (5 secciones en paralelo) + Fase 5 — cronología
-    const [brief, chrono] = await Promise.all([
-      generateLegalBrief(baseInputs, ctx, jurisprudence, news),
-      generateChronology(baseInputs, ctx),
-    ])
+    const brief2 = await generateLegalBrief(baseInputs, ctx, jurisprudence, news, { sectionIds: BRIEF_SECTIONS_P2 })
+    const allSections = [...partialSections, ...brief2.sections].sort((a, b) => a.section_id.localeCompare(b.section_id))
 
     const bodyMd = assembleMemorandumMarkdown({
       applicantName: baseInputs.applicantMetadata.full_name,
       aNumber: baseInputs.applicantMetadata.a_number,
       todayLabel: formatToday(),
-      sections: brief.sections,
-      chronology: chrono.rows,
+      sections: allSections,
+      chronology: chronoRows,
       jurisprudence,
       news,
     })
-    const totalWords = brief.sections.reduce((n, s) => n + s.words, 0)
+    const totalWords = allSections.reduce((n, s) => n + s.words, 0)
 
-    // Marcar el draft current (desmarca otros) — solo ahora que está completo.
     await service.from(TABLE).update({ is_current: false }).eq('case_id', caseId).eq('is_current', true)
 
     const finalPatch = {
       status: 'DRAFT_COMPLETE',
       is_current: true,
-      legal_brief_json: brief.sections,
-      chronology_json: chrono.rows,
+      legal_brief_json: allSections,
       body_md: bodyMd,
       declaration_total_words: totalWords,
-      declaration_input_tokens: brief.usage.inputTokens + chrono.usage.inputTokens,
-      declaration_output_tokens: brief.usage.outputTokens + chrono.usage.outputTokens,
-      declaration_cached_tokens: brief.usage.cacheReadTokens + chrono.usage.cacheReadTokens,
+      declaration_input_tokens: prevTokens.input + brief2.usage.inputTokens,
+      declaration_output_tokens: prevTokens.output + brief2.usage.outputTokens,
+      declaration_cached_tokens: prevTokens.cached + brief2.usage.cacheReadTokens,
     }
-    // El write terminal NO puede perderse en silencio: si falla, reintentar una
-    // vez y, si vuelve a fallar, lanzar para que el catch lo marque FAILED (en
-    // vez de dejar el draft atascado en DRAFTING con el documento perdido).
+    // El write terminal NO puede perderse en silencio (reintenta y, si falla, lanza).
     let saved = await patchDraft(service, draftId, finalPatch)
     if (saved.error) {
       saved = await patchDraft(service, draftId, finalPatch)
       if (saved.error) throw new Error(`No se pudo guardar el memorándum final: ${saved.error}`)
     }
-    log.info('draft phase done', { caseId, draftId, words: totalWords })
+    log.info('draft phase 2 done', { caseId, draftId, words: totalWords })
     return { status: 'DRAFT_COMPLETE' }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    log.error('draft phase threw', { caseId, draftId, err: msg })
+    log.error('draft phase 2 threw', { caseId, draftId, err: msg })
     await patchDraft(service, draftId, { status: 'FAILED', generation_error: msg.slice(0, 500) })
     return { status: 'FAILED' }
   }

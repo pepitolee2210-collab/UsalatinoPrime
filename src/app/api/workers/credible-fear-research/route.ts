@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyQStashSignature, enqueueJob } from '@/lib/qstash/client'
 import { createServiceClient } from '@/lib/supabase/service'
-import { runResearchPhase, runDraftPhase } from '@/lib/ai/credible-fear-pipeline'
+import { runResearchPhase, runDraftPhase1, runDraftPhase2 } from '@/lib/ai/credible-fear-pipeline'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('worker:credible-fear-research')
 
 // Worker A del Miedo Creíble v7: análisis E1-E8 + jurisprudencia (web_search) +
-// noticias verificadas. Al terminar (status DRAFTING) encola el Worker B.
-export const maxDuration = 300
+// noticias verificadas. Al terminar (status DRAFTING) encola el Worker B1.
+export const maxDuration = 800
 
 export async function POST(request: NextRequest) {
   const raw = await request.text()
@@ -59,9 +59,10 @@ export async function POST(request: NextRequest) {
       // marcamos FAILED para no dejar el draft atascado en DRAFTING ni arriesgar
       // un corte de Vercel a mitad del documento.
       const elapsedMs = Date.now() - startMs
-      const SAFE_INLINE_BUDGET_MS = 140_000
+      const SAFE_INLINE_BUDGET_MS = 400_000
       if (elapsedMs < SAFE_INLINE_BUDGET_MS) {
-        await runDraftPhase({ caseId, draftId, service })
+        const d1 = await runDraftPhase1({ caseId, draftId, service })
+        if (d1.status === 'DRAFTING') await runDraftPhase2({ caseId, draftId, service })
       } else {
         await service
           .from('case_credible_fear_drafts')

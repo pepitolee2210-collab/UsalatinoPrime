@@ -7,7 +7,8 @@ import { validateCaseBeforeGeneration } from '@/lib/asylum/validate-case-before-
 import {
   createCredibleFearV7Draft,
   runResearchPhase,
-  runDraftPhase,
+  runDraftPhase1,
+  runDraftPhase2,
 } from '@/lib/ai/credible-fear-pipeline'
 import { enqueueJob } from '@/lib/qstash/client'
 import { logActivity } from '@/lib/activity/log-activity'
@@ -120,7 +121,8 @@ export async function POST(request: NextRequest) {
     const bgService = createServiceClient()
     const r = await runResearchPhase({ caseId, draftId, service: bgService })
     if (r.status === 'DRAFTING') {
-      await runDraftPhase({ caseId, draftId, service: bgService })
+      const d1 = await runDraftPhase1({ caseId, draftId, service: bgService })
+      if (d1.status === 'DRAFTING') await runDraftPhase2({ caseId, draftId, service: bgService })
     }
   })
   return NextResponse.json({ ok: true, queued: true, draft_id: draftId, status: 'RESEARCHING' })

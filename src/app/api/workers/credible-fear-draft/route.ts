@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyQStashSignature } from '@/lib/qstash/client'
+import { verifyQStashSignature, enqueueJob } from '@/lib/qstash/client'
 import { createServiceClient } from '@/lib/supabase/service'
-import { runDraftPhase } from '@/lib/ai/credible-fear-pipeline'
+import { runDraftPhase1, runDraftPhase2 } from '@/lib/ai/credible-fear-pipeline'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('worker:credible-fear-draft')
 
-// Worker B del Miedo Creíble v7: redacta el Legal Brief seccionado + tabla
-// cronológica y ensambla el documento final (~20 págs) en body_md.
-export const maxDuration = 300
+// Worker B1 del Miedo Creíble v7: redacta las secciones I.1-I.3 del brief + la
+// tabla cronológica, persiste parcial y encola el Worker B2 (I.4-I.5 + ensamblaje).
+// El split mantiene cada worker bien por debajo del límite de tiempo de Vercel.
+export const maxDuration = 800
 
 export async function POST(request: NextRequest) {
   const raw = await request.text()
@@ -34,10 +35,31 @@ export async function POST(request: NextRequest) {
 
   const service = createServiceClient()
   const startMs = Date.now()
-  log.info('draft worker started', { caseId, draftId })
+  log.info('draft B1 worker started', { caseId, draftId })
 
-  const r = await runDraftPhase({ caseId, draftId, service })
+  const r = await runDraftPhase1({ caseId, draftId, service })
 
-  log.info('draft worker finished', { caseId, draftId, status: r.status, elapsedMs: Date.now() - startMs })
+  if (r.status === 'DRAFTING') {
+    let enqueued = false
+    if (host && process.env.QSTASH_TOKEN) {
+      try {
+        await enqueueJob({
+          endpoint: `${proto}://${host}/api/workers/credible-fear-draft2`,
+          body: { caseId, draftId },
+          retries: 0,
+          deduplicationId: `cf-v7-draft2:${draftId}`,
+        })
+        enqueued = true
+      } catch (err) {
+        log.error('enqueue draft2 failed', { draftId, err: String(err) })
+      }
+    }
+    if (!enqueued) {
+      // Sin QStash (dev) o falló el encolado: corre la fase 2 inline.
+      await runDraftPhase2({ caseId, draftId, service })
+    }
+  }
+
+  log.info('draft B1 worker finished', { caseId, draftId, status: r.status, elapsedMs: Date.now() - startMs })
   return NextResponse.json({ ok: true, caseId, draftId, status: r.status })
 }
