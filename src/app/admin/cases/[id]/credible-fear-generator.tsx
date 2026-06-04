@@ -26,6 +26,9 @@ interface DraftRow {
 }
 
 const IN_PROGRESS = new Set(['RESEARCHING', 'DRAFTING'])
+// Si un draft lleva más de esto en progreso, el worker probablemente murió por
+// timeout — dejamos de pollear y rehabilitamos el botón para regenerar.
+const STALL_MS = 12 * 60 * 1000
 
 function statusBadge(status: string | null, isCurrent: boolean): { label: string; cls: string } {
   switch (status) {
@@ -75,11 +78,14 @@ export function CredibleFearGenerator({ caseId, caseNumber }: CredibleFearGenera
   }, [fetchDrafts])
 
   // Si al cargar la página el draft más reciente sigue en progreso (worker
-  // corriendo de una sesión previa), reanudar el polling automáticamente.
+  // corriendo de una sesión previa), reanudar el polling — salvo que lleve
+  // demasiado tiempo (worker probablemente muerto), para no pollear infinito.
   useEffect(() => {
-    if (!loading && !generating && IN_PROGRESS.has(drafts[0]?.status ?? '')) {
-      setGenerating(true)
-    }
+    if (loading || generating) return
+    const d = drafts[0]
+    if (!d || !IN_PROGRESS.has(d.status ?? '')) return
+    const ageMs = Date.now() - new Date(d.generated_at).getTime()
+    if (ageMs < STALL_MS) setGenerating(true)
   }, [loading, generating, drafts])
 
   // Polling mientras hay generación en progreso.
@@ -89,11 +95,19 @@ export function CredibleFearGenerator({ caseId, caseNumber }: CredibleFearGenera
     return () => clearInterval(iv)
   }, [generating, fetchDrafts])
 
-  // Detección de estado terminal para detener el polling y avisar.
+  // Detección de estado terminal (y watchdog de timeout) para detener el polling.
   useEffect(() => {
     if (!generating) return
     const latest = drafts[0]
-    if (!latest || !latest.status || IN_PROGRESS.has(latest.status)) return
+    if (!latest || !latest.status) return
+    if (IN_PROGRESS.has(latest.status)) {
+      const ageMs = Date.now() - new Date(latest.generated_at).getTime()
+      if (ageMs > STALL_MS) {
+        setGenerating(false)
+        toast.error('La generación está tardando más de lo esperado. Puedes intentar regenerar.')
+      }
+      return
+    }
     setGenerating(false)
     if (latest.status === 'DRAFT_COMPLETE') {
       toast.success(`Memorándum v${latest.version} listo${latest.declaration_total_words ? ` (${latest.declaration_total_words} palabras)` : ''}`)
@@ -129,7 +143,10 @@ export function CredibleFearGenerator({ caseId, caseNumber }: CredibleFearGenera
   }
 
   const latest = drafts[0]
-  const progressLabel = generating
+  const latestInProgress = IN_PROGRESS.has(latest?.status ?? '')
+  const latestStalled = !!latest && latestInProgress &&
+    Date.now() - new Date(latest.generated_at).getTime() > STALL_MS
+  const progressLabel = generating && !latestStalled
     ? latest?.status === 'DRAFTING'
       ? 'Redactando el memorándum legal y la tabla cronológica…'
       : 'Investigando jurisprudencia federal y condiciones de país…'
@@ -155,7 +172,7 @@ export function CredibleFearGenerator({ caseId, caseNumber }: CredibleFearGenera
           </div>
           <Button
             onClick={handleGenerate}
-            disabled={generating || IN_PROGRESS.has(drafts[0]?.status ?? '')}
+            disabled={generating || (latestInProgress && !latestStalled)}
             className="bg-purple-700 hover:bg-purple-800 text-white"
           >
             {generating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1.5" />}

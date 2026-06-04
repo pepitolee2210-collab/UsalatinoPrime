@@ -80,6 +80,7 @@ export async function buildNewsAppendix(
       system: NEWS_CARATULA_SYSTEM,
       user: buildNewsCaratulaUserPrompt(articles),
       maxTokens: 6000,
+      disableThinking: true, // resumen de artículos, no razonamiento
       signal: opts.signal,
       logLabel: 'credible-fear-v7-news-caratula',
     })

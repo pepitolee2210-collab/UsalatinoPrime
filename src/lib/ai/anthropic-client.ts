@@ -52,6 +52,14 @@ export interface GenerateTextParams {
    * en los logs de producción. Ej: "declaration-tutor", "improve-answer".
    */
   logLabel?: string
+  /**
+   * Desactiva el extended thinking (adaptive). Útil para tareas de REDACCIÓN
+   * pura (no razonamiento) donde el thinking solo añade latencia — ej. las
+   * secciones del memorándum legal v7, cuyos hechos ya vienen decididos en el
+   * case_analysis. Reduce el tiempo de generación ~30-40%. Default: false
+   * (thinking adaptive activo, como el resto del sistema).
+   */
+  disableThinking?: boolean
 }
 
 /**
@@ -270,7 +278,7 @@ export async function generateTextWithUsage(
     {
       model: CLAUDE_MODEL,
       max_tokens: params.maxTokens ?? 8192,
-      thinking: { type: 'adaptive' },
+      ...(params.disableThinking ? {} : { thinking: { type: 'adaptive' as const } }),
       system: systemBlocks,
       messages: [{ role: 'user', content: [{ type: 'text', text: params.user }] }],
     },

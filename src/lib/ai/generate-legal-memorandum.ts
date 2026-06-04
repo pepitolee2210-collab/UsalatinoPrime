@@ -88,7 +88,8 @@ export async function generateLegalBrief(
         const { text, usage } = await generateTextWithUsage({
           system: def.system,
           user,
-          maxTokens: 12000, // cada sección densa; I.2 puede acercarse al cap
+          maxTokens: 8000, // densa pero acotada para caber en el worker (300s)
+          disableThinking: true, // redacción (hechos ya decididos en case_analysis) → sin extended thinking
           signal: opts.signal,
           logLabel: `credible-fear-v7-brief-${def.id}`,
         })
@@ -133,7 +134,8 @@ export async function generateChronology(
     const { text, usage } = await generateTextWithUsage({
       system: CHRONOLOGY_SYSTEM,
       user: buildChronologyUserPrompt(inputs, ctx),
-      maxTokens: 6000,
+      maxTokens: 4000,
+      disableThinking: true,
       signal: opts.signal,
       logLabel: 'credible-fear-v7-chronology',
     })

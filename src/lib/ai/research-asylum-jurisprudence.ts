@@ -44,11 +44,11 @@ export async function researchAsylumJurisprudence(
         max_tokens: 8000,
         system: JURISPRUDENCE_SEARCH_SYSTEM,
         tools: [
-          { type: 'web_search_20250305', name: 'web_search', max_uses: opts.maxUses ?? 6 },
+          { type: 'web_search_20250305', name: 'web_search', max_uses: opts.maxUses ?? 5 },
         ] as unknown as Anthropic.Messages.Tool[],
         messages: [{ role: 'user', content: userPrompt }],
       },
-      { signal: opts.signal, timeout: 180_000 },
+      { signal: opts.signal, timeout: 150_000 },
     )
   } catch (err) {
     log.error('jurisprudence web_search call failed', {
