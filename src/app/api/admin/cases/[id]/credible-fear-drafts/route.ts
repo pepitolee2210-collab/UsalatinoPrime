@@ -31,7 +31,7 @@ export async function GET(
 
   const { data, error } = await service
     .from('case_credible_fear_drafts')
-    .select('id, version, body_md, sources, model_used, prompt_version, generated_at, is_current, edited_by_diana')
+    .select('id, version, body_md, sources, model_used, prompt_version, generated_at, is_current, edited_by_diana, status, generation_error, declaration_total_words')
     .eq('case_id', id)
     .order('version', { ascending: false })
 

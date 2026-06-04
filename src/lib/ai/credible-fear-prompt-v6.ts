@@ -384,7 +384,7 @@ export function buildDeclarationUserPrompt(input: BuildDeclarationUserPromptInpu
   return parts.join('\n')
 }
 
-function buildBaseInputs(input: BuildAnalysisUserPromptInput): string {
+export function buildBaseInputs(input: BuildAnalysisUserPromptInput): string {
   const md = input.applicantMetadata
   const lines: string[] = []
   lines.push('<applicant_metadata>')

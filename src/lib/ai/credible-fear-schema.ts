@@ -385,3 +385,78 @@ export interface CredibleFearMergedOutputV6 {
   factual_claims_audit: FactualClaim[]
   declaration_total_words: number
 }
+
+// ══════════════════════════════════════════════════════════════════
+// v7 — Memorándum Legal robusto: jurisprudencia, noticias (carátula),
+// cronología. Los string fields toleran null (Claude a veces omite un
+// dato como year o url).
+// ══════════════════════════════════════════════════════════════════
+
+/** Caso federal real que sustenta el análisis de nexo. `url_verified` lo setea
+ *  el backend tras `checkUrlReachable` — si el link no resuelve, se conserva el
+ *  caso (su análisis) pero NO se imprime una URL muerta. */
+export const jurisprudenceCaseSchema = z.object({
+  name: z.string(),                                  // "Gonzales-Neyra v. INS"
+  citation: nullableString,                          // "122 F.3d 1293 (9th Cir. 1997)"
+  court: nullableString,                             // "9th Cir."
+  year: nullableString,                              // "1997"
+  holding: z.string(),                               // qué resolvió la corte
+  factual_analogy_to_applicant: z.string(),          // por qué aplica a ESTE cliente
+  url: nullableString,                               // CourtListener / Justia
+  url_verified: z.boolean().default(false),
+})
+export type JurisprudenceCase = z.infer<typeof jurisprudenceCaseSchema>
+
+export const jurisprudenceOutputSchema = z.object({
+  cases: z.array(jurisprudenceCaseSchema).optional().default([]),
+})
+export type JurisprudenceOutput = z.infer<typeof jurisprudenceOutputSchema>
+
+/** Una noticia del Apéndice C con su carátula (Nota de Guía). `verified_url` y
+ *  `published_date` vienen de Tavily ya verificados; el resto lo redacta Claude. */
+export const newsAppendixItemSchema = z.object({
+  source_name: z.string(),                           // "Reuters", "La República", "State Dept"
+  author: nullableString,
+  verified_url: z.string(),
+  executive_summary: z.string(),                     // quién lo dijo + qué pasó (carátula)
+  full_context: z.string(),                          // extracto detallado
+  published_date: nullableString,
+  url_verified: z.boolean().default(true),
+})
+export type NewsAppendixItem = z.infer<typeof newsAppendixItemSchema>
+
+/** Output de la llamada que redacta SOLO las carátulas. `index` mapea al
+ *  artículo verificado de entrada (url/fecha se adjuntan en backend). */
+export const newsCaratulaOutputSchema = z.object({
+  items: z.array(z.object({
+    index: z.number().int().nonnegative(),
+    source_name: z.string(),
+    author: nullableString,
+    executive_summary: z.string(),
+    full_context: z.string(),
+  })).optional().default([]),
+})
+export type NewsCaratulaOutput = z.infer<typeof newsCaratulaOutputSchema>
+
+/** Una fila de la Tabla Cronológica (Apéndice A). */
+export const chronologyRowSchema = z.object({
+  date: nullableString,            // "March 15, 2022" / "Approx. early 2023"
+  event: z.string(),               // evento + partes involucradas
+  consequence: nullableString,     // consecuencia directa
+  exhibit: nullableString,         // exhibit relacionado (A-1, B-1…) o ''
+})
+export type ChronologyRow = z.infer<typeof chronologyRowSchema>
+
+export const chronologyOutputSchema = z.object({
+  rows: z.array(chronologyRowSchema).optional().default([]),
+})
+export type ChronologyOutput = z.infer<typeof chronologyOutputSchema>
+
+/** Sección del Legal Brief (I.1-I.5). El cuerpo es markdown plano (no JSON) por
+ *  robustez con textos largos; se arma en backend, no se valida contra la IA. */
+export interface LegalBriefSection {
+  section_id: string   // "I.1".."I.5"
+  heading: string
+  markdown: string
+  words: number
+}
