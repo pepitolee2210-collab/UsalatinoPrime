@@ -140,11 +140,21 @@ R5. Write in ENGLISH. Tone: clinical, authoritative, persuasive, and highly defe
 R6. Output ONLY the markdown body of YOUR assigned section (no JSON, no code fences, no preamble). Start with the section's "###" sub-heading. Do NOT write other sections. Do NOT write a closing attestation or signature (assembled separately).
 R7. Do not reference "USALatino Prime", "HenryFlow", or "the system".`
 
+// System base común (rol + reglas). Es IDÉNTICO para las 5 secciones y, junto
+// con el contexto del caso, forma el bloque cacheable.
+const ASYLUM_ATTORNEY_SYSTEM_BASE = `You are a Senior Federal Immigration Attorney drafting an asylum Legal Memorandum + Applicant Declaration to USCIS, at the standard of an elite corporate immigration firm with decades of experience and thousands of asylum cases won. You write ONE section at a time; the user message tells you WHICH section and its scope. The full case record is provided below and is shared across all sections.
+
+${SHARED_BRIEF_RULES}`
+
 interface BriefSectionDef {
   id: string
   heading: string
   wordTarget: string
-  system: string
+  /** Qué escribir. Va en el USER message (variable, pequeño) para que el SYSTEM
+   *  (rol + reglas + contexto del caso) sea idéntico entre secciones y golpee el
+   *  prompt cache de Anthropic (la 1ª sección escribe el cache; las demás —incluso
+   *  en el otro worker, el cache vive ~5 min— lo leen, ~10x más barato y rápido). */
+  scope: string
 }
 
 export const LEGAL_BRIEF_SECTIONS: BriefSectionDef[] = [
@@ -152,97 +162,82 @@ export const LEGAL_BRIEF_SECTIONS: BriefSectionDef[] = [
     id: 'I.1',
     heading: 'I.1 — Statement of Jurisdiction & Legal Standards for Asylum',
     wordTarget: '600-1000 words',
-    system: `You are a Senior Federal Immigration Attorney drafting Section I.1 (Statement of Jurisdiction & Legal Standards) of an asylum Legal Memorandum to USCIS.
-
-WRITE (600-1000 words, markdown, starting with "### I.1 Statement of Jurisdiction & Legal Standards for Asylum"):
+    scope: `Section I.1 (Statement of Jurisdiction & Legal Standards). Start with "### I.1 Statement of Jurisdiction & Legal Standards for Asylum". Cover:
 - The statutory framework: asylum under INA § 208 / 8 U.S.C. § 1158 and the refugee definition INA § 101(a)(42)(A); withholding of removal under INA § 241(b)(3); CAT relief if torture is at issue.
-- The legal standards: "well-founded fear" (subjective + objective), nexus to a protected ground (race, religion, nationality, political opinion, particular social group), past persecution and its rebuttable presumption of future fear, and the one-year filing rule with its changed/extraordinary-circumstances exceptions where relevant to THIS applicant (use case_analysis.one_year_status).
+- The legal standards: "well-founded fear" (subjective + objective), nexus to a protected ground (race, religion, nationality, political opinion, particular social group), past persecution and its rebuttable presumption of future fear, and the one-year filing rule with its changed/extraordinary-circumstances exceptions where relevant (use case_analysis.one_year_status).
 - Frame which protected ground(s) this applicant invokes (from case_analysis) without yet arguing the facts (that is I.3).
-This is doctrinal and applies generally; it is the section where general legal standards belong.
-
-${SHARED_BRIEF_RULES}`,
+Doctrinal section — general legal standards belong here.`,
   },
   {
     id: 'I.2',
     heading: 'I.2 — Comprehensive Narrative of Past Persecution',
     wordTarget: '2500-4000 words',
-    system: `You are a Senior Federal Immigration Attorney drafting Section I.2 (Comprehensive Narrative of Past Persecution) — the factual heart of the memorandum.
-
-WRITE (2500-4000 words, markdown, starting with "### I.2 Comprehensive Narrative of Past Persecution"):
+    scope: `Section I.2 (Comprehensive Narrative of Past Persecution) — the factual heart. Start with "### I.2 Comprehensive Narrative of Past Persecution". Cover:
 - A rigorously detailed, strictly CHRONOLOGICAL narrative of everything that happened to the applicant, built from M2-M8, the uploaded sworn declaration (primary backbone when present), and case_analysis dates.
 - Every specific date, exact time, named individual, geographic location, and exact threat the applicant provided. Do NOT omit details of emotional or physical impact — describe in rigorous prose the psychological toll and somatic distress the applicant reported (M4 effect fields, M4.6).
 - Country context at each relevant date interwoven with the personal events (cite country_conditions figures/news with source when present).
-This is the longest section. Be exhaustive but FAITHFUL — expand depth and prose, never invent new facts (R1). Keep the applicant's register (R2).
-
-${SHARED_BRIEF_RULES}`,
+This is the LONGEST section. Be exhaustive but FAITHFUL — expand depth and prose, never invent new facts (R1). Keep the applicant's register (R2).`,
   },
   {
     id: 'I.3',
     heading: 'I.3 — Legal Analysis of Nexus: Application of Federal Precedents',
     wordTarget: '1500-2800 words',
-    system: `You are a Senior Federal Immigration Attorney drafting Section I.3 (Legal Analysis of Nexus) — the core legal argument.
-
-WRITE (1500-2800 words, markdown, starting with "### I.3 Legal Analysis of Nexus: Application of Federal Precedents"):
+    scope: `Section I.3 (Legal Analysis of Nexus) — the core legal argument. Start with "### I.3 Legal Analysis of Nexus: Application of Federal Precedents". Cover:
 - Argue that the applicant's harm constitutes "persecution" and that there is a clear NEXUS to a protected ground under INA § 101(a)(42)(A).
-- For EACH case in <verified_jurisprudence>: break down the court's legal reasoning/holding, then draw a DIRECT factual analogy between that precedent and this applicant's specific timeline (use the factual_analogy provided as a seed and deepen it). Argue why the precedent compels protection here. Cite each case by name + citation; include its URL inline ONLY if url_verified is true.
+- For EACH case in <verified_jurisprudence>: break down the court's legal reasoning/holding, then draw a DIRECT factual analogy between that precedent and this applicant's specific timeline (deepen the factual_analogy provided). Argue why the precedent compels protection here. Cite each case by name + citation; include its URL inline ONLY if url_verified is true.
 - If <verified_jurisprudence> is empty, argue the nexus from the statutory standard and country conditions WITHOUT inventing case citations.
-This is legal argument: you may characterize facts as persecution here, but the underlying facts must still trace to the record (R1).
-
-${SHARED_BRIEF_RULES}`,
+Legal argument: you may characterize facts as persecution here, but the underlying facts must still trace to the record (R1).`,
   },
   {
     id: 'I.4',
     heading: 'I.4 — Government Inability/Unwillingness to Protect & Futility of Internal Relocation',
     wordTarget: '800-1400 words',
-    system: `You are a Senior Federal Immigration Attorney drafting Section I.4 (Government Failure & Internal Relocation).
-
-WRITE (800-1400 words, markdown, starting with "### I.4 Government Inability to Protect and the Futility of Internal Relocation"):
+    scope: `Section I.4 (Government Failure & Internal Relocation). Start with "### I.4 Government Inability to Protect and the Futility of Internal Relocation". Cover:
 - If the persecutor is a non-state actor: argue the government is unable or unwilling to control them, using M6 (attempts to seek help / why not) and country_conditions on impunity/state complicity. If the persecutor IS the state, argue that fact directly.
 - Argue why internal relocation within the country is not reasonable or safe (use M7 and the reach of the persecutor / country conditions).
-Cite country-condition sources where present; never fabricate (R4).
-
-${SHARED_BRIEF_RULES}`,
+Cite country-condition sources where present; never fabricate (R4).`,
   },
   {
     id: 'I.5',
     heading: 'I.5 — Well-Founded Fear of Future Persecution',
     wordTarget: '800-1400 words',
-    system: `You are a Senior Federal Immigration Attorney drafting Section I.5 (Well-Founded Fear of Future Persecution).
-
-WRITE (800-1400 words, markdown, starting with "### I.5 Well-Founded Fear of Future Persecution"):
+    scope: `Section I.5 (Well-Founded Fear of Future Persecution). Start with "### I.5 Well-Founded Fear of Future Persecution". Cover:
 - Establish the applicant's subjective fear AND its objective reasonableness. Use M8 (who would harm them, what they would do, why it is still real today, last threat date) and the rebuttable presumption arising from past persecution (if established in I.2/I.3).
 - Tie to country_conditions showing the threat persists, and to relevant precedent on future-fear standards from <verified_jurisprudence> if present.
-- Conclude with a firm, professional statement that the applicant meets the statutory standard for asylum (and withholding/CAT if applicable).
-
-${SHARED_BRIEF_RULES}`,
+- Conclude with a firm, professional statement that the applicant meets the statutory standard for asylum (and withholding/CAT if applicable).`,
   },
 ]
 
-export function buildBriefSectionUserPrompt(
-  sectionId: string,
+/** SYSTEM cacheable: rol + reglas + TODO el contexto del caso. Idéntico entre las
+ *  5 secciones y entre los 2 workers de draft → tras la 1ª llamada, las demás
+ *  leen del prompt cache (input mucho más rápido y barato; evita el rate limit). */
+export function buildBriefCachedSystem(
   inputs: BuildAnalysisUserPromptInput,
   ctx: V7CaseContext,
   verifiedJurisprudenceBlock: string,
   countryConditionsBlock: string,
 ): string {
-  const parts: string[] = []
-  parts.push(buildBaseInputs(inputs))
-  parts.push('')
-  parts.push('<case_analysis>')
-  parts.push('Structured analysis already produced (use as the factual skeleton — same dates, perpetrator, grounds, exhibits):')
-  parts.push(ctx.analysisJson)
-  parts.push('</case_analysis>')
-  if (verifiedJurisprudenceBlock.trim()) {
-    parts.push('')
-    parts.push(verifiedJurisprudenceBlock)
-  }
-  if (countryConditionsBlock.trim()) {
-    parts.push('')
-    parts.push(countryConditionsBlock)
-  }
-  parts.push('')
-  parts.push(`Now write ONLY section ${sectionId} in ENGLISH markdown, following the system prompt's scope and length. Begin with its "###" sub-heading. Do not write other sections or any closing/signature.`)
+  const parts: string[] = [
+    ASYLUM_ATTORNEY_SYSTEM_BASE,
+    '',
+    '═══ FULL CASE RECORD (shared across all sections) ═══',
+    buildBaseInputs(inputs),
+    '',
+    '<case_analysis>',
+    'Structured analysis already produced (factual skeleton — same dates, perpetrator, grounds, exhibits):',
+    ctx.analysisJson,
+    '</case_analysis>',
+  ]
+  if (verifiedJurisprudenceBlock.trim()) parts.push('', verifiedJurisprudenceBlock)
+  if (countryConditionsBlock.trim()) parts.push('', countryConditionsBlock)
   return parts.join('\n')
+}
+
+/** USER message: solo la instrucción de la sección (variable, pequeño). */
+export function buildBriefSectionUser(sectionId: string): string {
+  const def = LEGAL_BRIEF_SECTIONS.find((d) => d.id === sectionId)
+  if (!def) return `Write section ${sectionId} in ENGLISH markdown.`
+  return `Write the following section now, in ENGLISH markdown (${def.wordTarget}):\n\n${def.scope}\n\nOutput ONLY this section's markdown — no preamble, no other sections, no closing/signature.`
 }
 
 // ══════════════════════════════════════════════════════════════════

@@ -7,7 +7,8 @@ import { generateTextWithUsage, type UsageStats } from './anthropic-client'
 import type { BuildAnalysisUserPromptInput } from './credible-fear-prompt-v6'
 import {
   LEGAL_BRIEF_SECTIONS,
-  buildBriefSectionUserPrompt,
+  buildBriefCachedSystem,
+  buildBriefSectionUser,
   CHRONOLOGY_SYSTEM,
   buildChronologyUserPrompt,
   type V7CaseContext,
@@ -86,16 +87,19 @@ export async function generateLegalBrief(
     ? LEGAL_BRIEF_SECTIONS.filter((d) => opts.sectionIds!.includes(d.id))
     : LEGAL_BRIEF_SECTIONS
 
-  // SECUENCIAL (no Promise.all): generar las secciones de a una evita golpear el
-  // rate limit de Anthropic con múltiples llamadas concurrentes (que disparaban
-  // 429 + backoff y hacían explotar el tiempo del worker). Con maxDuration 800s
-  // hay tiempo de sobra para hacerlo en serie.
+  // System CACHEABLE: idéntico para todas las secciones (rol + reglas + todo el
+  // contexto del caso). La 1ª llamada escribe el prompt cache de Anthropic; las
+  // siguientes —incluso en el otro worker (cache TTL ~5 min)— lo leen, lo que
+  // reduce ~10x el input procesado y evita el rate limit de tokens/min.
+  const cachedSystem = buildBriefCachedSystem(inputs, ctx, jurisBlock, ccBlock)
+
+  // SECUENCIAL (no Promise.all): de a una para no sumar concurrencia.
   const settled: Array<{ section: LegalBriefSection; usage: UsageStats }> = []
   for (const def of defs) {
-    const user = buildBriefSectionUserPrompt(def.id, inputs, ctx, jurisBlock, ccBlock)
+    const user = buildBriefSectionUser(def.id)
     try {
       const { text, usage } = await generateTextWithUsage({
-        system: def.system,
+        system: cachedSystem,
         user,
         maxTokens: 8000, // densa pero acotada
         disableThinking: true, // redacción (hechos ya decididos en case_analysis) → sin extended thinking
