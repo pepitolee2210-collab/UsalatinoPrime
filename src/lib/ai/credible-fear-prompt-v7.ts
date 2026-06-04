@@ -140,9 +140,10 @@ R5. Write in ENGLISH. Tone: clinical, authoritative, persuasive, and highly defe
 R6. Output ONLY the markdown body of YOUR assigned section (no JSON, no code fences, no preamble). Start with the section's "###" sub-heading. Do NOT write other sections. Do NOT write a closing attestation or signature (assembled separately).
 R7. Do not reference "USALatino Prime", "HenryFlow", or "the system".`
 
-// System base común (rol + reglas). Es IDÉNTICO para las 5 secciones y, junto
-// con el contexto del caso, forma el bloque cacheable.
-const ASYLUM_ATTORNEY_SYSTEM_BASE = `You are a Senior Federal Immigration Attorney drafting an asylum Legal Memorandum + Applicant Declaration to USCIS, at the standard of an elite corporate immigration firm with decades of experience and thousands of asylum cases won. You write ONE section at a time; the user message tells you WHICH section and its scope. The full case record is provided below and is shared across all sections.
+// System base (rol + reglas). Pequeño y común; el contexto pesado va en el USER
+// (NO en un system cacheado: cachear un system enorme pagaba cache-write 1.25x en
+// cada llamada y empeoraba el rate limit, atascando al Worker B1).
+export const ASYLUM_ATTORNEY_SYSTEM_BASE = `You are a Senior Federal Immigration Attorney drafting an asylum Legal Memorandum + Applicant Declaration to USCIS, at the standard of an elite corporate immigration firm with decades of experience and thousands of asylum cases won. You write ONE section at a time; the user message provides the full case record and tells you WHICH section and its scope.
 
 ${SHARED_BRIEF_RULES}`
 
@@ -208,36 +209,35 @@ Cite country-condition sources where present; never fabricate (R4).`,
   },
 ]
 
-/** SYSTEM cacheable: rol + reglas + TODO el contexto del caso. Idéntico entre las
- *  5 secciones y entre los 2 workers de draft → tras la 1ª llamada, las demás
- *  leen del prompt cache (input mucho más rápido y barato; evita el rate limit). */
-export function buildBriefCachedSystem(
+/** USER message: TODO el contexto del caso + la instrucción de la sección. Sin
+ *  prompt caching (el system queda en ASYLUM_ATTORNEY_SYSTEM_BASE, pequeño). */
+export function buildBriefSectionUserPrompt(
+  sectionId: string,
   inputs: BuildAnalysisUserPromptInput,
   ctx: V7CaseContext,
   verifiedJurisprudenceBlock: string,
   countryConditionsBlock: string,
 ): string {
+  const def = LEGAL_BRIEF_SECTIONS.find((d) => d.id === sectionId)
   const parts: string[] = [
-    ASYLUM_ATTORNEY_SYSTEM_BASE,
-    '',
-    '═══ FULL CASE RECORD (shared across all sections) ═══',
+    '═══ FULL CASE RECORD ═══',
     buildBaseInputs(inputs),
     '',
     '<case_analysis>',
-    'Structured analysis already produced (factual skeleton — same dates, perpetrator, grounds, exhibits):',
     ctx.analysisJson,
     '</case_analysis>',
   ]
   if (verifiedJurisprudenceBlock.trim()) parts.push('', verifiedJurisprudenceBlock)
   if (countryConditionsBlock.trim()) parts.push('', countryConditionsBlock)
+  parts.push(
+    '',
+    `Write the following section now, in ENGLISH markdown (${def?.wordTarget ?? ''}):`,
+    '',
+    def?.scope ?? `Section ${sectionId}.`,
+    '',
+    "Output ONLY this section's markdown — no preamble, no other sections, no closing/signature.",
+  )
   return parts.join('\n')
-}
-
-/** USER message: solo la instrucción de la sección (variable, pequeño). */
-export function buildBriefSectionUser(sectionId: string): string {
-  const def = LEGAL_BRIEF_SECTIONS.find((d) => d.id === sectionId)
-  if (!def) return `Write section ${sectionId} in ENGLISH markdown.`
-  return `Write the following section now, in ENGLISH markdown (${def.wordTarget}):\n\n${def.scope}\n\nOutput ONLY this section's markdown — no preamble, no other sections, no closing/signature.`
 }
 
 // ══════════════════════════════════════════════════════════════════

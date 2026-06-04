@@ -7,8 +7,8 @@ import { generateTextWithUsage, CLAUDE_SONNET_MODEL, type UsageStats } from './a
 import type { BuildAnalysisUserPromptInput } from './credible-fear-prompt-v6'
 import {
   LEGAL_BRIEF_SECTIONS,
-  buildBriefCachedSystem,
-  buildBriefSectionUser,
+  ASYLUM_ATTORNEY_SYSTEM_BASE,
+  buildBriefSectionUserPrompt,
   CHRONOLOGY_SYSTEM,
   buildChronologyUserPrompt,
   type V7CaseContext,
@@ -87,19 +87,15 @@ export async function generateLegalBrief(
     ? LEGAL_BRIEF_SECTIONS.filter((d) => opts.sectionIds!.includes(d.id))
     : LEGAL_BRIEF_SECTIONS
 
-  // System CACHEABLE: idéntico para todas las secciones (rol + reglas + todo el
-  // contexto del caso). La 1ª llamada escribe el prompt cache de Anthropic; las
-  // siguientes —incluso en el otro worker (cache TTL ~5 min)— lo leen, lo que
-  // reduce ~10x el input procesado y evita el rate limit de tokens/min.
-  const cachedSystem = buildBriefCachedSystem(inputs, ctx, jurisBlock, ccBlock)
-
-  // SECUENCIAL (no Promise.all): de a una para no sumar concurrencia.
+  // SECUENCIAL (no Promise.all): de a una para no sumar concurrencia. System
+  // pequeño (rol + reglas) + contexto en el user (sin prompt caching, que
+  // empeoraba el rate limit). Modelo Sonnet (rápido, rate limit alto).
   const settled: Array<{ section: LegalBriefSection; usage: UsageStats }> = []
   for (const def of defs) {
-    const user = buildBriefSectionUser(def.id)
+    const user = buildBriefSectionUserPrompt(def.id, inputs, ctx, jurisBlock, ccBlock)
     try {
       const { text, usage } = await generateTextWithUsage({
-        system: cachedSystem,
+        system: ASYLUM_ATTORNEY_SYSTEM_BASE,
         user,
         maxTokens: 8000, // densa pero acotada
         disableThinking: true, // redacción (hechos ya decididos en case_analysis) → sin extended thinking
