@@ -86,32 +86,35 @@ export async function generateLegalBrief(
     ? LEGAL_BRIEF_SECTIONS.filter((d) => opts.sectionIds!.includes(d.id))
     : LEGAL_BRIEF_SECTIONS
 
-  const settled = await Promise.all(
-    defs.map(async (def) => {
-      const user = buildBriefSectionUserPrompt(def.id, inputs, ctx, jurisBlock, ccBlock)
-      try {
-        const { text, usage } = await generateTextWithUsage({
-          system: def.system,
-          user,
-          maxTokens: 8000, // densa pero acotada para caber en el worker (300s)
-          disableThinking: true, // redacción (hechos ya decididos en case_analysis) → sin extended thinking
-          signal: opts.signal,
-          logLabel: `credible-fear-v7-brief-${def.id}`,
-        })
-        const markdown = stripFences(text).trim()
-        return {
-          section: { section_id: def.id, heading: def.heading, markdown, words: countWords(markdown) } as LegalBriefSection,
-          usage,
-        }
-      } catch (err) {
-        log.warn('brief section failed', { section: def.id, err: String(err) })
-        return {
-          section: { section_id: def.id, heading: def.heading, markdown: `### ${def.heading}\n\n*[This section could not be generated automatically — please complete manually.]*`, words: 0 } as LegalBriefSection,
-          usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 } as UsageStats,
-        }
-      }
-    }),
-  )
+  // SECUENCIAL (no Promise.all): generar las secciones de a una evita golpear el
+  // rate limit de Anthropic con múltiples llamadas concurrentes (que disparaban
+  // 429 + backoff y hacían explotar el tiempo del worker). Con maxDuration 800s
+  // hay tiempo de sobra para hacerlo en serie.
+  const settled: Array<{ section: LegalBriefSection; usage: UsageStats }> = []
+  for (const def of defs) {
+    const user = buildBriefSectionUserPrompt(def.id, inputs, ctx, jurisBlock, ccBlock)
+    try {
+      const { text, usage } = await generateTextWithUsage({
+        system: def.system,
+        user,
+        maxTokens: 8000, // densa pero acotada
+        disableThinking: true, // redacción (hechos ya decididos en case_analysis) → sin extended thinking
+        signal: opts.signal,
+        logLabel: `credible-fear-v7-brief-${def.id}`,
+      })
+      const markdown = stripFences(text).trim()
+      settled.push({
+        section: { section_id: def.id, heading: def.heading, markdown, words: countWords(markdown) } as LegalBriefSection,
+        usage,
+      })
+    } catch (err) {
+      log.warn('brief section failed', { section: def.id, err: String(err) })
+      settled.push({
+        section: { section_id: def.id, heading: def.heading, markdown: `### ${def.heading}\n\n*[This section could not be generated automatically — please complete manually.]*`, words: 0 } as LegalBriefSection,
+        usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 } as UsageStats,
+      })
+    }
+  }
 
   const usage = settled.reduce<UsageStats>(
     (acc, s) => ({

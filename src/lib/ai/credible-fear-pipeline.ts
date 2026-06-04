@@ -211,10 +211,9 @@ export async function runDraftPhase1(args: {
       return { status: 'FAILED' }
     }
     const { baseInputs, ctx, jurisprudence, news } = loaded
-    const [brief, chrono] = await Promise.all([
-      generateLegalBrief(baseInputs, ctx, jurisprudence, news, { sectionIds: BRIEF_SECTIONS_P1 }),
-      generateChronology(baseInputs, ctx),
-    ])
+    // Secuencial (no Promise.all) para no sumar concurrencia de llamadas a Claude.
+    const brief = await generateLegalBrief(baseInputs, ctx, jurisprudence, news, { sectionIds: BRIEF_SECTIONS_P1 })
+    const chrono = await generateChronology(baseInputs, ctx)
     await patchDraft(service, draftId, {
       legal_brief_json: brief.sections,
       chronology_json: chrono.rows,
