@@ -9,7 +9,7 @@ const log = createLogger('worker:credible-fear-draft')
 // Worker B1 del Miedo Creíble v7: redacta las secciones I.1-I.3 del brief + la
 // tabla cronológica, persiste parcial y encola el Worker B2 (I.4-I.5 + ensamblaje).
 // El split mantiene cada worker bien por debajo del límite de tiempo de Vercel.
-export const maxDuration = 300
+export const maxDuration = 800
 
 export async function POST(request: NextRequest) {
   const raw = await request.text()
