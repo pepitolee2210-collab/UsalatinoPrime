@@ -124,10 +124,14 @@ export async function runResearchPhase(args: {
       caseSummary: buildCaseSummary(analysis.output.case_analysis),
     }
 
-    // Fase 2 — jurisprudencia (web_search + verificación de links)
-    const juris = await researchAsylumJurisprudence(ctx)
-    // Fase 3 — noticias verificadas con carátula
-    const news = await buildNewsAppendix(country, persecutionType)
+    // Fases 2 y 3 — jurisprudencia (web_search) y noticias (Tavily) son
+    // independientes entre sí: corren EN PARALELO para que el Worker A quepa en
+    // el límite de 300s de Vercel (tiempo ≈ análisis + max(juris, noticias) en
+    // vez de la suma). Cada una falla de forma aislada y devuelve vacío.
+    const [juris, news] = await Promise.all([
+      researchAsylumJurisprudence(ctx),
+      buildNewsAppendix(country, persecutionType),
+    ])
 
     await patchDraft(service, draftId, {
       status: 'DRAFTING',

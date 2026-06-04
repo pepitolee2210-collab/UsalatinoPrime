@@ -8,7 +8,8 @@ const log = createLogger('worker:credible-fear-draft2')
 
 // Worker B2 del Miedo Creíble v7: redacta las secciones I.4-I.5, ensambla TODO
 // el documento (~20 págs) y persiste DRAFT_COMPLETE.
-export const maxDuration = 800
+// 300s = máximo del plan Vercel (Pro); un valor mayor rompe el deploy.
+export const maxDuration = 300
 
 export async function POST(request: NextRequest) {
   const raw = await request.text()

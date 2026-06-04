@@ -8,7 +8,10 @@ const log = createLogger('worker:credible-fear-research')
 
 // Worker A del Miedo Creíble v7: análisis E1-E8 + jurisprudencia (web_search) +
 // noticias verificadas. Al terminar (status DRAFTING) encola el Worker B1.
-export const maxDuration = 800
+// 300s = máximo de serverless functions en nuestro plan de Vercel (Pro). Un
+// valor mayor hace que Vercel RECHACE el deploy completo. La jurisprudencia y
+// las noticias corren en paralelo (ver runResearchPhase) para caber con margen.
+export const maxDuration = 300
 
 export async function POST(request: NextRequest) {
   const raw = await request.text()
@@ -59,7 +62,7 @@ export async function POST(request: NextRequest) {
       // marcamos FAILED para no dejar el draft atascado en DRAFTING ni arriesgar
       // un corte de Vercel a mitad del documento.
       const elapsedMs = Date.now() - startMs
-      const SAFE_INLINE_BUDGET_MS = 400_000
+      const SAFE_INLINE_BUDGET_MS = 200_000
       if (elapsedMs < SAFE_INLINE_BUDGET_MS) {
         const d1 = await runDraftPhase1({ caseId, draftId, service })
         if (d1.status === 'DRAFTING') await runDraftPhase2({ caseId, draftId, service })
