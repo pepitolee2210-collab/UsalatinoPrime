@@ -15,6 +15,15 @@ const log = createLogger('anthropic')
  */
 export const CLAUDE_MODEL = 'claude-opus-4-7' as const
 
+/**
+ * Modelo para REDACCIÓN (no razonamiento): Sonnet 4.6. Tiene un límite de
+ * tokens/minuto mucho más alto que Opus y es ~2x más rápido. Se usa para generar
+ * las secciones del memorándum y la cronología, cuyos hechos ya están decididos
+ * en el análisis (que sí corre en Opus). Evita el throttling de la cadena de
+ * llamadas con input grande que saturaba el rate limit de Opus.
+ */
+export const CLAUDE_SONNET_MODEL = 'claude-sonnet-4-6' as const
+
 // Singleton — el SDK mantiene su propio pool de conexiones
 let _client: Anthropic | null = null
 
@@ -60,6 +69,12 @@ export interface GenerateTextParams {
    * (thinking adaptive activo, como el resto del sistema).
    */
   disableThinking?: boolean
+  /**
+   * Override del modelo. Default CLAUDE_MODEL (Opus 4.7). Usar
+   * CLAUDE_SONNET_MODEL para tareas de redacción (más rápido, límite de rate
+   * mucho más alto).
+   */
+  model?: string
 }
 
 /**
@@ -276,7 +291,7 @@ export async function generateTextWithUsage(
 
   const stream = client.messages.stream(
     {
-      model: CLAUDE_MODEL,
+      model: params.model ?? CLAUDE_MODEL,
       max_tokens: params.maxTokens ?? 8192,
       ...(params.disableThinking ? {} : { thinking: { type: 'adaptive' as const } }),
       system: systemBlocks,

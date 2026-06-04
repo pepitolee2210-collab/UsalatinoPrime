@@ -11,7 +11,7 @@
 // Devuelve 4-5 items con carátula + URL verificada + fecha.
 
 import { jsonrepair } from 'jsonrepair'
-import { generateTextWithUsage } from './anthropic-client'
+import { generateTextWithUsage, CLAUDE_SONNET_MODEL } from './anthropic-client'
 import { searchCountryConditions, type AsylumPersecutionType } from './web-search-tavily'
 import { checkUrlReachable } from '@/lib/legal/verify-url-reachability'
 import {
@@ -81,6 +81,7 @@ export async function buildNewsAppendix(
       user: buildNewsCaratulaUserPrompt(articles),
       maxTokens: 6000,
       disableThinking: true, // resumen de artículos, no razonamiento
+      model: CLAUDE_SONNET_MODEL,
       signal: opts.signal,
       logLabel: 'credible-fear-v7-news-caratula',
     })

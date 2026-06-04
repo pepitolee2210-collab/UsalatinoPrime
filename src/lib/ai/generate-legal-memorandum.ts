@@ -3,7 +3,7 @@
 // markdown (body_md), que es la fuente única para preview y Word.
 
 import { jsonrepair } from 'jsonrepair'
-import { generateTextWithUsage, type UsageStats } from './anthropic-client'
+import { generateTextWithUsage, CLAUDE_SONNET_MODEL, type UsageStats } from './anthropic-client'
 import type { BuildAnalysisUserPromptInput } from './credible-fear-prompt-v6'
 import {
   LEGAL_BRIEF_SECTIONS,
@@ -103,6 +103,7 @@ export async function generateLegalBrief(
         user,
         maxTokens: 8000, // densa pero acotada
         disableThinking: true, // redacción (hechos ya decididos en case_analysis) → sin extended thinking
+        model: CLAUDE_SONNET_MODEL, // redacción en Sonnet: rápido + rate limit alto
         signal: opts.signal,
         logLabel: `credible-fear-v7-brief-${def.id}`,
       })
@@ -148,6 +149,7 @@ export async function generateChronology(
       user: buildChronologyUserPrompt(inputs, ctx),
       maxTokens: 4000,
       disableThinking: true,
+      model: CLAUDE_SONNET_MODEL,
       signal: opts.signal,
       logLabel: 'credible-fear-v7-chronology',
     })
