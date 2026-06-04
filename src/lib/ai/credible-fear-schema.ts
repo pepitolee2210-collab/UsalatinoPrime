@@ -452,10 +452,10 @@ export const chronologyOutputSchema = z.object({
 })
 export type ChronologyOutput = z.infer<typeof chronologyOutputSchema>
 
-/** Sección del Legal Brief (I.1-I.5). El cuerpo es markdown plano (no JSON) por
+/** Sección del Legal Brief (I.1-I.10). El cuerpo es markdown plano (no JSON) por
  *  robustez con textos largos; se arma en backend, no se valida contra la IA. */
 export interface LegalBriefSection {
-  section_id: string   // "I.1".."I.5"
+  section_id: string   // "I.1".."I.10"
   heading: string
   markdown: string
   words: number

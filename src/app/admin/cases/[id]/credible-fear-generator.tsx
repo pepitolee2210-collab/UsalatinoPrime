@@ -27,8 +27,11 @@ interface DraftRow {
 
 const IN_PROGRESS = new Set(['RESEARCHING', 'DRAFTING'])
 // Si un draft lleva más de esto en progreso, el worker probablemente murió por
-// timeout — dejamos de pollear y rehabilitamos el botón para regenerar.
-const STALL_MS = 12 * 60 * 1000
+// timeout — dejamos de pollear y rehabilitamos el botón para regenerar. El
+// memorándum v7.1 (~40-60 págs) se redacta en 6 grupos encadenados + research,
+// así que puede tardar ~15-22 min; damos un margen amplio para no marcarlo
+// "atascado" mientras aún progresa.
+const STALL_MS = 30 * 60 * 1000
 
 function statusBadge(status: string | null, isCurrent: boolean): { label: string; cls: string } {
   switch (status) {

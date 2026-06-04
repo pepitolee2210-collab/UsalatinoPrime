@@ -1,14 +1,16 @@
-// Prompts v7 del Miedo Creíble — MEMORÁNDUM LEGAL robusto (~20 págs).
+// Prompts v7.1 del Miedo Creíble — MEMORÁNDUM LEGAL robusto (~40-60 págs).
 //
 // Evolución de v6 (declaración narrativa de ~10 págs) al estándar de una firma
 // corporativa: un Legal Memorandum + Applicant Declaration con argumentación
-// legal profunda, jurisprudencia federal REAL integrada por similitud fáctica,
-// anexo de noticias verificadas con carátula, y tabla cronológica.
+// legal profunda en 10 secciones densas, jurisprudencia federal REAL integrada
+// por similitud fáctica, anexo de noticias verificadas con carátula, y tabla
+// cronológica.
 //
-// El pipeline async (2 workers) usa estos prompts en fases:
+// El pipeline async usa estos prompts en fases:
 //   Fase 2  JURISPRUDENCE_SEARCH_SYSTEM  — Claude + web_search (casos reales)
 //   Fase 3  NEWS_CARATULA_SYSTEM         — redacta carátulas de noticias Tavily
-//   Fase 4  LEGAL_BRIEF_SECTIONS[*]      — 5 sub-llamadas (I.1-I.5), markdown
+//   Fase 4  LEGAL_BRIEF_SECTIONS[*]      — 10 sub-llamadas (I.1-I.10), markdown,
+//           generadas por GRUPOS en un worker que se re-encola (self-chaining)
 //   Fase 5  CHRONOLOGY_SYSTEM            — tabla cronológica (Apéndice A)
 //
 // Idioma del documento: INGLÉS (estándar USCIS). Las preguntas al cliente
@@ -18,7 +20,7 @@
 
 import { buildBaseInputs, type BuildAnalysisUserPromptInput } from './credible-fear-prompt-v6'
 
-export const CF_V7_PROMPT_VERSION = '2026-06-03-v7.0'
+export const CF_V7_PROMPT_VERSION = '2026-06-04-v7.1'
 
 // ══════════════════════════════════════════════════════════════════
 // Contexto del caso compartido (esqueleto) que se inyecta en cada fase
@@ -151,61 +153,127 @@ interface BriefSectionDef {
   id: string
   heading: string
   wordTarget: string
-  /** Qué escribir. Va en el USER message (variable, pequeño) para que el SYSTEM
-   *  (rol + reglas + contexto del caso) sea idéntico entre secciones y golpee el
-   *  prompt cache de Anthropic (la 1ª sección escribe el cache; las demás —incluso
-   *  en el otro worker, el cache vive ~5 min— lo leen, ~10x más barato y rápido). */
+  /** Tope de tokens de salida de ESTA sección. La narrativa (I.3) es la más
+   *  larga (~5000 palabras → ~11k tokens); las demás rondan 6-8k. Mantener cada
+   *  una por debajo del límite por llamada de Sonnet (64k) con amplio margen. */
+  maxTokens: number
+  /** Qué escribir; va en el USER message (el system base es pequeño y común,
+   *  sin prompt caching —cachear un system grande empeoraba el rate limit). */
   scope: string
 }
 
 export const LEGAL_BRIEF_SECTIONS: BriefSectionDef[] = [
   {
     id: 'I.1',
-    heading: 'I.1 — Statement of Jurisdiction & Legal Standards for Asylum',
-    wordTarget: '600-1000 words',
-    scope: `Section I.1 (Statement of Jurisdiction & Legal Standards). Start with "### I.1 Statement of Jurisdiction & Legal Standards for Asylum". Cover:
-- The statutory framework: asylum under INA § 208 / 8 U.S.C. § 1158 and the refugee definition INA § 101(a)(42)(A); withholding of removal under INA § 241(b)(3); CAT relief if torture is at issue.
-- The legal standards: "well-founded fear" (subjective + objective), nexus to a protected ground (race, religion, nationality, political opinion, particular social group), past persecution and its rebuttable presumption of future fear, and the one-year filing rule with its changed/extraordinary-circumstances exceptions where relevant (use case_analysis.one_year_status).
-- Frame which protected ground(s) this applicant invokes (from case_analysis) without yet arguing the facts (that is I.3).
-Doctrinal section — general legal standards belong here.`,
+    heading: 'I.1 — Introduction & Procedural Posture',
+    wordTarget: '500-800 words',
+    maxTokens: 2500,
+    scope: `Section I.1 (Introduction & Procedural Posture). Start with "### I.1 Introduction and Procedural Posture". Cover:
+- Identify the applicant (name from applicant_metadata, nationality, A-Number if present) and the relief sought: asylum under INA § 208, withholding of removal under INA § 241(b)(3), and protection under the Convention Against Torture (CAT) where torture is at issue.
+- State, in two tight paragraphs, the CORE of the claim: the protected ground(s) invoked and the essence of the persecution suffered and feared — at a high level, as a thesis.
+- Provide a brief ROADMAP of the memorandum's argument (the sections that follow).
+This is an executive introduction. Do NOT narrate the facts in detail (that is I.3) and do NOT cite case law yet.`,
   },
   {
     id: 'I.2',
-    heading: 'I.2 — Comprehensive Narrative of Past Persecution',
-    wordTarget: '2500-4000 words',
-    scope: `Section I.2 (Comprehensive Narrative of Past Persecution) — the factual heart. Start with "### I.2 Comprehensive Narrative of Past Persecution". Cover:
-- A rigorously detailed, strictly CHRONOLOGICAL narrative of everything that happened to the applicant, built from M2-M8, the uploaded sworn declaration (primary backbone when present), and case_analysis dates.
-- Every specific date, exact time, named individual, geographic location, and exact threat the applicant provided. Do NOT omit details of emotional or physical impact — describe in rigorous prose the psychological toll and somatic distress the applicant reported (M4 effect fields, M4.6).
-- Country context at each relevant date interwoven with the personal events (cite country_conditions figures/news with source when present).
-This is the LONGEST section. Be exhaustive but FAITHFUL — expand depth and prose, never invent new facts (R1). Keep the applicant's register (R2).`,
+    heading: 'I.2 — Statement of Jurisdiction & Governing Legal Standards',
+    wordTarget: '1200-1800 words',
+    maxTokens: 5000,
+    scope: `Section I.2 (Statement of Jurisdiction & Governing Legal Standards). Start with "### I.2 Statement of Jurisdiction and Governing Legal Standards". Cover thoroughly:
+- The statutory framework: asylum under INA § 208 / 8 U.S.C. § 1158; the refugee definition in INA § 101(a)(42)(A); withholding of removal under INA § 241(b)(3) / 8 U.S.C. § 1231(b)(3); CAT relief under 8 C.F.R. §§ 208.16-208.18.
+- The governing standards explained doctrinally: "well-founded fear" as both SUBJECTIVE and OBJECTIVE components; the "reasonable possibility" standard for asylum versus the higher "clear probability / more likely than not" standard for withholding; the burden and standard of proof; the centrality of credible testimony (a single applicant's testimony may suffice).
+- Past persecution and the REBUTTABLE PRESUMPTION of a well-founded fear of future persecution it creates (8 C.F.R. § 208.13(b)(1)), and the burden shift to the government.
+- The one-year filing deadline (INA § 208(a)(2)(B)) and its changed/extraordinary-circumstances exceptions, applied to case_analysis.one_year_status where relevant.
+- Frame WHICH protected ground(s) this applicant invokes (from case_analysis) — name them; the merits are argued later.
+Doctrinal section. Keep general legal standards here; do not narrate applicant facts.`,
   },
   {
     id: 'I.3',
-    heading: 'I.3 — Legal Analysis of Nexus: Application of Federal Precedents',
-    wordTarget: '1500-2800 words',
-    scope: `Section I.3 (Legal Analysis of Nexus) — the core legal argument. Start with "### I.3 Legal Analysis of Nexus: Application of Federal Precedents". Cover:
-- Argue that the applicant's harm constitutes "persecution" and that there is a clear NEXUS to a protected ground under INA § 101(a)(42)(A).
-- For EACH case in <verified_jurisprudence>: break down the court's legal reasoning/holding, then draw a DIRECT factual analogy between that precedent and this applicant's specific timeline (deepen the factual_analogy provided). Argue why the precedent compels protection here. Cite each case by name + citation; include its URL inline ONLY if url_verified is true.
-- If <verified_jurisprudence> is empty, argue the nexus from the statutory standard and country conditions WITHOUT inventing case citations.
-Legal argument: you may characterize facts as persecution here, but the underlying facts must still trace to the record (R1).`,
+    heading: 'I.3 — Comprehensive Narrative of Past Persecution',
+    wordTarget: '3500-5000 words',
+    maxTokens: 11000,
+    scope: `Section I.3 (Comprehensive Narrative of Past Persecution) — the factual heart and the LONGEST section. Start with "### I.3 Comprehensive Narrative of Past Persecution". Cover:
+- A rigorously detailed, strictly CHRONOLOGICAL narrative of everything that happened to the applicant, built from M2-M8, the uploaded sworn declaration (the primary backbone when present), and case_analysis dates. Devote a full, developed paragraph (or several) to EACH incident.
+- Every specific date, exact time, named individual, geographic location, and exact threat or act the applicant provided. Do NOT omit details of emotional, physical, or economic impact — describe in rigorous prose the psychological toll and somatic distress the applicant reported (M4 effect fields, M4.6).
+- Country context at each relevant date interwoven with the personal events (cite country_conditions figures/news with their source when present).
+Be exhaustive but strictly FAITHFUL — expand depth, detail, and prose; NEVER invent new facts (R1); keep the applicant's own register and characterization (R2).`,
   },
   {
     id: 'I.4',
-    heading: 'I.4 — Government Inability/Unwillingness to Protect & Futility of Internal Relocation',
-    wordTarget: '800-1400 words',
-    scope: `Section I.4 (Government Failure & Internal Relocation). Start with "### I.4 Government Inability to Protect and the Futility of Internal Relocation". Cover:
-- If the persecutor is a non-state actor: argue the government is unable or unwilling to control them, using M6 (attempts to seek help / why not) and country_conditions on impunity/state complicity. If the persecutor IS the state, argue that fact directly.
-- Argue why internal relocation within the country is not reasonable or safe (use M7 and the reach of the persecutor / country conditions).
-Cite country-condition sources where present; never fabricate (R4).`,
+    heading: 'I.4 — Country Conditions & Documented Patterns of Persecution',
+    wordTarget: '2000-3000 words',
+    maxTokens: 8000,
+    scope: `Section I.4 (Country Conditions & Documented Patterns of Persecution). Start with "### I.4 Country Conditions and Documented Patterns of Persecution". Cover:
+- A thorough, sourced analysis of the conditions in the applicant's country of origin drawn from <country_conditions> (verified news/reports) and any <evidence_links>. Present the documented PATTERN of persecution against people in the applicant's situation (same protected ground, region, or profile).
+- Impunity, corruption, and any state complicity or acquiescence; relevant figures, incidents, and findings FROM THE PROVIDED SOURCES (cite each by source name + URL).
+- Explicitly connect the macro country-conditions to THIS applicant's individualized risk — country conditions corroborate, they do not replace, the personal claim.
+Cite ONLY the provided sources; NEVER fabricate a statistic, report, quote, or URL (R4).`,
   },
   {
     id: 'I.5',
-    heading: 'I.5 — Well-Founded Fear of Future Persecution',
-    wordTarget: '800-1400 words',
-    scope: `Section I.5 (Well-Founded Fear of Future Persecution). Start with "### I.5 Well-Founded Fear of Future Persecution". Cover:
-- Establish the applicant's subjective fear AND its objective reasonableness. Use M8 (who would harm them, what they would do, why it is still real today, last threat date) and the rebuttable presumption arising from past persecution (if established in I.2/I.3).
-- Tie to country_conditions showing the threat persists, and to relevant precedent on future-fear standards from <verified_jurisprudence> if present.
-- Conclude with a firm, professional statement that the applicant meets the statutory standard for asylum (and withholding/CAT if applicable).`,
+    heading: 'I.5 — The Protected Ground(s): Cognizability & Membership',
+    wordTarget: '1800-2800 words',
+    maxTokens: 8000,
+    scope: `Section I.5 (The Protected Ground(s): Cognizability & Membership). Start with "### I.5 The Protected Ground(s): Cognizability and the Applicant's Membership". For EACH protected ground in case_analysis:
+- If a PARTICULAR SOCIAL GROUP is claimed: analyze the three requirements — (1) immutability (Matter of Acosta), (2) particularity, and (3) social distinction (Matter of M-E-V-G-, 26 I&N Dec. 227 (BIA 2014); Matter of W-G-R-) — and argue the applicant's MEMBERSHIP in the proposed group, articulating the group with precision.
+- If POLITICAL OPINION (actual or IMPUTED) is claimed: define the opinion and how the persecutor attributes it to the applicant.
+- If RELIGION, RACE, or NATIONALITY: establish the characteristic and its protected status.
+Use any <verified_jurisprudence> bearing on cognizability (cite by name + citation; URL inline only if url_verified). Tie each ground to the record facts; do not invent facts (R1).`,
+  },
+  {
+    id: 'I.6',
+    heading: 'I.6 — Nexus & the Application of Controlling Federal Precedent',
+    wordTarget: '2500-3500 words',
+    maxTokens: 10000,
+    scope: `Section I.6 (Nexus & Application of Controlling Federal Precedent) — the core legal argument. Start with "### I.6 Nexus and the Application of Controlling Federal Precedent". Cover:
+- Argue the NEXUS: that the persecution was/will be "on account of" a protected ground, satisfying the "one central reason" standard (INA § 208(b)(1)(B)(i)).
+- For EACH case in <verified_jurisprudence>: state the court and citation, break down the holding and the court's legal reasoning, then draw a DIRECT, specific factual analogy between that precedent and this applicant's timeline (deepen the provided factual_analogy). Argue why the precedent COMPELS protection here. Include the URL inline ONLY if url_verified is true.
+- Distinguish any adverse framing and reinforce why the nexus is established.
+- If <verified_jurisprudence> is empty, argue nexus rigorously from the statutory standard and country conditions WITHOUT inventing citations.
+Legal argument — you may characterize facts as persecution, but every underlying fact must still trace to the record (R1, R4).`,
+  },
+  {
+    id: 'I.7',
+    heading: 'I.7 — The Harm Rises to Persecution: Severity & Cumulative Effect',
+    wordTarget: '1200-1800 words',
+    maxTokens: 6000,
+    scope: `Section I.7 (The Harm Rises to the Level of Persecution). Start with "### I.7 The Harm Suffered Rises to the Level of Persecution". Cover:
+- Argue that the harm crosses the legal threshold of "persecution" and is not mere harassment, discomfort, or discrimination. Address severity of EACH category of harm (physical violence, threats to life, economic deprivation that threatens survival, psychological harm).
+- Make the CUMULATIVE-EFFECT argument: even if an individual incident might be debated, the aggregate of threats, violence, economic harm, and psychological terror together unquestionably constitutes persecution.
+- Use any <verified_jurisprudence> on the persecution threshold (cite by name + citation; URL inline only if verified).
+Trace all underlying facts to I.3 / the record (R1).`,
+  },
+  {
+    id: 'I.8',
+    heading: 'I.8 — Government Inability or Unwillingness to Protect',
+    wordTarget: '1500-2200 words',
+    maxTokens: 7000,
+    scope: `Section I.8 (Government Inability or Unwillingness to Protect). Start with "### I.8 The Government's Inability or Unwillingness to Protect the Applicant". Cover:
+- If the persecutor is a NON-STATE actor: argue the government is unable or unwilling to control them. Use M6 (the applicant's attempts to seek help and what happened, or a sound explanation of why seeking help was futile or dangerous) and <country_conditions> on impunity, corruption, and acquiescence.
+- If the persecutor IS the state (or a state-linked actor): argue that fact directly and that protection is therefore impossible.
+- Address the legal standard that the government need not sponsor the persecution; inability OR unwillingness suffices.
+Cite the provided country-condition sources; NEVER fabricate (R4).`,
+  },
+  {
+    id: 'I.9',
+    heading: 'I.9 — The Futility & Unreasonableness of Internal Relocation',
+    wordTarget: '1000-1500 words',
+    maxTokens: 5000,
+    scope: `Section I.9 (Futility & Unreasonableness of Internal Relocation). Start with "### I.9 Internal Relocation Is Neither Safe Nor Reasonable". Cover:
+- Argue why relocating within the country of origin is not safe or reasonable (use M7). Address the persecutor's geographic REACH, networks, and ability to locate the applicant, and country conditions affecting other regions.
+- Invoke the burden shift: where past persecution is established, the GOVERNMENT bears the burden to show safe and reasonable internal relocation (8 C.F.R. § 208.13(b)(1)(i)(B), (b)(3)(ii)).
+Trace facts to the record; cite provided sources only (R1, R4).`,
+  },
+  {
+    id: 'I.10',
+    heading: 'I.10 — Well-Founded Fear of Future Persecution & Prayer for Relief',
+    wordTarget: '1500-2200 words',
+    maxTokens: 7000,
+    scope: `Section I.10 (Well-Founded Fear of Future Persecution & Prayer for Relief). Start with "### I.10 Well-Founded Fear of Future Persecution and Prayer for Relief". Cover:
+- Establish the applicant's SUBJECTIVE fear AND its OBJECTIVE reasonableness. Use M8 (who would harm them, what they would do, why it remains real today, the last threat date) and the rebuttable presumption arising from past persecution established earlier.
+- Tie to <country_conditions> showing the threat persists, and to any future-fear precedent in <verified_jurisprudence>.
+- Conclude with a firm PRAYER FOR RELIEF: a professional statement that the applicant satisfies the statutory standard for asylum and, in the alternative, for withholding of removal and CAT protection.
+This is the closing argument. Make it persuasive and decisive; do not invent facts (R1).`,
   },
 ]
 

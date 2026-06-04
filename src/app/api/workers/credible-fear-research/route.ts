@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyQStashSignature, enqueueJob } from '@/lib/qstash/client'
 import { createServiceClient } from '@/lib/supabase/service'
-import { runResearchPhase, runDraftPhase1, runDraftPhase2 } from '@/lib/ai/credible-fear-pipeline'
+import { runResearchPhase, runAllDraftGroups } from '@/lib/ai/credible-fear-pipeline'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('worker:credible-fear-research')
@@ -47,9 +47,9 @@ export async function POST(request: NextRequest) {
       try {
         await enqueueJob({
           endpoint: `${proto}://${host}/api/workers/credible-fear-draft`,
-          body: { caseId, draftId },
+          body: { caseId, draftId, groupIndex: 0 },
           retries: 0,
-          deduplicationId: `cf-v7-draft:${draftId}`,
+          deduplicationId: `cf-v7-draft:${draftId}:g0`,
         })
         enqueued = true
       } catch (err) {
@@ -64,8 +64,8 @@ export async function POST(request: NextRequest) {
       const elapsedMs = Date.now() - startMs
       const SAFE_INLINE_BUDGET_MS = 200_000
       if (elapsedMs < SAFE_INLINE_BUDGET_MS) {
-        const d1 = await runDraftPhase1({ caseId, draftId, service })
-        if (d1.status === 'DRAFTING') await runDraftPhase2({ caseId, draftId, service })
+        // Sin QStash (dev) o falló el encolado: corre toda la redacción inline.
+        await runAllDraftGroups({ caseId, draftId, service })
       } else {
         await service
           .from('case_credible_fear_drafts')

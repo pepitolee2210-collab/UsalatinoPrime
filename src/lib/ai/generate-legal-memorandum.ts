@@ -97,7 +97,7 @@ export async function generateLegalBrief(
       const { text, usage } = await generateTextWithUsage({
         system: ASYLUM_ATTORNEY_SYSTEM_BASE,
         user,
-        maxTokens: 8000, // densa pero acotada
+        maxTokens: def.maxTokens, // por sección (la narrativa I.3 es la más larga, ~11k)
         disableThinking: true, // redacción (hechos ya decididos en case_analysis) → sin extended thinking
         model: CLAUDE_SONNET_MODEL, // redacción en Sonnet: rápido + rate limit alto
         signal: opts.signal,
@@ -126,7 +126,8 @@ export async function generateLegalBrief(
     }),
     { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 },
   )
-  // Mantener el orden I.1..I.5 (Promise.all preserva el orden del input)
+  // El orden final lo fija el pipeline (mergeSections, numérico I.1..I.10);
+  // aquí basta devolver las secciones del grupo en el orden generado.
   return { sections: settled.map((s) => s.section), usage }
 }
 
