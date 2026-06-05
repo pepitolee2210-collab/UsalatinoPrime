@@ -13,6 +13,7 @@ import { PageHeader, AdminKeyframes } from '@/components/admin-ui'
 const SERVICE_OPTIONS = [
   { slug: 'asilo-politico', label: 'Asilo Político' },
   { slug: 'ajuste-de-estatus', label: 'Ajuste de Estatus' },
+  { slug: 'ajuste-de-estatus-matrimonio', label: 'Ajuste de Estatus por Matrimonio' },
   { slug: 'visa-juvenil', label: 'Visa Juvenil (SIJS)' },
   { slug: 'cambio-de-estatus', label: 'Cambio de Estatus' },
   { slug: 'cambio-de-corte', label: 'Cambio de Corte' },

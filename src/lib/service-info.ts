@@ -289,6 +289,73 @@ const serviceInfoMap: Record<string, ServiceInfo> = {
     ],
   },
 
+  'ajuste-de-estatus-matrimonio': {
+    slug: 'ajuste-de-estatus-matrimonio',
+    totalTimeline: '12 a 24 meses (varía por oficina local de USCIS)',
+    stages: [
+      {
+        step: 1,
+        title: 'Evaluación de elegibilidad',
+        description: 'Revisión del matrimonio, la ciudadanía del peticionario y el historial migratorio de la cónyuge para confirmar la elegibilidad del ajuste por matrimonio.',
+        timeline: '1-2 semanas',
+      },
+      {
+        step: 2,
+        title: 'Documentación de la Fase 1 (I-130)',
+        description: 'Reunir acta de matrimonio, prueba de ciudadanía del esposo, pasaporte y entrada de la cónyuge, y evidencia de matrimonio de buena fe.',
+        timeline: '2-4 semanas',
+      },
+      {
+        step: 3,
+        title: 'Preparación y presentación de la Petición I-130',
+        description: 'Completar y presentar el Formulario I-130 (petición de familiar) ante USCIS para establecer la relación matrimonial.',
+        timeline: '1-2 semanas',
+        formNumber: 'I-130',
+        filingFee: '$675',
+        filingFeeNote: 'Filing fee de $675 para el I-130 en papel ($625 en línea).',
+      },
+      {
+        step: 4,
+        title: 'Documentación de la Fase 2 (I-485)',
+        description: 'Reunir el examen médico (I-693), las fotos, el acta de nacimiento de la cónyuge y la evidencia financiera del patrocinador (taxes, W-2, paystubs).',
+        timeline: '2-4 semanas',
+      },
+      {
+        step: 5,
+        title: 'Preparación y presentación del I-485 + I-864',
+        description: 'Completar la solicitud de ajuste de estatus de la cónyuge junto con la declaración de patrocinio económico del esposo y presentar el paquete ante USCIS.',
+        timeline: '2-3 semanas',
+        formNumber: 'I-485',
+        filingFee: '$1,440',
+        filingFeeNote: 'Filing fee de $1,440 para solicitantes de 14+ años. Biométricos: $85 adicionales.',
+      },
+      {
+        step: 6,
+        title: 'Cita biométrica',
+        description: 'Asistir al Application Support Center (ASC) para huellas, fotografía y firma electrónica.',
+        timeline: '3-8 semanas después de presentar',
+        filingFee: '$85',
+      },
+      {
+        step: 7,
+        title: 'Entrevista de matrimonio en USCIS',
+        description: 'Preparación y acompañamiento a la entrevista donde el oficial verifica la autenticidad del matrimonio.',
+        timeline: '8-18 meses después de presentar',
+      },
+      {
+        step: 8,
+        title: 'Decisión y recepción de la Green Card',
+        description: 'USCIS emite la decisión. Si se aprueba, la cónyuge recibe su tarjeta de residencia permanente.',
+        timeline: '1-4 semanas después de aprobación',
+      },
+    ],
+    importantNotes: [
+      'El I-130 y el I-485 pueden presentarse de forma concurrente o por separado según el caso.',
+      'La residencia es condicional (2 años) si el matrimonio tiene menos de 2 años al aprobarse; luego se remueve la condición con el I-751.',
+      'Cualquier respuesta "Sí" en las preguntas de inadmisibilidad del I-485 debe revisarse con un abogado antes de presentar.',
+    ],
+  },
+
   'cambio-de-corte': {
     slug: 'cambio-de-corte',
     totalTimeline: '2 a 4 meses',
