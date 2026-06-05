@@ -6,6 +6,7 @@ import type { ConversationListItem, ChatMessage, StaffProfile, ChatMention } fro
 import { MessageAttachment } from './message-attachment'
 import { MentionAutocomplete } from './mention-autocomplete'
 import { MessageBody } from './message-body'
+import { employeeRoleLabel } from '@/lib/team/roles'
 
 export interface PendingAttachment {
   path: string
@@ -518,8 +519,5 @@ function Avatar({ name }: { name: string }) {
 
 function roleLabel(role: string, employeeType: string | null): string {
   if (role === 'admin') return 'Admin'
-  if (employeeType === 'paralegal') return 'Paralegal'
-  if (employeeType === 'senior_consultant') return 'Consultora Senior'
-  if (employeeType === 'contracts_manager') return 'Contratos · Logística'
-  return 'Empleado'
+  return employeeType ? employeeRoleLabel(employeeType) : 'Empleado'
 }

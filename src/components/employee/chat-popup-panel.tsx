@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { employeeRoleLabel } from '@/lib/team/roles'
 import { ChevronLeft, Plus, X, Users, MessageCircle, Search, Loader2 } from 'lucide-react'
 import { ChatThread, type PendingAttachment } from '@/app/employee/chat/chat-thread'
 import type {
@@ -659,8 +660,5 @@ function formatRelativeTime(iso: string): string {
 
 function staffRoleLabel(role: string, employeeType: string | null): string {
   if (role === 'admin') return 'Admin'
-  if (employeeType === 'paralegal') return 'Paralegal'
-  if (employeeType === 'senior_consultant') return 'Consultora Senior'
-  if (employeeType === 'contracts_manager') return 'Contratos · Logística'
-  return 'Empleado'
+  return employeeType ? employeeRoleLabel(employeeType) : 'Empleado'
 }

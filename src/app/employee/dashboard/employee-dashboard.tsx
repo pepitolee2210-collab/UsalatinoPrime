@@ -47,7 +47,7 @@ export function EmployeeDashboard({ assignments }: { assignments: Assignment[] }
     <div className="space-y-6">
       <AdminKeyframes />
       <PageHeader
-        eyebrow="Paralegal · Workspace"
+        eyebrow="Tramitadora · Workspace"
         title="Mis Casos"
         accentDot
         description="Casos asignados a tu workflow. Sube documentos, completa formularios, avanza fases."

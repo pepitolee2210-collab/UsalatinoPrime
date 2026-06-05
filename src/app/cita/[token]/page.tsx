@@ -165,7 +165,7 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
   const effectiveQuickContacts: QuickContact[] = quickContacts.length > 0
     ? quickContacts
     : [
-        { id: -1, name: 'Diana', role: 'Asesora Legal', phone_e164: '+12677874365', whatsapp_e164: '+12677874365', avatar_url: null },
+        { id: -1, name: 'Diana', role: 'Tramitadora', phone_e164: '+12677874365', whatsapp_e164: '+12677874365', avatar_url: null },
       ]
 
   const portalProps: ClientPortalProps = {

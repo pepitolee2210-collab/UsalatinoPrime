@@ -418,9 +418,9 @@ export function CommunityPortal({ token, clientId, posts, reactions, schedulingD
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="font-bold text-gray-900 text-sm">Diana</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(242,169,0,0.12)', color: '#9a6500' }}>Asesora Legal</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(242,169,0,0.12)', color: '#9a6500' }}>Tramitadora</span>
                   </div>
-                  <p className="text-xs text-gray-500 leading-relaxed mb-2">Consultas legales, preguntas sobre su caso y trámites migratorios.</p>
+                  <p className="text-xs text-gray-500 leading-relaxed mb-2">Preguntas sobre su caso, documentos y trámites migratorios.</p>
                   <a href="https://wa.me/12677874365" target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-white"
                     style={{ background: '#25D366', boxShadow: '0 2px 8px rgba(37,211,102,0.3)' }}>

@@ -18,6 +18,7 @@ import { CommandK } from '@/components/employee/command-k'
 import { ChatWidgetAutoMount } from '@/components/employee/chat-widget-mount'
 import { AdminThemeSwitcher } from '@/app/admin/_components/admin-theme-switcher'
 import { useAdminTheme } from '@/app/admin/_components/use-admin-theme'
+import { EMPLOYEE_ROLE_LABELS } from '@/lib/team/roles'
 
 type EmployeeType = 'paralegal' | 'senior_consultant' | 'contracts_manager' | null
 
@@ -59,9 +60,7 @@ const navConfig: Array<{
 ]
 
 const ROLE_LABEL: Record<NonNullable<EmployeeType> | 'default', string> = {
-  paralegal: 'Paralegal',
-  senior_consultant: 'Consultora Senior',
-  contracts_manager: 'Contratos · Logística',
+  ...EMPLOYEE_ROLE_LABELS,
   default: 'Panel de Empleado',
 }
 

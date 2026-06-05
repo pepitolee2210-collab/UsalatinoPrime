@@ -79,7 +79,7 @@ export default async function EmployeeCasosPage() {
     <div className="space-y-6">
       <AdminKeyframes />
       <PageHeader
-        eyebrow="Paralegal · Casos"
+        eyebrow="Tramitadora · Casos"
         title="Casos"
         accentDot
         description="Vista directa para paralegals — abre cualquier caso para revisar Radicación · PDFs y demás secciones, sin esperar asignación de Henry."

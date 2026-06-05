@@ -841,7 +841,7 @@ export function VoiceCall({ onBack }: VoiceCallProps) {
               <div className="grid grid-cols-2 gap-5">
                 <div>
                   <p className="vc-label text-white/35 mb-2">Con</p>
-                  <p className="text-white text-sm font-medium leading-snug">Consultora Senior</p>
+                  <p className="text-white text-sm font-medium leading-snug">Asesora</p>
                   <p className="text-white/40 text-xs mt-0.5">UsaLatino Prime</p>
                 </div>
                 <div>
