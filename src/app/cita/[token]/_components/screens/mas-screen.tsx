@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { CommunityPortal } from '../../community-portal'
 import { HenryDocuments } from '../../henry-documents'
+import { TerminosScreen } from './terminos-screen'
 import type { QuickContact } from './inicio-screen'
 
 interface UploadedDoc {
@@ -49,9 +50,15 @@ interface MasScreenProps {
   communityReactions: CommunityReaction[]
   schedulingDays: SchedulingDay[]
   quickContacts: QuickContact[]
+  termsAccepted: boolean
+  /** Deep-link: si el shell pide abrir una sub-vista (ej. desde el banner de Inicio). */
+  requestedView?: SubView | null
+  onViewConsumed?: () => void
+  /** Notifica al shell que el cliente aceptó los T&C (limpia banner/badge sin recargar). */
+  onTermsAccepted?: () => void
 }
 
-type SubView = 'menu' | 'mis_datos' | 'expedientes' | 'comunidad' | 'consultor' | 'mi_perfil' | 'ayuda'
+type SubView = 'menu' | 'mis_datos' | 'expedientes' | 'comunidad' | 'consultor' | 'mi_perfil' | 'ayuda' | 'terminos'
 
 interface MenuItem {
   id: SubView
@@ -59,6 +66,7 @@ interface MenuItem {
   description: string
   icon: string
   badge?: number
+  pending?: boolean
 }
 
 export function MasScreen({
@@ -72,11 +80,25 @@ export function MasScreen({
   communityReactions,
   schedulingDays,
   quickContacts,
+  termsAccepted,
+  requestedView,
+  onViewConsumed,
+  onTermsAccepted,
 }: MasScreenProps) {
   const [view, setView] = useState<SubView>('menu')
 
+  // Deep-link desde el shell (ej. banner de Inicio → Términos y Condiciones).
+  useEffect(() => {
+    if (requestedView) {
+      setView(requestedView)
+      onViewConsumed?.()
+    }
+  }, [requestedView, onViewConsumed])
+
   const items: MenuItem[] = [
     { id: 'mis_datos',   label: 'Mis Datos',                description: 'Nombre, servicio, número de caso',    icon: 'badge' },
+    { id: 'terminos',    label: 'Términos y Condiciones',   description: 'Lee, firma y acepta los términos del servicio', icon: 'gavel',
+      pending: !termsAccepted },
     { id: 'expedientes', label: 'Expedientes',              description: 'Documentos aprobados archivados',     icon: 'archive' },
     { id: 'consultor',   label: 'Documentos del Consultor', description: 'Documentos que tu equipo te envía',   icon: 'inbox',
       badge: henryDocuments.length || undefined },
@@ -134,6 +156,17 @@ export function MasScreen({
                     {item.description}
                   </p>
                 </div>
+                {item.pending && (
+                  <span
+                    className="text-[11px] font-bold px-2 py-1 rounded-full"
+                    style={{
+                      background: 'var(--color-ulp-status-warning, #c77700)',
+                      color: '#ffffff',
+                    }}
+                  >
+                    Pendiente
+                  </span>
+                )}
                 {item.badge !== undefined && item.badge > 0 && (
                   <span
                     className="text-[11px] font-bold px-2 py-1 rounded-full"
@@ -170,6 +203,15 @@ export function MasScreen({
             clientName={clientName}
             caseNumber={caseNumber}
             serviceName={serviceName}
+          />
+        )}
+        {view === 'terminos' && (
+          <TerminosScreen
+            token={token}
+            clientName={clientName}
+            caseNumber={caseNumber}
+            serviceName={serviceName}
+            onAccepted={onTermsAccepted}
           />
         )}
         {view === 'expedientes' && <ExpedientesList token={token} />}

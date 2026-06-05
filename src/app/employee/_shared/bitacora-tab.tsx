@@ -137,6 +137,7 @@ const SUBCATEGORY_LABELS_ES: Record<string, string> = {
   'document.rejected': 'Documento rechazado',
   'document.delivered_to_client': 'Documento entregado al cliente',
   'document.archived': 'Documento archivado',
+  'document.terms_accepted': 'Términos y Condiciones aceptados',
   'form.submitted_by_client': 'Formulario enviado por cliente',
   'form.locked_for_print': 'Formulario bloqueado para impresión',
   'form.pdf_generated': 'PDF generado',
@@ -170,6 +171,7 @@ function iconForSubcategory(sub: string | null) {
     case 'document.approved': return FileCheck2
     case 'document.rejected': return FileX2
     case 'document.delivered_to_client': return FileBadge
+    case 'document.terms_accepted': return FileSignature
     case 'document.archived': return FileText
     case 'form.pdf_generated':
     case 'form.submitted_by_client':

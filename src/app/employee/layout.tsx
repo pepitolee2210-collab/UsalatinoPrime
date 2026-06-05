@@ -52,6 +52,7 @@ const navConfig: Array<{
   { href: '/employee/citas', label: 'Citas', icon: CalendarClock, show: () => true },
   { href: '/employee/clientes', label: 'Clientes', icon: Users, show: () => true },
   { href: '/employee/revision-interna', label: 'Revisión Interna', icon: FileCheck, show: () => true },
+  { href: '/employee/terminos', label: 'Términos y Condiciones', icon: FileSignature, show: () => true },
   { href: '/employee/traducciones', label: 'Traducciones', icon: Languages, show: () => true },
   { href: '/employee/traduccion-libre', label: 'Traducción Libre', icon: BookOpenText, show: () => true },
   { href: '/employee/lex', label: 'LEX · Sistema Legal', icon: Scale, show: (t) => t !== 'contracts_manager' },

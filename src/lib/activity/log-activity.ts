@@ -65,6 +65,7 @@ export const SUBCATEGORIES = {
   DOC_REJECTED: 'document.rejected',
   DOC_DELIVERED_CLIENT: 'document.delivered_to_client',
   DOC_ARCHIVED: 'document.archived',
+  TERMS_ACCEPTED: 'document.terms_accepted',
   // form
   FORM_SUBMITTED_CLIENT: 'form.submitted_by_client',
   FORM_LOCKED: 'form.locked_for_print',

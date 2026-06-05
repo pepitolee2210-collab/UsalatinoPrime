@@ -5,6 +5,7 @@ import { VoiceProvider } from '@/components/voice/voice-context'
 import type { Appointment, CasePhase } from '@/types/database'
 import type { QuickContact, PhaseAsset } from './_components/screens/inicio-screen'
 import { resolveClientTimezone } from '@/lib/appointments/resolve-tz'
+import { TERMS_VERSION } from '@/lib/legal/terms-and-conditions'
 
 export default async function CitaPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
@@ -111,7 +112,7 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
   // Si las tablas/columnas no existen aún, devuelven null/[] sin romper.
   // ──────────────────────────────────────────────────────────────────
 
-  const [phaseRes, phaseAssetRes, contactsRes] = await Promise.all([
+  const [phaseRes, phaseAssetRes, contactsRes, termsRes] = await Promise.all([
     supabase.from('cases')
       .select('current_phase, process_start, state_us, parent_deceased, in_orr_custody, has_criminal_history, minor_close_to_21')
       .eq('id', tokenData.case_id)
@@ -125,7 +126,15 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
       .select('id, name, role, phone_e164, whatsapp_e164, avatar_url, show_in_inicio, show_in_ayuda, sort_order')
       .eq('is_active', true)
       .order('sort_order', { ascending: true }),
+    supabase.from('case_terms_acceptances')
+      .select('id')
+      .eq('case_id', tokenData.case_id)
+      .eq('terms_version', TERMS_VERSION)
+      .maybeSingle(),
   ])
+
+  // ¿Ya aceptó la versión vigente de los T&C? Tolerante a errores (no rompe el portal).
+  const termsAccepted = !termsRes.error && !!termsRes.data
 
   const phaseRow = phaseRes.error ? null : phaseRes.data
   const currentPhase: CasePhase | null = (phaseRow?.current_phase as CasePhase | null) ?? null
@@ -181,6 +190,7 @@ export default async function CitaPage({ params }: { params: Promise<{ token: st
     quickContacts: effectiveQuickContacts,
     clientTimezone: tzResolution.tz,
     clientTimezoneSource: tzResolution.source,
+    termsAccepted,
   }
 
   return (

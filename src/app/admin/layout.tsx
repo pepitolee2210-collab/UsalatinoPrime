@@ -10,7 +10,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import {
   FileText, Users, CreditCard, LogOut, Menu,
   MessageSquare, PenLine, CalendarClock, ClipboardList, PhoneCall, Briefcase, Bot, Scale,
-  MessageCircle, FileCheck, Crown, Languages, BookOpenText, Sparkles, ChevronDown,
+  MessageCircle, FileCheck, Crown, Languages, BookOpenText, Sparkles, ChevronDown, FileSignature,
 } from 'lucide-react'
 import { ClientSearch } from '@/components/admin/ClientSearch'
 import { ErrorBoundary } from '@/components/error-boundary'
@@ -69,6 +69,7 @@ const navGroups: NavGroup[] = [
     items: [
       { href: '/admin/formularios', label: 'Formularios', icon: ClipboardList, badgeKey: 'formsPending' },
       { href: '/admin/contratos', label: 'Contratos', icon: PenLine, badgeKey: null },
+      { href: '/admin/terminos', label: 'Términos y Condiciones', icon: FileSignature, badgeKey: null },
       { href: '/admin/revision-interna', label: 'Revisión Interna', icon: FileCheck, badgeKey: 'internalDocsPending' },
       { href: '/admin/traducciones', label: 'Traducciones', icon: Languages, badgeKey: null },
       { href: '/admin/traduccion-libre', label: 'Traducción Libre', icon: BookOpenText, badgeKey: null },

@@ -28,6 +28,10 @@ interface InicioScreenProps {
   serviceSlug: string | null
   phaseAsset: PhaseAsset | null
   quickContacts: QuickContact[]
+  /** ¿Ya aceptó la versión vigente de los T&C? Controla el banner de aviso. */
+  termsAccepted: boolean
+  /** Navega a Más → Términos y Condiciones. */
+  onGoToTerms: () => void
 }
 
 const PHASE_LABELS: Record<CasePhase, { number: string; title: string; description: string }> = {
@@ -85,6 +89,8 @@ export function InicioScreen({
   serviceSlug,
   phaseAsset,
   quickContacts,
+  termsAccepted,
+  onGoToTerms,
 }: InicioScreenProps) {
   const firstName = clientName.split(' ')[0] || 'Cliente'
   // Excluir la fase de cierre del timeline visible (paridad con SIJS, donde
@@ -111,6 +117,43 @@ export function InicioScreen({
           Tu proceso migratorio está en marcha. {serviceName && `(${serviceName})`}
         </p>
       </header>
+
+      {/* ─── Aviso: Términos y Condiciones pendientes ─── */}
+      {!termsAccepted && (
+        <button
+          type="button"
+          onClick={onGoToTerms}
+          className="w-full flex items-center gap-3 p-4 rounded-2xl border text-left transition-shadow hover:shadow-sm"
+          style={{
+            background: 'var(--color-ulp-primary-fixed)',
+            borderColor: 'var(--color-ulp-status-warning, #c77700)',
+            borderLeftWidth: 4,
+            borderLeftColor: 'var(--color-ulp-status-warning, #c77700)',
+          }}
+        >
+          <span
+            className="material-symbols-outlined flex-shrink-0"
+            data-fill="1"
+            style={{ fontSize: 26, color: 'var(--color-ulp-status-warning, #c77700)' }}
+          >
+            gavel
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block ulp-body-md font-semibold" style={{ color: 'var(--color-ulp-on-surface)' }}>
+              Términos y Condiciones pendientes
+            </span>
+            <span className="block ulp-body-sm" style={{ color: 'var(--color-ulp-on-surface-variant)' }}>
+              Léelos, fírmalos y acéptalos para completar tu registro.
+            </span>
+          </span>
+          <span
+            className="material-symbols-outlined flex-shrink-0"
+            style={{ fontSize: 20, color: 'var(--color-ulp-outline)' }}
+          >
+            chevron_right
+          </span>
+        </button>
+      )}
 
       {/* ─── Card video introductorio ─── */}
       <section aria-labelledby="video-title">

@@ -86,6 +86,9 @@ export interface ClientPortalProps {
   clientTimezone: string
   /** De dónde vino la TZ — solo para mostrar el "hint" en el selector. */
   clientTimezoneSource: TzSource
+
+  /** ¿El cliente ya aceptó la versión vigente de los Términos y Condiciones? */
+  termsAccepted: boolean
 }
 
 const SCREENS: ScreenId[] = ['inicio', 'citas', 'documentos', 'fases', 'mas']
@@ -101,11 +104,21 @@ export function ClientPortal(props: ClientPortalProps) {
     appointments, zoomLink, uploadedDocuments: _uploadedDocuments, henryDocuments,
     communityPosts, communityReactions, schedulingDays,
     serviceName, serviceSlug, currentPhase, phaseAsset, quickContacts,
-    clientTimezone, clientTimezoneSource,
+    clientTimezone, clientTimezoneSource, termsAccepted: initialTermsAccepted,
   } = props
 
   const [activeScreen, setActiveScreen] = useState<ScreenId>('inicio')
   const [hydrated, setHydrated] = useState(false)
+  // Estado vivo de aceptación de T&C: inicializa del server y se actualiza al
+  // aceptar (sin recargar) para limpiar el banner de Inicio y el badge de Más.
+  const [termsAccepted, setTermsAccepted] = useState(initialTermsAccepted)
+  // Deep-link a una sub-vista de "Más" (ej. desde el banner de Inicio).
+  const [masRequestedView, setMasRequestedView] = useState<'terminos' | null>(null)
+
+  function goToTerms() {
+    setMasRequestedView('terminos')
+    setActiveScreen('mas')
+  }
 
   // Restaurar pantalla activa de sessionStorage (per-token)
   useEffect(() => {
@@ -164,6 +177,8 @@ export function ClientPortal(props: ClientPortalProps) {
           serviceSlug={serviceSlug}
           phaseAsset={phaseAsset}
           quickContacts={quickContacts.filter((c) => c.is_online !== false)}
+          termsAccepted={termsAccepted}
+          onGoToTerms={goToTerms}
         />
       )}
       {activeScreen === 'citas' && (
@@ -199,6 +214,10 @@ export function ClientPortal(props: ClientPortalProps) {
           communityReactions={communityReactions}
           schedulingDays={schedulingDays}
           quickContacts={quickContacts}
+          termsAccepted={termsAccepted}
+          requestedView={masRequestedView}
+          onViewConsumed={() => setMasRequestedView(null)}
+          onTermsAccepted={() => setTermsAccepted(true)}
         />
       )}
     </AppShell>

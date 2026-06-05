@@ -153,6 +153,22 @@ export interface Document {
   ai_extracted_at?: string | null
 }
 
+export interface CaseTermsAcceptance {
+  id: string
+  case_id: string
+  client_id: string
+  contract_id?: string | null
+  terms_version: string
+  signature_image: string
+  accepted_full_name: string
+  document_id?: string | null
+  pdf_path?: string | null
+  ip_address?: string | null
+  user_agent?: string | null
+  accepted_at: string
+  created_at: string
+}
+
 export type CaseActivityCategory =
   | 'case'
   | 'contract'
