@@ -330,6 +330,8 @@ export type CasePhase =
   | 'asilo_completado'
   | 'apelacion'
   | 'cambio_de_corte'
+  | 'matrimonio_i130'
+  | 'matrimonio_i485'
 
 export type DocumentSlotKind = 'single' | 'dual_es_en' | 'multiple_named'
 

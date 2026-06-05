@@ -55,6 +55,16 @@ const PHASE_LABELS: Record<CasePhase, { number: string; title: string; descripti
     title: 'Proceso completado',
     description: '¡Felicitaciones! Tu caso ha sido aprobado.',
   },
+  matrimonio_i130: {
+    number: 'Fase 01',
+    title: 'Petición (I-130)',
+    description: 'Petición de familiar (I-130) por tu matrimonio con un ciudadano estadounidense.',
+  },
+  matrimonio_i485: {
+    number: 'Fase 02',
+    title: 'Ajuste (I-485)',
+    description: 'Ajuste de estatus para obtener la residencia permanente (Green Card).',
+  },
   asilo_sustentos: {
     number: 'Fase 01',
     title: 'Sustentos',

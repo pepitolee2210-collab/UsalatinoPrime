@@ -51,6 +51,8 @@ const PHASE_LABEL: Record<CasePhase, string> = {
   asilo_completado: 'Completado',
   apelacion: 'Apelación',
   cambio_de_corte: 'Cambio de Corte',
+  matrimonio_i130: 'I-130',
+  matrimonio_i485: 'I-485',
 }
 
 const PHASE_COLOR: Record<CasePhase, string> = {
@@ -63,6 +65,8 @@ const PHASE_COLOR: Record<CasePhase, string> = {
   asilo_completado: 'bg-[var(--admin-gold-soft)] text-[var(--admin-gold-on)]',
   apelacion: 'bg-[var(--admin-red-soft)] text-[var(--admin-red-on)]',
   cambio_de_corte: 'bg-[var(--admin-blue-soft)] text-[var(--admin-blue-on)]',
+  matrimonio_i130: 'bg-[var(--admin-accent-soft)] text-[var(--admin-accent)]',
+  matrimonio_i485: 'bg-[var(--admin-green-soft)] text-[var(--admin-green-on)]',
 }
 
 export function PhaseHistoryTab({ caseId }: PhaseHistoryTabProps) {

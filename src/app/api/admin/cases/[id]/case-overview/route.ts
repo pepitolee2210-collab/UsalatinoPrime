@@ -40,6 +40,18 @@ const PHASE_META: Record<CasePhase, PhaseMeta> = {
     icon: 'flag',
     description: 'Proceso SIJS completado.',
   },
+  matrimonio_i130: {
+    label: 'Fase 1 — I-130',
+    color: 'purple',
+    icon: 'family_restroom',
+    description: 'Petición de familiar por matrimonio (I-130).',
+  },
+  matrimonio_i485: {
+    label: 'Fase 2 — I-485',
+    color: 'emerald',
+    icon: 'verified',
+    description: 'Ajuste de estatus de la cónyuge (I-485).',
+  },
   // Entries de Asilo Político — no se usan en este endpoint (SIJS-only) pero
   // requeridos para que el Record satisfaga el tipo CasePhase completo.
   asilo_sustentos: {

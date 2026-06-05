@@ -176,6 +176,38 @@ import {
 import { buildI485PrefilledValues } from './i485-prefill'
 
 import {
+  PDF_PUBLIC_PATH as I130_PDF_PUBLIC,
+  PDF_DISK_PATH as I130_PDF_DISK,
+  PDF_SHA256 as I130_SHA,
+  SCHEMA_VERSION as I130_VERSION,
+  FORM_SLUG as I130_SLUG,
+  FORM_NAME as I130_NAME,
+  FORM_DESCRIPTION_ES as I130_DESC,
+  I130_SECTIONS,
+  HARDCODED_VALUES as I130_HARDCODED,
+  REQUIRED_FOR_PRINT as I130_REQUIRED,
+  FIELD_BY_KEY as I130_FIELD_BY_KEY,
+  i130FormSchema as I130_ZOD_SCHEMA,
+} from './i130-form-schema'
+import { buildI130PrefilledValues } from './i130-prefill'
+
+import {
+  PDF_PUBLIC_PATH as I485M_PDF_PUBLIC,
+  PDF_DISK_PATH as I485M_PDF_DISK,
+  PDF_SHA256 as I485M_SHA,
+  SCHEMA_VERSION as I485M_VERSION,
+  FORM_SLUG as I485M_SLUG,
+  FORM_NAME as I485M_NAME,
+  FORM_DESCRIPTION_ES as I485M_DESC,
+  I485M_SECTIONS,
+  HARDCODED_VALUES as I485M_HARDCODED,
+  REQUIRED_FOR_PRINT as I485M_REQUIRED,
+  FIELD_BY_KEY as I485M_FIELD_BY_KEY,
+  i485MatrimonioFormSchema as I485M_ZOD_SCHEMA,
+} from './i485-matrimonio-form-schema'
+import { buildI485MatrimonioPrefilledValues } from './i485-matrimonio-prefill'
+
+import {
   PDF_PUBLIC_PATH as EOIR_26_PDF_PUBLIC,
   PDF_DISK_PATH as EOIR_26_PDF_DISK,
   PDF_SHA256 as EOIR_26_SHA,
@@ -644,6 +676,105 @@ const I485_DEFINITION: AutomatedFormDefinition = {
 }
 
 // ──────────────────────────────────────────────────────────────────
+// I-130 (Petition for Alien Relative) — Ajuste de Estatus por Matrimonio.
+// Federal (states: []). Solo aplica a la fase 'matrimonio_i130' del servicio
+// ajuste-de-estatus-matrimonio (ver phase-form-mapping.ts). El peticionario
+// es el esposo ciudadano (client_id del caso); la Parte 4 (cónyuge) se llena
+// a mano y el I-485 la reutiliza vía cross-form.
+// ──────────────────────────────────────────────────────────────────
+
+const I130_DEFINITION: AutomatedFormDefinition = {
+  slug: I130_SLUG,
+  formName: I130_NAME,
+  formDescriptionEs: I130_DESC,
+  states: [],                             // FEDERAL — multi-estado
+  packetType: 'merits',
+  pdfPublicPath: I130_PDF_PUBLIC,
+  pdfDiskPath: I130_PDF_DISK,
+  pdfSha256: I130_SHA,
+  schemaVersion: I130_VERSION,
+  sections: I130_SECTIONS as AutomatedFormDefinition['sections'],
+  hardcodedValues: I130_HARDCODED,
+  requiredForPrint: I130_REQUIRED,
+  fieldByKey: I130_FIELD_BY_KEY as AutomatedFormDefinition['fieldByKey'],
+  zodSchema: I130_ZOD_SCHEMA,
+  buildPrefilledValues: async (caseId, service) => {
+    const raw = await buildI130PrefilledValues(caseId, service)
+    const out: Record<string, string | boolean | null | undefined> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      if (v === null || v === undefined || typeof v === 'string' || typeof v === 'boolean') {
+        out[k] = v
+      }
+    }
+    return out
+  },
+  detectByName: (name) => {
+    const n = name.toLowerCase()
+    return /i[-\s]?130/.test(n) || n.includes('petition for alien relative')
+  },
+}
+
+// ──────────────────────────────────────────────────────────────────
+// I-485 del servicio "Ajuste de Estatus por Matrimonio". Registro INDEPENDIENTE
+// del I-485 de Visa Juvenil (uscis-i-485): reusa el mismo PDF físico pero con
+// slug, formName, prefill y fase propios. Solo aparece en la fase
+// 'matrimonio_i485' (ver phase-form-mapping.ts). El prefill reutiliza los datos
+// de la cónyuge desde el I-130 ya llenado (cross-form).
+// ──────────────────────────────────────────────────────────────────
+
+const I485_MATRIMONIO_DEFINITION: AutomatedFormDefinition = {
+  slug: I485M_SLUG,
+  formName: I485M_NAME,
+  formDescriptionEs: I485M_DESC,
+  states: [],                             // FEDERAL — multi-estado
+  packetType: 'merits',
+  pdfPublicPath: I485M_PDF_PUBLIC,
+  pdfDiskPath: I485M_PDF_DISK,
+  pdfSha256: I485M_SHA,
+  schemaVersion: I485M_VERSION,
+  sections: I485M_SECTIONS as AutomatedFormDefinition['sections'],
+  hardcodedValues: I485M_HARDCODED,
+  requiredForPrint: I485M_REQUIRED,
+  fieldByKey: I485M_FIELD_BY_KEY as AutomatedFormDefinition['fieldByKey'],
+  zodSchema: I485M_ZOD_SCHEMA,
+  buildPrefilledValues: async (caseId, service) => {
+    const raw = await buildI485MatrimonioPrefilledValues(caseId, service)
+    const out: Record<string, string | boolean | null | undefined> = {}
+    for (const [k, v] of Object.entries(raw)) {
+      if (v === null || v === undefined || typeof v === 'string' || typeof v === 'boolean') {
+        out[k] = v
+      }
+    }
+    return out
+  },
+  detectByName: (name) => {
+    // Restrictivo: NO debe colisionar con el I-485 SIJS en resolveAutomatedFormSlug.
+    // Este form aparece por fase (formApplies), no por detección de nombre.
+    const n = name.toLowerCase()
+    return n.includes('i-485') && (n.includes('matrimonio') || n.includes('marriage'))
+  },
+  computeLegalWarnings: async (caseId, service) => {
+    const warnings: string[] = []
+    const { data } = await service
+      .from('case_form_instances')
+      .select('filled_values')
+      .eq('case_id', caseId)
+      .eq('form_name', I130_NAME)
+      .maybeSingle()
+    const fv = (data?.filled_values ?? {}) as Record<string, unknown>
+    if (Object.keys(fv).length < 5) {
+      warnings.push(
+        'Primero completa el formulario I-130: los datos de la cónyuge se reutilizan aquí automáticamente.',
+      )
+    }
+    warnings.push(
+      'En la Parte 2, marca la categoría "Family-based → Spouse of a U.S. Citizen". Revisa la Parte 9 (inadmisibilidad) con el equipo legal antes de imprimir.',
+    )
+    return warnings
+  },
+}
+
+// ──────────────────────────────────────────────────────────────────
 // Apelación ante la BIA — EOIR-26 (Notice of Appeal) + EOIR-26A (Fee Waiver).
 // Federales, sin estado asociado. Solo aplican a la fase 'apelacion' (ver
 // phase-form-mapping.ts). El EOIR-26A es opcional (isMandatory: false).
@@ -760,6 +891,8 @@ export const AUTOMATED_FORMS: Record<string, AutomatedFormDefinition> = {
   [SAPCR205_SLUG]: SAPCR205_DEFINITION,
   [FL_GUARDIAN_SLUG]: FL_GUARDIAN_DEFINITION,
   [I485_SLUG]: I485_DEFINITION,
+  [I130_SLUG]: I130_DEFINITION,
+  [I485M_SLUG]: I485_MATRIMONIO_DEFINITION,
   [EOIR_26_SLUG]: EOIR_26_DEFINITION,
   [EOIR_26A_SLUG]: EOIR_26A_DEFINITION,
   [EOIR_33_SLUG]: EOIR_33_DEFINITION,

@@ -187,6 +187,48 @@ const REFORZAR_ASILO_PHASES: ServicePhaseDef[] = [
   },
 ]
 
+// "Ajuste de Estatus por Matrimonio" — servicio independiente. Dos fases de
+// trabajo (I-130 → I-485) + cierre. Usa fases propias `matrimonio_i130` /
+// `matrimonio_i485` para NO cruzarse con el I-485 de Visa Juvenil ni con el
+// servicio `ajuste-de-estatus` existente (comparten el enum `case_phase`, pero
+// las policies de forms y los documentos se resuelven por fase/servicio).
+const MATRIMONIO_PHASES: ServicePhaseDef[] = [
+  {
+    code: 'matrimonio_i130',
+    shortCode: 'i130',
+    label: 'Fase 1 — Petición (I-130)',
+    number: 'Fase 1',
+    description: 'Petición de familiar por matrimonio (Formulario I-130) ante USCIS',
+    icon: 'family_restroom',
+    bgClass: 'bg-purple-100',
+    textClass: 'text-purple-800',
+    sortOrder: 0,
+  },
+  {
+    code: 'matrimonio_i485',
+    shortCode: 'i485',
+    label: 'Fase 2 — Ajuste (I-485)',
+    number: 'Fase 2',
+    description: 'Ajuste de estatus / Green Card de la cónyuge (Formulario I-485)',
+    icon: 'card_membership',
+    bgClass: 'bg-emerald-100',
+    textClass: 'text-emerald-800',
+    sortOrder: 1,
+  },
+  {
+    code: 'completado',
+    shortCode: 'completado',
+    label: 'Completado',
+    number: 'Final',
+    description: 'Paquete de ajuste por matrimonio presentado ante USCIS',
+    icon: 'check_circle',
+    bgClass: 'bg-amber-100',
+    textClass: 'text-amber-800',
+    sortOrder: 2,
+    isCompletion: true,
+  },
+]
+
 export const SERVICE_REGISTRY: Record<string, ServiceRegistryEntry> = {
   'visa-juvenil': {
     slug: 'visa-juvenil',
@@ -217,6 +259,12 @@ export const SERVICE_REGISTRY: Record<string, ServiceRegistryEntry> = {
     name: 'Cambio de Corte',
     usesPhases: true,
     phases: CAMBIO_DE_CORTE_PHASES,
+  },
+  'ajuste-de-estatus-matrimonio': {
+    slug: 'ajuste-de-estatus-matrimonio',
+    name: 'Ajuste de Estatus por Matrimonio',
+    usesPhases: true,
+    phases: MATRIMONIO_PHASES,
   },
 }
 

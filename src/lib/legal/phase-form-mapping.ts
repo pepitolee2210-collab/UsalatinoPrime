@@ -28,7 +28,10 @@ export const PHASE_FORM_POLICY: Record<CasePhase, PhasePolicy> = {
   },
   i485: {
     packetTypes: ['intake', 'merits'],
-    slugMatches: (def) => /i485|i-485|i-693|i-765|i-131/i.test(def.slug),
+    // Excluye el I-485 de matrimonio (uscis-i-485-matrimonio): ese form vive en
+    // su propia fase `matrimonio_i485` y NO debe aparecer en casos SIJS.
+    slugMatches: (def) =>
+      /i485|i-485|i-693|i-765|i-131/i.test(def.slug) && !/matrimonio/i.test(def.slug),
   },
   completado: {
     packetTypes: [],
@@ -62,6 +65,16 @@ export const PHASE_FORM_POLICY: Record<CasePhase, PhasePolicy> = {
   cambio_de_corte: {
     packetTypes: ['merits'],
     slugMatches: (def) => /^eoir-?33$/i.test(def.slug),
+  },
+  // Ajuste de Estatus por Matrimonio — fases propias e INDEPENDIENTES del SIJS.
+  // Fase 1: solo el I-130. Fase 2: solo el I-485 de matrimonio (slug exacto).
+  matrimonio_i130: {
+    packetTypes: ['merits'],
+    slugMatches: (def) => def.slug === 'uscis-i-130',
+  },
+  matrimonio_i485: {
+    packetTypes: ['merits'],
+    slugMatches: (def) => def.slug === 'uscis-i-485-matrimonio',
   },
 }
 

@@ -118,6 +118,31 @@ const contracts: Record<string, ContractTemplate> = {
       'Seguimiento del caso y respuesta a solicitudes de evidencia adicional (RFE)',
     ],
   },
+  // Ajuste de Estatus por Matrimonio \u2014 servicio NUEVO e independiente del
+  // `ajuste-de-estatus` de arriba. Dos fases propias (I-130 \u2192 I-485). El case
+  // nace en `matrimonio_i130` para que el portal muestre los documentos y el
+  // formulario I-130 desde el primer login; al avanzar pasa a `matrimonio_i485`.
+  'ajuste-de-estatus-matrimonio': {
+    installments: true,
+    requiresMinor: false,
+    startingPhase: 'matrimonio_i130',
+    variants: [
+      { label: 'Ajuste de Estatus por Matrimonio', totalPrice: 2500 },
+    ],
+    objetoDelContrato:
+      'El CONSULTOR se compromete a brindar asesor\u00eda y asistencia en el proceso de Ajuste de Estatus por matrimonio con ciudadano estadounidense ante el Servicio de Ciudadan\u00eda e Inmigraci\u00f3n de los Estados Unidos (USCIS), incluyendo la preparaci\u00f3n de la Petici\u00f3n de Familiar (Formulario I-130) y de la Solicitud de Ajuste de Estatus (Formulario I-485) para la obtenci\u00f3n de la residencia permanente legal de la c\u00f3nyuge.',
+    etapas: [
+      'Evaluaci\u00f3n de elegibilidad y revisi\u00f3n del matrimonio y el historial migratorio',
+      'Recopilaci\u00f3n de documentaci\u00f3n de identidad y evidencia de matrimonio de buena fe',
+      'Preparaci\u00f3n y presentaci\u00f3n de la Petici\u00f3n de Familiar (Formulario I-130)',
+      'Recopilaci\u00f3n de documentaci\u00f3n para el ajuste de estatus (Fase I-485)',
+      'Preparaci\u00f3n del Formulario I-485 y del paquete de patrocinio econ\u00f3mico (I-864)',
+      'Revisi\u00f3n y organizaci\u00f3n del paquete completo de solicitud',
+      'Presentaci\u00f3n de la solicitud ante USCIS',
+      'Preparaci\u00f3n del cliente para la cita biom\u00e9trica y la entrevista',
+      'Seguimiento del caso y respuesta a solicitudes de evidencia adicional (RFE)',
+    ],
+  },
   'visa-juvenil': {
     installments: true,
     requiresMinor: true,

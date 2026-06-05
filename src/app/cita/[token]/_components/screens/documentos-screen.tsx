@@ -29,6 +29,8 @@ const PHASE_LABEL: Record<CasePhase, string> = {
   asilo_completado: 'fase anterior',
   apelacion: 'Apelación',
   cambio_de_corte: 'Cambio de Corte',
+  matrimonio_i130: 'I-130',
+  matrimonio_i485: 'I-485',
 }
 
 export function DocumentosScreen({ token }: DocumentosScreenProps) {

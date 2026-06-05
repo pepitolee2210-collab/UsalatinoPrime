@@ -65,6 +65,16 @@ const PHASE_HEADERS: Record<CasePhase, { number: string; title: string; descript
     title: 'Proceso completado',
     description: 'Ya no quedan formularios por llenar.',
   },
+  matrimonio_i130: {
+    number: 'Fase 01',
+    title: 'Petición (I-130)',
+    description: 'Formulario I-130 (petición de familiar) por tu matrimonio con un ciudadano.',
+  },
+  matrimonio_i485: {
+    number: 'Fase 02',
+    title: 'Ajuste (I-485)',
+    description: 'Formulario I-485 para el ajuste de estatus y obtener la Green Card.',
+  },
   asilo_sustentos: {
     number: 'Fase 01',
     title: 'Sustentos',

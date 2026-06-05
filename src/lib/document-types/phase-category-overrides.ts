@@ -86,6 +86,10 @@ export const PHASE_CATEGORY_OVERRIDES: Record<CasePhase, Record<string, PhaseCat
   // Cambio de Corte: aún no hay documentos requeridos por fase (vacío
   // por ahora). Sumar entradas si se llenan document_type_phases en el futuro.
   cambio_de_corte: {},
+  // Ajuste por Matrimonio: las categorías de docs vienen ya nombradas desde la
+  // BD (document_type_phases). Sin overrides por ahora.
+  matrimonio_i130: {},
+  matrimonio_i485: {},
   custodia: {},
 
   i360: {

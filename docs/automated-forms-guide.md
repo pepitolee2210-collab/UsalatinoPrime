@@ -723,6 +723,8 @@ seleccionado por el frontend.
 | `tx-fm-sapcr-aff-100` | TX | merits | acroform | Affidavit of Standing of Nonparent | Incluye `computeLegalWarnings` para no-padres |
 | `tx-pr-gen-116` | TX | intake | acroform | Civil Case Information Sheet | Incluye campo virtual `case_type` + `processForPrint`, `hiddenByDefault` con `__show_all__`, normalize requerido |
 | `tx-dfps-sij-findings-motion` | TX | merits | docx-template | DFPS Section 13 Motion for SIJ Findings | Primer template DOCX. Tokens `{{key}}` pre-inyectados con `tokenize-motion-sij-findings.mjs`. Reusa data bag del SAPCR-100 |
+| `uscis-i-130` | Federal | merits | acroform | I-130 Petition for Alien Relative (por matrimonio) | Servicio "Ajuste de Estatus por Matrimonio", fase `matrimonio_i130`. Normalize requerido (object streams). Prefill de la Parte 2 (peticionario) desde el perfil del esposo (= `client_id`); la Parte 4 (cónyuge) se llena a mano |
+| `uscis-i-485-matrimonio` | Federal | merits | acroform | I-485 Adjust Status (por matrimonio) | Reusa el PDF físico del I-485 SIJS con schema/prefill/slug propios (independiente). Fase `matrimonio_i485`. Prefill cross-form: Parte 1 (cónyuge) desde el I-130 ya llenado; Parte 6 (esposo) desde el perfil. La policy `i485` SIJS excluye este slug (`!/matrimonio/`) |
 
 ### 7.1 Templates DOCX vs AcroForms — cuándo usar cada uno
 
