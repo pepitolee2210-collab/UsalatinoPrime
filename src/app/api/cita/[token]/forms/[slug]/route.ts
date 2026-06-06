@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { AUTOMATED_FORMS } from '@/lib/legal/automated-forms-registry'
 import { isFieldEditableByClient, hasResolvedValue } from '@/lib/legal/field-policy'
+import {
+  resolveCuratedField,
+  getClientFormKeys,
+  getClientFormGroupMeta,
+  isVirtualKey,
+  type CuratedGroup,
+} from '@/lib/legal/i485-client-form'
 import type { CasePhase } from '@/types/database'
 
 /**
@@ -131,57 +138,94 @@ export async function GET(
     prefillBag = {}
   }
 
-  // Filtrar secciones a solo user fields no-resueltos
   const sections: ClientSection[] = []
   const confirmedValues: ConfirmedValue[] = []
-  for (const section of def.sections) {
-    const userFields: ClientField[] = []
-    for (const field of section.fields) {
-      const editable = isFieldEditableByClient(field)
-      if (!editable) {
-        // Si tiene valor en prefill, mostrarlo como "confirmado" pero no editable por cliente
-        if (hasResolvedValue(prefillBag, field.semanticKey)) {
+  let groupMeta: Record<string, CuratedGroup> | undefined
+
+  if (def.clientForm) {
+    // ── Capa de presentación CURADA (ej. I-485) ──────────────────────────
+    // Las preguntas, el orden, los títulos y los radios Sí/No vienen de la
+    // curación. El prefill (keys reales del schema) sigue marcando campos como
+    // confirmados; las keys virtuales (v_*) siempre las llena el cliente.
+    groupMeta = getClientFormGroupMeta(def.clientForm)
+    for (const section of def.clientForm) {
+      const userFields: ClientField[] = []
+      for (const cf of section.fields) {
+        const resolved = resolveCuratedField(cf)
+        const key = resolved.semanticKey
+        const realPrefill = !isVirtualKey(key) && hasResolvedValue(prefillBag, key)
+        if (realPrefill && !hasResolvedValue(savedValues, key)) {
+          // Dato ya conocido (perfil / I-360 / historia) → confirmado, read-only.
+          confirmedValues.push({
+            semanticKey: key,
+            labelEs: resolved.labelEs,
+            value: prefillBag[key] as string | boolean | null,
+            source: detectSource(def.fieldByKey[key]?.deriveFrom),
+          })
+          continue
+        }
+        userFields.push(resolved)
+      }
+      if (userFields.length > 0) {
+        sections.push({
+          id: section.id,
+          titleEs: section.titleEs,
+          descriptionEs: section.descriptionEs,
+          fields: userFields,
+        })
+      }
+    }
+  } else {
+    // ── Comportamiento por defecto: derivar del schema técnico ───────────
+    for (const section of def.sections) {
+      const userFields: ClientField[] = []
+      for (const field of section.fields) {
+        const editable = isFieldEditableByClient(field)
+        if (!editable) {
+          // Si tiene valor en prefill, mostrarlo como "confirmado" pero no editable por cliente
+          if (hasResolvedValue(prefillBag, field.semanticKey)) {
+            confirmedValues.push({
+              semanticKey: field.semanticKey,
+              labelEs: field.labelEs,
+              value: prefillBag[field.semanticKey] as string | boolean | null,
+              source: field.hardcoded !== undefined ? 'hardcoded' : 'previous_form',
+            })
+          }
+          continue
+        }
+        // Campo editable por cliente
+        if (hasResolvedValue(prefillBag, field.semanticKey) && !hasResolvedValue(savedValues, field.semanticKey)) {
+          // Tiene prefill desde otra fuente (ej. profile, tutor) → mostrar como confirmado
           confirmedValues.push({
             semanticKey: field.semanticKey,
             labelEs: field.labelEs,
             value: prefillBag[field.semanticKey] as string | boolean | null,
-            source: field.hardcoded !== undefined ? 'hardcoded' : 'previous_form',
+            source: detectSource(field.deriveFrom),
           })
+          continue
         }
-        continue
-      }
-      // Campo editable por cliente
-      if (hasResolvedValue(prefillBag, field.semanticKey) && !hasResolvedValue(savedValues, field.semanticKey)) {
-        // Tiene prefill desde otra fuente (ej. profile, tutor) → mostrar como confirmado
-        confirmedValues.push({
+        // Cliente debe llenarlo
+        userFields.push({
           semanticKey: field.semanticKey,
+          type: field.type as FieldType,
           labelEs: field.labelEs,
-          value: prefillBag[field.semanticKey] as string | boolean | null,
-          source: detectSource(field.deriveFrom),
+          helpEs: field.helpEs,
+          required: !!field.required,
+          groupKey: field.groupKey,
+          options: field.options,
+          maxLength: field.maxLength,
+          defaultValue: field.defaultValue,
+          dependsOn: field.dependsOn,
         })
-        continue
       }
-      // Cliente debe llenarlo
-      userFields.push({
-        semanticKey: field.semanticKey,
-        type: field.type as FieldType,
-        labelEs: field.labelEs,
-        helpEs: field.helpEs,
-        required: !!field.required,
-        groupKey: field.groupKey,
-        options: field.options,
-        maxLength: field.maxLength,
-        defaultValue: field.defaultValue,
-        dependsOn: field.dependsOn,
-      })
-    }
-    if (userFields.length > 0) {
-      sections.push({
-        id: section.id,
-        titleEs: section.titleEs,
-        descriptionEs: section.descriptionEs,
-        fields: userFields,
-      })
+      if (userFields.length > 0) {
+        sections.push({
+          id: section.id,
+          titleEs: section.titleEs,
+          descriptionEs: section.descriptionEs,
+          fields: userFields,
+        })
+      }
     }
   }
 
@@ -197,6 +241,7 @@ export async function GET(
     sections,
     confirmed_values: confirmedValues,
     saved_values: savedValues,
+    group_meta: groupMeta,
   })
 }
 
@@ -221,19 +266,29 @@ export async function PUT(
     return NextResponse.json({ error: 'values debe ser objeto' }, { status: 400 })
   }
 
-  // Validación parcial con Zod del schema del form
-  const parsed = def.zodSchema.partial().safeParse(incoming)
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Validación falló', issues: parsed.error.issues }, { status: 400 })
-  }
-
-  // Solo aceptar campos editables por cliente (defensa contra inyección de jurídicos)
   const cleaned: Record<string, string | boolean | null> = {}
-  for (const [k, v] of Object.entries(parsed.data)) {
-    const field = def.fieldByKey[k]
-    if (!field) continue
-    if (!isFieldEditableByClient(field)) continue
-    cleaned[k] = v as string | boolean | null
+  if (def.clientForm) {
+    // Forms con capa curada (ej. I-485): la allowlist son las keys que esa capa
+    // expone (reales + virtuales v_*). No se usa el zodSchema técnico porque no
+    // conoce las keys virtuales de presentación.
+    const allowed = getClientFormKeys(def.clientForm)
+    for (const [k, v] of Object.entries(incoming)) {
+      if (!allowed.has(k)) continue
+      if (typeof v === 'string' || typeof v === 'boolean' || v === null) cleaned[k] = v
+    }
+  } else {
+    // Validación parcial con Zod del schema del form
+    const parsed = def.zodSchema.partial().safeParse(incoming)
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Validación falló', issues: parsed.error.issues }, { status: 400 })
+    }
+    // Solo aceptar campos editables por cliente (defensa contra inyección de jurídicos)
+    for (const [k, v] of Object.entries(parsed.data)) {
+      const field = def.fieldByKey[k]
+      if (!field) continue
+      if (!isFieldEditableByClient(field)) continue
+      cleaned[k] = v as string | boolean | null
+    }
   }
 
   const supabase = createServiceClient()

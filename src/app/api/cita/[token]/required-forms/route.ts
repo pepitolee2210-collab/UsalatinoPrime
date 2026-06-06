@@ -156,16 +156,32 @@ export async function GET(
       prefill = {}
     }
 
-    // Iterar todos los fields, contar user fields pendientes vs completados
+    // Iterar fields, contar user fields pendientes vs completados.
+    // Si el form tiene capa de presentación curada (clientForm), contamos sobre
+    // ESA — lo que el cliente realmente ve y llena — en vez del schema técnico
+    // completo (que tiene ~760 campos crudos y daría un total engañoso).
     let total = 0
     let completed = 0
-    for (const section of def.sections) {
-      for (const field of section.fields) {
-        if (!isFieldEditableByClient(field)) continue
-        // Si ya viene auto-resuelto desde otra fuente, no se cuenta como user field
-        if (hasResolvedValue(prefill, field.semanticKey)) continue
-        total++
-        if (hasResolvedValue(savedValues, field.semanticKey)) completed++
+    if (def.clientForm) {
+      for (const section of def.clientForm) {
+        for (const cf of section.fields) {
+          // Campos reales ya resueltos por prefill se muestran como confirmados
+          // (no editables), así que no cuentan. Las keys virtuales (v_*) siempre
+          // las llena el cliente.
+          if (!cf.key.startsWith('v_') && hasResolvedValue(prefill, cf.key)) continue
+          total++
+          if (hasResolvedValue(savedValues, cf.key)) completed++
+        }
+      }
+    } else {
+      for (const section of def.sections) {
+        for (const field of section.fields) {
+          if (!isFieldEditableByClient(field)) continue
+          // Si ya viene auto-resuelto desde otra fuente, no se cuenta como user field
+          if (hasResolvedValue(prefill, field.semanticKey)) continue
+          total++
+          if (hasResolvedValue(savedValues, field.semanticKey)) completed++
+        }
       }
     }
 

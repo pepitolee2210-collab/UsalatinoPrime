@@ -204,6 +204,7 @@ export function FormRunner({ token, slug, onClose, onSubmitted }: FormRunnerProp
             values={values}
             setField={setField}
             disabled={data.locked_for_client || submitting}
+            groupMeta={data.group_meta}
           />
         )}
       </div>
@@ -426,11 +427,13 @@ function SectionRenderer({
   values,
   setField,
   disabled,
+  groupMeta,
 }: {
   section: ClientSection
   values: Record<string, string | boolean | null>
   setField: (key: string, val: string | boolean | null) => void
   disabled: boolean
+  groupMeta?: Record<string, { title: string; description?: string; tone?: 'plain' | 'critical' }>
 }) {
   // Limpieza automática: si un field con dependsOn ya no se satisface pero
   // tiene valor, lo borramos para que no se envíe al PDF (cumple el requisito
@@ -475,7 +478,9 @@ function SectionRenderer({
       </header>
       <div className="space-y-5">
         {groups.map((g, idx) => {
-          const label = g.key ? GROUP_LABELS[g.key] : null
+          // La capa curada (group_meta del API) gana; GROUP_LABELS es el fallback
+          // para forms que aún no envían metadata (ej. EOIR-26 de apelación).
+          const label = g.key ? (groupMeta?.[g.key] ?? GROUP_LABELS[g.key]) : null
           const isCritical = label?.tone === 'critical'
           return (
             <div

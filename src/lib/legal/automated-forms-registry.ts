@@ -174,6 +174,8 @@ import {
   i485FormSchema as I485_ZOD_SCHEMA,
 } from './i485-form-schema'
 import { buildI485PrefilledValues } from './i485-prefill'
+import { I485_CLIENT_FORM, type CuratedSection } from './i485-client-form'
+import { processForPrint as i485ProcessForPrint } from './i485-print-transform'
 
 import {
   PDF_PUBLIC_PATH as I130_PDF_PUBLIC,
@@ -336,6 +338,16 @@ export interface AutomatedFormDefinition {
    * si los llena.
    */
   isMandatory?: boolean
+  /**
+   * Opcional: capa de presentación CURADA para el cliente (preguntas en español
+   * simple, secciones con títulos correctos, radios Sí/No, opciones traducidas).
+   *
+   * Si está presente, el GET de /api/cita/[token]/forms/[slug] construye lo que
+   * VE y EDITA el cliente desde aquí, EN LUGAR de derivarlo de `sections` (el
+   * schema técnico auto-generado). El prefill y el llenado del PDF siguen usando
+   * el schema técnico + `processForPrint`. Ver i485-client-form.ts.
+   */
+  clientForm?: CuratedSection[]
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -650,10 +662,22 @@ const I485_DEFINITION: AutomatedFormDefinition = {
   pdfSha256: I485_SHA,
   schemaVersion: I485_VERSION,
   sections: I485_SECTIONS as AutomatedFormDefinition['sections'],
-  hardcodedValues: I485_HARDCODED,
+  // Capa de presentación curada (preguntas simples en español). El cliente la
+  // ve/edita; el prefill y el fill del PDF siguen usando el schema técnico.
+  clientForm: I485_CLIENT_FORM,
+  // Categoría SIJS + exención de carga pública — verificadas contra el tooltip
+  // oficial del PDF (scripts/i485-tooltips.json). Se marcan SIEMPRE: el cliente
+  // no las ve ni las puede editar (no están en clientForm). Hardcode aquí (no en
+  // el schema auto-generado) para sobrevivir a una regeneración del schema.
+  //   pt2line3c_cb_1 (on '3c0') = "Special Immigrant Juvenile, Form I-360"
+  //   pt9line56_cb_6 (on '6')   = exención de public charge para SIJ
+  hardcodedValues: { ...I485_HARDCODED, pt2line3c_cb_1: true, pt9line56_cb_6: true },
   requiredForPrint: I485_REQUIRED,
   fieldByKey: I485_FIELD_BY_KEY as AutomatedFormDefinition['fieldByKey'],
   zodSchema: I485_ZOD_SCHEMA,
+  // Traduce los controles virtuales (v_*) de la capa curada a los checkboxes
+  // reales del acroform antes de imprimir.
+  processForPrint: i485ProcessForPrint,
   buildPrefilledValues: async (caseId, service) => {
     const raw = await buildI485PrefilledValues(caseId, service)
     const out: Record<string, string | boolean | null | undefined> = {}

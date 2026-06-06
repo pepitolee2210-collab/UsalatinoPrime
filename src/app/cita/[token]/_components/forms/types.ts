@@ -53,6 +53,12 @@ export interface FormDetail {
   sections: ClientSection[]
   confirmed_values: ConfirmedValue[]
   saved_values: Record<string, string | boolean | null>
+  /**
+   * Metadata de los grupos visuales (groupKey → título/descripción/tono),
+   * provista por la capa curada del form (ej. I-485). Si falta, el FormRunner
+   * usa su tabla GROUP_LABELS interna como fallback.
+   */
+  group_meta?: Record<string, { title: string; description?: string; tone?: 'plain' | 'critical' }>
 }
 
 export interface FormSummary {
