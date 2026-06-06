@@ -17,6 +17,7 @@ import {
   type CFUrlValue,
   type CFWitnessValue,
 } from '@/lib/legal/asilo-miedo-creible-form-schema'
+import { useAutosave } from '@/lib/hooks/use-autosave'
 
 interface ApiResponse {
   case_id: string
@@ -44,9 +45,7 @@ export function CredibleFearQuestionnaireWizard({ token, onClose }: CredibleFear
   const [loading, setLoading] = useState(true)
   const [answers, setAnswers] = useState<CFAnswers>({})
   const [activeModuleId, setActiveModuleId] = useState<string>('M1')
-  const [saving, setSaving] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [submitting, setSubmitting] = useState(false)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedRef = useRef<string>('')
 
   // Carga inicial
@@ -106,46 +105,42 @@ export function CredibleFearQuestionnaireWizard({ token, onClose }: CredibleFear
 
   const progress = useMemo(() => calculateProgress(answers), [answers])
 
-  // Autosave debounced
-  const persistAnswers = useCallback(
-    async (snapshot: CFAnswers) => {
-      const serialized = JSON.stringify(snapshot)
-      if (serialized === lastSavedRef.current) return
-      setSaving('saving')
-      try {
-        const res = await fetch(`/api/cita/${encodeURIComponent(token)}/asilo-miedo-creible`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ answers: snapshot }),
-        })
-        if (!res.ok) throw new Error('No se pudo guardar')
-        lastSavedRef.current = serialized
-        setSaving('saved')
-      } catch {
-        setSaving('error')
-        toast.error('Error al guardar — vuelve a intentarlo')
-      }
+  // Autosave a prueba de pérdidas (debounce + reintento + beforeunload/visibilitychange + guardado al desmontar)
+  const autosave = useAutosave<CFAnswers>({
+    save: async (a) => {
+      const serialized = JSON.stringify(a)
+      // Evita re-enviar un snapshot idéntico al último confirmado.
+      if (serialized === lastSavedRef.current) return true
+      const r = await fetch(`/api/cita/${encodeURIComponent(token)}/asilo-miedo-creible`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers: a }),
+      })
+      if (r.ok) lastSavedRef.current = serialized
+      return r.ok
     },
-    [token],
-  )
+    beacon: (a) => [
+      {
+        url: `/api/cita/${encodeURIComponent(token)}/asilo-miedo-creible`,
+        method: 'PUT',
+        body: JSON.stringify({ answers: a }),
+      },
+    ],
+  })
 
   const setAnswer = useCallback(
     (key: string, value: CFAnswerValue) => {
       setAnswers((prev) => {
         const next = { ...prev, [key]: value }
-        if (debounceRef.current) clearTimeout(debounceRef.current)
-        debounceRef.current = setTimeout(() => persistAnswers(next), 800)
+        autosave.schedule(next)
         return next
       })
     },
-    [persistAnswers],
+    [autosave],
   )
 
   const handleSubmit = useCallback(async () => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current)
-      await persistAnswers(answers)
-    }
+    await autosave.flush()
     setSubmitting(true)
     try {
       const res = await fetch(`/api/cita/${encodeURIComponent(token)}/asilo-miedo-creible/submit`, {
@@ -162,7 +157,16 @@ export function CredibleFearQuestionnaireWizard({ token, onClose }: CredibleFear
     } finally {
       setSubmitting(false)
     }
-  }, [answers, onClose, persistAnswers, token])
+  }, [autosave, onClose, token])
+
+  // Al cambiar de módulo, fuerza el guardado de lo pendiente antes de navegar.
+  const selectModule = useCallback(
+    (id: string) => {
+      void autosave.flush()
+      setActiveModuleId(id)
+    },
+    [autosave],
+  )
 
   if (loading || !data || !activeModule) {
     return (
@@ -189,13 +193,13 @@ export function CredibleFearQuestionnaireWizard({ token, onClose }: CredibleFear
       <ModuleSidebar
         modules={applicableModules}
         active={activeModule.id}
-        onSelect={setActiveModuleId}
+        onSelect={selectModule}
         answers={answers}
       />
 
       {/* Contenido del módulo activo */}
       <div className="flex-1 flex flex-col min-h-0">
-        <ProgressHeader progress={progress} saving={saving} locked={locked} />
+        <ProgressHeader progress={progress} saving={autosave.saveState} locked={locked} />
 
         <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-6 space-y-6 max-w-3xl mx-auto w-full">
           <ModuleHeader mod={activeModule} />
@@ -215,7 +219,7 @@ export function CredibleFearQuestionnaireWizard({ token, onClose }: CredibleFear
         <FooterNav
           modules={applicableModules}
           activeId={activeModule.id}
-          onSelect={setActiveModuleId}
+          onSelect={selectModule}
           progress={progress}
           onSubmit={handleSubmit}
           submitting={submitting}

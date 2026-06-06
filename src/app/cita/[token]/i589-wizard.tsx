@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
+import { useAutosave } from '@/lib/hooks/use-autosave'
 import {
   ChevronLeft, ChevronRight, Loader2, CheckCircle, Send,
   Shield, Users, Globe, Scale, AlertTriangle,
@@ -112,9 +113,15 @@ interface I589WizardProps {
 
 // -- Main Component --
 
+interface I589Snapshot {
+  b1: PartB1Data
+  b2: PartB2Data
+  c1: PartC1Data
+  c2: PartC2Data
+}
+
 export function I589Wizard({ token, clientName: _clientName }: I589WizardProps) {
   const [step, setStep] = useState(0)
-  const [saving, setSaving] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [loadingData, setLoadingData] = useState(true)
   const [submitted, setSubmitted] = useState(false)
@@ -161,52 +168,88 @@ export function I589Wizard({ token, clientName: _clientName }: I589WizardProps) 
   }, [token])
 
   // -- Save helpers --
-  function hasB1Content(): boolean {
-    return !!(b1.asylum_reasons.length > 0 || b1.harm_details.trim() || b1.fear_details.trim())
+  // Solo se persiste un part si tiene contenido — preserva el comportamiento previo
+  // (no se hacían POST de drafts vacíos) ahora aplicado sobre un snapshot.
+  function hasB1Content(d: PartB1Data): boolean {
+    return !!(d.asylum_reasons.length > 0 || d.harm_details.trim() || d.fear_details.trim())
   }
 
-  function hasB2Content(): boolean {
-    return !!(b2.arrested_abroad_details.trim() || b2.organizations_details.trim() || b2.torture_details.trim() || b2.arrested_abroad)
+  function hasB2Content(d: PartB2Data): boolean {
+    return !!(d.arrested_abroad_details.trim() || d.organizations_details.trim() || d.torture_details.trim() || d.arrested_abroad)
   }
 
-  function hasC1Content(): boolean {
-    return !!(c1.applied_before_details.trim() || c1.other_countries_details.trim() || c1.applied_before)
+  function hasC1Content(d: PartC1Data): boolean {
+    return !!(d.applied_before_details.trim() || d.other_countries_details.trim() || d.applied_before)
   }
 
-  function hasC2Content(): boolean {
-    return !!(c2.caused_harm_details.trim() || c2.returned_details.trim() || c2.filing_delay_reason.trim() || c2.crimes_details.trim() || c2.caused_harm)
+  function hasC2Content(d: PartC2Data): boolean {
+    return !!(d.caused_harm_details.trim() || d.returned_details.trim() || d.filing_delay_reason.trim() || d.crimes_details.trim() || d.caused_harm)
   }
 
-  const saveDraft = useCallback(async (formType: string, formData: unknown) => {
-    setSaving(true)
-    try {
-      await fetch('/api/client-story', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, form_type: formType, form_data: formData, action: 'draft', minor_index: 0 }),
-      })
-    } catch {
-      // Silent draft save
-    } finally {
-      setSaving(false)
-    }
-  }, [token])
-
-  async function saveCurrentStep() {
-    if (step === 0 && hasB1Content()) await saveDraft('i589_part_b1', b1)
-    if (step === 1 && hasB2Content()) await saveDraft('i589_part_b2', b2)
-    if (step === 2 && hasC1Content()) await saveDraft('i589_part_c1', c1)
-    if (step === 3 && hasC2Content()) await saveDraft('i589_part_c2', c2)
-  }
+  // Autoguardado robusto en modo snapshot: en cada cambio se programa el guardado
+  // de los 4 parts (los que tengan contenido), con reintento de pendientes y
+  // keepalive al cerrar/cambiar de app o al desmontar.
+  const autosave = useAutosave<I589Snapshot>({
+    enabled: !loadingData,
+    debounceMs: 1500,
+    save: async (st) => {
+      const parts: Array<[string, unknown]> = []
+      if (hasB1Content(st.b1)) parts.push(['i589_part_b1', st.b1])
+      if (hasB2Content(st.b2)) parts.push(['i589_part_b2', st.b2])
+      if (hasC1Content(st.c1)) parts.push(['i589_part_c1', st.c1])
+      if (hasC2Content(st.c2)) parts.push(['i589_part_c2', st.c2])
+      for (const [ft, fd] of parts) {
+        const r = await fetch('/api/client-story', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, form_type: ft, form_data: fd, action: 'draft', minor_index: 0 }),
+        })
+        if (!r.ok) return false
+      }
+      return true
+    },
+    beacon: (st) => {
+      const parts: Array<[string, unknown]> = []
+      if (hasB1Content(st.b1)) parts.push(['i589_part_b1', st.b1])
+      if (hasB2Content(st.b2)) parts.push(['i589_part_b2', st.b2])
+      if (hasC1Content(st.c1)) parts.push(['i589_part_c1', st.c1])
+      if (hasC2Content(st.c2)) parts.push(['i589_part_c2', st.c2])
+      if (parts.length === 0) return null
+      return parts.map(([ft, fd]) => ({
+        url: '/api/client-story',
+        method: 'POST' as const,
+        body: JSON.stringify({ token, form_type: ft, form_data: fd, action: 'draft', minor_index: 0 }),
+      }))
+    },
+  })
 
   function goNext() {
-    saveCurrentStep()
+    void autosave.flush()
     setStep(s => Math.min(s + 1, 4))
   }
 
   function goBack() {
-    saveCurrentStep()
+    void autosave.flush()
     setStep(s => Math.max(s - 1, 0))
+  }
+
+  // Setters envueltos: actualizan el estado y programan el guardado del snapshot
+  // completo (los 3 parts restantes vienen del render actual, frescos en el handler).
+  function updateB1(next: PartB1Data) {
+    setB1(next)
+    autosave.schedule({ b1: next, b2, c1, c2 })
+  }
+  function updateB2(next: PartB2Data) {
+    setB2(next)
+    autosave.schedule({ b1, b2: next, c1, c2 })
+  }
+  function updateC1(next: PartC1Data) {
+    setC1(next)
+    autosave.schedule({ b1, b2, c1: next, c2 })
+  }
+  function updateC2(next: PartC2Data) {
+    setC2(next)
+    autosave.schedule({ b1, b2, c1, c2: next })
   }
 
   // -- Validation --
@@ -242,6 +285,7 @@ export function I589Wizard({ token, clientName: _clientName }: I589WizardProps) 
   async function handleSubmit() {
     if (!validateAll()) return
 
+    await autosave.flush()
     setSubmitting(true)
     try {
       const submissions = [
@@ -315,7 +359,7 @@ export function I589Wizard({ token, clientName: _clientName }: I589WizardProps) 
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-base font-semibold text-gray-900">Formulario I-589 — Partes B y C</h3>
           <span className="text-xs text-gray-400">
-            {saving ? 'Guardando...' : `Paso ${step + 1} de 5`}
+            {autosave.saveState === 'saving' ? 'Guardando...' : `Paso ${step + 1} de 5`}
           </span>
         </div>
         <div className="flex gap-1">
@@ -329,10 +373,10 @@ export function I589Wizard({ token, clientName: _clientName }: I589WizardProps) 
       </div>
 
       {/* Steps */}
-      {step === 0 && <StepB1 data={b1} onChange={setB1} />}
-      {step === 1 && <StepB2 data={b2} onChange={setB2} />}
-      {step === 2 && <StepC1 data={c1} onChange={setC1} />}
-      {step === 3 && <StepC2 data={c2} onChange={setC2} />}
+      {step === 0 && <StepB1 data={b1} onChange={updateB1} />}
+      {step === 1 && <StepB2 data={b2} onChange={updateB2} />}
+      {step === 2 && <StepC1 data={c1} onChange={updateC1} />}
+      {step === 3 && <StepC2 data={c2} onChange={updateC2} />}
       {step === 4 && <StepReview b1={b1} b2={b2} c1={c1} c2={c2} />}
 
       {/* Navigation */}

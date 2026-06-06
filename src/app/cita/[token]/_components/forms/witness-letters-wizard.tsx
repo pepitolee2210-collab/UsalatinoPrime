@@ -9,6 +9,7 @@ import {
   type WitnessLetterValue,
   type WitnessSection,
 } from '@/lib/legal/asilo-testigos-form-schema'
+import { useAutosave } from '@/lib/hooks/use-autosave'
 
 interface ApiResponse {
   case_id: string
@@ -38,9 +39,7 @@ export function WitnessLettersWizard({ token, onClose }: WitnessLettersWizardPro
   const [loading, setLoading] = useState(true)
   const [witnesses, setWitnesses] = useState<WitnessLetterValue[]>([])
   const [expanded, setExpanded] = useState<number | null>(0)
-  const [saving, setSaving] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [submitting, setSubmitting] = useState(false)
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastSavedRef = useRef<string>('')
 
   // Carga inicial
@@ -82,35 +81,28 @@ export function WitnessLettersWizard({ token, onClose }: WitnessLettersWizardPro
 
   const progress = useMemo(() => calculateWitnessProgress(witnesses), [witnesses])
 
-  const persist = useCallback(
-    async (snapshot: WitnessLetterValue[]) => {
-      const serialized = JSON.stringify(snapshot)
-      if (serialized === lastSavedRef.current) return
-      setSaving('saving')
-      try {
-        const res = await fetch(`/api/cita/${encodeURIComponent(token)}/asilo-testigos`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ witnesses: snapshot }),
-        })
-        if (!res.ok) throw new Error('No se pudo guardar')
-        lastSavedRef.current = serialized
-        setSaving('saved')
-      } catch {
-        setSaving('error')
-        toast.error('Error al guardar — vuelve a intentarlo')
-      }
+  // Autosave a prueba de pérdidas (debounce + reintento + beforeunload/visibilitychange + guardado al desmontar)
+  const autosave = useAutosave<WitnessLetterValue[]>({
+    save: async (w) => {
+      const serialized = JSON.stringify(w)
+      // Evita re-enviar un snapshot idéntico al último confirmado.
+      if (serialized === lastSavedRef.current) return true
+      const r = await fetch(`/api/cita/${encodeURIComponent(token)}/asilo-testigos`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ witnesses: w }),
+      })
+      if (r.ok) lastSavedRef.current = serialized
+      return r.ok
     },
-    [token],
-  )
-
-  const scheduleSave = useCallback(
-    (snapshot: WitnessLetterValue[]) => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-      debounceRef.current = setTimeout(() => persist(snapshot), 800)
-    },
-    [persist],
-  )
+    beacon: (w) => [
+      {
+        url: `/api/cita/${encodeURIComponent(token)}/asilo-testigos`,
+        method: 'PUT',
+        body: JSON.stringify({ witnesses: w }),
+      },
+    ],
+  })
 
   const locked = Boolean(data?.locked_for_client)
 
@@ -118,39 +110,36 @@ export function WitnessLettersWizard({ token, onClose }: WitnessLettersWizardPro
     (index: number, key: keyof WitnessLetterValue, value: string | boolean) => {
       setWitnesses((prev) => {
         const next = prev.map((w, i) => (i === index ? { ...w, [key]: value } : w))
-        scheduleSave(next)
+        autosave.schedule(next)
         return next
       })
     },
-    [scheduleSave],
+    [autosave],
   )
 
   const addWitness = useCallback(() => {
     setWitnesses((prev) => {
       const next = [...prev, {} as WitnessLetterValue]
       setExpanded(next.length - 1)
-      scheduleSave(next)
+      autosave.schedule(next)
       return next
     })
-  }, [scheduleSave])
+  }, [autosave])
 
   const removeWitness = useCallback(
     (index: number) => {
       setWitnesses((prev) => {
         const next = prev.filter((_, i) => i !== index)
-        scheduleSave(next)
+        autosave.schedule(next)
         return next
       })
       setExpanded(null)
     },
-    [scheduleSave],
+    [autosave],
   )
 
   const handleSubmit = useCallback(async () => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current)
-      await persist(witnesses)
-    }
+    await autosave.flush()
     setSubmitting(true)
     try {
       const res = await fetch(`/api/cita/${encodeURIComponent(token)}/asilo-testigos/submit`, {
@@ -167,7 +156,7 @@ export function WitnessLettersWizard({ token, onClose }: WitnessLettersWizardPro
     } finally {
       setSubmitting(false)
     }
-  }, [witnesses, onClose, persist, token])
+  }, [autosave, onClose, token])
 
   if (loading || !data) {
     return (
@@ -204,7 +193,7 @@ export function WitnessLettersWizard({ token, onClose }: WitnessLettersWizardPro
           </div>
           <span className="flex items-center gap-2 text-[11px] tabular-nums" style={{ color: 'var(--color-ulp-on-surface-variant)' }}>
             <span>{progress.completeWitnesses}/{progress.witnessCount} testigos listos</span>
-            <SaveBadge state={saving} />
+            <SaveBadge state={autosave.saveState} />
           </span>
         </div>
         <p className="text-[12px]" style={{ color: 'var(--color-ulp-on-surface-variant)' }}>
@@ -268,7 +257,7 @@ export function WitnessLettersWizard({ token, onClose }: WitnessLettersWizardPro
       >
         <button
           type="button"
-          onClick={onClose}
+          onClick={async () => { await autosave.flush(); onClose() }}
           className="px-4 py-2 rounded-full text-sm font-bold"
           style={{ background: 'var(--color-ulp-surface-container)', color: 'var(--color-ulp-on-surface)' }}
         >

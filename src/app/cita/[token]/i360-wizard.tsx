@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
 import { ChevronLeft, ChevronRight, CheckCircle, Loader2, Send } from 'lucide-react'
 import { VoiceTextarea } from '@/components/voice/VoiceTextarea'
 import { useVoiceToken } from '@/components/voice/voice-context'
+import { useAutosave } from '@/lib/hooks/use-autosave'
 
 // ══ INTERFACES ════════════════════════════════════════════════════
 
@@ -134,12 +135,35 @@ export function I360Wizard({ token, clientName: _clientName }: { token: string; 
   const [data, setData] = useState<I360Data>({ ...EMPTY_I360 })
   const [step, setStep] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
+  // Autoguardado robusto: guarda con `data` recibido (no el de closure), reintenta
+  // pendientes, y persiste con keepalive al cerrar/cambiar de app o al desmontar.
+  const autosave = useAutosave<I360Data>({
+    enabled: !loading,
+    debounceMs: 1500,
+    save: async (d) => {
+      const r = await fetch('/api/client-story', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, form_type: 'i360_sijs', form_data: d, action: 'draft', minor_index: 0 }),
+      })
+      return r.ok
+    },
+    beacon: (d) => [{
+      url: '/api/client-story',
+      method: 'POST',
+      body: JSON.stringify({ token, form_type: 'i360_sijs', form_data: d, action: 'draft', minor_index: 0 }),
+    }],
+  })
+
   function upd(field: keyof I360Data, value: string) {
-    setData(prev => ({ ...prev, [field]: value }))
+    setData(prev => {
+      const next = { ...prev, [field]: value }
+      autosave.schedule(next)
+      return next
+    })
   }
 
   // Load existing data and pre-fill from historia
@@ -220,28 +244,8 @@ export function I360Wizard({ token, clientName: _clientName }: { token: string; 
     load()
   }, [token])
 
-  // Auto-save
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const saveDraft = useCallback(async () => {
-    setSaving(true)
-    try {
-      await fetch('/api/client-story', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, form_type: 'i360_sijs', form_data: data, action: 'draft', minor_index: 0 }),
-      })
-    } catch { /* silent */ }
-    setSaving(false)
-  }, [token, data])
-
-  useEffect(() => {
-    if (loading) return
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(saveDraft, 4000)
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [data, saveDraft, loading])
-
   async function handleSubmit() {
+    await autosave.flush()
     setSubmitting(true)
     try {
       const res = await fetch('/api/client-story', {
@@ -282,7 +286,7 @@ export function I360Wizard({ token, clientName: _clientName }: { token: string; 
       <div>
         <div className="flex justify-between text-xs text-gray-400 mb-1.5">
           <span>Paso {step + 1} de {TOTAL_STEPS}</span>
-          <span className={saving ? 'text-green-600' : ''}>{saving ? '● Guardando...' : 'Se guarda automáticamente'}</span>
+          <span className={autosave.saveState === 'saving' ? 'text-green-600' : ''}>{autosave.saveState === 'saving' ? '● Guardando...' : 'Se guarda automáticamente'}</span>
         </div>
         <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
           <div className="h-full rounded-full transition-all duration-300" style={{ width: `${Math.max(progress, 4)}%`, background: 'linear-gradient(90deg, #6366f1, #818cf8)' }} />
@@ -301,12 +305,12 @@ export function I360Wizard({ token, clientName: _clientName }: { token: string; 
 
       {/* Navigation */}
       <div className="flex justify-between pt-4 border-t border-gray-100">
-        <button onClick={() => setStep(s => Math.max(0, s - 1))} disabled={step === 0}
+        <button onClick={() => { void autosave.flush(); setStep(s => Math.max(0, s - 1)) }} disabled={step === 0}
           className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-30">
           <ChevronLeft className="w-4 h-4" /> Anterior
         </button>
         {step < TOTAL_STEPS - 1 ? (
-          <button onClick={() => setStep(s => s + 1)}
+          <button onClick={() => { void autosave.flush(); setStep(s => s + 1) }}
             className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700">
             Siguiente <ChevronRight className="w-4 h-4" />
           </button>

@@ -18,13 +18,14 @@
 //
 // Autosave con debounce 800ms.
 
-import { useEffect, useState, useRef, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
   ChevronDown, ChevronUp, User, Users, Building2, MapPin, Gavel,
   FileText, Plus, X, Loader2, Download, Save, CheckCircle2, Sparkles, Landmark,
 } from 'lucide-react'
 import type { CartaCambioCorteData } from '@/lib/cambio-corte/letter-generator'
+import { useAutosave } from '@/lib/hooks/use-autosave'
 
 interface SectionDef {
   id: string
@@ -74,7 +75,6 @@ export function CartaCambioCorteGenerator({
   const [loading, setLoading] = useState(true)
   const [data, setData] = useState<CartaCambioCorteData | null>(null)
   const [filledPdfAt, setFilledPdfAt] = useState<string | null>(null)
-  const [savingState, setSavingState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [generating, setGenerating] = useState(false)
   const [suggestingCourt, setSuggestingCourt] = useState(false)
   const [courtSuggestion, setCourtSuggestion] = useState<{ confidence: string; reasoning: string; note?: string } | null>(null)
@@ -83,7 +83,18 @@ export function CartaCambioCorteGenerator({
     client: true, beneficiaries: false, case: true, current_court: true,
     new_address: true, new_court: true,
   })
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const autosave = useAutosave<CartaCambioCorteData>({
+    save: async (next) => {
+      const res = await fetch(endpoint, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ values: next }),
+      })
+      return res.ok
+    },
+    beacon: (next) => [{ url: endpoint, method: 'PUT', body: JSON.stringify({ values: next }) }],
+    enabled: !loading,
+  })
 
   const sections = ALL_SECTIONS.filter((s) => !clientMode || s.clientVisible)
   const showAi = !clientMode
@@ -105,33 +116,11 @@ export function CartaCambioCorteGenerator({
     return () => { cancelled = true }
   }, [endpoint])
 
-  const persistValues = useCallback(async (next: CartaCambioCorteData) => {
-    setSavingState('saving')
-    try {
-      const res = await fetch(endpoint, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ values: next }),
-      })
-      if (!res.ok) throw new Error('Error al guardar')
-      setSavingState('saved')
-      setTimeout(() => setSavingState('idle'), 1500)
-    } catch {
-      setSavingState('error')
-      toast.error('Error al guardar')
-    }
-  }, [endpoint])
-
-  const scheduleSave = useCallback((next: CartaCambioCorteData, delay = 800) => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => persistValues(next), delay)
-  }, [persistValues])
-
   function update<K extends keyof CartaCambioCorteData>(key: K, val: CartaCambioCorteData[K]) {
     setData((prev) => {
       if (!prev) return prev
       const next = { ...prev, [key]: val }
-      scheduleSave(next)
+      autosave.schedule(next)
       return next
     })
   }
@@ -204,7 +193,7 @@ export function CartaCambioCorteGenerator({
           new_court_city_state_zip: s.new_court_city_state_zip ?? '',
           new_court_chief_counsel_address: s.new_court_chief_counsel_address ?? '',
         }
-        scheduleSave(next, 300)
+        autosave.schedule(next)
         return next
       })
       setCourtSuggestion({ confidence: s.confidence, reasoning: s.reasoning, note: s.note })
@@ -241,10 +230,7 @@ export function CartaCambioCorteGenerator({
 
   async function handleGenerate() {
     if (!data) return
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current)
-      await persistValues(data)
-    }
+    await autosave.flush()
     setGenerating(true)
     try {
       const res = await fetch(endpoint, { method: 'POST' })
@@ -307,7 +293,7 @@ export function CartaCambioCorteGenerator({
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <SaveBadge state={savingState} />
+          <SaveBadge state={autosave.saveState} />
           {showGenerateButton && (
             <button
               type="button"

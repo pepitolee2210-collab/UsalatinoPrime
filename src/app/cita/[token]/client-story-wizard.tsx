@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { toast } from 'sonner'
 import { TutorFormSections } from './tutor-form-sections'
 import { MinorBasicSection, MinorAbuseSection, MinorBestInterestSection, type MinorAbuseData, type AbandonedBy } from './minor-form-sections'
@@ -9,6 +9,7 @@ import {
   BookOpen, Lock, ArrowRight,
   UserPlus, Trash2, AlertCircle, Users,
 } from 'lucide-react'
+import { useAutosave, type BeaconRequest } from '@/lib/hooks/use-autosave'
 
 // ══ TYPES ══════════════════════════════════════════════════════════
 
@@ -821,61 +822,102 @@ function DJWizard({
 }) {
   const [step, setStep] = useState(0)
   const [state, setState] = useState<DJState>(initial)
-  const [saving, setSaving] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const minorIndex = djNumber - 1
+
+  // Autoguardado robusto: guarda con el `data` recibido (no el de closure),
+  // reintenta lo pendiente y persiste con keepalive al cerrar/cambiar de app o al
+  // desmontar. Replica EXACTAMENTE los endpoints, payloads y guardas de contenido
+  // del debounce previo — sólo agrega robustez de guardado, no cambia el shape.
+  const autosave = useAutosave<DJState>({
+    debounceMs: 1500,
+    save: async (s) => {
+      // Igual que el debounce previo: sólo guardar si hay contenido relevante.
+      const hasData = s.minorBasic.full_name.trim() || s.minorAbuse.abuse_by_father.trim() || s.minorBestInterest.fear_of_return.trim()
+      if (!hasData) return true
+      const submissions: { form_type: string; form_data: unknown }[] = [
+        {
+          form_type: 'client_story',
+          form_data: {
+            minorBasic: s.minorBasic,
+            minorAbuse: s.minorAbuse,
+            minorBestInterest: s.minorBestInterest,
+            children: s.children,
+            has_another_father: s.hasAnotherFather,
+          },
+        },
+      ]
+      const hasAbsentParentData = s.parent.parent_name.trim() || s.parent2?.parent_name.trim()
+      if (hasAbsentParentData) {
+        submissions.push({
+          form_type: 'client_absent_parent',
+          form_data: buildAbsentParentPayload(s.parent, s.parent2, s.minorAbuse.abandoned_by),
+        })
+      }
+      for (const sub of submissions) {
+        const r = await fetch('/api/client-story', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, ...sub, action: 'draft', minor_index: minorIndex }),
+        })
+        if (!r.ok) return false
+      }
+      return true
+    },
+    beacon: (s) => {
+      const hasData = s.minorBasic.full_name.trim() || s.minorAbuse.abuse_by_father.trim() || s.minorBestInterest.fear_of_return.trim()
+      if (!hasData) return null
+      const reqs: BeaconRequest[] = [{
+        url: '/api/client-story',
+        method: 'POST',
+        body: JSON.stringify({
+          token,
+          form_type: 'client_story',
+          form_data: {
+            minorBasic: s.minorBasic,
+            minorAbuse: s.minorAbuse,
+            minorBestInterest: s.minorBestInterest,
+            children: s.children,
+            has_another_father: s.hasAnotherFather,
+          },
+          action: 'draft',
+          minor_index: minorIndex,
+        }),
+      }]
+      const hasAbsentParentData = s.parent.parent_name.trim() || s.parent2?.parent_name.trim()
+      if (hasAbsentParentData) {
+        reqs.push({
+          url: '/api/client-story',
+          method: 'POST',
+          body: JSON.stringify({
+            token,
+            form_type: 'client_absent_parent',
+            form_data: buildAbsentParentPayload(s.parent, s.parent2, s.minorAbuse.abandoned_by),
+            action: 'draft',
+            minor_index: minorIndex,
+          }),
+        })
+      }
+      return reqs
+    },
+  })
 
   function updateState(patch: Partial<DJState>) {
     setState(prev => {
       const next = { ...prev, ...patch }
       onStateChange(next)
+      autosave.schedule(next)
       return next
     })
   }
 
-  const saveDraft = useCallback(async (formType: string, formData: unknown) => {
-    setSaving(true)
-    try {
-      await fetch('/api/client-story', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, form_type: formType, form_data: formData, action: 'draft', minor_index: minorIndex }),
-      })
-    } catch { /* silent */ } finally { setSaving(false) }
-  }, [token, minorIndex])
-
-  // Auto-save with debounce — saves every 4 seconds while user edits
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      // Save all minor data together in client_story
-      const hasData = state.minorBasic.full_name.trim() || state.minorAbuse.abuse_by_father.trim() || state.minorBestInterest.fear_of_return.trim()
-      if (hasData) {
-        saveDraft('client_story', {
-          minorBasic: state.minorBasic,
-          minorAbuse: state.minorAbuse,
-          minorBestInterest: state.minorBestInterest,
-          children: state.children,
-          has_another_father: state.hasAnotherFather,
-        })
-        const hasAbsentParentData = state.parent.parent_name.trim() || state.parent2?.parent_name.trim()
-        if (hasAbsentParentData) {
-          saveDraft(
-            'client_absent_parent',
-            buildAbsentParentPayload(state.parent, state.parent2, state.minorAbuse.abandoned_by),
-          )
-        }
-      }
-    }, 4000)
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current) }
-  }, [state, saveDraft])
-
   function goNext() {
+    void autosave.flush()
     setStep(s => Math.min(s + 1, DJ_TOTAL_STEPS - 1))
   }
 
   function goBack() {
+    void autosave.flush()
     if (step === 0) { onBack(); return }
     setStep(s => s - 1)
   }
@@ -902,6 +944,7 @@ function DJWizard({
 
   async function handleSubmit() {
     if (!validate()) return
+    await autosave.flush()
     setSubmitting(true)
     try {
       const submissions = [
@@ -957,7 +1000,7 @@ function DJWizard({
       <div>
         <div className="flex justify-between text-xs text-gray-400 mb-1.5">
           <span>Paso {step + 1} de {DJ_TOTAL_STEPS}</span>
-          <span className={saving ? 'text-green-600' : ''}>{saving ? '● Guardando...' : 'Se guarda automáticamente'}</span>
+          <span className={autosave.saveState === 'saving' ? 'text-green-600' : ''}>{autosave.saveState === 'saving' ? '● Guardando...' : 'Se guarda automáticamente'}</span>
         </div>
         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
           <div
