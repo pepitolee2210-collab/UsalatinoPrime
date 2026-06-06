@@ -21,6 +21,10 @@ export function FormRunner({ token, slug, onClose, onSubmitted }: FormRunnerProp
   const [savingState, setSavingState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [submitting, setSubmitting] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Cambios escritos por el cliente aún NO confirmados por el server. Solo se
+  // vacían cuando el PUT responde OK; si un guardado falla, quedan aquí y se
+  // reintentan en el próximo flush (al escribir, navegar, cerrar o enviar).
+  const pendingRef = useRef<Record<string, string | boolean | null>>({})
 
   // Cargar form
   useEffect(() => {
@@ -73,9 +77,13 @@ export function FormRunner({ token, slug, onClose, onSubmitted }: FormRunnerProp
     }
   }, [token, slug, onClose])
 
-  // Autosave debounced
+  // Guarda en el server un lote de cambios. Los campos guardados con éxito se
+  // quitan de `pendingRef`; si falla (ej. red intermitente), permanecen para
+  // reintentarse en el próximo flush. Devuelve true si quedó todo guardado.
   const saveValues = useCallback(
-    async (toSave: Record<string, string | boolean | null>) => {
+    async (toSave: Record<string, string | boolean | null>): Promise<boolean> => {
+      const keys = Object.keys(toSave)
+      if (keys.length === 0) return true
       setSavingState('saving')
       try {
         const res = await fetch(`/api/cita/${encodeURIComponent(token)}/forms/${encodeURIComponent(slug)}`, {
@@ -84,34 +92,88 @@ export function FormRunner({ token, slug, onClose, onSubmitted }: FormRunnerProp
           body: JSON.stringify({ values: toSave }),
         })
         if (!res.ok) throw new Error('Error al guardar')
-        setSavingState('saved')
+        // Quitar de pendientes solo los que se enviaron con ESTE mismo valor (si
+        // el cliente cambió el campo de nuevo mientras tanto, no lo descartamos).
+        for (const k of keys) {
+          if (pendingRef.current[k] === toSave[k]) delete pendingRef.current[k]
+        }
+        setSavingState(Object.keys(pendingRef.current).length === 0 ? 'saved' : 'idle')
+        return true
       } catch {
         setSavingState('error')
-        toast.error('Error al guardar')
+        toast.error('No se pudo guardar. Lo reintentaremos al continuar.')
+        return false
       }
     },
     [token, slug],
   )
 
+  // Cancela el debounce y guarda YA todo lo no confirmado. Se invoca al navegar
+  // entre secciones, al cerrar el formulario y al enviar, para que ningún cambio
+  // reciente se pierda por el retardo del autoguardado.
+  const flushPending = useCallback(async (): Promise<boolean> => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
+    const toSave = { ...pendingRef.current }
+    if (Object.keys(toSave).length === 0) return true
+    return saveValues(toSave)
+  }, [saveValues])
+
   function setField(key: string, val: string | boolean | null) {
-    setValues((prev) => {
-      const next = { ...prev, [key]: val }
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-      debounceRef.current = setTimeout(() => {
-        // Solo enviar el cambio incremental
-        saveValues({ [key]: val })
-      }, 800)
-      return next
-    })
+    setValues((prev) => ({ ...prev, [key]: val }))
+    pendingRef.current[key] = val
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    // Al disparar, guarda TODO lo pendiente (no solo este campo): así un guardado
+    // que falló antes se reintenta junto con el cambio nuevo.
+    debounceRef.current = setTimeout(() => { void flushPending() }, 800)
   }
+
+  // Red de seguridad ante cierre/cambio de app con cambios sin guardar.
+  // `keepalive` permite que la petición sobreviva al unload.
+  //  - beforeunload: escritorio (cerrar pestaña/navegador) + aviso nativo.
+  //  - visibilitychange→hidden: el ÚNICO evento fiable en móvil (cambiar de
+  //    app, bloquear pantalla, minimizar). Crítico porque el cliente suele
+  //    llenar esto desde el teléfono.
+  useEffect(() => {
+    function persistPending() {
+      if (Object.keys(pendingRef.current).length === 0) return
+      try {
+        fetch(`/api/cita/${encodeURIComponent(token)}/forms/${encodeURIComponent(slug)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ values: pendingRef.current }),
+          keepalive: true,
+        })
+      } catch { /* best-effort */ }
+    }
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (Object.keys(pendingRef.current).length === 0) return
+      persistPending()
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    function onVisibilityChange() {
+      if (document.visibilityState === 'hidden') persistPending()
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [token, slug])
 
   async function handleSubmit() {
     setSubmitting(true)
     try {
-      // Asegurar último guardado
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current)
-        await saveValues(values)
+      // Asegurar que TODO lo pendiente quedó guardado antes de enviar.
+      const saved = await flushPending()
+      if (!saved) {
+        toast.error('No pudimos guardar tus últimos cambios. Revisa tu conexión e intenta de nuevo.')
+        setSubmitting(false)
+        return
       }
       const res = await fetch(`/api/cita/${encodeURIComponent(token)}/forms/${encodeURIComponent(slug)}/submit`, {
         method: 'POST',
@@ -125,6 +187,19 @@ export function FormRunner({ token, slug, onClose, onSubmitted }: FormRunnerProp
     } finally {
       setSubmitting(false)
     }
+  }
+
+  // Cerrar el formulario: guarda lo pendiente antes de cerrar (el PUT continúa
+  // en segundo plano aunque el modal ya no esté montado).
+  const handleClose = useCallback(() => {
+    void flushPending()
+    onClose()
+  }, [flushPending, onClose])
+
+  // Cambiar de sección: fuerza el guardado de lo pendiente antes de navegar.
+  function goToSection(next: number) {
+    void flushPending()
+    setActiveSection(next)
   }
 
   if (loading) {
@@ -159,7 +234,7 @@ export function FormRunner({ token, slug, onClose, onSubmitted }: FormRunnerProp
   const isAllAutoResolved = totalSections === 0
 
   return (
-    <FullscreenDrawer onClose={onClose} title={data.form_name}>
+    <FullscreenDrawer onClose={handleClose} title={data.form_name}>
       {/* Status de guardado (sticky top dentro del drawer) */}
       <div
         className="flex-shrink-0 px-4 py-2 flex items-center justify-between text-[11px] border-b"
@@ -222,7 +297,7 @@ export function FormRunner({ token, slug, onClose, onSubmitted }: FormRunnerProp
             <button
               type="button"
               disabled={activeSection === 0}
-              onClick={() => setActiveSection((s) => Math.max(0, s - 1))}
+              onClick={() => goToSection(Math.max(0, activeSection - 1))}
               className="px-4 py-2 rounded-full text-sm font-bold disabled:opacity-30"
               style={{ background: 'var(--color-ulp-surface-container)', color: 'var(--color-ulp-on-surface)' }}
             >
@@ -244,7 +319,7 @@ export function FormRunner({ token, slug, onClose, onSubmitted }: FormRunnerProp
             ) : (
               <button
                 type="button"
-                onClick={() => setActiveSection((s) => Math.min(totalSections - 1, s + 1))}
+                onClick={() => goToSection(Math.min(totalSections - 1, activeSection + 1))}
                 className="px-4 py-2 rounded-full text-sm font-bold"
                 style={{ background: 'var(--color-ulp-primary-container)', color: 'var(--color-ulp-on-primary-container)' }}
               >
