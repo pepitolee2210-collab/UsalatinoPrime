@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { Inter_Tight, JetBrains_Mono } from 'next/font/google'
 import 'material-symbols/outlined.css'
-import { SERVICE_REGISTRY } from '@/lib/services/registry'
+import { SHOWCASE_SERVICES, getShowcaseTotals, type ShowcaseService } from '@/lib/services/showcase'
 import { WallpaperHero } from './_components/wallpaper-hero'
 
 const interTight = Inter_Tight({
@@ -18,66 +18,9 @@ const mono = JetBrains_Mono({
   display: 'swap',
 })
 
-interface ServiceShowcaseMeta {
-  shortName: string
-  codename: string
-  description: string
-  formularios: number
-  documentos: number
-  generadoresIA: number
-  icon: string
-}
-
-const SHOWCASE_META: Record<string, ServiceShowcaseMeta> = {
-  'visa-juvenil': {
-    shortName: 'Visa Juvenil',
-    codename: 'SIJS-001',
-    description: 'Custodia estatal, I-360 y I-485. Proceso completo hasta la Green Card.',
-    formularios: 5,
-    documentos: 24,
-    generadoresIA: 2,
-    icon: 'family_restroom',
-  },
-  'asilo-politico': {
-    shortName: 'Asilo Político',
-    codename: 'I-589 · 02',
-    description: 'Solicitud afirmativa ante USCIS con declaración jurada generada por IA.',
-    formularios: 4,
-    documentos: 18,
-    generadoresIA: 3,
-    icon: 'shield',
-  },
-  'reforzar-asilo': {
-    shortName: 'Reforzar Asilo',
-    codename: 'I-589 R · 03',
-    description: 'Evidencias, declaración reforzada y preparación de miedo creíble.',
-    formularios: 2,
-    documentos: 12,
-    generadoresIA: 2,
-    icon: 'verified_user',
-  },
-  'apelacion': {
-    shortName: 'Apelación BIA',
-    codename: 'EOIR-26 · 04',
-    description: 'Notice of Appeal con extracción IA y carta de exoneración argumentada.',
-    formularios: 3,
-    documentos: 8,
-    generadoresIA: 2,
-    icon: 'gavel',
-  },
-  'cambio-de-corte': {
-    shortName: 'Cambio de Corte',
-    codename: 'EOIR-33 · 05',
-    description: 'Moción de Change of Venue para mover el caso a otra jurisdicción.',
-    formularios: 1,
-    documentos: 6,
-    generadoresIA: 1,
-    icon: 'my_location',
-  },
-}
-
 export default function ServiciosPage() {
-  const services = Object.values(SERVICE_REGISTRY)
+  const services = SHOWCASE_SERVICES
+  const totals = getShowcaseTotals()
 
   return (
     <div
@@ -129,9 +72,9 @@ export default function ServiciosPage() {
               animation: 'tech-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both',
             }}
           >
-            Cinco procesos legales automatizados.
+            Nueve procesos legales y fiscales automatizados.
             <br className="hidden sm:block" />
-            Cada uno con demostración en vivo del sistema funcionando.
+            De la primera petición hasta la Green Card — todo en una plataforma.
           </p>
 
           <div
@@ -145,11 +88,11 @@ export default function ServiciosPage() {
               animation: 'tech-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both',
             }}
           >
-            <Telemetry label="EXPEDIENTES" value="05" />
+            <Telemetry label="EXPEDIENTES" value={totals.servicios.toString().padStart(2, '0')} />
             <Divider />
-            <Telemetry label="FASES" value="08" />
+            <Telemetry label="FASES" value={totals.fases.toString().padStart(2, '0')} />
             <Divider />
-            <Telemetry label="MÓDULOS IA" value="10" />
+            <Telemetry label="MÓDULOS IA" value={totals.modulosIA.toString().padStart(2, '0')} />
             <Divider />
             <Telemetry label="STATUS" value="ACTIVE" pulse />
           </div>
@@ -157,20 +100,9 @@ export default function ServiciosPage() {
 
         {/* ─── Cards grid ─── */}
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {services.map((service, idx) => {
-            const meta = SHOWCASE_META[service.slug]
-            if (!meta) return null
-            const phaseCount = service.phases.filter((p) => !p.isCompletion).length || service.phases.length
-            return (
-              <ServiceCard
-                key={service.slug}
-                slug={service.slug}
-                meta={meta}
-                phaseCount={phaseCount}
-                idx={idx}
-              />
-            )
-          })}
+          {services.map((service, idx) => (
+            <ServiceCard key={service.slug} service={service} idx={idx} />
+          ))}
         </section>
 
         {/* ─── Marquee ─── */}
@@ -379,31 +311,42 @@ function ScanLines() {
 // Service Card — monochrome with all effects
 // ────────────────────────────────────────────────────────────────────
 interface CardProps {
-  slug: string
-  meta: ServiceShowcaseMeta
-  phaseCount: number
+  service: ShowcaseService
   idx: number
 }
 
-function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
+function ServiceCard({ service, idx }: CardProps) {
   return (
     <Link
-      href={`/admin/servicios/${slug}`}
+      href={`/admin/servicios/${service.slug}`}
       className="group relative block"
       style={{
         animation: `tech-card-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) both`,
         animationDelay: `${idx * 90 + 400}ms`,
       }}
     >
-      {/* Conic gradient halo border */}
+      {/* LED border — borde nítido iluminado rojo → dorado (aparece en hover) */}
       <div
         aria-hidden
-        data-tech-conic
-        className="absolute -inset-px rounded-[24px] opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+        data-tech-led
+        className="absolute -inset-px rounded-[24px] opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none"
         style={{
           background:
-            'conic-gradient(from 0deg at 50% 50%, transparent 0deg, var(--admin-accent) 60deg, transparent 120deg, transparent 240deg, var(--admin-accent) 300deg, transparent 360deg)',
-          animation: 'tech-conic-rotate 4s linear infinite',
+            'linear-gradient(135deg, var(--admin-red) 0%, var(--admin-gold) 50%, var(--admin-red) 100%)',
+          padding: '1.5px',
+          WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)',
+          WebkitMaskComposite: 'xor',
+          maskComposite: 'exclude',
+        }}
+      />
+      {/* LED glow — resplandor difuso del mismo rojo/dorado, efecto led */}
+      <div
+        aria-hidden
+        data-tech-led-glow
+        className="absolute -inset-px rounded-[24px] opacity-0 group-hover:opacity-100 transition-opacity duration-400 pointer-events-none"
+        style={{
+          boxShadow:
+            '0 0 22px color-mix(in srgb, var(--admin-red) 45%, transparent), 0 0 38px color-mix(in srgb, var(--admin-gold) 38%, transparent)',
         }}
       />
 
@@ -440,7 +383,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
               data-fill="1"
               style={{ fontSize: 24, color: 'var(--admin-fg)' }}
             >
-              {meta.icon}
+              {service.icon}
             </span>
             <span
               aria-hidden
@@ -459,7 +402,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
               paddingTop: 6,
             }}
           >
-            {meta.codename}
+            {service.codename}
           </span>
         </div>
 
@@ -474,7 +417,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
             marginBottom: 12,
           }}
         >
-          {meta.shortName}
+          {service.shortName}
         </h2>
 
         <p
@@ -486,16 +429,16 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
             flex: 1,
           }}
         >
-          {meta.description}
+          {service.description}
         </p>
 
         {/* Stats row mono */}
         <div className="flex items-center gap-2 mt-7 pt-5" style={{ borderTop: '0.5px solid var(--admin-accent-soft)' }}>
-          <StatMono value={phaseCount.toString().padStart(2, '0')} label="FASES" />
+          <StatMono value={service.fases.toString().padStart(2, '0')} label="FASES" />
           <Sep />
-          <StatMono value={meta.formularios.toString().padStart(2, '0')} label="FORMS" />
+          <StatMono value={service.formularios.toString().padStart(2, '0')} label="FORMS" />
           <Sep />
-          <StatMono value={meta.documentos.toString().padStart(2, '0')} label="DOCS" />
+          <StatMono value={service.documentos.toString().padStart(2, '0')} label="DOCS" />
         </div>
 
         {/* Bottom row */}
@@ -513,7 +456,7 @@ function ServiceCard({ slug, meta, phaseCount, idx }: CardProps) {
                 letterSpacing: '0.08em',
               }}
             >
-              {meta.generadoresIA}× IA
+              {service.generadoresIA}× IA
             </span>
           </div>
 
@@ -576,10 +519,6 @@ function Keyframes() {
         0%, 100% { transform: translate(0, 0); }
         50% { transform: translate(80px, -40px); }
       }
-      @keyframes tech-conic-rotate {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-      }
       @keyframes tech-glow-pulse {
         0%, 100% { opacity: 0.5; transform: scale(0.9); }
         50% { opacity: 1; transform: scale(1.1); }
@@ -596,9 +535,8 @@ function Keyframes() {
       /* ════════════════════════════════════════════════════════════════
          MOBILE PERFORMANCE — desactiva los efectos GPU más caros.
          Aurora con filter:blur(80px) × 3 capas tira los FPS a 15–20 en
-         mobile mid-range. El marquee infinito y el conic rotation suman
-         más carga. Aquí los reducimos al mínimo manteniendo la estética
-         dark techno.
+         mobile mid-range. El marquee infinito suma más carga. Aquí los
+         reducimos al mínimo manteniendo la estética dark techno.
          ════════════════════════════════════════════════════════════════ */
       @media (max-width: 768px) {
         /* DotGrid → bajar opacidad para reducir repaints visibles */
@@ -609,11 +547,9 @@ function Keyframes() {
         [data-tech-aurora] { display: none; }
         /* Marquee infinito → pausar para no consumir batería */
         [data-tech-marquee] { animation-play-state: paused; }
-        /* Conic rotation continuo → pausar */
-        [data-tech-conic] { animation: none; }
       }
       @media (prefers-reduced-motion: reduce) {
-        [data-tech-aurora], [data-tech-marquee], [data-tech-conic] {
+        [data-tech-aurora], [data-tech-marquee] {
           animation: none !important;
         }
       }

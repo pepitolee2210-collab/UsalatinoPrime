@@ -3,7 +3,9 @@ import { notFound } from 'next/navigation'
 import { Inter_Tight, JetBrains_Mono, Cormorant_Garamond, Manrope } from 'next/font/google'
 import 'material-symbols/outlined.css'
 import '@/app/cita/[token]/_components/tokens.css'
-import { SERVICE_REGISTRY } from '@/lib/services/registry'
+import { getServicePhases } from '@/lib/services/registry'
+import { getServiceInfo } from '@/lib/service-info'
+import { getShowcaseService, type ShowcaseService } from '@/lib/services/showcase'
 import { getDemoScript } from '@/components/showcase/demo-player/scripts'
 import { DemoPlayer } from '@/components/showcase/demo-player/demo-player'
 
@@ -40,22 +42,95 @@ interface PageProps {
   params: Promise<{ slug: string }>
 }
 
-const SERVICE_INFO: Record<string, { shortName: string; codename: string }> = {
-  'visa-juvenil':    { shortName: 'Visa Juvenil',     codename: 'SIJS-001' },
-  'asilo-politico':  { shortName: 'Asilo Político',   codename: 'I-589 · 02' },
-  'reforzar-asilo':  { shortName: 'Reforzar Asilo',   codename: 'I-589 R · 03' },
-  'apelacion':       { shortName: 'Apelación BIA',    codename: 'EOIR-26 · 04' },
-  'cambio-de-corte': { shortName: 'Cambio de Corte',  codename: 'EOIR-33 · 05' },
+/** Forma unificada que renderiza la sección "Cómo funciona". */
+interface DetailStage {
+  key: string
+  icon: string
+  /** "Fase 1" / "Paso 1" / "Fase única" */
+  number: string
+  label: string
+  description: string
+}
+
+// Iconos genéricos por posición para servicios cuyas etapas vienen de
+// `service-info.ts` (que no define iconos).
+const STAGE_ICONS = [
+  'target',
+  'description',
+  'folder_managed',
+  'send',
+  'schedule',
+  'how_to_reg',
+  'verified',
+  'check_circle',
+]
+
+/**
+ * Resuelve las etapas del detalle según la fuente disponible, en orden de
+ * preferencia: etapas propias del catálogo → fases del registry → etapas de
+ * `service-info.ts`. Devuelve también la etiqueta del contador ("FASES" vs
+ * "PASOS") acorde a la fuente.
+ */
+function buildStages(
+  slug: string,
+  showcase: ShowcaseService,
+): { stages: DetailStage[]; label: string } {
+  // 1. Etapas propias (Petición I-360).
+  if (showcase.detailStages?.length) {
+    return {
+      label: 'PASOS',
+      stages: showcase.detailStages.map((s, i) => ({
+        key: `${slug}-${i}`,
+        icon: s.icon,
+        number: s.number,
+        label: s.title,
+        description: s.description,
+      })),
+    }
+  }
+
+  // 2. Fases del registry (servicios con fases + demo).
+  const allPhases = getServicePhases(slug)
+  if (allPhases.length) {
+    const nonCompletion = allPhases.filter((p) => !p.isCompletion)
+    const realPhases = nonCompletion.length ? nonCompletion : allPhases
+    return {
+      label: 'FASES',
+      stages: realPhases.map((p) => ({
+        key: p.code,
+        icon: p.icon,
+        number: p.number,
+        label: p.label.replace(/^Fase \d+ — /, ''),
+        description: p.description,
+      })),
+    }
+  }
+
+  // 3. Etapas de service-info.ts (Ajuste I-485, ITIN, Taxes).
+  const info = getServiceInfo(showcase.infoSlug ?? slug)
+  if (info) {
+    return {
+      label: 'PASOS',
+      stages: info.stages.map((st, i) => ({
+        key: `${slug}-${st.step}`,
+        icon: STAGE_ICONS[i % STAGE_ICONS.length],
+        number: `Paso ${st.step}`,
+        label: st.title,
+        description: st.description,
+      })),
+    }
+  }
+
+  return { label: 'ETAPAS', stages: [] }
 }
 
 export default async function ServicioDetallePage({ params }: PageProps) {
   const { slug } = await params
-  const service = SERVICE_REGISTRY[slug]
-  if (!service) return notFound()
+  const showcase = getShowcaseService(slug)
+  if (!showcase) return notFound()
 
   const script = getDemoScript(slug)
-  const realPhases = service.phases.filter((p) => !p.isCompletion)
-  const info = SERVICE_INFO[slug] ?? { shortName: service.name, codename: slug.toUpperCase() }
+  const { stages, label: stagesLabel } = buildStages(slug, showcase)
 
   return (
     <div
@@ -150,7 +225,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                 color: 'var(--admin-fg)',
               }}
             >
-              EXPEDIENTE · {info.codename}
+              EXPEDIENTE · {showcase.codename}
             </span>
           </div>
 
@@ -171,7 +246,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                 backgroundClip: 'text',
               }}
             >
-              {info.shortName}
+              {showcase.shortName}
             </span>
             <span
               className="inline-block align-baseline ml-1"
@@ -197,44 +272,26 @@ export default async function ServicioDetallePage({ params }: PageProps) {
               animation: 'tech-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both',
             }}
           >
-            Presiona reproducir y observa el flujo completo del sistema.
-            <br className="hidden sm:block" /> Tú narras. El demo actúa.
+            {script ? (
+              <>
+                Presiona reproducir y observa el flujo completo del sistema.
+                <br className="hidden sm:block" /> Tú narras. El demo actúa.
+              </>
+            ) : (
+              <>{showcase.description}</>
+            )}
           </p>
         </header>
 
-        {/* DemoPlayer */}
-        <div style={{ animation: 'tech-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both' }}>
-          {script ? (
+        {/* DemoPlayer — solo si el servicio tiene guion grabado */}
+        {script && (
+          <div style={{ animation: 'tech-rise 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both' }}>
             <DemoPlayer script={script} />
-          ) : (
-            <div
-              className="rounded-[24px] p-16 text-center space-y-3"
-              style={{
-                background: 'var(--admin-panel-grad)',
-                border: '0.5px solid var(--admin-border-strong)',
-                backdropFilter: 'blur(20px)',
-              }}
-            >
-              <p
-                style={{
-                  fontFamily: 'var(--font-mono-tech)',
-                  fontSize: 11,
-                  fontWeight: 500,
-                  letterSpacing: '0.2em',
-                  color: 'var(--admin-fg-subtle)',
-                }}
-              >
-                EN CONSTRUCCIÓN
-              </p>
-              <p style={{ fontSize: 22, fontWeight: 500, letterSpacing: '-0.022em', color: 'var(--admin-fg)' }}>
-                El guion de demo aún no está listo.
-              </p>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Fases */}
-        <section className="mt-28">
+        {/* Etapas */}
+        <section className={script ? 'mt-28' : 'mt-8'}>
           <div className="text-center mb-14 space-y-3">
             <p
               style={{
@@ -245,7 +302,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                 color: 'var(--admin-fg)',
               }}
             >
-              ESTRUCTURA · {realPhases.length.toString().padStart(2, '0')} FASES
+              ESTRUCTURA · {stages.length.toString().padStart(2, '0')} {stagesLabel}
             </p>
             <h2
               style={{
@@ -277,9 +334,9 @@ export default async function ServicioDetallePage({ params }: PageProps) {
               }}
             />
 
-            {realPhases.map((phase, idx) => (
+            {stages.map((stage, idx) => (
               <div
-                key={phase.code}
+                key={stage.key}
                 className="relative rounded-[20px] p-6 md:p-8 flex flex-col md:flex-row gap-6 items-start transition-all duration-500 hover:translate-x-1"
                 style={{
                   background: 'var(--admin-panel-grad)',
@@ -302,7 +359,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                       data-fill="1"
                       style={{ fontSize: 26, color: 'var(--admin-fg)' }}
                     >
-                      {phase.icon}
+                      {stage.icon}
                     </span>
                   </div>
                   <span
@@ -314,7 +371,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                       color: 'var(--admin-fg-subtle)',
                     }}
                   >
-                    {(idx + 1).toString().padStart(2, '0')}/{realPhases.length.toString().padStart(2, '0')}
+                    {(idx + 1).toString().padStart(2, '0')}/{stages.length.toString().padStart(2, '0')}
                   </span>
                 </div>
 
@@ -329,7 +386,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                       marginBottom: 6,
                     }}
                   >
-                    {phase.number.toUpperCase()}
+                    {stage.number.toUpperCase()}
                   </p>
                   <h3
                     style={{
@@ -340,7 +397,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                       color: 'var(--admin-fg)',
                     }}
                   >
-                    {phase.label.replace(/^Fase \d+ — /, '')}
+                    {stage.label}
                   </h3>
                   <p
                     className="mt-2"
@@ -352,7 +409,7 @@ export default async function ServicioDetallePage({ params }: PageProps) {
                       maxWidth: '60ch',
                     }}
                   >
-                    {phase.description}
+                    {stage.description}
                   </p>
                 </div>
               </div>
