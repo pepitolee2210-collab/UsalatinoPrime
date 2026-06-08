@@ -26,24 +26,22 @@ interface PortalSheetProps {
  * `createPortal(document.body)` saca el modal de ese ancestro con transform,
  * y `z-[100]` lo deja por encima de las barras (40) en el contexto raíz.
  *
- * Incluye: scroll-lock del body, cierre por botón o tecla Escape (el backdrop
- * NO cierra, para no perder el lugar en formularios largos con autoguardado),
- * safe-area en el header (notch) y semántica de diálogo accesible.
+ * Incluye: scroll-lock del body, cierre ÚNICAMENTE por el botón "X" (ni el
+ * backdrop ni la tecla Escape cierran, para no perder datos en formularios
+ * largos con autoguardado), safe-area en el header (notch) y semántica de
+ * diálogo accesible.
  */
 export function PortalSheet({ title, onClose, children }: PortalSheetProps) {
-  // Bloquear scroll del body + cerrar con Escape mientras el modal está abierto.
+  // Bloquear scroll del body mientras el modal está abierto. El cierre es SOLO
+  // por el botón "X" del header (ni el backdrop ni la tecla Escape cierran),
+  // para no perder datos en formularios largos con autoguardado.
   useEffect(() => {
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
     return () => {
       document.body.style.overflow = prevOverflow
-      window.removeEventListener('keydown', onKey)
     }
-  }, [onClose])
+  }, [])
 
   if (typeof document === 'undefined') return null
 

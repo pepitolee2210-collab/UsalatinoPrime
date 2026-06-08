@@ -358,14 +358,14 @@ function FullscreenDrawer({
   return createPortal(
     <div
       className="fixed inset-0 z-[100] bg-black/60"
-      onClick={onClose}
     >
+      {/* El backdrop NO cierra el formulario: solo el botón "X" del header, para
+          no perder datos por un toque accidental fuera del modal. */}
       <div
         className="absolute bg-white shadow-2xl flex flex-col overflow-hidden
                    inset-0
                    sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2
                    sm:w-full sm:max-w-2xl sm:max-h-[90vh] sm:rounded-3xl"
-        onClick={(e) => e.stopPropagation()}
       >
         <header
           className="flex-shrink-0 px-4 py-3 flex items-center gap-3 border-b"
