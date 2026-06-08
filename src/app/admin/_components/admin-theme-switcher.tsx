@@ -17,7 +17,7 @@ const THEMES: Array<{
   color: string
 }> = [
   { id: 'dark', label: 'Oscuro', icon: 'dark_mode', color: 'var(--admin-fg)' },
-  { id: 'institutional', label: 'Institucional', icon: 'account_balance', color: '#F2B234' },
+  { id: 'institutional', label: 'Institucional', icon: 'account_balance', color: '#F5B705' },
   { id: 'light', label: 'Claro', icon: 'light_mode', color: '#1E4EA8' },
 ]
 

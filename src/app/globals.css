@@ -1139,35 +1139,45 @@
   --admin-veil-3:       rgba(255,255,255,0.10);
 }
 
+/* ── Modo INSTITUCIONAL — Paleta Cromática Oficial UsaLatinoPrime ──────
+   Reconstruido con los colores de marca oficiales (no aproximaciones).
+   El fondo es navy muy oscuro (Azul Oscuro #0A1A33 profundizado) y las
+   cards suben a un Azul Prime brillante #103A80 para que "floten" y se
+   separen claramente del fondo. Dorado Prime #F5B705 (Excelencia) como
+   acento premium, Rojo Prime #E51E34 (Pasión) reservado a CTA/urgencia,
+   y texto BLANCO puro. Jerarquía oficial: azul predominante como base,
+   dorado para detalles destacados, rojo solo en llamadas a la acción.   */
 [data-admin-theme='institutional'] {
-  --admin-bg:           #0A1A3A;
-  --admin-bg-deep:      #050D1F;
-  --admin-bg-elev:      #122850;
-  --admin-bg-elev-2:    #1A356A;
-  --admin-fg:           #FAFAFA;
-  --admin-fg-muted:     #A5BEDD;
-  --admin-fg-subtle:    #6B86A8;
-  --admin-fg-faint:     #1A356A;
-  --admin-accent:       #F2B234;
-  --admin-accent-soft:  rgba(242,178,52,0.14);
-  --admin-accent-glow:  rgba(242,178,52,0.28);
-  --admin-border:       rgba(91,155,255,0.18);
-  --admin-border-strong:rgba(91,155,255,0.32);
-  --admin-blue:         #5B9BFF;
-  --admin-blue-soft:    rgba(91,155,255,0.18);
-  --admin-red:          #FF4D6D;
-  --admin-red-soft:     rgba(255,77,109,0.16);
-  --admin-gold:         #F2B234;
-  --admin-gold-soft:    rgba(242,178,52,0.16);
-  --admin-green:        #22FFA0;
-  --admin-green-soft:   rgba(34,255,160,0.14);
-  --admin-panel-grad:   linear-gradient(180deg, rgba(18,40,80,0.95), rgba(10,26,58,0.95));
-  --admin-shadow:       0 10px 32px rgba(5,13,31,0.55);
-  --admin-shadow-lg:    0 24px 64px rgba(5,13,31,0.7);
-  --admin-green-on:     #22FFA0;
+  --admin-bg:           #071529;   /* navy base (oscurecido)              */
+  --admin-bg-deep:      #03091A;   /* fondo de página, casi negro azulado */
+  --admin-bg-elev:      #103A80;   /* Azul Prime brillante — cards        */
+  --admin-bg-elev-2:    #18499A;   /* elevación/hover                     */
+  --admin-fg:           #FFFFFF;   /* texto BLANCO puro                   */
+  --admin-fg-muted:     #B3C6E6;
+  --admin-fg-subtle:    #7E97BE;
+  --admin-fg-faint:     #143A7A;
+  --admin-accent:       #F5B705;   /* Dorado Prime — acento premium       */
+  --admin-accent-soft:  rgba(245,183,5,0.14);
+  --admin-accent-glow:  rgba(245,183,5,0.30);
+  --admin-border:       rgba(91,150,255,0.22);
+  --admin-border-strong:rgba(120,170,255,0.38);
+  --admin-blue:         #4D8DF0;   /* Azul Prime brillante para acentos   */
+  --admin-blue-soft:    rgba(77,141,240,0.18);
+  --admin-red:          #E51E34;   /* Rojo Prime oficial — CTA/urgencia   */
+  --admin-red-soft:     rgba(229,30,52,0.18);
+  --admin-gold:         #F5B705;   /* Dorado Prime                        */
+  --admin-gold-soft:    rgba(245,183,5,0.16);
+  --admin-green:        #34D39A;   /* verde sobrio armonizado (sin neón)  */
+  --admin-green-soft:   rgba(52,211,154,0.14);
+  --admin-panel-grad:   linear-gradient(180deg, rgba(22,68,150,0.96), rgba(16,58,128,0.94));
+  --admin-shadow:       0 12px 36px rgba(2,7,18,0.6);
+  --admin-shadow-lg:    0 26px 70px rgba(2,7,18,0.72);
+  /* Estado — texto/dot AA garantizado SOBRE el -soft del mismo color (badges) */
+  --admin-green-on:     #6EE7B7;   /* armonizado con el green sin neón    */
   --admin-gold-on:      #FDE68A;
   --admin-red-on:       #FF8FA3;
   --admin-blue-on:      #9DC2FF;
+  /* Velos de realce translúcidos (hover / elevación sutil) */
   --admin-veil-1:       rgba(255,255,255,0.04);
   --admin-veil-2:       rgba(255,255,255,0.07);
   --admin-veil-3:       rgba(255,255,255,0.11);
@@ -1318,24 +1328,24 @@
 }
 
 [data-admin-theme='institutional'] {
-  --background:           #0A1A3A;
-  --foreground:           #FAFAFA;
-  --card:                 #122850;
-  --card-foreground:      #FAFAFA;
-  --popover:              #122850;
-  --popover-foreground:   #FAFAFA;
-  --primary:              #F2B234;
-  --primary-foreground:   #0A1A3A;
-  --secondary:            #1A356A;
-  --secondary-foreground: #FAFAFA;
-  --muted:                #1A356A;
-  --muted-foreground:     #A5BEDD;
-  --accent:               #1A356A;
-  --accent-foreground:    #F2B234;
-  --destructive:          #FF4D6D;
-  --border:               rgba(91,155,255,0.18);
-  --input:                rgba(91,155,255,0.12);
-  --ring:                 #F2B234;
+  --background:           #071529;   /* navy base           */
+  --foreground:           #FFFFFF;   /* blanco puro         */
+  --card:                 #103A80;   /* Azul Prime brillante */
+  --card-foreground:      #FFFFFF;
+  --popover:              #103A80;
+  --popover-foreground:   #FFFFFF;
+  --primary:              #F5B705;   /* Dorado Prime        */
+  --primary-foreground:   #071529;
+  --secondary:            #18499A;
+  --secondary-foreground: #FFFFFF;
+  --muted:                #18499A;
+  --muted-foreground:     #B3C6E6;
+  --accent:               #18499A;
+  --accent-foreground:    #F5B705;
+  --destructive:          #E51E34;   /* Rojo Prime oficial  */
+  --border:               rgba(91,150,255,0.22);
+  --input:                rgba(91,150,255,0.16);
+  --ring:                 #F5B705;
 }
 
 /* ── Transición de cambio de tema ────────────────────────────────────
